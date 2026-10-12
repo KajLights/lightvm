@@ -20,7 +20,8 @@ static int output(void *ctx,const uint8_t *bytes,size_t size) {
 }
 static bool close_connection(void *ctx) { Connection *c=ctx; if (c->fd>=0) close(c->fd); c->fd=-1; return true; }
 void host_http_stop(void) {
-    if (listener>=0) close(listener); listener=-1;
+    if (listener>=0) close(listener);
+    listener=-1;
     for (unsigned i=0;i<8;i++) close_connection(&clients[i]);
     http_disconnect_sessions(&server);
 }
