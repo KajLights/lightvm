@@ -125,6 +125,29 @@ directory can be selected with `--output PATH`.
 Dependencies are pinned to Pyodide **314.0.7** (MPL-2.0), WABT **1.0.39**
 (Apache-2.0) and CodeMirror **5.65.18** (MIT), loaded from their CDN distributions.
 
+### GitHub Pages
+
+The [Browser editor Pages workflow](../.github/workflows/pages.yml) packages the
+editor on pushes and pull requests to `main`. When the repository is public,
+pushes to `main` also deploy it to **https://kajlights.github.io/lightvm/**.
+Pull requests and private repositories build the package without publishing it.
+Only `build/web/` is uploaded, including the browser compiler and examples.
+Asset paths are relative, so the editor works under the `/lightvm/` project path.
+
+To enable hosting after making the repository public:
+
+1. Open **Settings → Pages** in `KajLights/lightvm`.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `main`, or open **Actions → Browser editor Pages → Run workflow**
+   and select `main` to publish the current version.
+
+The workflow's `github-pages` environment reports the deployed URL. Subsequent
+pushes to `main` update the editor automatically. Deployment uses the standard
+GitHub token and requires no additional secrets or compilation server.
+HTTPS supports Web Serial in desktop Chrome/Edge; local HTTP devices can still
+require local-network permission as described above. CDN access is required to
+load the editor dependencies.
+
 ## Verification
 
 ```sh

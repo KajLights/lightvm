@@ -127,6 +127,9 @@ USB CDC or HTTP connection. USB and HTTP can stay connected together. Start it w
 and open `http://localhost:8000` in desktop Chrome or Edge. It includes all six
 Python examples and source/WASM downloads, network provisioning, saved procedures, configuration
 and live parameter controls; no compilation server is required.
+The [GitHub Pages workflow](.github/workflows/pages.yml) automatically publishes
+the editor at **https://kajlights.github.io/lightvm/** from public `main` pushes
+once [Pages is enabled](docs/web-editor.md#github-pages).
 
 The example configuration drives 100 RGB WS2812B pixels on **GP16**
 (physical Pico pin 21), GRB wire order at 800 kHz, with brightness limited to
