@@ -58,13 +58,14 @@ target_compile_definitions(wasm3 PRIVATE
 set_source_files_properties("${M3_DIR}/m3_core.c" PROPERTIES
     COMPILE_DEFINITIONS "calloc=demo_calloc;realloc=demo_realloc;free=demo_free")
 
-add_executable(lightvm src/main.c src/app.c src/protocol.c src/vm_allocator.c)
+add_executable(lightvm src/main.c src/app.c src/protocol.c src/vm_allocator.c src/pixels.c)
 target_include_directories(lightvm PRIVATE src)
 target_compile_options(lightvm PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(lightvm PRIVATE wasm3 m)
 if(LIGHTVM_PICO)
     target_compile_definitions(lightvm PRIVATE DEMO_PICO=1 PICO_STACK_SIZE=8192)
-    target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb)
+    target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb hardware_pio)
+    pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/src/ws2812.pio")
     # SDK 1.5.1's ROM-v1 double shim is licensed for Pico devices only.
     # Use the compiler runtime so firmware avoids that restricted component.
     pico_set_double_implementation(lightvm compiler)

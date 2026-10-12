@@ -15,7 +15,8 @@ HEADER = struct.Struct("<4sBBHII")
 FRAME_LIMIT = 512
 MODULE_LIMIT = 32768
 STATUS, BEGIN, CHUNK, FINISH, RUN, RESET = range(1, 7)
-OUTPUT, RESULT = 128, 129
+PLAY, STOP, FRAME, NATIVE_DEMO = 7, 8, 9, 10
+OUTPUT, RESULT, PIXELS = 128, 129, 130
 
 
 class ProtocolError(RuntimeError):
@@ -94,6 +95,7 @@ class Client:
         self.timeout = timeout
         self.output = output or (lambda data: None)
         self.request_id = 0
+        self.pixel_snapshot = bytearray()
 
     def read_exact(self, size, deadline):
         result = bytearray()
@@ -105,6 +107,8 @@ class Client:
         return bytes(result)
 
     def command(self, kind, payload=b""):
+        if kind == FRAME:
+            self.pixel_snapshot.clear()
         self.request_id = self.request_id % 65535 + 1
         request_id = self.request_id
         self.transport.write(frame(kind, request_id, payload))
@@ -124,6 +128,8 @@ class Client:
                 raise ProtocolError("unexpected response identity")
             if kind == OUTPUT:
                 self.output(payload)
+            elif kind == PIXELS:
+                self.pixel_snapshot.extend(payload)
             elif kind == RESULT and len(payload) >= 8:
                 code, value = struct.unpack("<Ii", payload[:8])
                 return Reply(code, value, payload[8:].decode("utf-8", errors="replace"))
@@ -154,14 +160,21 @@ def main():
     transport.add_argument("--port", help="USB serial port, e.g. /dev/cu.usbmodem...")
     transport.add_argument("--process", type=Path, help="desktop receiver executable")
     parser.add_argument("--function", default="run", help="zero-argument exported function")
-    parser.add_argument("--status", action="store_true", help="query receiver without uploading")
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument("--status", action="store_true", help="query receiver without uploading")
+    action.add_argument("--animate", action="store_true", help="start render(index) animation on the device")
+    action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
+    action.add_argument("--native-demo", action="store_true", help="start the built-in native rainbow")
+    action.add_argument("--frame-ms", type=int, help="render one frame with this delta and report an RGB preview")
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("module", nargs="?", type=Path)
     args = parser.parse_args()
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
-    if not args.status and args.module is None:
-        parser.error("provide a .wasm module or --status")
+    if args.frame_ms is not None and not 0 <= args.frame_ms <= 1000:
+        parser.error("--frame-ms must be 0..1000")
+    if args.module is None and not (args.status or args.animate or args.stop or args.native_demo or args.frame_ms is not None):
+        parser.error("provide a .wasm module or a status/animation command")
     connection = None
     try:
         connection = SerialTransport(args.port) if args.port else ProcessTransport(args.process)
@@ -172,9 +185,22 @@ def main():
         if args.module is not None:
             loaded = client.upload(args.module.read_bytes())
             print(f"Loaded {loaded.value} bytes", file=sys.stderr)
-            reply = client.command(RUN, args.function.encode("utf-8"))
-        else:
+        if args.animate:
+            reply = client.command(PLAY)
+        elif args.stop:
+            reply = client.command(STOP)
+        elif args.native_demo:
+            reply = client.command(NATIVE_DEMO)
+        elif args.frame_ms is not None:
+            reply = client.command(FRAME, struct.pack("<I", args.frame_ms))
+            if client.pixel_snapshot:
+                colors = [tuple(client.pixel_snapshot[index:index+3])
+                          for index in range(0, min(15, len(client.pixel_snapshot)), 3)]
+                print(f"RGB snapshot: {len(client.pixel_snapshot)//3} pixels; first five {colors}", file=sys.stderr)
+        elif args.status or args.module is None:
             reply = client.command(STATUS)
+        else:
+            reply = client.command(RUN, args.function.encode("utf-8"))
         print(f"Status {reply.code}, result {reply.value}: {reply.message}", file=sys.stderr)
         return 0 if reply.code == 0 else 1
     except (OSError, ValueError, ProtocolError, ImportError) as error:
