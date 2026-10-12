@@ -1,4 +1,4 @@
-"""Redraw growing paint from both ends using scalar progress. Original MIT implementation."""
+"""Redraw growing paint from both ends using scalar progress."""
 from lightvm import parameter, rgb, on_frame
 color = parameter("color", rgb(0, 80, 255), kind="rgb8")
 speed = parameter("speed", 10.0, minimum=0.1, maximum=1000.0)

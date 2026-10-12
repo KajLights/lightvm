@@ -53,8 +53,9 @@ per-pixel lifetimes rather than picolights' stateful star slots.
 Python AST/symbol-table parsing uses the desktop standard library. The existing
 pinned Wasmtime package assembles WAT on the desktop under its retained license;
 neither Python nor Wasmtime code is embedded in generated guest modules. Native
-RGB/HSV conversion reuses LightVM's own existing MIT implementation. This addition
-does not change the licenses of the firmware SDKs and build dependencies above.
+RGB/HSV conversion reuses LightVM's own existing MIT-licensed implementation. This
+addition does not change the licenses of the firmware SDKs and build dependencies
+above.
 
 ## Existing dependency modifications
 

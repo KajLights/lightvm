@@ -2,7 +2,6 @@
 
 Density controls the fraction of each pixel's period spent visible. A polynomial
 phase offset supplies variation; fading is derived from the cubic equation.
-Original MIT implementation; this is not picolights' star-slot simulation.
 """
 from lightvm import parameter, rgb, hash01, on_frame
 from lightvm.easing import cubic_out

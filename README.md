@@ -100,9 +100,10 @@ cross-builds alone do not establish physical USB, output or timing correctness.
 
 ### Python animation authoring
 
-The original MIT Python frontend compiles a documented subset directly to small,
-memoryless WASM. It uses the feature notes' resource/handler model. Six starter
-effects live in `samples/python/`; polynomial easing is implemented from equations.
+LightVM's original Python frontend, licensed under the MIT License, compiles a
+documented subset directly to small, memoryless WASM. It uses the feature notes'
+resource/handler model. Six starter effects live in `samples/python/`; polynomial
+easing is implemented from equations.
 No picolights/Adafruit imports or GPL easing source are used.
 
 ```sh

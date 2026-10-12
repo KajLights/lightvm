@@ -1,4 +1,4 @@
-"""Repeat or stretch an immutable palette. Original MIT implementation."""
+"""Repeat or stretch an immutable palette."""
 from lightvm import parameter, rgb, on_frame
 fit = parameter("fit", False)
 palette = (rgb(255, 0, 0), rgb(0, 255, 0), rgb(0, 0, 255))

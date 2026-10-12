@@ -1,4 +1,4 @@
-"""A hue gradient advancing in program time. Original MIT implementation."""
+"""A hue gradient advancing in program time."""
 from lightvm import parameter, hsv, on_frame
 speed = parameter("speed", 0.1, minimum=-10.0, maximum=10.0)
 scale = parameter("scale", 1.0, minimum=0.0, maximum=16.0)
