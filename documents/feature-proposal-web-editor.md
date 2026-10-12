@@ -60,7 +60,10 @@ storage and the HTTP mappings below remain proposed.
 The [control ABI 2 Python frontend](../docs/control-api.md) is now available as a
 desktop compiler and SDK with live parameters and passive snapshots. It supports
 one RGB8 frame redrawn from black each step and six original examples. Browser authoring,
-compiler workers, project/source storage and preview UI remain future editor work.
+compiler workers and USB uploading are now available in the
+[static Python editor prototype](../docs/web-editor.md). It saves a local browser
+draft and downloads source/WASM; managed project/source storage and preview UI
+remain future editor work.
 
 ## Reusable scenes and backgrounds
 

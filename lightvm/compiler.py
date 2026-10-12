@@ -521,11 +521,14 @@ class Compiler:
         return wat, manifest
 
 
-def compile_source(source, filename="<string>", target=None):
+def compile_source(source, filename="<string>", target=None, wat_to_wasm=None):
+    """Compile without executing source; optionally supply a browser assembler."""
     try:
         wat, manifest = Compiler(source).build()
-        import wasmtime
-        wasm = bytes(wasmtime.wat2wasm(wat))
+        if wat_to_wasm is None:
+            import wasmtime
+            wat_to_wasm = wasmtime.wat2wasm
+        wasm = bytes(wat_to_wasm(wat))
         metadata = json.dumps(manifest, separators=(",", ":"), allow_nan=False).encode()
         section_name = b"lightvm.program"
         section = uleb(len(section_name)) + section_name + metadata

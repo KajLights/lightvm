@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101820">
+  <title>LightVM · Python editor</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath fill='none' stroke='%23c4f46a' stroke-width='3' d='M20 2v36M2 20h36M7 7l26 26M7 33L33 7'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/lib/codemirror.css">
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/lib/codemirror.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/mode/python/python.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/addon/edit/closebrackets.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/codemirror@5.65.18/addon/edit/matchbrackets.js"></script>
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand"><span class="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span class="version">LAB</span></div>
+    <div class="header-note">A little code. A lot of light.</div>
+    <span id="compiler-badge" class="badge"><span class="status-dot"></span><span id="compiler-state">Loading compiler</span></span>
+  </header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">PYTHON WORKSPACE</p><h1>Make something glow.</h1><p>Write an animation, check it as you type, and send it to your lights.</p></div><div class="pipeline" aria-label="Compilation flow"><span>Python</span><span aria-hidden="true">→</span><span>WebAssembly</span><span aria-hidden="true">→</span><span>Device</span></div></div>
+    <div class="workspace">
+      <section class="editor-panel" aria-label="Python source editor">
+        <div class="editor-toolbar"><div class="file-label"><span class="python-dot"></span><span id="filename">animation.py</span></div><div class="toolbar-actions"><label class="sr-only" for="example">Load example</label><select id="example"><option value="">Examples…</option><option value="rainbow">Rainbow</option><option value="twinkle">Twinkle</option><option value="color">Solid colour</option><option value="pattern">Pattern</option><option value="wipe">Wipe</option><option value="chase">Chase</option></select><button id="open-source" class="quiet">Open .py</button><button id="save-source" class="quiet">Save .py</button></div></div>
+        <label class="sr-only" for="source">Animation Python source</label><textarea id="source" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">from lightvm import parameter, hsv, on_frame
+
+speed = parameter("speed", 0.1, minimum=-10.0, maximum=10.0)
+scale = parameter("scale", 1.0, minimum=0.0, maximum=16.0)
+phase = 0.0
+
+@on_frame
+def draw(ctx):
+    global phase
+    strip = ctx.pixels
+    phase = (phase + ctx.delta * speed.value) % 1.0
+    for i in range(strip.count):
+        strip[i] = hsv(phase + i * scale.value / strip.count, 1.0, 1.0)
+</textarea>
+        <div class="editor-footer"><span id="cursor-position">Ln 1, Col 1</span><span>Python subset · Control ABI 2</span><span id="draft-state">Draft saved in this browser</span></div>
+        <div class="diagnostics-header"><h2>Code checks</h2><span id="check-state">Waiting for Python…</span></div>
+        <div id="diagnostics" class="diagnostics" role="status" aria-live="polite"><p class="muted">The compiler is loading. You can start editing now.</p></div>
+      </section>
+      <aside class="sidebar">
+        <section class="card device-card"><div class="card-heading"><span class="step">01</span><h2>Your device</h2><span id="device-dot" class="status-dot"></span></div><p id="device-summary" class="muted">Connect a LightVM board over USB.</p><div class="connection-label">USB Serial · current firmware</div><p class="helper">For Pico and ESP32 firmware. Use desktop Chrome or Edge.</p><button id="connect" class="secondary full">Connect device <span aria-hidden="true">↗</span></button><button id="disconnect" class="quiet full" hidden>Disconnect</button><div id="device-details" hidden><dl><div><dt>Board</dt><dd id="board">—</dd></div><div><dt>Module limit</dt><dd id="module-limit">—</dd></div><div><dt>Output</dt><dd id="output-binding">—</dd></div></dl></div></section>
+        <section class="card"><div class="card-heading"><span class="step">02</span><h2>Send your animation</h2></div><p class="muted">Compilation happens in your browser. Your source stays here.</p><div class="artifact"><span>Compiled program</span><strong id="artifact-size">Checking…</strong></div><p id="artifact-detail" class="helper">Ready when the code checks pass.</p><button id="upload" class="primary full" disabled>Upload &amp; run <span aria-hidden="true">→</span></button><progress id="upload-progress" max="1" value="0" hidden aria-label="Program upload progress"></progress><div class="button-pair"><button id="download" class="secondary" disabled>Download .wasm</button><button id="stop" class="quiet" disabled>Stop lights</button></div><p class="helper deployment-note">Upload replaces the running program. It plays until stopped or rebooted; startup storage is a separate step.</p></section>
+        <section class="card activity-card"><div class="card-heading"><h2>Activity</h2><button id="clear-log" class="quiet small">Clear</button></div><ol id="activity" aria-live="polite"><li><span class="log-dot"></span><span>Workspace opened.</span></li></ol></section>
+      </aside>
+    </div>
+    <p id="notice" class="notice" role="alert" hidden></p>
+    <footer class="page-footer"><span>LightVM editor prototype</span><span>Pyodide · WABT · CodeMirror</span><button id="retry-compiler" class="quiet" hidden>Retry compiler</button></footer>
+  </main>
+  <input id="source-file" type="file" accept=".py,text/x-python,text/plain" hidden>
+</body>
+</html>

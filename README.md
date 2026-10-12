@@ -119,6 +119,12 @@ The [control guide](docs/control-api.md) documents source syntax, compiler limit
 frame reset and own-step RGB readback. The compiler requires
 Python 3.9+; the device contains no Python interpreter. Scenes and waits follow later.
 
+The [static browser editor](docs/web-editor.md) uses the same compiler in Pyodide,
+shows inline diagnostics as you type, and uploads/runs animations over the current
+USB CDC connection using Web Serial. Start it with `python3 tools/serve_editor.py`
+and open `http://localhost:8000` in desktop Chrome or Edge. It includes all six
+Python examples and source/WASM downloads; no compilation server is required.
+
 The example configuration drives 100 RGB WS2812B pixels on **GP16**
 (physical Pico pin 21), GRB wire order at 800 kHz, with brightness limited to
 32/255. These settings are uploaded data in

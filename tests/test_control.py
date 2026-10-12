@@ -57,6 +57,21 @@ class Replay:
 
 
 class CompilerTests(unittest.TestCase):
+    def test_browser_assembler_keeps_manifest_and_target_checks(self):
+        source = PREFIX + '@on_frame\ndef draw(ctx):\n ctx.pixels.fill(rgb(1,2,3))\n'
+        calls = []
+        def assemble(wat):
+            calls.append(wat)
+            return wasmtime.wat2wasm(wat)
+        target = {'module_limit': 32768, 'control_abi': 2,
+                  'program_schemas': ['lightvm.program/3']}
+        browser = compile_source(source, target=target, wat_to_wasm=assemble)
+        self.assertTrue(browser.success)
+        self.assertEqual(browser.wasm, compile_source(source).wasm)
+        self.assertEqual(calls, [browser.wat])
+        target['module_limit'] = 100
+        self.assertFalse(compile_source(source, target=target, wat_to_wasm=assemble).success)
+
     def test_memoryless_artifacts_and_target_admission(self):
         source = PREFIX + '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p.fill(rgb(1,2,3))\n'
         result = artifact(source)
