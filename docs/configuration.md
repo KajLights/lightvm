@@ -87,7 +87,9 @@ checked when selecting a procedure. A stored module can therefore fail to load
 or play; the error does not remove it from the library.
 
 `procedure_activate` loads a fresh instance and either plays its existing API v1
-callbacks or calls a zero-argument export returning void or i32. The default
+callbacks, starts a manifested [control ABI 1 program](control-api.md), or calls a
+zero-argument export returning void or i32. Control manifests and parameter defaults
+are embedded in the WASM; live changes do not alter the saved module. The default
 export for `run` is `run`. Further legacy RUN calls retain that instance's state.
 Activation replacement is destructive and resets the prior guest state. Once
 replacement begins, a load or initialization failure leaves the runtime idle; storage and configuration remain available.

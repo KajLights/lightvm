@@ -60,6 +60,7 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
+        "${LIGHTVM_ROOT}/src/control.c"
         "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/devices.c"
         "${LIGHTVM_ROOT}/src/store.c")
     target_compile_features(lightvm_core PUBLIC c_std_11)

@@ -1,6 +1,6 @@
 # LightVM Control API and Execution Model Proposal
 
-Status: Proposed
+Status: Proposed general model; single-program animation profile implemented
 
 Date: 12 October 2026
 
@@ -15,14 +15,20 @@ Pixelblaze compatibility belongs in an independently implemented frontend or
 adapter above this API. Pixelblaze callback names, numeric rules and available
 devices do not define or constrain the core contract.
 
-This proposal defines common semantics before freezing import signatures and
-binary layouts. It governs the proposed [device support](feature-proposal-device-support.md),
+The first [control ABI 1 animation profile](../docs/control-api.md) now defines
+start/frame steps, named A bindings, program time, typed live parameters,
+fresh/retained RGB8 colour/presence and successful-step publication. An original
+restricted Python compiler and six examples target it. General event/task/device
+and multi-layer contracts below remain proposed.
+
+This proposal defines the remaining common semantics before freezing additional
+import signatures and binary layouts. It governs the proposed [device support](feature-proposal-device-support.md),
 [web editor](feature-proposal-web-editor.md) and
 [animation composition](feature-proposal-animation-composition.md), alongside
 [A/B transitions](feature-proposal-ab-transitions.md). The implemented runtime
-still uses legacy animation API v1, RGB buffers, runtime hardware configuration
-and named procedure storage. General events, resumable tasks, retained pixel
-control, scene layers, GPIO, ADC, PWM and servo capabilities below are proposed.
+also preserves legacy animation API v1, runtime hardware configuration and named
+procedure storage. General events, resumable tasks, scene layers, GPIO, ADC, PWM
+and servo capabilities below remain proposed.
 
 ## Common concepts
 

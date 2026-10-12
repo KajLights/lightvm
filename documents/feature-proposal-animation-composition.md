@@ -20,6 +20,10 @@ contracts for the [web editor](feature-proposal-web-editor.md) and
 [build profiles](feature-proposal-build-profiles.md). All behaviour below is
 proposed. The implemented LightVM runtime has one resident animation and RGB
 target; it does not provide animation layers or a scene compositor.
+The implemented [single-program control profile](../docs/control-api.md) now
+supplies fresh/retained contribution colour and explicit presence/erase, but no
+scene management or lower-layer readback. Those primitives prepare this separate
+composition increment without advertising it as available.
 
 ## User experience and initial scope
 

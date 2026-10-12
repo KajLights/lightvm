@@ -8,6 +8,11 @@ typedef union { max_align_t alignment; size_t size; } Allocation;
 static size_t used, peak;
 size_t vm_heap_used(void) { return used; }
 size_t vm_heap_peak(void) { return peak; }
+bool vm_heap_charge(size_t bytes) {
+    if (bytes>VM_HEAP_LIMIT-used) return false;
+    used+=bytes; if (used>peak) peak=used; return true;
+}
+void vm_heap_uncharge(size_t bytes) { used-=bytes; }
 void *demo_calloc(size_t count, size_t size) {
     if (count && size>SIZE_MAX/count) return NULL;
     size*=count;

@@ -262,6 +262,31 @@ class Client:
     def activate(self, name, action="play", export="run"):
         return self.manage("procedure_activate", name=name, action=action, export=export)
 
+    def program_parameters(self):
+        self.manage("program_parameters_get")
+        return json.loads(self.data_reply)
+
+    def set_parameters(self, values):
+        state = self.program_parameters()
+        self.manage("program_parameters_set", values=values, expected_generation=state["generation"],
+                    expected_parameter_revision=state["parameter_revision"])
+        return json.loads(self.data_reply)
+
+    def pause_program(self):
+        state = self.program_parameters()
+        self.manage("program_pause", expected_generation=state["generation"])
+        return json.loads(self.data_reply)
+
+    def resume_program(self):
+        state = self.program_parameters()
+        self.manage("program_resume", expected_generation=state["generation"])
+        return json.loads(self.data_reply)
+
+    def snapshot(self):
+        self.pixel_snapshot.clear()
+        self.manage("program_snapshot")
+        return json.loads(self.data_reply), bytes(self.pixel_snapshot)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -287,6 +312,11 @@ def main():
     action.add_argument("--delete-procedure", metavar="NAME")
     action.add_argument("--activate", metavar="NAME")
     action.add_argument("--cancel-upload", action="store_true")
+    action.add_argument("--parameters", action="store_true", help="read control parameters and program state")
+    action.add_argument("--set-parameters", metavar="JSON", help="atomically update live control parameters")
+    action.add_argument("--pause", action="store_true", help="pause control program time")
+    action.add_argument("--resume", action="store_true", help="resume the initialized control program")
+    action.add_argument("--snapshot", action="store_true", help="read output without stepping playback")
     action.add_argument("--status", action="store_true", help="query receiver without uploading")
     action.add_argument("--animate", action="store_true", help="start render(index) animation on the device")
     action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
@@ -307,7 +337,8 @@ def main():
         parser.error("--store-procedure requires a .wasm module")
     management = (args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
-                  args.activate or args.cancel_upload)
+                  args.activate or args.cancel_upload or args.parameters or args.set_parameters is not None or
+                  args.pause or args.resume or args.snapshot)
     if management and args.module is not None and not args.store_procedure:
         parser.error("module argument only applies to --store-procedure or legacy execution")
     if args.no_reset and not args.port:
@@ -353,6 +384,17 @@ def main():
                 client.activate(args.activate, args.action, args.function)
             elif args.cancel_upload:
                 client.require_ok(client.command(OBJECT_CANCEL))
+            elif args.parameters:
+                print(json.dumps(client.program_parameters(), indent=2))
+            elif args.set_parameters is not None:
+                print(json.dumps(client.set_parameters(json.loads(args.set_parameters)), indent=2))
+            elif args.pause:
+                print(json.dumps(client.pause_program(), indent=2))
+            elif args.resume:
+                print(json.dumps(client.resume_program(), indent=2))
+            elif args.snapshot:
+                state, rgb = client.snapshot()
+                print(json.dumps({**state, "rgb": rgb.hex()}, indent=2))
             return 0
         if args.module is not None:
             loaded = client.upload(args.module.read_bytes())

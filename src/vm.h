@@ -6,8 +6,9 @@
 #include "platform.h"
 #include <stdbool.h>
 #include "pixels.h"
+#include "control.h"
 
-typedef struct {
+typedef struct VmInstance {
     uint8_t bytes[MODULE_LIMIT];
     size_t received, expected, output_size;
     uint32_t expected_crc;
@@ -26,6 +27,8 @@ typedef struct {
     SendMessage send;
     void *transport;
     PixelBuffer *target;
+    uint32_t generation;
+    Control control;
 } VmInstance;
 void vm_init(VmInstance *app, PixelBuffer *target, SendMessage send, void *transport);
 M3Result vm_load(VmInstance *app);

@@ -38,7 +38,25 @@ neither compiled nor linked into the firmware. Double-precision operations use
 the compiler/Newlib implementations; floating-point performance can differ from
 the SDK's ROM-assisted implementation.
 
-## Dependency modifications
+## Independent Python animation frontend provenance
+
+The `lightvm/` SDK/compiler/easing and `samples/python/` effects are original
+LightVM implementations under the repository MIT license. They reuse no
+picolights or Adafruit source. Picolights supplied behavioural motivation only,
+as recorded in the control and composition feature proposals. Its
+`picolights/easing.py` explicitly declares GPLv3 and is excluded, along with
+mechanical translations of its easing/helpers. Linear, polynomial and smoothstep
+curves are implemented directly from their equations; the deterministic star
+mixer is original modular arithmetic. Twinkle intentionally uses procedural
+per-pixel lifetimes rather than picolights' stateful star slots.
+
+Python AST/symbol-table parsing uses the desktop standard library. The existing
+pinned Wasmtime package assembles WAT on the desktop under its retained license;
+neither Python nor Wasmtime code is embedded in generated guest modules. Native
+RGB/HSV conversion reuses LightVM's own existing MIT implementation. This addition
+does not change the licenses of the firmware SDKs and build dependencies above.
+
+## Existing dependency modifications
 
 The WS2812 PIO program is adapted from Pico examples commit 1545dfd9a1862961904856d46a4e05f35454d4be.
 Only the single-strip program is used; the newer PIO version directive is omitted

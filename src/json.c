@@ -149,3 +149,38 @@ bool json_fields(const Json *j, int object, const char *const *allowed) {
     }
     return true;
 }
+
+// Bounded conversion: JSON grammar is already checked, but conversion must also
+// reject fractional integers, overflow and non-finite floating-point values.
+#include <errno.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stdint.h>
+static bool primitive(const Json *j,int t,char *buffer,size_t capacity) {
+    if (t<0 || j->tokens[t].type!=JSON_PRIMITIVE) return false;
+    size_t size=j->tokens[t].end-j->tokens[t].start;
+    if (!size || size>=capacity) return false;
+    memcpy(buffer,j->text+j->tokens[t].start,size); buffer[size]=0; return true;
+}
+bool json_i64(const Json *j,int t,int64_t *value) {
+    char buffer[32],*end;
+    if (!primitive(j,t,buffer,sizeof(buffer))) return false;
+    errno=0; long long n=strtoll(buffer,&end,10);
+    if (errno || *end || end==buffer || n<INT64_MIN || n>INT64_MAX) return false;
+    *value=(int64_t)n; return true;
+}
+bool json_f64(const Json *j,int t,double *value) {
+    char buffer[64],*end;
+    if (!primitive(j,t,buffer,sizeof(buffer))) return false;
+    errno=0; double n=strtod(buffer,&end);
+    // strtod may set ERANGE for a finite subnormal (or rounded zero).
+    if (*end || end==buffer || !isfinite(n)) return false;
+    *value=n; return true;
+}
+bool json_bool(const Json *j,int t,bool *value) {
+    char buffer[8];
+    if (!primitive(j,t,buffer,sizeof(buffer))) return false;
+    if (!strcmp(buffer,"true")) { *value=true; return true; }
+    if (!strcmp(buffer,"false")) { *value=false; return true; }
+    return false;
+}

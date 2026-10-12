@@ -57,6 +57,10 @@ Runtime configuration and compiled-procedure persistence are now implemented ove
 USB on host, Pico and ESP32. [Configuration management](../docs/configuration.md)
 specifies staging, revisions, quotas and idle recovery. Editable source/project
 storage and the HTTP mappings below remain proposed.
+The [control ABI 1 Python frontend](../docs/control-api.md) is now available as a
+desktop compiler and SDK with live parameters and passive snapshots. It supports
+one fresh/retained RGB8 contribution and six original examples. Browser authoring,
+compiler workers, project/source storage and preview UI remain future editor work.
 
 ## Reusable scenes and backgrounds
 

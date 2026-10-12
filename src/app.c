@@ -131,6 +131,8 @@ static void describe(App *a, uint16_t id) {
     literal(&w,"],\"pixel_capacity\":"); number(&w,PIXEL_CAPACITY);
     literal(&w,",\"config_limit\":"); number(&w,CONFIG_LIMIT);
     literal(&w,",\"module_limit\":"); number(&w,MODULE_LIMIT);
+    literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
+    literal(&w,",\"legacy_animation_api\":1,\"retention_modes\":[\"fresh\",\"retained\"],\"parameter_limit\":8,\"composition\":false,\"program_generation\":"); number(&w,a->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
@@ -183,6 +185,7 @@ static void read_object(App *a,uint16_t id,const StoreEntry *entry) {
     reply(a,id,STATUS_OK,(int32_t)entry->size,"object read");
 }
 static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
+    if (control_manage(&a->vm,id,p,size)) return;
     Arguments args;
     if (!arguments(p,size,&args)) { error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management JSON or fields"); return; }
     if (!strcmp(args.op,"describe")) { describe(a,id); return; }

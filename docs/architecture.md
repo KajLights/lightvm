@@ -2,11 +2,13 @@
 
 LightVM is intended to run portable lighting programs on multiple board families.
 Its unit of portability is the WASM module plus its versioned guest contract.
-The implemented contract is currently legacy animation API v1; the proposed
-control API extends portability to event-driven device programs.
+The implemented contracts are legacy animation API v1 and the independent
+[control ABI 1 animation profile](control-api.md). The broader proposed control
+API extends portability to event-driven device programs.
 Each native firmware rebuilds the same engine/interpreter and supplies the local
 hardware and services. Resource budgets and physical capabilities can differ.
-An effect should query `led.pixel_count()` and avoid fixed board pin/count
+An effect should query its bound pixel resource count (or legacy
+`led.pixel_count()`) and avoid fixed board pin/count
 assumptions; an oversized or unsupported module is rejected with a load/upload
 error. Real-time frame throughput must be measured on each target.
 
@@ -25,7 +27,7 @@ evidence separately from build success.
 
 | Layer | Owns |
 |---|---|
-| Guest `.wasm` | Effect state, optional `beforeRender`, per-pixel `render`, logical colour requests |
+| Guest `.wasm` | Effect state and bounded control steps or legacy callbacks; logical colour/presence requests |
 | `lightvm_core` / `src/` | Loader, wasm3 bindings, RGB/HSV conversion and buffer, scheduler, module lifecycle, limits, logical commands, byte framing |
 | Native port / `platforms/<port>/` | Executable or SDK entry point, clock, allocation implementation, physical LED output, transports/event loop, SDK/toolchain setup |
 | Board/resource header | Pixel capacity and engine budgets; board identity |

@@ -6,7 +6,9 @@ runtime for programmable lighting across microcontrollers and native hosts, unde
 
 The goal is one portable, language-neutral control API and the same `.wasm`
 programs across supported boards, within each board's resource limits. The
-implemented guest contract is currently animation API v1. The shared C engine and
+implemented guest contracts are legacy animation API v1 and the independent
+[control ABI 1 animation profile](docs/control-api.md), with a restricted Python
+compiler, typed live parameters and retained/fresh RGB8 contributions. The shared C engine and
 wasm3 interpreter are rebuilt for each processor; native ports supply the clock,
 LED output, memory allocation, transports and startup policy. Adding a board
 should not require board-specific imports or pin assumptions in an effect.
@@ -64,7 +66,10 @@ resources expose typed properties/samples, actions/jobs and events. Triggers
 schedule bounded handlers and resumable tasks; addressable RGB pixels, digital/analogue IO,
 PWM and servos share timing, publication and ownership conventions. Input
 sampling, guest execution and native waveforms have independent cadences.
-These are proposed capabilities, not additions already supplied by API v1.
+The first single-program control profile implements start/frame handlers,
+program time, typed parameters, explicit pixel presence and successful-step
+publication. Device events, resumable tasks and composition remain proposed;
+they are not supplied by the legacy API v1 adapter.
 
 Planned language bindings target that common contract. Pixelblaze source
 compatibility belongs in an independent frontend/adapter. A legacy adapter must
@@ -92,6 +97,25 @@ The portable smoke runner checks the same behavior over pipes or USB; successful
 cross-builds alone do not establish physical USB, output or timing correctness.
 
 ## WS2812B demo on GP16
+
+### Python animation authoring
+
+The original MIT Python frontend compiles a documented subset directly to small,
+memoryless WASM. It uses the feature notes' resource/handler model. Six starter
+effects live in `samples/python/`; polynomial easing is implemented from equations.
+No picolights/Adafruit imports or GPL easing source are used.
+
+```sh
+python -m lightvm.compiler samples/python/rainbow.py -o build/samples/rainbow_control.wasm
+python tools/client.py --port PORT --store-procedure rainbow-control build/samples/rainbow_control.wasm
+python tools/client.py --port PORT --activate rainbow-control
+python tools/client.py --port PORT --set-parameters '{"speed":0.3}'
+```
+
+Configure logical target A first using the workflow below. The [control guide](docs/control-api.md)
+documents source syntax, compiler limits, ABI, pause/resume, passive snapshots and
+the distinction between painted black and erased presence. The compiler requires
+Python 3.9+; the device contains no Python interpreter. Scenes and waits follow later.
 
 The example configuration drives 100 RGB WS2812B pixels on **GP16**
 (physical Pico pin 21), GRB wire order at 800 kHz, with brightness limited to

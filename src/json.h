@@ -16,5 +16,8 @@ int json_get(const Json *json, int object, const char *key);
 bool json_string(const Json *json, int token, char *out, size_t capacity);
 bool json_equal(const Json *json, int token, const char *value);
 bool json_u32(const Json *json, int token, uint32_t *value);
+bool json_i64(const Json *json, int token, int64_t *value);
+bool json_f64(const Json *json, int token, double *value);
+bool json_bool(const Json *json, int token, bool *value);
 bool json_fields(const Json *json, int object, const char *const *allowed);
 #endif

@@ -18,17 +18,26 @@ static void reply(VmInstance *a, uint16_t id, enum Status code, int32_t value, c
     send_status(a->send,a->transport,id,code,value,message);
 }
 void vm_init(VmInstance *a, PixelBuffer *target, SendMessage send, void *transport) {
-    memset(a,0,sizeof(*a)); a->send=send; a->transport=transport; a->target=target;
+    memset(a,0,sizeof(*a)); a->generation=1; a->send=send; a->transport=transport; a->target=target;
 }
 static void stop_animation(VmInstance *a) {
     a->playing=false; a->native_demo=false; a->rendering_pixel=false;
     a->render=NULL; a->before_render=NULL; a->animation_error[0]=0;
-    pixels_clear(a->target); pixels_show(a->target);
+    if (a->control.enabled && a->control.allocation) {
+        size_t n=(size_t)a->target->count*3;
+        memset(a->control.working,0,n);
+        if (a->target->type->show(a->target->driver,a->control.working,a->target->count)) {
+            memset(a->target->rgb,0,n); a->control.output_valid=true;
+            ++a->control.output_frame;
+        } else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
+    } else { pixels_clear(a->target); pixels_show(a->target); }
 }
 void vm_destroy(VmInstance *a) {
     stop_animation(a);
     if (a->runtime) m3_FreeRuntime(a->runtime);
     if (a->environment) m3_FreeEnvironment(a->environment);
+    control_destroy(a);
+    if (a->generation!=UINT32_MAX) ++a->generation;
     a->runtime=NULL; a->environment=NULL; a->module=NULL; a->ready=false;
 }
 static bool memory_range(IM3Runtime runtime, uint32_t offset, uint32_t size, uint8_t **out) {
@@ -125,6 +134,9 @@ static M3Result link_optional(VmInstance *a, const char *space, const char *name
     return result==m3Err_functionLookupFailed ? m3Err_none : result;
 }
 M3Result vm_load(VmInstance *a) {
+    if (a->generation==UINT32_MAX) return "program generation exhausted";
+    M3Result profile=control_probe(a->bytes,a->expected,&a->control);
+    if (profile) return profile;
     a->environment=m3_NewEnvironment();
     if (!a->environment) return m3Err_mallocFailed;
     a->runtime=m3_NewRuntime(a->environment,VM_STACK_SIZE,a);
@@ -133,6 +145,11 @@ M3Result vm_load(VmInstance *a) {
     if (result) return result;
     result=m3_LoadModule(a->runtime,a->module);
     if (result) { m3_FreeModule(a->module); a->module=NULL; return result; }
+    if (a->control.enabled) {
+        result=control_link(a);
+        if (!result) result=m3_CompileModule(a->module);
+        return result;
+    }
     result=link_optional(a,"console","write","v(ii)",console_write);
     if (!result) result=link_optional(a,"wasi_snapshot_preview1","fd_write","i(iiii)",wasi_fd_write);
     if (!result) result=link_optional(a,"wasi_snapshot_preview1","proc_exit","v(i)",wasi_proc_exit);
@@ -144,6 +161,7 @@ M3Result vm_load(VmInstance *a) {
 }
 static void run(VmInstance *a, uint16_t id, const uint8_t *payload, size_t size) {
     if (!a->ready) { reply(a,id,STATUS_RUN,0,"no loaded module"); return; }
+    if (a->control.enabled) { reply(a,id,STATUS_RUN,0,"control programs execute through PLAY/FRAME, not RUN"); return; }
     char name[64]="run";
     if (size) {
         if (size>=sizeof(name) || memchr(payload,0,size)) {
@@ -193,6 +211,7 @@ static bool pixel_callback(IM3Function function) {
            m3_GetRetCount(function)==0;
 }
 static M3Result prepare_animation(VmInstance *a) {
+    if (a->control.enabled) return control_prepare(a);
     if (!a->target || !a->target->count) return "target A has no configured output";
     if (a->render) return m3Err_none;
     if (!a->ready) return "no loaded module";
@@ -211,6 +230,7 @@ static M3Result prepare_animation(VmInstance *a) {
     return error;
 }
 static M3Result render_animation(VmInstance *a, uint32_t delta_ms) {
+    if (a->control.enabled) return control_step(a,1,(uint64_t)delta_ms*1000u);
     pixels_clear(a->target);
     M3Result error=m3Err_none;
     if (a->before_render) error=m3_CallV(a->before_render,(int32_t)delta_ms);
@@ -221,7 +241,8 @@ static M3Result render_animation(VmInstance *a, uint32_t delta_ms) {
     }
     return error;
 }
-static void show_frame(VmInstance *a, uint64_t started) {
+static void show_frame(VmInstance *a, uint64_t started, bool submitted) {
+    if (submitted) { ++a->frame_count; return; }
     a->render_us=(uint32_t)(platform_time_us()-started);
     uint64_t show_started=platform_time_us();
     if (!pixels_show(a->target)) {
@@ -229,6 +250,9 @@ static void show_frame(VmInstance *a, uint64_t started) {
         snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
     }
     a->show_us=(uint32_t)(platform_time_us()-show_started);
+    if (a->control.enabled && !a->animation_error[0]) {
+        a->control.output_valid=true; ++a->control.output_frame;
+    }
     ++a->frame_count;
 }
 void vm_start_native_demo(VmInstance *a) {
@@ -243,7 +267,7 @@ void vm_tick(VmInstance *a) {
     uint64_t elapsed_us=now-a->last_frame;
     uint32_t delta_ms=elapsed_us>1000000u ? 1000 : (uint32_t)(elapsed_us/1000u);
     // Carry fractional milliseconds and keep the scheduled frame cadence.
-    a->last_frame=elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
+    a->last_frame=(a->control.enabled && !a->native_demo) || elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
     a->next_frame+=FRAME_INTERVAL_US;
     if (a->next_frame<=now) a->next_frame=now+FRAME_INTERVAL_US;
     M3Result error=m3Err_none;
@@ -252,7 +276,7 @@ void vm_tick(VmInstance *a) {
         pixels_rainbow(a->target,a->native_phase);
     } else {
         begin_execution(a,0,true);
-        error=render_animation(a,delta_ms);
+        error=a->control.enabled ? control_step(a,1,elapsed_us) : render_animation(a,delta_ms);
         end_execution(a);
     }
     if (error) {
@@ -260,7 +284,7 @@ void vm_tick(VmInstance *a) {
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         return; // Preserve the last complete frame on the physical strip.
     }
-    show_frame(a,now);
+    show_frame(a,now,a->control.enabled && !a->native_demo);
 }
 static void play(VmInstance *a, uint16_t id) {
     a->playing=false; a->native_demo=false; a->animation_error[0]=0;
@@ -268,6 +292,7 @@ static void play(VmInstance *a, uint16_t id) {
     M3Result error=prepare_animation(a);
     end_execution(a);
     if (error) {
+        snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         reply(a,id,execution_status(a,error),a->guest_exit ? a->exit_code : 0,error);
         return;
     }
@@ -294,7 +319,7 @@ static void frame_step(VmInstance *a, uint16_t id, uint32_t delta_ms) {
         reply(a,id,execution_status(a,error),a->guest_exit ? a->exit_code : 0,error);
         return;
     }
-    show_frame(a,started);
+    show_frame(a,started,a->control.enabled && !native);
     if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
     const uint8_t *bytes=a->target->rgb;
     for (size_t offset=0; offset<((size_t)a->target->count * 3); offset+=FRAME_LIMIT) {
@@ -311,7 +336,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"STATUS takes no payload"); break; }
         const PlatformInfo *info=platform_info();
         char message[FRAME_LIMIT-8];
-        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s frames=%lu render_us=%lu show_us=%lu animation_error=%.99s",
+        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s frames=%lu render_us=%lu show_us=%lu control_abi=%u generation=%lu animation_error=%.99s",
                  LIGHTVM_ANIMATION_API_VERSION,LIGHTVM_PROTOCOL_VERSION,
                  info->platform,info->board,info->output,
                  a->ready,a->uploading,(unsigned long)a->received,MODULE_LIMIT,
@@ -320,7 +345,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
                  (unsigned long)(a->target && a->target->count ? a->target->config.brightness : 0),FRAME_INTERVAL_US,
                  a->native_demo ? "native" : a->playing ? "wasm" : "idle",
                  (unsigned long)a->frame_count,(unsigned long)a->render_us,
-                 (unsigned long)a->show_us,a->animation_error[0] ? a->animation_error : "-");
+                 (unsigned long)a->show_us,CONTROL_ABI_VERSION,(unsigned long)a->generation,a->animation_error[0] ? a->animation_error : "-");
         reply(a,id,STATUS_OK,0,message); break;
     }
     case CMD_BEGIN: {
@@ -386,6 +411,9 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
 }
 
 M3Result vm_validate(const uint8_t *bytes, size_t size) {
+    Control control;
+    M3Result profile=control_probe(bytes,size,&control);
+    if (profile) return profile;
     IM3Environment environment=m3_NewEnvironment();
     if (!environment) return m3Err_mallocFailed;
     IM3Module module=NULL;

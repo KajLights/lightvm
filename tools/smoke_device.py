@@ -14,6 +14,8 @@ from client import (BEGIN, CHUNK, FINISH, FRAME, NATIVE_DEMO, PLAY, RESET, RUN,
                     SerialTransport, frame)
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from lightvm.compiler import compile_source
 PROFILES = {
     "simulator": ("host", "memory", 16, 255),
     "test_175": ("host", "memory", 16, 255),
@@ -158,6 +160,36 @@ def smoke(client, captured, board, reference):
             check(client.pixel_snapshot == reference.pixel_snapshot,
                   f"{name}: snapshot differs from host at delta {delta}")
     print("Identical WASM and stepped RGB/HSV/rainbow snapshots against host: passed")
+    for source in sorted((ROOT / "samples/python").glob("*.py")):
+        artifact = compile_source(source.read_text(), str(source), client.describe())
+        check(artifact.success, f"{source.name}: compiler diagnostics {artifact.diagnostics}")
+        client.upload(artifact.wasm)
+        reference.upload(artifact.wasm)
+        for delta in (0, 16, 17, 1000):
+            payload = struct.pack("<I", delta)
+            command(client, FRAME, payload, value=count)
+            command(reference, FRAME, payload, value=count)
+            check(client.pixel_snapshot == reference.pixel_snapshot,
+                  f"{source.name}: control snapshot differs at delta {delta}")
+        before, output = client.snapshot()
+        after, repeated = client.snapshot()
+        check(before == after and output == repeated, "passive snapshot advanced playback")
+        if source.stem == "color":
+            client.set_parameters({"color": 0x123456})
+            command(client, FRAME, struct.pack("<I", 0), value=count)
+            check(client.pixel_snapshot == bytes.fromhex("123456") * count, "live RGB8 update failed")
+        if source.stem == "rainbow":
+            command(client, PLAY)
+            client.pause_program()
+            frozen = client.program_parameters()["program_us"]
+            time.sleep(0.03)
+            check(client.program_parameters()["program_us"] == frozen, "pause advanced program time")
+            client.resume_program()
+            time.sleep(0.03)
+            check(client.program_parameters()["program_us"] > frozen, "resume failed")
+    command(client, RESET)
+    check(client.status_fields()["heap"] == "0", "control programs leaked memory")
+    print("Six Python control effects, live controls, passive snapshots and pause/resume: passed")
     client.upload(wasm(patterns["rainbow"]))
     command(client, PLAY)
     time.sleep(0.15)
