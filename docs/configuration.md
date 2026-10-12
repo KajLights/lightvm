@@ -105,7 +105,11 @@ heap stays bounded, and one engine owner serializes all work. Tests instantiate
 two independent memory-backed targets/VMs to verify ownership; production exposes
 only A. B, a separate U8 mix channel, composition and guest device-handle imports
 remain proposed in the [control model](../documents/feature-proposal-control-api.md)
-and [A/B proposal](../documents/feature-proposal-ab-transitions.md).
+and [A/B proposal](../documents/feature-proposal-ab-transitions.md), with ordered
+scene/layer semantics in the
+[animation composition proposal](../documents/feature-proposal-animation-composition.md).
+Scenes and layers are virtual runtime resources with their own admission limits;
+they do not imply additional physical strip configuration.
 
 ## USB management v1
 

@@ -11,7 +11,9 @@ a note or move a servo. Devices share the independently designed
 resources, typed properties and samples, actions/jobs, events and resumable
 tasks. Addressable RGB lighting is one capability within that model. This complements the
 [web editor](feature-proposal-web-editor.md) and
-[portable native ports](../docs/architecture.md).
+[portable native ports](../docs/architecture.md). Optional
+[animation composition](feature-proposal-animation-composition.md) gives several
+lighting programs owned contributions to one scene under the same model.
 
 Use a bounded device registry, named device instances and versioned, typed WASM
 imports. Define each device type's configuration and API in one declarative
@@ -58,7 +60,11 @@ Distinguish active buzzers from passive piezos, positional servos from continuou
 rotation servos, and true analogue output from PWM in the editor. Pixel buffers
 are logical resources; WS2812B and RGBW output are physical capabilities.
 Explicit RGBW control is optional with its own driver and buffer budget.
-There are no alpha-channel requirements. A/B effects use a separate mix channel.
+There are no alpha-channel requirements. Ordered scene layers use explicit pixel
+presence and overwrite; A/B scene changes use a separate mix channel. Scenes and
+layers are logical runtime resources, not additional physical strips or pin
+allocations. Their capability and memory limits are discovered separately from
+the WS2812B driver.
 
 After the starter release, add one named I2C temperature/humidity driver and a
 small monochrome display. These exercise bus sharing, measurement units and
@@ -232,6 +238,10 @@ aggregate pixel bytes, driver state, input events, tasks, subscriptions,
 timers, jobs, continuation storage and native driver buffers.
 Allocate or reserve device storage when applying configuration, never during a
 guest callback. Account for it separately from the existing wasm3 heap budget.
+Reserve scene/layer storage during scene preparation, including colour, presence,
+staging/readback and completed composites; include every participating program
+in aggregate admission. Hardware configuration alone does not allocate an
+unbounded number of virtual buffers or establish that layered A/B playback fits.
 The initial pixel driver may advertise a maximum of one strip while the registry
 and new imports still use instance handles. Additional strips then need no ABI
 redesign.
@@ -277,6 +287,7 @@ Successful status is zero; defined negative status codes identify failures.
 | Tone output | Play, stop, inspect/cancel job | Native frequency generation, duration and terminal outcome |
 | Positional servo | Set calibrated target, release | Angle in declared units; command state is distinct from feedback |
 | Addressable pixels | Inspect, get, set, fill, clear, request publication | Explicit indexed RGB buffer access, retention and colour conversion |
+| Animation composition | Prepare scene/layers, paint, erase contribution, inspect own/lower input, publish | Bounded ordered overwrite with explicit presence, retention and readback under the composition contract |
 | RGBW output | Write explicit emitter channels | Optional independent white-channel control |
 
 Use booleans for logical state and a common normalized encoding for fractions.
@@ -297,9 +308,16 @@ Reads use a stable snapshot for one guest step. Output publication occurs after
 a successful step or explicit batch, including before a task suspends. Retained
 pixel buffers and scalar outputs keep committed contents until changed or stopped;
 scratch buffers have a declared reset policy. The last assignment by one writer
-wins within its batch. Actuator ownership governs competing writers; A/B colour
-sources use the separate mix channel. Property assignment must not implicitly restart
-a job; explicit actions have documented replacement/retry behaviour.
+wins within its batch. A layer owns its colour/presence contribution, and the
+scene compositor owns the combined logical frame. Clear paints covered black;
+erase releases a layer contribution to reveal the current lower input. Retained
+colour history, fresh foreground builds and stable lower-input filters follow
+the [composition contract](feature-proposal-animation-composition.md).
+The controller publishes one completed lighting frame; A/B mixes completed scene
+sources through its separate mix channel when both capabilities are supported.
+Actuator ownership governs competing non-pixel writers. Property assignment must
+not implicitly restart a job; explicit actions have documented replacement/retry
+behaviour.
 
 Keep `led.pixel_count`, `led.rgb`, `led.hsv`, `render` and `beforeRender` unchanged
 for animation API v1. Its imports target the configured primary strip. Reject a
@@ -370,9 +388,10 @@ device; a general stop action applies the lifecycle rules above.
 One native engine owner controls the registry, interpreter and commits. Native
 interrupts and network callbacks can publish samples or enqueue commands, but
 cannot call WASM. Several guest tasks can be active and step through that owner.
-If future A/B effects run together, pixel composition and ownership of actuator
-writes need separate rules. Blending light frames does not define how two
-programs should control one servo.
+Scene layers and A/B sources may run together within the advertised aggregate
+limits, with pixel ownership/composition defined by their respective proposals.
+They do not acquire competing actuator ownership merely by joining a scene.
+Blending light frames does not define how two programs should control one servo.
 
 ## Web editor and board integration
 
@@ -380,6 +399,9 @@ Extend the editor's structured descriptor with supported device types and schema
 references, configured instances/capabilities, configuration revision, pin choices,
 resource limits and simulation availability. Keep controller identity separate
 from peripheral instance IDs such as `button`.
+Discover virtual scene/layer identity, contribution/readback modes and layer,
+resident-instance and buffer limits through the runtime descriptor. These are
+distinct from configured physical peripheral identities.
 
 Add logical operations alongside the editor's existing proposed API:
 
@@ -463,6 +485,10 @@ event overflow/order, retrigger policies, task suspension/cancellation, signed
 results, retained buffers, bounded deadlines, failed steps/frames, partial native
 commits, note expiry, pause/stop/unload and browser disconnect. Compare logical outputs and
 scripted input sequences in the host before hardware checks on each board.
+Composition-capable profiles must also verify independent layer ownership,
+intentional black versus erased presence, lower-input readback, single lighting
+publication and rejection of excessive scene/A/B combinations. General device
+support remains usable on profiles that omit animation composition.
 
 Use an additional simulated device as an extension exercise: add its definition,
 handler/driver and registration entry, generate its schema and language bindings,

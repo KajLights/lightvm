@@ -72,8 +72,13 @@ preserve existing API v1 module behaviour as the new contract is introduced. The
 [device](documents/feature-proposal-device-support.md),
 [editor](documents/feature-proposal-web-editor.md) and
 [A/B transition](documents/feature-proposal-ab-transitions.md) proposals follow
-the common model. Addressable RGB/RGBW buffers use a separate A/B mix channel;
-there are no alpha-channel requirements.
+the common model. The
+[animation composition proposal](documents/feature-proposal-animation-composition.md)
+adds bounded ordered scenes with reusable backgrounds and foregrounds, such as
+Rainbow beneath Twinkle. Overwrite uses explicit pixel presence, with fresh or
+retained contributions and declared readback for filters. A/B can mix completed
+scene frames through its separate U8 mix channel when both capabilities are
+supported. There are no alpha-channel requirements.
 
 The [build profiles proposal](documents/feature-proposal-build-profiles.md)
 describes selecting drivers, HTTP, MQTT, OTA and resource/storage settings for
@@ -421,7 +426,7 @@ The reported heap does not include SDK allocations, C stacks or static buffers.
 
 This prototype supports one resident WASM module and autonomous animation
 callbacks, with WS2812B output in the Pico port. Concurrent A/B instances,
-transitions and network/control adapters are subsequent work.
+ordered scene layers, transitions and network/control adapters are subsequent work.
 
 ## Verification
 

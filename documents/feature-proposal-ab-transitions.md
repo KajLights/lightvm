@@ -4,10 +4,13 @@ Status: Proposed
 
 Date: 12 October 2026
 
-LightVM should provide two explicit animation slots, A and B, and an independently
+LightVM should provide two explicit source slots, A and B, and an independently
 uploaded transition program that controls how their live outputs are blended.
 Users should be able to prepare the next animation, preview it, then crossfade,
 wipe or dissolve into it while both animations continue running.
+A source is one colour animation in the minimal profile, or a completed layered
+scene when [animation composition](feature-proposal-animation-composition.md)
+is supported. Scene composition runs before the transition mix.
 
 The native engine owns packed frame buffers, scheduling, compositing and physical
 output through the shared [control API and execution model](feature-proposal-control-api.md).
@@ -65,8 +68,9 @@ column are adaptations for an embedded RGB animation engine.
 These precedents suggest three independent concepts: the two sources, the shape
 of the transition, and its progress. LightVM should give each an explicit API.
 Native master brightness and power apply after compositing. The initial feature
-uses a normalized RGB blend; additional lighting-console merge rules, video
-overlays and arbitrary layer stacks would be separate capabilities.
+uses a normalized RGB blend. Bounded overwrite layers and reusable backgrounds
+have their own [composition contract](feature-proposal-animation-composition.md);
+additional lighting-console merge rules and larger scene graphs are extensions.
 
 Picolights already provides forward, backward, inward and outward wipes with
 duration and easing in
@@ -86,18 +90,51 @@ both source animations their own live frames and state.
 - Declare and enforce the total memory budget before admitting a combination.
 - Keep effect bytecode portable across native ports within advertised limits.
 - Preserve existing animation API v1 modules through a slot adapter.
+- Accept completed scene frames when the composition capability is available,
+  preserving destination layer state through the take.
 
 The first release targets one logical RGB output and a one-dimensional pixel
 index. RGBW, mapped 2D/3D transitions, playlists, beat synchronization, multiple
 outputs and larger scene graphs can follow. A/B slots are virtual sources for
 the same output, not two physical LED strips.
 
+## Scene sources and ongoing overlays
+
+Running stars over a rainbow is persistent composition within one source. The
+background and foreground remain active together without a Go action, transition
+endpoint or promotion of the foreground. It must work through the composition
+capability even when no A/B take is active.
+
+With both capabilities, A can hold Rainbow plus Twinkle while B holds another
+layered scene. Each scene owns independent layer state and produces a completed
+RGB frame. The mixer reads those two frames using the same U8 mix and endpoint
+rules as single-animation sources. A single animation is a single-layer scene;
+the minimal A/B profile still needs only two colour instances and one transition.
+
+All slot lifecycle operations apply to the bound source as a whole. Preparing a
+scene validates and initializes all its layers and produces a complete first
+scene frame before the slot becomes ready. Preview hold, take resume, completion
+hold and pause-all apply to its participating layers without copying their
+frames or restarting them. Taking a destination preserves every layer's state.
+Slot hold gates the scene clock; resume restores its individual running/held
+layer selections rather than starting deliberately held layers.
+
+Bind the scene and layer generations at take start. Freeze scene membership and
+order while locked by a take; layer parameter updates remain generation-checked
+between frames. Background replacement or layer removal waits until the scene
+is unlocked. Both sources must match the admitted output count and colour format.
+Layered admission includes every resident instance and all working/publication
+storage; support for one two-layer scene does not promise capacity for two.
+
 ## Slot identity and output roles
 
-A and B are stable slot names. Each owns its program identity, generation,
-parameters, interpreter instance, animation state and RGB frame. Loading the
-same module into both slots creates two independent instances. Programs render
-into the slot supplied by the engine; they do not select a global destination.
+A and B are stable slot names. Each owns its source identity, generation and
+completed RGB frame. In the minimal profile, that source owns one program's
+parameters, interpreter instance and animation state. A layered source owns the
+scene and its independent layer instances under the composition contract.
+Loading the same module into both slots creates independent animation instances.
+Programs render into the contribution supplied by the engine; they do not select
+a global destination.
 
 **Program** identifies the committed source on the output when no transition is
 active. **Preview** identifies the other slot. Taking B changes these roles; it
@@ -236,9 +273,14 @@ flowchart LR
     O --> L[Native brightness and LED output]
 ```
 
+In the composition-capable profile, each Slot RGB input above is the completed
+output of its ordered scene layers. Build both scenes before evaluating the
+transition mix. Native brightness applies after the final A/B output, never once
+per layer or once again at each scene boundary.
+
 One engine owner services queued commands/events and due task steps, captures
 the frame's time/input/controller context, updates the running sources, evaluates
-the mix, composites and submits one output frame. Both running colour instances
+the mix, composites and submits one output frame. All running colour instances
 receive the same frame-time sample. Input sampling and native waveform generation
 remain independent of this cadence. A held instance receives no accumulated
 program-time catch-up on resume. The legacy adapter preserves its fractional
@@ -253,6 +295,10 @@ API v1 behaviour in its adapter: each legacy colour frame starts black,
 explicitly retained or scratch pixel buffers and indexed updates; each admitted
 format and publication buffer is budgeted. The composite must never become
 either slot's animation history.
+Legacy black pixels remain covered in a full-frame source; presence for a sparse
+foreground is explicit and must not be inferred from RGB values. Own-layer
+history, stable lower-scene input and final A/B output are distinct readback
+resources under the composition contract.
 
 Only submit a frame after its required source/mix steps succeed. Successful
 task suspensions publish batches according to the common control model, while
@@ -274,7 +320,7 @@ through the shared device API.
 
 ## Memory and execution budgets
 
-For `N` RGB pixels, the baseline engine storage is:
+For `N` RGB pixels, the minimal single-animation-per-slot engine storage is:
 
 | Buffer | Bytes |
 |---|---:|
@@ -287,6 +333,12 @@ For `N` RGB pixels, the baseline engine storage is:
 This is 1,000 bytes for 100 pixels and 40,960 bytes for
 4,096 pixels. RGBW would require 13N bytes when that output format is supported.
 These are frame-storage calculations, not total device memory requirements.
+
+With layered sources, A and B above hold completed scene frames. Additional
+layer colour/presence, lower-input and staging storage, and every layer's
+interpreter/state must be counted separately. The `10N` total does not cover
+arbitrary layered scenes. Use the composition proposal's accounting and
+advertised per-scene and aggregate resident-instance limits.
 
 Admission must also count retained module bytes, compiled interpreter code,
 instance state, linear memories, execution stacks, allocator overhead, upload
@@ -314,12 +366,13 @@ A scalar crossfade or procedural mix could eventually avoid the N-byte stored
 mix, provided its externally visible semantics remain identical. The first
 implementation should retain the full mix for simple verification and preview.
 
-Budget the whole frame: A, B, mix generation, mixing and output. Report each
-stage, missed frame deadlines and peak memory. The current 500 ms guest deadline
-is a recovery bound, not a usable rendering target; three guests must not each
-receive a separate full frame budget. Use a shared deadline and bounded guest
-work. Supported pixel counts and frame rates require measurements on each port,
-including physical transmission time and the native services actually enabled.
+Budget the whole frame: every A/B layer and filter, scene composition, mix
+generation, mixing and output. Report each stage, missed frame deadlines and peak
+memory. The current 500 ms guest deadline is a recovery bound, not a usable
+rendering target; participating guests must not each receive a separate full
+frame budget. Use a shared deadline and bounded guest work. Supported pixel
+counts and frame rates require measurements on each port, including physical
+transmission time and the native services actually enabled.
 
 ## Preparation and management API
 
@@ -376,7 +429,11 @@ Transport callbacks enqueue work for the sole engine owner.
 
 Discovery advertises the mixer/profile versions, slot count, mix format,
 supported controls, transition scripts, snapshots, preparation guarantees and
-resource limits. The editor shows unsupported operations before deployment.
+resource limits. Composition-capable builds also advertise scene/layer operations,
+retention/readback modes and combined admission limits. Slot preparation binds a
+scene definition and its artifacts; layer updates identify scene/layer generations.
+Scene and contribution snapshots are optional advertised extensions to the table
+above. The editor shows unsupported operations before deployment.
 Keep mixer ABI, colour ABI and transport versions separate. Legacy one-program
 commands retain their documented semantics; mixing requires explicit opt-in to
 the new management API.
@@ -408,8 +465,10 @@ take work and its registrations without unloading reusable colour artifacts.
 
 ## Editor integration and delivery sequence
 
-Extend the web-editor project format with colour artifacts for A/B, a transition
-artifact, their parameter schemas and default take settings. Each artifact keeps
+Extend the web-editor project format with source definitions for A/B, their colour
+artifacts, a transition artifact, parameter schemas and default take settings.
+When composition is supported, preserve each scene's layer order, presence and
+retention modes, readback bindings and per-layer parameters. Each artifact keeps
 its own language and ABI requirements, allowing colour and transition programs
 to use different frontends. Compile and deploy a transition independently of
 the colour programs. A blocks frontend can expose a transition template with
@@ -422,7 +481,7 @@ preview runs the same logical scheduler, endpoint and compositing rules without
 requiring device streaming at full frame rate. Runtime diagnostics identify the
 slot or transition and its artifact generation.
 
-Deliver the feature in three increments:
+Deliver the feature in a minimal sequence, then integrate composed sources:
 
 1. Refactor the core into colour instances and fixed buffers; preserve legacy
    single-program playback. Add slot preparation, Cut, native crossfade and
@@ -432,6 +491,9 @@ Deliver the feature in three increments:
    completion, failure handling and aggregate admission accounting.
 3. Add editor controls and project packaging. Run the same modules on host, Pico
    and available ESP32 ports; measure real hardware memory and frame timing.
+4. Integrate completed layered sources as the separate composition capability is
+   delivered. Validate whole-scene preparation, locked scene structure, preserved
+   layer state and aggregate admission rather than multiplying the baseline budget.
 
 ## Acceptance criteria
 
@@ -452,11 +514,17 @@ Deliver the feature in three increments:
   loading, taking, unloading and failed preparation. Report loading peaks too.
 - Browser preview and host produce identical logical frames for the same test
   inputs. Existing API v1 rainbow modules keep their colour and timing semantics.
+- Where composition is advertised, transition between two layered scenes while
+  their backgrounds and foregrounds advance. Preserve all destination layer
+  state, apply final brightness once, and freeze structural edits during a take.
+- Reject unsupported scenes and combinations exceeding layer/instance/buffer
+  limits before taking them; a failing layer submits no partial A/B output.
 - Publish measured per-stage timing and total RAM for supported board profiles.
   A build or desktop preview alone does not establish hardware throughput.
 
 The first prototype should settle aggregate allocator accounting, preparation
-scheduling and the smallest useful resource profile for three instances. Stable
-slot identity, destination-mix semantics and completion rules should be fixed
-before implementing editor or transport adapters, since those rules define the
-portable behaviour of the feature.
+scheduling and the smallest useful resource profile for the baseline three
+instances, with layered profiles admitted separately. Stable slot identity,
+destination-mix semantics and completion rules should be fixed before implementing
+editor or transport adapters, since those rules define the portable behaviour
+of the feature.

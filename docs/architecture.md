@@ -140,8 +140,13 @@ roll back earlier commits or general guest state.
 
 New resources declare snapshot/readback semantics, buffer retention, publication,
 units, ownership and lifecycle. Addressable RGB/RGBW buffers mix through a
-separate A/B mix channel, with no alpha-channel requirements;
-ordinary actuators initially have an exclusive writer. The legacy adapter keeps
+bounded [ordered scene compositor](../documents/feature-proposal-animation-composition.md)
+with explicit colour/presence, fresh or retained contributions and stable
+lower-input filters. Each layer owns its state; the final composite is not its
+animation history. Completed scenes can feed the separate A/B mix channel when
+both capabilities are supported, with no alpha-channel requirements. Native
+brightness applies once after the final composition. Ordinary actuators initially
+have an exclusive writer. The legacy adapter keeps
 API v1's black-at-frame-start and callback/delta rules. Control contexts, event
 records and task continuation layouts remain proposed; no GPIO/ADC/PWM/servo
 support is implied by the current driver registry.
@@ -149,7 +154,10 @@ support is implied by the current driver registry.
 The [device proposal](../documents/feature-proposal-device-support.md) describes
 definitions, native driver servicing and resource planning. Aggregate admission
 must include event queues, tasks, subscriptions, timers, jobs, continuation state
-and pixel buffers in addition to interpreter and native port storage.
+and pixel buffers in addition to interpreter and native port storage. Layered
+profiles also budget every colour instance, presence/staging/readback storage,
+completed scenes and preparation peaks; neither two layer slots nor an A/B buffer
+budget establishes capacity for their combination.
 
 ## API compatibility and capability discovery
 

@@ -18,10 +18,11 @@ devices do not define or constrain the core contract.
 This proposal defines common semantics before freezing import signatures and
 binary layouts. It governs the proposed [device support](feature-proposal-device-support.md),
 [web editor](feature-proposal-web-editor.md) and
+[animation composition](feature-proposal-animation-composition.md), alongside
 [A/B transitions](feature-proposal-ab-transitions.md). The implemented runtime
 still uses legacy animation API v1, RGB buffers, runtime hardware configuration
 and named procedure storage. General events, resumable tasks, retained pixel
-control, GPIO, ADC, PWM and servo capabilities below are proposed.
+control, scene layers, GPIO, ADC, PWM and servo capabilities below are proposed.
 
 ## Common concepts
 
@@ -39,7 +40,9 @@ control, GPIO, ADC, PWM and servo capabilities below are proposed.
 | Clock | A declared time domain used for timestamps and deadlines | Native monotonic time, pausable program time |
 | Snapshot | Stable input state for one guest execution step | The same dial sample throughout a calculation |
 | Batch | Staged output changes published at a defined boundary | Update several pixels and an indicator together |
-| Ownership | Authority to write or compose a resource | One servo controller, two colour sources in a mixer |
+| Ownership | Authority to write or compose a resource | One servo controller, an owned foreground contribution |
+| Layer | An independently owned colour contribution with presence and a place in scene order | Stars drawing over a live background |
+| Scene | A bounded ordered composition producing a complete logical frame | Rainbow plus stars, supplied to an output or A/B slot |
 
 A device type defines its configuration and capabilities. An instance binds
 that type to configured hardware or a virtual resource. Program bindings resolve
@@ -245,9 +248,9 @@ operations, not a mandatory core execution model.
 
 The standard colour value is RGB. An optional RGBW capability exposes independent
 red, green, blue and white emitter values, preserving picolights' explicit white
-control. There are no alpha-channel requirements. A transition's mix
-channel is a separate scalar buffer expressing destination coverage, as specified
-in the A/B proposal.
+control. There are no alpha-channel requirements. Ordered foreground overwrite
+uses pixel presence independently of colour. Optional layer interpolation weights
+and a transition's separate destination-coverage mix have their own contracts.
 
 Each versioned pixel contract specifies channel ranges, RGB or RGBW format,
 storage precision, colour conversion, rounding and the treatment of unwritten
@@ -257,13 +260,52 @@ Separate colour scaling from native output brightness. Define the order of
 logical mixing, calibration, output brightness and physical wire ordering.
 Exact encodings and any higher-precision format remain implementation decisions.
 
-Source buffers can contribute through an explicitly configured mixer. The first
-A/B format uses RGB8 sources and a separate U8 mix channel; new formats cannot
-silently change its blend endpoints or rounding.
+Source buffers can contribute through an explicitly configured scene or mixer.
+The [composition proposal](feature-proposal-animation-composition.md) defines
+bounded ordered layers and reusable backgrounds. The first A/B format uses RGB8
+source frames and a separate U8 mix channel; new formats cannot silently change
+its blend endpoints or rounding. When both features are supported, each source
+frame is a completed scene, composed before the A/B mix.
 
 Blending colours does not define how to merge two servo targets, GPIO writes or
 bus transactions. Ordinary actuators have an exclusive owner initially;
 additional arbitration policies require their own advertised contract.
+
+## Ordered animation composition
+
+Give each layer its own program identity, parameters, state and colour/presence
+contribution. Compose bottom to top with overwrite as the basic operation: a
+covered pixel replaces the lower colour, and an uncovered pixel leaves it alone.
+Black is a valid covered colour. Clear paints black; an explicit erase operation
+removes presence and reveals the current lower composite. Dense RGB buffers
+alone cannot distinguish those operations.
+
+Declare fresh or retained contribution policy. Fresh foregrounds redraw their
+currently visible objects each scene frame; expired stars cease contributing.
+Retained foregrounds preserve their own colour and presence across updates,
+allowing Patchy and incremental wipes to accumulate paint independently of a
+moving background. Effect simulation state and final scene output are separate;
+the final composite must never silently become a layer's animation history.
+
+Own-layer readback and current lower-layer input are distinct. Lower-input reads
+occur only in an ordered frame context, after lower layers have completed, and
+remain stable throughout the step. Writes stage into the effect's own contribution.
+This supports filters such as Starlight while rejecting forward dependencies and
+feedback cycles. Frame draw/filter steps cannot suspend; other control tasks use
+the ordinary resumable-task model.
+
+One engine owner captures shared frame time, services independent layer updates,
+builds contributions, composes and publishes one physical frame. Holding one
+layer retains its completed contribution while other layers run; completion and
+removal have explicit release/retain policies. Native output brightness applies
+once after scene composition and any A/B mixing. Scene/layer discovery reports
+supported modes, layer/instance limits and aggregate memory/execution budgets.
+
+Optional maximum and interpolation modes do not require an alpha component in
+RGB/RGBW. Dimming a directly overwritten star towards black and interpolating it
+into a live background have different visible results and must be explicit.
+Persistent scene layers run under their animation clocks; seekable A/B transition
+coverage follows progress and seed. One does not replace the other's lifecycle.
 
 ## Device capability conventions
 
@@ -349,6 +391,9 @@ The relevant sources are [device configuration](../../picolights/picolights/devi
 [animation lifecycle](../../picolights/picolights/effects/helpers.py),
 [transitions](../../picolights/picolights/effects/transition.py) and
 [RGBW candle output](../../picolights/picolights/effects/animations/candle.py).
+The [composition proposal](feature-proposal-animation-composition.md#picolights-motivation)
+also records repeated background painting, retained effects and readback filters
+in the existing animation catalogue.
 Record inheritance at the concept and copied-source level; a new LightVM name
 does not erase upstream provenance.
 
@@ -380,13 +425,17 @@ Before freezing the first control ABI, specify the guest step/context layout,
 event schemas and ordering, clock encodings, default retrigger policy, pause
 delivery, task/job ownership and aggregate budgets. Fix the baseline pixel
 formats, colour conversion and readback/publication rules, with legacy RGB8
-preserved through its adapter. Generate descriptors and bindings from those
-decisions.
+preserved through its adapter. Specify layer presence/erase, fresh versus retained
+contributions, lower-input readback, completion policies and scene admission
+before exposing composition to frontends. Generate descriptors and bindings
+from those decisions.
 
 Start with lifecycle, timer and digital-input events plus bounded handlers and
 digital output on the host and Pico. Add suspended waits and a blocks sequence;
 then add retained pixel buffers, ADC/PWM/servo/tone and native jobs. Keep legacy
-animation playback through its adapter throughout that work.
+animation playback through its adapter throughout that work. Deliver bounded
+animation composition through its own increments; its source frames can feed
+A/B transitions when both capabilities and their combined budgets are available.
 
 Acceptance must demonstrate:
 
@@ -399,6 +448,10 @@ Acceptance must demonstrate:
 - Native PWM/servo/tone timing continuing independently of guest frame cadence.
 - Stable snapshots, sample age/validity and signed readings without error ambiguity.
 - Explicit pixel retention, black clear, RGB/RGBW channels and blend endpoints.
+- Independent Rainbow/Twinkle layers, explicit presence/erase, retained Patchy
+  paint and stable lower-input filters, with one completed output per frame.
+- Scene/layer pause, completion and failure behaviour; A/B composition preserves
+  destination layer state and rejects combinations beyond aggregate limits.
 - Actuator ownership rejection, no unpublished output after a trap, and honest
   reporting of partial native commit failure.
 - Deterministic host/editor replay from input events, timestamps and initial

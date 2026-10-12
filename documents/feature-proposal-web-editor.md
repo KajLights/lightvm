@@ -13,6 +13,9 @@ The common model covers resources, properties and samples, actions/jobs, events,
 triggers, resumable tasks and time. Addressable RGB pixels, digital/analogue IO, PWM and
 servos use its shared conventions. Language syntax and compatibility rules belong
 in frontends; Pixelblaze does not define the core ABI.
+[Animation composition](feature-proposal-animation-composition.md) adds reusable
+backgrounds and ordered foregrounds; [A/B transitions](feature-proposal-ab-transitions.md)
+can mix their completed scene frames when both capabilities are available.
 
 A public HTTPS hosting service should serve the full editor and compiler assets,
 similar to CircuitPython's externally hosted editor. The user's browser downloads
@@ -55,6 +58,32 @@ USB on host, Pico and ESP32. [Configuration management](../docs/configuration.md
 specifies staging, revisions, quotas and idle recovery. Editable source/project
 storage and the HTTP mappings below remain proposed.
 
+## Reusable scenes and backgrounds
+
+On composition-capable devices, a user can put Twinkle over Color, Rainbow or
+Pattern, adjust each effect independently and change the background while the
+stars continue. A standalone "stars on a dim colour" preset uses the same star
+artifact with a Color background. Foregrounds should not require duplicated
+background code or a different language binding for each combination.
+
+Offer an ordered scene view with per-layer controls, contribution/completion
+policy, hold/resume, reorder and remove actions. Basic composition overwrites
+covered pixels; removing a foreground contribution reveals the current lower
+scene. Retention and optional merge modes follow the composition capability.
+The scene preview shows the final result, with optional layer/presence inspection
+for debugging. Report readiness, the failing layer and total resource use.
+
+When A/B is also available, each source can be a scene. Compose its layers before
+applying the separate transition mix. Keep scene editing, layer controls and
+transition progress distinct; a persistent foreground does not require starting
+or holding a transition. Lock structural edits during a take, while permitted
+parameter changes identify the scene/layer generation.
+
+Offer only modes and scene sizes supported by the connected profile. Show
+combined capacity before deployment: fitting one two-layer scene does not imply
+two scenes and a transition fit together. Scene controls arrive with the runtime
+composition capability; the initial single-animation editor remains usable.
+
 ## Goals and scope
 
 - Make lighting and device programming approachable to beginners while
@@ -64,6 +93,8 @@ storage and the HTTP mappings below remain proposed.
 - Let the editor and compiler evolve independently of native firmware releases.
 - Provide one logical management API for every editor and transport.
 - Preserve editable projects and distinguish temporary deployment from saving.
+- Reuse independently authored backgrounds/foregrounds in bounded scenes where
+  composition is available; integrate completed scenes with optional A/B playback.
 - Support local compilation and USB use without a mandatory cloud account.
 
 The initial release should deliver USB editing on the existing Pico and host
@@ -197,6 +228,13 @@ must diagnose unsupported suspension and excessive bounds rather than turning
 wait into a blocking sleep. Exact step/context encodings remain control-ABI
 implementation decisions.
 
+Composition bindings expose explicit colour/presence writes, black clear,
+contribution erase, retention and declared own/lower-input readback. A frame
+draw/filter step cannot suspend; slower simulation updates can publish state for
+fresh drawing or retain a complete contribution. These rules are shared across
+frontends, with optional helpers for stars, retained paint and filters. Ordinary
+RGB/RGBW colour values need no alpha component.
+
 Preserve explicit retrigger policies, event ordering, cancellation and lifecycle
 behaviour. A frame callback is one trigger, not a compulsory entry point for
 button, sensor or actuator programs. Numeric syntax may differ by frontend;
@@ -252,6 +290,10 @@ representation, including continuation state. Blockly supplies editing and code
 generation facilities; LightVM defines execution semantics. A blocks project
 records whether repeated triggers queue, restart, ignore an active script or
 admit multiple instances. Those choices cannot remain implicit editor behaviour.
+Composition blocks can paint a foreground, erase its contribution or sample its
+declared lower input. A scene arrangement binds independent effect artifacts;
+it must not silently turn them into competing full-strip writers. Explain black
+paint versus revealing the background through examples.
 
 Preserve the block workspace as the project's authoritative source. Generated
 text can be shown to help users learn, but editing that text should create a text
@@ -265,13 +307,24 @@ configuration. Include device bindings, trigger definitions, task policies,
 buffer formats and clock/pause semantics. It should be exportable as a file
 without a cloud account.
 
-Compilation produces:
+Scene projects additionally preserve stable layer IDs, order, source artifact
+references, per-layer parameters, contribution/completion policies and required
+composition modes. Each source artifact retains its own language/version and
+editable source or blocks. Preserve A/B scene bindings and transition artifacts
+when present. Hardware pin configuration remains separate from scene structure.
+
+Compilation of each source artifact produces:
 
 - A `.wasm` program.
 - A manifest identifying its required control/legacy ABI, imports, capabilities,
   WASM features, bindings, parameters and memory/task/event/job/buffer bounds.
 - Diagnostics tied to source locations or block IDs.
 - Source mappings or debug metadata where the toolchain supports them.
+
+The scene manifest binds those artifacts by content hash and declares topology,
+layer/readback dependencies, required composition capabilities and aggregate
+resource needs. The device validates the actual combination, including its
+preparation peak, before activation; per-artifact success is insufficient.
 
 The manifest should identify the compiled artifact by a content hash and record
 its source/compiler provenance. Compiler estimates of interpreter heap use and
@@ -312,6 +365,9 @@ payload limit.
 | Device action | `POST /api/v1/devices/{id}/actions/{action}` | Proposed typed action invocation with declared acceptance, retry and job semantics |
 | Editable project | `GET /api/v1/programs/{id}/project` | Optional source/block readback |
 | Save for startup | `POST /api/v1/programs/{id}/persist` | Optional explicit persistence operation |
+| Scene definition | `GET/PUT /api/v1/scenes/{id}` | Optional ordered layer/artifact configuration with expected revision and explicit preparation/activation guarantees |
+| Scene/layer action | `POST /api/v1/scenes/{id}/actions` | Optional prepare/activate, hold/resume or remove actions with layer identity/generation, retry rules and A/B lock checks |
+| Scene snapshot | `GET /api/v1/scenes/{id}/frame` | Optional completed scene or contribution/presence inspection with frame ID and validity |
 
 These routes are a proposed contract, not existing endpoints. Unsupported
 operations return a stable capability error. Polling remains available when event
@@ -326,6 +382,10 @@ Clients should tolerate additive descriptor fields. Include device properties,
 actions/event schemas, input quality, output ownership, supported retrigger
 policies and event/task/job limits. A compiled driver and a configured instance
 are separate facts.
+Composition discovery includes scene/layer management version, formats,
+retention/readback/merge modes, per-scene layers, total resident instances and
+aggregate buffer/frame limits. A/B capability alone does not imply layered
+sources; combined playback is admitted against actual resources.
 
 Use the shared lifecycle rules: pause freezes program time and pausable work,
 retains lighting and applies each actuator's advertised pause policy; native
@@ -371,6 +431,12 @@ language's semantics. Apply updates between frames through the engine owner;
 guest code and transport callbacks must not mutate interpreter state concurrently.
 Parameter requests identify the active program or generation so stale requests
 from a previous program cannot update its replacement.
+For composed sources, requests also identify scene and layer; changing one
+effect's parameters must not restart or overwrite another effect's state.
+Scene structure changes are revision-checked at complete frame boundaries and
+rejected while locked by an A/B take. Background replacement follows the declared
+preparation/replacement guarantee rather than promising uninterrupted playback
+on every profile.
 
 HTTP, USB, MQTT and Matter should use the same native controller state and receive
 consistent resulting state. They should not implement independent brightness,
@@ -472,6 +538,10 @@ colour composition as the device. Use the target capabilities, resource bounds
 and pixel topology. Simulated buttons, analogue samples, messages and job
 outcomes form a timestamped replay trace. Distinguish commanded actuator state
 from measured feedback and logical colour from physical brightness.
+For scenes, replay fresh and retained presence, black paint versus erase,
+stable lower-input filtering, independent layer clocks and one completed final
+publication. A/B preview first composes each scene and then applies transition
+coverage, including exact endpoints and preserved destination layer state.
 
 Legacy animation preview retains API v1 callback/delta/colour rules. A later
 wasm3 browser build can improve engine parity if justified; native browser WASM
@@ -489,7 +559,7 @@ and resource use on each board with its native services active.
 |---|---|---|
 | 1 | Descriptor, TypeScript USB SDK, browser preview and one text frontend | Connect to the Pico, compile/preview/upload an effect, report errors, and continue playback after disconnect; expose legacy replacement and explicit persistent procedure/configuration saving |
 | 2 | Project import/export, staged activation where supported, controller state and parameters | Preserve editable source, adjust controls during playback, reject stale updates, and verify declared replacement guarantees under failed uploads and activation |
-| 3 | Remaining language frontends and device/lighting blocks | Bindings share the control ABI, triggers/tasks and parameter schema; verify waits, repeated events, actuator ownership and colour composition; publish compatibility limits |
+| 3 | Remaining language frontends, device/lighting blocks and scene editing where supported | Bindings share the control ABI, triggers/tasks and parameter schema; verify waits, repeated events, actuator ownership, reusable backgrounds, layer presence/retention/readback and A/B scene composition; publish compatibility limits |
 | 4 | Network-capable native port and embedded HTTP API server | Demonstrate the public editor connecting directly to the device, discovery/device launch page, pairing and concurrent USB/HTTP request routing on supported browsers and hardware |
 | 5 | Optional persistence, BLE and Matter integration | Verify reboot recovery and interrupted saves where supported; validate BLE transfers and consistent Matter/controller state |
 
@@ -510,7 +580,10 @@ its implementation and failure behaviour are verified.
   compatibility boundaries.
 - Choose shared compiler representation and source mapping conventions.
 - Fix the shared control step/context contract, typed parameter/event encodings,
-  continuation bounds, pixel formats and separate A/B mix semantics.
+  continuation bounds, pixel formats, composition presence/erase/readback and
+  separate A/B mix semantics.
+- Define scene packaging, layer identities and aggregate preparation/admission
+  alongside single-artifact uploads; align controls with runtime delivery.
 - Establish replacement guarantees feasible on the Pico and future network boards.
 - Select project packaging, device storage quotas and startup recovery policy.
 - Select public HTTPS hosting for the editor and compiler assets.
@@ -524,6 +597,8 @@ its implementation and failure behaviour are verified.
 - [CircuitPython workflows and device discovery](https://docs.circuitpython.org/en/latest/docs/workflows.html).
 - [Pixelblaze language reference](https://electromage.com/docs/language-reference/).
 - [Control API, prior art and picolights provenance](feature-proposal-control-api.md).
+- [Animation composition and reusable backgrounds](feature-proposal-animation-composition.md).
+- [A/B slots and scripted transitions](feature-proposal-ab-transitions.md).
 - [Blockly code generation](https://docs.blockly.com/guides/create-custom-blocks/code-generation/overview/).
 - [Web Serial and connection signals](https://developer.chrome.com/docs/capabilities/serial).
 - [Firefox desktop Web Serial support](https://blog.mozilla.org/en/firefox/firefox-web-serial-adafruit/).

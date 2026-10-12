@@ -50,12 +50,26 @@ feature catalogue:
 | Selection | Examples |
 |---|---|
 | Device drivers | WS2812B/RGBW, digital input/output, analogue input/output where supported, PWM, tone, servo, individual I2C sensors and displays |
-| Control capabilities | Addressable pixel buffers and A/B mixing, event capture, timers, bounded tasks/jobs and optional feedback/stream operations |
+| Control capabilities | Addressable pixel buffers, bounded animation composition, A/B mixing, event capture, timers, bounded tasks/jobs and optional feedback/stream operations |
 | Management transports | USB, embedded HTTP API, optional BLE management |
 | Network services | MQTT, Matter, discovery and provisioning |
 | Native dependencies | Wi-Fi or another supported network interface, TLS and shared bus drivers |
 | Storage and updates | Persistent programs, editable source storage and firmware OTA |
 | Development conveniences | Native boot demo, diagnostic logs and optional debug operations |
+
+Select [animation composition](feature-proposal-animation-composition.md) and
+[A/B transitions](feature-proposal-ab-transitions.md) independently. A minimal
+build can run one animation; a composition build can run Rainbow plus Twinkle
+without a transition program; an A/B build can switch between single-animation
+sources without general layer management. Combining them permits layered scene
+sources only within the declared joint limits.
+
+Composition depends on indexed colour buffers and the shared scheduling,
+publication and ownership machinery. Select retained paint, lower-input filters
+and optional maximum/interpolation modes explicitly. Resolve limits for layers
+per scene, total resident colour/transition instances, colour/presence/staging
+bytes and the aggregate frame budget. Feature selection must not imply arbitrary
+layer capacity or an alpha-enabled colour format.
 
 Excluding a feature must remove its registration entries, native implementation,
 dedicated buffers and dependencies that no remaining feature needs. A runtime
@@ -118,6 +132,11 @@ selection fits a particular board. The OTA layout reserves its own update
 metadata even when persistent program storage is excluded. Pin choices, pixel
 count and network credentials belong to the appropriate hardware or provisioning
 configuration.
+Profiles enabling composition or A/B must also resolve their scene/layer,
+resident-instance and buffer limits. Validate any declared simultaneous scene
+capacity against those aggregate limits. A per-scene maximum does not promise
+that every A/B source can use that maximum together; individual projects still
+require runtime admission against their actual needs.
 
 Supply a few starter profiles, such as USB minimal, HTTP managed and MQTT with
 OTA, then let users save their own selections. Presets should be starting points
@@ -231,6 +250,12 @@ can follow the file-based workflow; neither is required initially.
   capacity. Exercise interrupted updates and the declared recovery guarantees.
 - Confirm capability discovery, editor choices and program/configuration
   validation match each instance's actual build.
+- Exercise single-animation, composition-only, A/B-only and combined profiles
+  as those capabilities arrive. Omitted features reserve no dedicated buffers;
+  advertised layer/mode/instance limits match runtime admission.
+- Account for all layer colour/presence, staging, filter inputs and scene frames
+  in combined RAM and frame budgets; the minimal A/B `10N` storage figure must
+  not be reported as the cost of layered scenes.
 - Rebuild from the same resolved profile and pinned inputs with identical feature
   selections, limits and layout; record any toolchain limits on binary identity.
 - Run compatible identical WASM on different profiles with unchanged import
