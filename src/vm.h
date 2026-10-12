@@ -20,8 +20,8 @@ typedef struct VmInstance {
     IM3Runtime runtime;
     IM3Module module;
     IM3Function before_render, render;
-    bool playing, native_demo, rendering_pixel, background;
-    uint32_t pixel_index, native_phase, frame_count, render_us, show_us;
+    bool playing, rendering_pixel, background;
+    uint32_t pixel_index, frame_count, render_us, show_us;
     uint64_t next_frame, last_frame;
     char animation_error[100];
     SendMessage send;
@@ -37,6 +37,5 @@ M3Result vm_load(VmInstance *app);
 M3Result vm_validate(const uint8_t *bytes, size_t size);
 void vm_destroy(VmInstance *app);
 void vm_tick(VmInstance *app);
-void vm_start_native_demo(VmInstance *app);
 void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 #endif

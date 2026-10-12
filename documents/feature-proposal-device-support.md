@@ -89,7 +89,7 @@ boundary and the single owner of engine execution.
 | `PixelBuffer` owns dynamically configured RGB and native driver state | Additional target types can build on explicit ownership |
 | `VmInstance` links legacy `led` imports to its assigned target | Add generated generic device bindings alongside these imports |
 | `prepare_animation` requires `render(index)` | Preserve it through a legacy adapter; add event dispatch and bounded task steps for general programs |
-| `app_tick` only services active playback or the native demo | Native input sampling and timed output expiry need service while guest execution is idle |
+| `app_tick` only services active playback | Native input sampling and timed output expiry need service while guest execution is idle |
 | Pixel driver open/close/show operations report failure | Extend registered driver contracts to non-pixel capabilities |
 | STATUS describes one pin, brightness and pixel count | Structured discovery must report types, instances, state and resource limits |
 | Board pin tables/budgets are separate from saved peripheral JSON | Extend resource planning to the proposed device types |

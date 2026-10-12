@@ -452,12 +452,10 @@ def draw(ctx):
         self.assertNotEqual(self.client.command(FRAME, struct.pack('<I',0)).code, 0)
         self.assertTrue(self.client.program_parameters()['faulted'])
 
-    def test_control_deadline_and_native_demo_after_control_playback(self):
+    def test_control_deadline_after_replacing_running_program(self):
         self.upload((ROOT / 'samples/python/rainbow.py').read_text())
-        self.step()
-        from client import NATIVE_DEMO
-        self.client.require_ok(self.client.command(NATIVE_DEMO))
-        self.assertEqual(len(self.step(16)), self.count * 3)
+        self.client.require_ok(self.client.command(PLAY))
+        self.assertEqual(self.client.status_fields()['mode'], 'wasm')
         wasm = with_manifest('(module (func (export "control_step") (param i32 i64 i64) (result i32) (loop $forever br $forever) i32.const 0))')
         self.client.upload(wasm)
         reply = self.client.command(FRAME, struct.pack('<I',0))

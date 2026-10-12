@@ -9,7 +9,7 @@ import zlib
 
 import wasmtime
 
-from client import (BEGIN, CHUNK, FINISH, FRAME, NATIVE_DEMO, PLAY, RESET, RUN,
+from client import (BEGIN, CHUNK, FINISH, FRAME, PLAY, RESET, RUN,
                     STATUS, STOP, Client, ProcessTransport, ProtocolError,
                     SerialTransport, frame)
 
@@ -204,11 +204,9 @@ def smoke(client, captured, board, reference):
     check(client.status_fields()["mode"] == "idle", "STOP did not stop playback")
     command(client, PLAY)
     check(client.status_fields()["mode"] == "wasm", "PLAY did not resume")
-    command(client, NATIVE_DEMO)
-    check(client.status_fields()["mode"] == "native", "native demo did not start")
     command(client, RESET)
     check(client.status_fields()["heap"] == "0", "final RESET leaked interpreter memory")
-    print(f"Playback/STOP/resume/native demo and stable heap: passed (render={later['render_us']} us, output={later['show_us']} us)")
+    print(f"Playback/STOP/resume and stable heap: passed (render={later['render_us']} us, output={later['show_us']} us)")
 
 
 def main():

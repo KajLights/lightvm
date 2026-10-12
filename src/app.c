@@ -113,7 +113,6 @@ void app_init(App *a, SendMessage send, void *transport) {
     a->booting=false;
 }
 void app_destroy(App *a) { vm_destroy(&a->vm); pixels_destroy(&a->pixels); }
-void app_start_native_demo(App *a) { if (a->vm.target) vm_start_native_demo(&a->vm); }
 void app_tick(App *a) {
     if (a->uploading && platform_time_us() >= a->upload_deadline) { a->uploading=false; a->staged=false; }
     vm_tick(&a->vm);

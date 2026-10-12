@@ -51,11 +51,6 @@ bool pixels_set_hsv(PixelBuffer *p, uint32_t index, uint32_t hue, uint32_t satur
     }
 }
 
-void pixels_rainbow(PixelBuffer *p, uint32_t phase) {
-    for (uint32_t index = 0; p && index < p->count; ++index)
-        pixels_set_hsv(p, index, phase + index * 65536u / p->count, 255, 255);
-}
-
 bool pixels_show(PixelBuffer *p) {
     return !p || !p->count || (p->driver && p->type->show(p->driver, p->rgb, p->count));
 }

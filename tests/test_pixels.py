@@ -9,7 +9,7 @@ import wasmtime
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from client import Client, ProcessTransport, FRAME, NATIVE_DEMO, PLAY, RESET, RUN, STATUS, STOP
+from client import Client, ProcessTransport, FRAME, PLAY, RESET, RUN, STATUS, STOP
 
 
 class PixelTests(unittest.TestCase):
@@ -185,15 +185,27 @@ class PixelTests(unittest.TestCase):
         self.assertEqual(self.step().code, 0)
         self.assertEqual(self.output, b"log" * self.count)
 
-    def test_native_demo_works_without_a_module(self):
-        self.assertEqual(self.client.command(NATIVE_DEMO).code, 0)
-        self.assertIn("mode=native", self.client.command(STATUS).message)
-        self.assertEqual(self.step().code, 0)
+    def test_removed_command_10_is_rejected_without_changing_playback(self):
+        for payload in (b"", b"bad"):
+            reply = self.client.command(10, payload)
+            self.assertEqual(reply.code, 1)
+            self.assertEqual(reply.message, "unknown command")
+        self.assertEqual(self.client.status_fields()["mode"], "idle")
+        self.upload((ROOT / "samples/rainbow.wat").read_text())
+        self.client.require_ok(self.client.command(PLAY))
+        before = self.client.status_fields()
+        self.assertEqual(self.client.command(10).code, 1)
+        after = self.client.status_fields()
+        self.assertEqual(after["mode"], "wasm")
+        self.assertEqual(after["ready"], "1")
+        self.assertEqual(after["heap"], before["heap"])
+        self.assertGreaterEqual(int(after["frames"]), int(before["frames"]))
+        self.assertEqual(self.step(16).code, 0)
         self.assertEqual(len(self.client.pixel_snapshot), self.count * 3)
         self.assertEqual(self.client.command(STOP).code, 0)
 
     def test_control_payloads_and_frame_delta_bounds(self):
-        for kind in (PLAY, STOP, NATIVE_DEMO):
+        for kind in (PLAY, STOP):
             self.assertEqual(self.client.command(kind, b"bad").code, 1)
         self.assertEqual(self.client.command(FRAME).code, 1)
         self.assertEqual(self.step(1001).code, 1)

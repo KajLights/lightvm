@@ -25,6 +25,5 @@ typedef struct {
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);
-void app_start_native_demo(App *app);
 void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 #endif

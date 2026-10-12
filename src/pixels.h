@@ -15,7 +15,6 @@ void pixels_destroy(PixelBuffer *pixels);
 void pixels_clear(PixelBuffer *pixels);
 bool pixels_set_rgb(PixelBuffer *pixels, uint32_t index, uint32_t red, uint32_t green, uint32_t blue);
 bool pixels_set_hsv(PixelBuffer *pixels, uint32_t index, uint32_t hue, uint32_t saturation, uint32_t value);
-void pixels_rainbow(PixelBuffer *pixels, uint32_t phase);
 bool pixels_show(PixelBuffer *pixels);
 
 #endif

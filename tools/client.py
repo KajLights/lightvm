@@ -16,7 +16,7 @@ HEADER = struct.Struct("<4sBBHII")
 FRAME_LIMIT = 512
 MODULE_LIMIT = 32768
 STATUS, BEGIN, CHUNK, FINISH, RUN, RESET = range(1, 7)
-PLAY, STOP, FRAME, NATIVE_DEMO = 7, 8, 9, 10
+PLAY, STOP, FRAME = 7, 8, 9
 MANAGE, OBJECT_BEGIN, OBJECT_CHUNK, OBJECT_FINISH, OBJECT_CANCEL = range(11, 16)
 OUTPUT, RESULT, PIXELS, DATA = 128, 129, 130, 131
 
@@ -324,7 +324,6 @@ def main():
     action.add_argument("--status", action="store_true", help="query receiver without uploading")
     action.add_argument("--animate", action="store_true", help="start render(index) animation on the device")
     action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
-    action.add_argument("--native-demo", action="store_true", help="start the built-in native rainbow")
     action.add_argument("--frame-ms", type=int, help="render one frame with this delta and report an RGB preview")
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("module", nargs="?", type=Path)
@@ -351,7 +350,7 @@ def main():
         parser.error("--timeout must be positive")
     if args.frame_ms is not None and not 0 <= args.frame_ms <= 1000:
         parser.error("--frame-ms must be 0..1000")
-    if args.module is None and not (args.status or args.animate or args.stop or args.native_demo or args.frame_ms is not None or management):
+    if args.module is None and not (args.status or args.animate or args.stop or args.frame_ms is not None or management):
         parser.error("provide a .wasm module or a status/animation command")
     connection = None
     try:
@@ -407,8 +406,6 @@ def main():
             reply = client.command(PLAY)
         elif args.stop:
             reply = client.command(STOP)
-        elif args.native_demo:
-            reply = client.command(NATIVE_DEMO)
         elif args.frame_ms is not None:
             reply = client.command(FRAME, struct.pack("<I", args.frame_ms))
             if client.pixel_snapshot:

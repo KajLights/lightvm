@@ -262,20 +262,25 @@ int main(void) {
     session_feed(&session, bad_header, sizeof(bad_header));
     CHECK(reply.code == STATUS_PROTOCOL && reply.id == 7);
 
-    command(&session, CMD_NATIVE_DEMO, NULL, 0);
+    command(&session, 10, NULL, 0);
+    CHECK(reply.code == STATUS_PROTOCOL && !strcmp(reply.message, "unknown command"));
+    CHECK(shows == 1);
+    upload(&session, &reply, render_wasm, sizeof(render_wasm));
+    CHECK(reply.code == STATUS_OK && allocations > 0 && vm_heap_used() > 0);
+    command(&session, CMD_PLAY, NULL, 0);
+    CHECK(reply.code == STATUS_OK);
+    unsigned playback_shows = shows;
     session_tick(&session);
-    CHECK(shows == 2);
+    CHECK(shows == playback_shows + 1);
     clock_now = FRAME_INTERVAL_US - 1;
     session_tick(&session);
-    CHECK(shows == 2);
+    CHECK(shows == playback_shows + 1);
     clock_now = FRAME_INTERVAL_US;
     session_tick(&session);
-    CHECK(shows == 3);
+    CHECK(shows == playback_shows + 2);
     command(&session, CMD_STOP, NULL, 0);
     CHECK(displayed[0] == 0);
 
-    upload(&session, &reply, render_wasm, sizeof(render_wasm));
-    CHECK(reply.code == STATUS_OK && allocations > 0 && vm_heap_used() > 0);
     uint8_t delta[4] = {0};
     command(&session, CMD_FRAME, delta, sizeof(delta));
     CHECK(reply.code == STATUS_OK && reply.value == PIXEL_COUNT);

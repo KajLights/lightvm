@@ -35,7 +35,7 @@ evidence separately from build success.
 
 The core contains no GPIO, PIO, USB, POSIX or RTOS calls, nor platform-selection
 branches. `pixels.c` always stores packed logical RGB and delegates physical output.
-The native rainbow is an explicit diagnostic. All ports start from saved JSON
+All animation effects run as WASM procedures. All ports start from saved JSON
 configuration and an optional named startup WASM; otherwise they stay idle.
 The shared snapshot store delegates bounded block I/O to native ports.
 See [configuration and persistence](configuration.md).

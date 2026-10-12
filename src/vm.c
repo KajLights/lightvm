@@ -22,7 +22,7 @@ void vm_init(VmInstance *a, PixelBuffer *target, SendMessage send, void *transpo
     a->output=target && target->driver ? target : NULL; memcpy(a->slot,"A",2);
 }
 static void stop_animation(VmInstance *a) {
-    a->playing=false; a->native_demo=false; a->rendering_pixel=false;
+    a->playing=false; a->rendering_pixel=false;
     a->render=NULL; a->before_render=NULL; a->animation_error[0]=0;
     if (a->control.enabled && a->control.allocation && a->output) {
         size_t n=(size_t)a->control.count*3;
@@ -257,7 +257,7 @@ static void show_frame(VmInstance *a, uint64_t started, bool contribution) {
         if (success) memcpy(a->output->rgb,a->control.committed,(size_t)a->control.count*3);
     } else success=pixels_show(a->target);
     if (!success) {
-        a->playing=false; a->native_demo=false;
+        a->playing=false;
         if (contribution) a->control.faulted=true;
         snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
     }
@@ -267,39 +267,28 @@ static void show_frame(VmInstance *a, uint64_t started, bool contribution) {
     }
     ++a->frame_count;
 }
-void vm_start_native_demo(VmInstance *a) {
-    a->playing=false; a->native_demo=true; a->native_phase=0;
-    a->frame_count=0; a->animation_error[0]=0;
-    a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
-}
 void vm_tick(VmInstance *a) {
-    if (!a->playing && !a->native_demo) return;
+    if (!a->playing) return;
     uint64_t now=platform_time_us();
     if (now<a->next_frame) return;
     uint64_t elapsed_us=now-a->last_frame;
     uint32_t delta_ms=elapsed_us>1000000u ? 1000 : (uint32_t)(elapsed_us/1000u);
     // Carry fractional milliseconds and keep the scheduled frame cadence.
-    a->last_frame=(a->control.enabled && !a->native_demo) || elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
+    a->last_frame=a->control.enabled || elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
     a->next_frame+=FRAME_INTERVAL_US;
     if (a->next_frame<=now) a->next_frame=now+FRAME_INTERVAL_US;
-    M3Result error=m3Err_none;
-    if (a->native_demo) {
-        a->native_phase=(a->native_phase+delta_ms*20u)&65535u;
-        pixels_rainbow(a->target,a->native_phase);
-    } else {
-        begin_execution(a,0,true);
-        error=a->control.enabled ? control_step(a,1,elapsed_us) : render_animation(a,delta_ms);
-        end_execution(a);
-    }
+    begin_execution(a,0,true);
+    M3Result error=a->control.enabled ? control_step(a,1,elapsed_us) : render_animation(a,delta_ms);
+    end_execution(a);
     if (error) {
-        a->playing=false; a->native_demo=false;
+        a->playing=false;
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         return; // Preserve the last complete frame on the physical strip.
     }
-    show_frame(a,now,a->control.enabled && !a->native_demo);
+    show_frame(a,now,a->control.enabled);
 }
 static void play(VmInstance *a, uint16_t id) {
-    a->playing=false; a->native_demo=false; a->animation_error[0]=0;
+    a->playing=false; a->animation_error[0]=0;
     bool initial=a->control.enabled && !a->control.initialized;
     uint64_t started=platform_time_us();
     begin_execution(a,id,false);
@@ -319,27 +308,20 @@ static void play(VmInstance *a, uint16_t id) {
     reply(a,id,STATUS_OK,(a->target ? a->target->count : 0),"animation started");
 }
 static void frame_step(VmInstance *a, uint16_t id, uint32_t delta_ms) {
-    bool native=a->native_demo;
-    a->playing=false; a->native_demo=false;
+    a->playing=false;
     a->animation_error[0]=0;
     uint64_t started=platform_time_us();
     begin_execution(a,id,false);
-    M3Result error=m3Err_none;
-    if (native) {
-        a->native_phase=(a->native_phase+delta_ms*20u)&65535u;
-        pixels_rainbow(a->target,a->native_phase);
-    } else {
-        error=prepare_animation(a);
-        if (!error) error=render_animation(a,delta_ms);
-    }
+    M3Result error=prepare_animation(a);
+    if (!error) error=render_animation(a,delta_ms);
     end_execution(a);
     if (error) {
         reply(a,id,execution_status(a,error),a->guest_exit ? a->exit_code : 0,error);
         return;
     }
-    show_frame(a,started,a->control.enabled && !native);
+    show_frame(a,started,a->control.enabled);
     if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
-    const uint8_t *bytes=a->control.enabled && !native ?
+    const uint8_t *bytes=a->control.enabled ?
         (a->output ? a->output->rgb : a->control.committed) : a->target->rgb;
     for (size_t offset=0; offset<((size_t)a->target->count * 3); offset+=FRAME_LIMIT) {
         size_t count=((size_t)a->target->count * 3)-offset;
@@ -362,7 +344,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
                  (unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,
                  LINEAR_MEMORY_LIMIT,(long)(a->target && a->target->count ? a->target->config.pin : -1),(unsigned long)(a->target ? a->target->count : 0),
                  (unsigned long)(a->target && a->target->count ? a->target->config.brightness : 0),FRAME_INTERVAL_US,
-                 a->native_demo ? "native" : a->playing ? "wasm" : "idle",
+                 a->playing ? "wasm" : "idle",
                  (unsigned long)a->frame_count,(unsigned long)a->render_us,
                  (unsigned long)a->show_us,CONTROL_ABI_VERSION,(unsigned long)a->generation,a->animation_error[0] ? a->animation_error : "-");
         reply(a,id,STATUS_OK,0,message); break;
@@ -420,11 +402,6 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
             reply(a,id,STATUS_PROTOCOL,0,"FRAME requires 0..1000 milliseconds"); break;
         }
         frame_step(a,id,read_u32(p)); break;
-    case CMD_NATIVE_DEMO:
-        if (size) { reply(a,id,STATUS_PROTOCOL,0,"NATIVE_DEMO takes no payload"); break; }
-        if (!a->target || !a->target->count) { reply(a,id,STATUS_RUN,0,"target A has no configured output"); break; }
-        vm_start_native_demo(a);
-        reply(a,id,STATUS_OK,(a->target ? a->target->count : 0),"native rainbow started"); break;
     default: reply(a,id,STATUS_PROTOCOL,0,"unknown command"); break;
     }
 }

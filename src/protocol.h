@@ -8,7 +8,7 @@
 #define LIGHTVM_PROTOCOL_VERSION 1u
 enum Message { CMD_STATUS=1, CMD_BEGIN=2, CMD_CHUNK=3, CMD_FINISH=4,
                CMD_RUN=5, CMD_RESET=6, CMD_PLAY=7, CMD_STOP=8,
-               CMD_FRAME=9, CMD_NATIVE_DEMO=10,
+               CMD_FRAME=9, // Command 10 is reserved; keep management IDs stable.
                CMD_MANAGE=11, CMD_OBJECT_BEGIN=12, CMD_OBJECT_CHUNK=13,
                CMD_OBJECT_FINISH=14, CMD_OBJECT_CANCEL=15,
                RESP_OUTPUT=128, RESP_STATUS=129, RESP_PIXELS=130, RESP_DATA=131 };

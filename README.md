@@ -139,7 +139,7 @@ Closing serial leaves playback running. Reboot loads the saved configuration and
 its named startup WASM. `--stop` clears output while retaining the loaded instance;
 `--animate` resumes it. Legacy `--animate FILE` remains a transient replacement.
 RESET clears runtime/staging without erasing the library or configuration.
-`--native-demo` explicitly runs the native rainbow on configured A.
+All animation effects, including rainbow, run from uploaded WASM procedures.
 
 The [configuration guide](docs/configuration.md) documents the schema, client,
 management operations, limits and snapshot recovery. Host storage uses
@@ -346,7 +346,6 @@ build/venv/bin/python tools/client.py --port PORT --no-reset --store-procedure r
 build/venv/bin/python tools/client.py --port PORT --no-reset --config examples/xiao-startup.json --save
 build/venv/bin/python tools/client.py --port PORT --no-reset --activate rainbow
 build/venv/bin/python tools/client.py --port PORT --no-reset --stop
-build/venv/bin/python tools/client.py --port PORT --no-reset --native-demo
 ```
 
 STATUS reports `platform=esp32`, the selected board, `output=ws2812`, actual GPIO
@@ -403,7 +402,7 @@ The CRC matches Python's `zlib.crc32`. Payloads follow the header.
 | 7 | PLAY | Empty; start the resident render(index) animation |
 | 8 | STOP | Empty; stop playback and clear pixels |
 | 9 | FRAME | u32 elapsed milliseconds, 0..1000; pause and render once |
-| 10 | NATIVE_DEMO | Empty; start the native rainbow |
+| 10 | Reserved | Rejected as an unknown command |
 | 128 | OUTPUT reply | Unmodified console bytes |
 | 129 | STATUS reply | `u32 status, i32 value, UTF-8 message` |
 | 130 | PIXELS reply | Packed RGB snapshot, chunked if needed; followed by STATUS |
@@ -541,7 +540,7 @@ build/venv/bin/python tools/client.py --port PORT --no-reset \
 Omit `--no-reset` for Pico. The stepped snapshot is logical RGB before brightness
 scaling; observing the strip checks the physical GRB backend. Then run the smoke runner.
 Confirm STOP extinguishes the strip, PLAY resumes it and power cycling restores
-the native demo. Record SDK/profile, pin/count, sustained frame cadence,
+the saved startup WASM procedure. Record SDK/profile, pin/count, sustained frame cadence,
 render/output times and stable heap/peak. Run identical compatible WASM on Pico,
 S3 and C6 before recording physical multi-board proof.
 
@@ -565,7 +564,7 @@ These hardware smoke checks used the initial Pico SDK double implementation.
 The current WS2812B build includes the compiler-double configuration from the
 license review. Both earlier builds succeeded and 36 desktop integration tests passed.
 That pre-refactor firmware was flashed and tested on 2026-10-12. Kaj confirmed both
-the native rainbow and the separately uploaded WASM rainbow/brightness waves on
+the now-removed native rainbow and the separately uploaded WASM rainbow/brightness waves on
 the 100-pixel GP16 strip. Over a 2.012-second sample with serial closed between
 status reads, the device produced 121 frames (approximately 60 fps). The last
 reported frame took 1,951 us to render and 3,310 us to output. Interpreter heap
