@@ -59,7 +59,9 @@ function(lightvm_add_core)
     add_library(lightvm_core STATIC
         "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
-        "${LIGHTVM_ROOT}/src/session.c")
+        "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
+        "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/devices.c"
+        "${LIGHTVM_ROOT}/src/store.c")
     target_compile_features(lightvm_core PUBLIC c_std_11)
     target_compile_options(lightvm_core PRIVATE -Wall -Wextra -Werror)
     target_link_libraries(lightvm_core PUBLIC lightvm_config wasm3 m)

@@ -1,27 +1,24 @@
 #ifndef DEMO_APP_H
 #define DEMO_APP_H
 #include "protocol.h"
-#include "wasm3.h"
-#include "config.h"
-#include "platform.h"
-#include <stdbool.h>
+#include "vm.h"
+#include "store.h"
 
 typedef struct {
-    uint8_t bytes[MODULE_LIMIT];
-    size_t received, expected, output_size;
-    uint32_t expected_crc;
-    bool uploading, ready, guest_exit;
-    int32_t exit_code;
-    uint16_t request_id;
-    uint64_t deadline;
-    IM3Environment environment;
-    IM3Runtime runtime;
-    IM3Module module;
-    IM3Function before_render, render;
-    bool playing, native_demo, rendering_pixel, background;
-    uint32_t pixel_index, native_phase, frame_count, render_us, show_us;
-    uint64_t next_frame, last_frame;
-    char animation_error[100];
+    VmInstance vm;
+    PixelBuffer pixels;
+    Store store;
+    HardwareConfig hardware;
+    char config_json[CONFIG_LIMIT];
+    uint32_t config_size, revision;
+    uint8_t staging[MODULE_LIMIT > CONFIG_LIMIT ? MODULE_LIMIT : CONFIG_LIMIT];
+    uint32_t expected, received, expected_crc;
+    unsigned object_kind;
+    bool uploading, staged, booting;
+    uint64_t upload_deadline;
+    char object_name[OBJECT_NAME_LIMIT + 1], active_procedure[OBJECT_NAME_LIMIT + 1];
+    uint32_t active_crc, last_code;
+    char boot_error[160];
     SendMessage send;
     void *transport;
 } App;

@@ -1,4 +1,6 @@
 #include "session.h"
+#include "port.h"
+#include <string.h>
 #include <errno.h>
 #include <stdio.h>
 #include <sys/select.h>
@@ -14,7 +16,13 @@ static void output_message(void *context, uint8_t type, uint16_t id,
     write_frame(output_bytes, context, type, id, payload, size);
     fflush(context);
 }
-int main(void) {
+int main(int argc, char **argv) {
+    if (argc != 1 && (argc != 3 || strcmp(argv[1], "--storage"))) {
+        fprintf(stderr, "Usage: lightvm [--storage PATH]\n"); return 2;
+    }
+    if (argc == 3 && !host_storage_open(argv[2])) {
+        fprintf(stderr, "Cannot open storage (size, lock or I/O error)\n"); return 1;
+    }
     static Session session;
     session_init(&session, output_message, stdout);
     for (;;) {
@@ -38,5 +46,6 @@ int main(void) {
         session_feed(&session, &byte, 1);
     }
     session_destroy(&session);
+    host_storage_close();
     return 0;
 }

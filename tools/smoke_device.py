@@ -15,8 +15,8 @@ from client import (BEGIN, CHUNK, FINISH, FRAME, NATIVE_DEMO, PLAY, RESET, RUN,
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES = {
-    "simulator": ("host", "memory", -1, 255),
-    "test_175": ("host", "memory", -1, 255),
+    "simulator": ("host", "memory", 16, 255),
+    "test_175": ("host", "memory", 16, 255),
     "pico": ("pico", "ws2812", 16, 32),
     "xiao_esp32s3": ("esp32", "ws2812", 1, 32),
     "xiao_esp32c6": ("esp32", "ws2812", 0, 32),
@@ -45,6 +45,15 @@ def uploaded(client, text):
 
 
 def smoke(client, captured, board, reference):
+    count = 175 if board == "test_175" else 100
+    pin = "D0" if board.startswith("xiao_esp32") else "GP16"
+    config = {"schema": "lightvm.config/1", "devices": [
+        {"id": "lights", "type": "ws2812b", "config": {"pin": pin, "count": count,
+         "brightness_limit": 255 if board in ("simulator", "test_175") else 32}}
+    ], "targets": {"A": {"device": "lights"}}}
+    client.configure(config)
+    reference.configure({**config, "devices": [{"id": "lights", "type": "ws2812b",
+                         "config": {"pin": "GP16", "count": count}}]})
     fields = client.status_fields()
     check(fields["board"] == board, f"expected board {board}, got {fields['board']}")
     check(fields["api"] == "1" and fields["protocol"] == "1", "incompatible API/protocol")

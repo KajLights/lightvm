@@ -41,18 +41,19 @@ would require an offset/length convention; console output is the smaller API.
 | `src/platform.h` | Native service contract: identity, monotonic clock, RGB output and allocation hooks |
 | `src/session.h` | Shared session lifecycle and byte decoding; driven by a native event loop |
 | `platforms/host/` | POSIX entry point, pipes, clock and host memory allocation |
-| `platforms/pico/` | Pico entry point, SDK bootstrap, USB, PIO, wiring and boot demo policy |
+| `platforms/pico/` | Pico entry point, SDK bootstrap, USB, PIO and reserved flash storage |
 | `platforms/esp32/` | ESP-IDF project, two XIAO profiles, USB Serial/JTAG, RMT output and one FreeRTOS engine owner |
 | `cmake/lightvm_core.cmake` | Reusable engine build for ports with their own SDK project/entry point |
 
 The command handler has a transport-independent `SendMessage` callback.
 `session_feed` accepts framed bytes; message-based adapters can call `app_command`
 directly. Native networking callbacks must queue work for the engine owner. There
-is currently one resident module, one RGB buffer and global interpreter/allocator
-state; concurrent engine execution is unsupported.
+is currently one resident `VmInstance` and one owned RGB target. The execution
+pointer and aggregate allocator accounting remain serialized; concurrent engine
+execution is unsupported.
 
-Wi-Fi, MQTT, Matter, storage, provisioning and firmware OTA belong in native
-platform adapters. They are planned features. Firmware OTA replaces the native
+Storage has native adapters on host, Pico and ESP32. Wi-Fi, MQTT, Matter,
+provisioning and firmware OTA remain planned native services. Firmware OTA replaces the native
 engine and services; an animation upload replaces a RAM-resident WASM program.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).
 
@@ -69,56 +70,50 @@ cross-builds alone do not establish physical USB, output or timing correctness.
 
 ## WS2812B demo on GP16
 
-The current test-board configuration is 100 RGB WS2812B pixels on **GP16**
-(physical Pico pin 21), GRB wire order at 800 kHz. Native output uses the official
-Pico examples' four-instruction PIO program through the Pico SDK. The driver
-feeds its FIFO synchronously and allows 300 microseconds of reset time after
-the final pixel. Output brightness is fixed at 32/255 (about 12.5%). Pin, count
-and brightness are constants in `platforms/pico/board_config.h`; PIO and output
-scaling live in `platforms/pico/platform.c`.
+The example configuration drives 100 RGB WS2812B pixels on **GP16**
+(physical Pico pin 21), GRB wire order at 800 kHz, with brightness limited to
+32/255. These settings are uploaded data in
+[examples/pico-startup.json](examples/pico-startup.json), rather than firmware
+constants. The driver uses Pico SDK PIO and synchronous output.
 
-After flashing `build/pico/lightvm.uf2`, a native scrolling rainbow starts at
-boot and targets 60 frames per second. It runs without a USB host or a WASM
-module. This gives a direct check of the output driver and strip wiring.
-
-Upload the independent WASM pattern for a rainbow with moving brightness waves:
+Fresh firmware starts idle. Store the independent WASM sample, apply and save
+configuration, then select the procedure:
 
 ```sh
 build/venv/bin/python tools/build_samples.py
-build/venv/bin/python tools/client.py --port /dev/cu.usbmodemXXXX --animate build/samples/rainbow.wasm
-build/venv/bin/python tools/client.py --port /dev/cu.usbmodemXXXX --status
+build/venv/bin/python tools/client.py --port PORT --store-procedure rainbow build/samples/rainbow.wasm
+build/venv/bin/python tools/client.py --port PORT --config examples/pico-startup.json --save
+build/venv/bin/python tools/client.py --port PORT --activate rainbow
 ```
 
-The upload replaces the resident module, and the Pico calls its renderer on
-each scheduled frame. Closing the serial connection leaves the animation
-running. Reboot restores the native rainbow; the uploaded program lives in RAM.
+Closing serial leaves playback running. Reboot loads the saved configuration and
+its named startup WASM. `--stop` clears output while retaining the loaded instance;
+`--animate` resumes it. Legacy `--animate FILE` remains a transient replacement.
+RESET clears runtime/staging without erasing the library or configuration.
+`--native-demo` explicitly runs the native rainbow on configured A.
 
-```sh
-build/venv/bin/python tools/client.py --port /dev/cu.usbmodemXXXX --stop
-build/venv/bin/python tools/client.py --port /dev/cu.usbmodemXXXX --native-demo
-```
-
-`--stop` clears the strip while retaining the loaded module. `--animate` without
-a file resumes that module. Starting a new upload or RESET stops playback and
-clears the strip. `--native-demo` switches back to the native rainbow.
+The [configuration guide](docs/configuration.md) documents the schema, client,
+management operations, limits and snapshot recovery. Host storage uses
+`--storage PATH`; the Pico and both ESP32 ports have a reserved 512 KiB store.
+Configuration can also be tested in RAM without saving.
 
 ### Portable animation API v1
 
 An animation exports `render(index: i32) -> void`. It may also export
 `beforeRender(delta_ms: i32) -> void`, called once before all pixels each frame.
-The index runs from 0 through `led.pixel_count() - 1` (0..99 on the default Pico).
+The index runs from 0 through `led.pixel_count() - 1` (0..99 in the supplied Pico example).
 Elapsed time is measured by the port's monotonic clock;
 fractional milliseconds carry into later frames, and long gaps are capped at
 1,000 ms. These callbacks are inspired by Pixelblaze's rendering model.
 
 | Import from `led` | Signature | Meaning |
 |---|---|---|
-| `pixel_count` | `() -> i32` | Number of logical pixels in the board profile |
+| `pixel_count` | `() -> i32` | Number of logical pixels in the assigned target |
 | `rgb` | `(r: i32, g: i32, b: i32) -> void` | Set the current pixel; channels 0..255 |
 | `hsv` | `(h: i32, s: i32, v: i32) -> void` | Set the current pixel; hue wraps modulo 65,536, saturation/value 0..255 |
 
 RGB and HSV writes are valid during `render(index)`. HSV conversion is native,
-using integer arithmetic. The engine owns one packed RGB buffer of **300 bytes**;
+using integer arithmetic. The example owns one packed RGB buffer of **300 bytes**;
 the pattern does not allocate an array or need WASM linear memory. Other profiles
 use three bytes per pixel. The native backend owns physical wire order and
 brightness; the Pico driver packs GRB words as it writes the FIFO.
@@ -130,14 +125,18 @@ The animation API version (`api=1`) is independent of framed protocol version
 (`protocol=1`). STATUS reports both, the `platform`, `board`, output backend,
 resource limits, `pin` (-1 when inapplicable), `pixels`, `brightness`,
 `frame_interval_us`, `mode` (`native`, `wasm` or `idle`), frame count, last
-render/output times in microseconds and any animation error. The host reports
-`output=memory` and brightness 255: its snapshots have no output scaling.
+render/output times in microseconds and any animation error. The host reports `output=memory`; pin/count/brightness reflect configuration.
+Snapshots remain logical RGB regardless of the brightness limit.
 For 100 pixels, wire transmission plus reset takes about 3.3 ms per frame.
 
 ### Desktop preview and debugging
 
 ```sh
-build/venv/bin/python tools/client.py --process build/host/lightvm --frame-ms 16 build/samples/rainbow.wasm
+build/venv/bin/python tools/client.py --process build/host/lightvm --storage build/demo-store.bin \
+  --store-procedure rainbow build/samples/rainbow.wasm
+build/venv/bin/python tools/client.py --process build/host/lightvm --storage build/demo-store.bin \
+  --config examples/pico-startup.json --save
+build/venv/bin/python tools/client.py --process build/host/lightvm --storage build/demo-store.bin --frame-ms 16
 ```
 
 `--frame-ms` pauses playback and renders one frame with an explicit delta. It
@@ -202,7 +201,8 @@ to install the native firmware, replacing the firmware currently on that Pico.
 Reconnect normally and identify its USB serial port.
 
 `-DLIGHTVM_PICO=ON` remains a compatibility alias. Use a separate build directory
-for each platform/profile. To change wiring or engine budgets, provide a complete
+for each platform/profile. Wiring changes use runtime configuration. To change
+resource ceilings or engine budgets, provide a complete
 board header with `-DLIGHTVM_BOARD_CONFIG=/absolute/path/to/board_config.h`;
 unspecified engine budgets take defaults from `src/config.h`.
 
@@ -228,11 +228,11 @@ WASM using this framed protocol; use the sender instead.
 
 The preliminary profiles target the original XIAO ESP32-S3 and ESP32-C6, using
 [ESP-IDF v5.5.3](https://github.com/espressif/esp-idf/releases/tag/v5.5.3).
-Both start the native rainbow at boot and accept the existing USB protocol and
-animation API. Flashing deliberately resets the board; subsequent WASM uploads
+Both load saved configuration and optional startup WASM, and accept the existing
+USB protocol and animation API. Flashing deliberately resets the board; subsequent WASM uploads
 are data transfers and do not require reflashing.
 
-| `LIGHTVM_BOARD` | SDK target | WS2812 data | Pixels | Brightness | Flash |
+| `LIGHTVM_BOARD` | SDK target | Example WS2812 data | Example pixels | Example brightness | Flash |
 |---|---|---|---:|---:|---:|
 | `xiao_esp32s3` | `esp32s3` | D0 / GPIO1 | 100 | 32/255 | 8 MiB |
 | `xiao_esp32c6` | `esp32c6` | D0 / GPIO0 | 100 | 32/255 | 4 MiB |
@@ -291,16 +291,22 @@ before issuing a request. Pico retains its default control behavior.
 build/venv/bin/python tools/build_samples.py
 build/venv/bin/python tools/client.py --port PORT --no-reset --status
 build/venv/bin/python tools/client.py --port PORT --no-reset build/samples/hello.wasm
-build/venv/bin/python tools/client.py --port PORT --no-reset --animate build/samples/rainbow.wasm
+build/venv/bin/python tools/client.py --port PORT --no-reset --store-procedure rainbow build/samples/rainbow.wasm
+build/venv/bin/python tools/client.py --port PORT --no-reset --config examples/xiao-startup.json --save
+build/venv/bin/python tools/client.py --port PORT --no-reset --activate rainbow
 build/venv/bin/python tools/client.py --port PORT --no-reset --stop
 build/venv/bin/python tools/client.py --port PORT --no-reset --native-demo
 ```
 
 STATUS reports `platform=esp32`, the selected board, `output=ws2812`, actual GPIO
-and shared resource limits. Closing serial should retain the program; resetting
-restores the native rainbow. Physical behavior remains unvalidated until the
-checks below pass. Wi-Fi, BLE, Thread/Zigbee, MQTT, Matter, persistence and OTA
-remain later work.
+and shared resource limits. Closing serial retains the instance; resetting loads
+the saved startup procedure. ESP32 physical behavior remains unvalidated until
+the checks below pass. Wi-Fi, BLE, Thread/Zigbee, MQTT, Matter and OTA remain later work.
+
+Existing ESP32 build directories retain SDK configuration: switch to a fresh
+build directory when adopting the custom partition table, or explicitly select
+`CONFIG_PARTITION_TABLE_CUSTOM` and `partitions.csv` before reconfiguring. The
+`lightvm` data partition starts at `0x110000` and does not overlap the application.
 
 ## C authoring example
 
@@ -351,6 +357,9 @@ The CRC matches Python's `zlib.crc32`. Payloads follow the header.
 | 129 | STATUS reply | `u32 status, i32 value, UTF-8 message` |
 | 130 | PIXELS reply | Packed RGB snapshot, chunked if needed; followed by STATUS |
 
+Commands 11..15 add structured management and independent object staging; DATA
+reply 131 carries fragmented metadata/readback. See [management v1](docs/configuration.md#usb-management-v1).
+
 Uploads require ordered chunks; an identical already-received chunk is accepted
 as a retry. FINISH checks completeness and the whole-module checksum, then
 parses, links and compiles the module into wasm3's internal interpreter
@@ -361,16 +370,20 @@ the function's integer result: a return of 42 is successful status 0 with value
 
 An accepted BEGIN unloads the previous module before overwriting the single
 upload slot. Failed uploads leave no executable module. RESET unloads everything
-and cancels a partial upload. Programs live in RAM and are lost on reboot.
+and cancels a partial upload. Legacy uploads live in RAM; named procedures and
+configuration saved through management survive reboot.
 
 ## Memory and execution limits
 
-These are the default profile's limits. A board header can set pixel count,
+These are the default profile's limits. A board header can set pixel capacity,
 upload/heap/operand-stack/output budgets, deadline and frame interval. The native
 allocator chooses where interpreter memory is obtained; budget accounting stays
 in the core. WASM linear memory remains limited to one page across current ports.
 
-- Native pixel buffer: 300 bytes for 100 RGB pixels; no per-frame allocation.
+- Pixel capacity: 1024; runtime count is configured. One RGB buffer uses 3N bytes,
+  allocated when applying configuration, with no per-frame allocation.
+- Configuration: at most 8 KiB; module/config staging is separate from resident bytes.
+- Persistent store: 512 KiB, two banks, up to eight named procedures within capacity.
 - Module/upload slot: 32 KiB, retained for the loaded module's lifetime.
 - Interpreter heap: 128 KiB including tracked allocator headers; STATUS reports
   live usage and the lifetime high-water mark.
@@ -391,6 +404,22 @@ callbacks, with WS2812B output in the Pico port. Concurrent A/B instances,
 transitions and network/control adapters are subsequent work.
 
 ## Verification
+
+Configuration/storage verification on 2026-10-12 passed all **58 Python tests**
+on both host profiles, the C platform-contract/fault-injection test, and both
+host smoke runs. Pico, XIAO ESP32-S3 and ESP32-C6 cross-builds succeeded; the Pico
+linker also rejected a deliberately overlapping firmware boundary, and both ESP32
+partition tables reserve the expected 512 KiB region.
+
+The new Pico firmware was flashed and checked on the existing 100-pixel GP16
+setup. Procedure save/readback, configuration apply/save, RESET retention,
+console/WASI, timeout recovery, RGB snapshots and serial reconnect passed. Reloading
+the same UF2 preserved storage and automatically started the saved WASM rainbow.
+The sample used 11,870 bytes of interpreter heap, about 1,687 us rendering and
+3,301 us output; saving its 303-byte module took about 2.1 seconds. Interrupted
+writes were simulated in C tests, without physically cutting power. No ESP32
+hardware was attached for this verification; its physical output, storage and
+reboot behavior remain unverified. Earlier checks below describe previous builds.
 
 ```sh
 ctest --test-dir build/host --output-on-failure
@@ -449,7 +478,8 @@ and deltas. Serial checks also close/reopen the connection and verify retained
 state and autonomous frames. XIAO identities select no-reset opening automatically.
 The host reference must match pixel count; select `--reference` for custom profiles.
 
-On each freshly flashed board, observe the boot rainbow without a terminal.
+On each freshly flashed board, confirm idle management, provision the example
+configuration and stored rainbow, then reboot and observe autonomous startup.
 Check physical order with the first three pixels red, green, blue, repeating:
 
 ```sh

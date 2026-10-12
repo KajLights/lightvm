@@ -19,6 +19,14 @@ extension path while keeping the Pico firmware small.
 All interfaces and examples below are proposed. The implemented baseline remains
 the single WS2812B output and animation API v1.
 
+## Implemented foundation
+
+Runtime JSON configuration, explicit RAM apply/save, the `ws2812b` registration,
+instance-owned A buffers and named persistent WASM procedures are implemented on
+host, Pico and both ESP32 ports. See [configuration](../docs/configuration.md).
+There is no compiled default strip; empty configuration is valid. The broader
+generator, generic device-handle imports and non-pixel drivers below remain proposed.
+
 ## Starter devices and learning goals
 
 Build the first increment around digital input and output. Complete the starter
@@ -61,14 +69,14 @@ boundary and the single owner of engine execution.
 
 | Current code | Consequence for this feature |
 |---|---|
-| [`src/config.h`](../src/config.h) requires `PIXEL_COUNT >= 1` | General programs need profiles with no pixel output |
-| [`src/pixels.c`](../src/pixels.c) has one static RGB buffer | Pixel capacity and output identity must become explicit registry resources |
-| [`src/app.c`](../src/app.c) links each `led` import directly in `load` | Move device bindings into registration tables, retaining the legacy imports |
+| `PIXEL_CAPACITY` limits runtime pixel configuration; no output is valid | General execution with an empty configuration is available |
+| `PixelBuffer` owns dynamically configured RGB and native driver state | Additional target types can build on explicit ownership |
+| `VmInstance` links legacy `led` imports to its assigned target | Add generated generic device bindings alongside these imports |
 | `prepare_animation` requires `render(index)` | Add a general periodic execution profile for programs with no renderer |
 | `app_tick` only services active playback or the native demo | Native input sampling and timed output expiry need service while guest execution is idle |
-| [`src/platform.h`](../src/platform.h) describes one output and a void RGB callback | Add driver contracts with instance identity, bounded operations and failure reporting |
+| Pixel driver open/close/show operations report failure | Extend registered driver contracts to non-pixel capabilities |
 | STATUS describes one pin, brightness and pixel count | Structured discovery must report types, instances, state and resource limits |
-| Pico wiring lives in [`board_config.h`](../platforms/pico/board_config.h) | Separate board capabilities and budgets from editable peripheral configuration |
+| Board pin tables/budgets are separate from saved peripheral JSON | Extend resource planning to the proposed device types |
 
 Picolights provides a useful precedent: its
 [`device_factory`](../../picolights/picolights/devices/config.py) registers named
@@ -220,11 +228,11 @@ Driver initialization can still fail during apply; leave outputs safe and report
 the resulting active configuration. Advertise restoration guarantees explicitly
 if a port can restore its previous drivers after that failure.
 
-Start with a compiled default configuration equivalent to the current Pico demo,
-plus optional RAM configuration through management commands. Explicit persistent
-saving can follow the editor's storage work. Replacing a program should retain
-the hardware configuration, and temporary editing should not write flash on
-every change.
+The implementation starts with an empty configuration or the explicitly saved
+configuration. Management separates RAM apply from persistent saving; temporary
+edits do not write flash. Program replacement retains hardware configuration.
+Named stored WASM and startup references are available through the same management
+layer on host, Pico and ESP32.
 
 ## Portable WASM device API
 
@@ -387,7 +395,7 @@ networking and Matter active on the ESP32 ports.
 
 | Increment | Deliverable | Acceptance criteria |
 |---|---|---|
-| 1 | Definition format, generator, bounded registry, compiled default strip, digital input/output and general execution profile | Existing rainbow remains compatible; a button/LED program runs with zero pixels; invalid handles/configuration are diagnosed; adding the second type needs no scheduler/loader switch |
+| 1 | Definition format, generator, bounded registry, saved pixel configuration, digital input/output and general execution profile | Existing rainbow remains compatible; a button/LED program runs with zero pixels; invalid handles/configuration are diagnosed; adding the second type needs no scheduler/loader switch |
 | 2 | Shared hardware discovery/configuration, USB support and editor integration | Required fields generate forms and bindings; bad pins/resource conflicts fail before apply; stale revisions are rejected; simulated and physical button/LED projects agree |
 | 3 | Analogue, PWM, tone and positional servo drivers | Knob dimming, alarm and pointer examples run; readings expose validity/age; timer conflicts, note expiry and stop/trap policies are verified |
 | 4 | ESP32 native implementations | Identical compatible WASM works on Pico, S3 and C6 with board configuration changes only; resource use and interaction timing are measured under native service load |
@@ -395,9 +403,8 @@ networking and Matter active on the ESP32 ports.
 
 The registry and descriptor shape should be agreed before the web editor freezes
 its capability model. The first registry implementation can proceed on host and
-Pico while ESP32 porting continues. HTTP, persistence, BLE and Matter do not need
-to block basic devices over USB. Runtime hardware forms can follow the compiled
-default configuration, avoiding a requirement to solve persistence first.
+Pico while ESP32 porting continues. HTTP, BLE and Matter do not need to block basic devices over USB. Runtime hardware
+forms should consume the implemented configuration and persistence operations.
 
 Acceptance tests should cover missing fields/devices/imports, signature mismatch,
 stale handles, instance/buffer exhaustion, initialization failure, duplicate pin

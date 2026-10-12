@@ -43,6 +43,11 @@ Choosing another language starts or opens a project in that language. Automatic
 conversion of arbitrary code between languages, or back into blocks, is outside
 the initial scope.
 
+Runtime configuration and compiled-procedure persistence are now implemented over
+USB on host, Pico and ESP32. [Configuration management](../docs/configuration.md)
+specifies staging, revisions, quotas and idle recovery. Editable source/project
+storage and the HTTP mappings below remain proposed.
+
 ## Goals and scope
 
 - Make lighting programming approachable to beginners while supporting text
@@ -83,7 +88,7 @@ enough on a device.
 |---|---|
 | STATUS contains text fields | Structured identity, capability and compatibility descriptor |
 | BEGIN unloads the previous program | Explicit upload and activation lifecycle with declared replacement guarantees |
-| One RAM-resident module, with no source readback | Project format and optional persistent program/source storage |
+| One active VM plus a persistent named module library, with no source readback | Add editable project/source packaging around the implemented procedure storage |
 | RUN supports zero-argument exports | Typed program parameter updates through generated wrappers |
 | FRAME pauses playback | Separate passive snapshots from explicit frame stepping |
 | Autonomous console output stops playback | Optional bounded logs and runtime events |
@@ -412,7 +417,7 @@ timing on each supported board, with its native services active.
 
 | Phase | Deliverable | Acceptance criteria |
 |---|---|---|
-| 1 | Descriptor, TypeScript USB SDK, browser preview and one text frontend | Connect to the Pico, compile/preview/upload an effect, report errors, and continue playback after disconnect; expose legacy replacement and RAM-only deployment limits |
+| 1 | Descriptor, TypeScript USB SDK, browser preview and one text frontend | Connect to the Pico, compile/preview/upload an effect, report errors, and continue playback after disconnect; expose legacy replacement and explicit persistent procedure/configuration saving |
 | 2 | Project import/export, staged activation where supported, controller state and parameters | Preserve editable source, adjust controls during playback, reject stale updates, and verify declared replacement guarantees under failed uploads and activation |
 | 3 | Remaining language frontends and lighting blocks | Python, Pixelblaze and blocks share the ABI and parameter schema; publish compatibility limits and compare representative programs with host/device output |
 | 4 | Network-capable native port and embedded HTTP API server | Demonstrate the public editor connecting directly to the device, discovery/device launch page, pairing and concurrent USB/HTTP request routing on supported browsers and hardware |

@@ -1,0 +1,12 @@
+{
+  "schema": "lightvm.config/1",
+  "devices": [
+    {
+      "id": "lights",
+      "type": "ws2812b",
+      "config": {"pin": "D0", "count": 100, "order": "GRB", "brightness_limit": 32}
+    }
+  ],
+  "targets": {"A": {"device": "lights"}},
+  "startup": {"procedure": "rainbow", "target": "A"}
+}

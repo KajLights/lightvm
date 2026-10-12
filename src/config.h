@@ -5,9 +5,13 @@
 #ifdef LIGHTVM_BOARD_CONFIG
 #include LIGHTVM_BOARD_CONFIG
 #endif
-#ifndef PIXEL_COUNT
-#define PIXEL_COUNT 100u
+#ifndef PIXEL_CAPACITY
+#define PIXEL_CAPACITY 1024u
 #endif
+#define CONFIG_LIMIT 8192u
+#define PROCEDURE_LIMIT 8u
+#define OBJECT_NAME_LIMIT 32u
+#define STORAGE_BYTES (512u * 1024u)
 #ifndef MODULE_LIMIT
 #define MODULE_LIMIT (32u * 1024u)
 #endif
@@ -30,8 +34,8 @@
 #define LINEAR_MEMORY_LIMIT 65536u
 #define LIGHTVM_ANIMATION_API_VERSION 1u
 
-#if PIXEL_COUNT < 1 || PIXEL_COUNT > 65535
-#error "PIXEL_COUNT must be 1..65535"
+#if PIXEL_CAPACITY < 1 || PIXEL_CAPACITY > 65535
+#error "PIXEL_CAPACITY must be 1..65535"
 #endif
 #if MODULE_LIMIT < 8 || MODULE_LIMIT > 2147483647
 #error "MODULE_LIMIT must fit a positive protocol i32 result"

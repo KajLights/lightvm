@@ -1,5 +1,4 @@
 #include "session.h"
-#include "pixels.h"
 
 static void receive_message(void *context, uint8_t type, uint16_t id,
                             const uint8_t *payload, size_t size) {
@@ -12,7 +11,6 @@ static void send_message(void *context, uint8_t type, uint16_t id,
     session->app.send(session->app.transport, type, id, payload, size);
 }
 void session_init(Session *session, SendMessage send, void *transport) {
-    pixels_init();
     app_init(&session->app, send, transport);
     decoder_init(&session->decoder, receive_message, send_message, session);
 }

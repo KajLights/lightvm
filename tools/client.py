@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Upload and execute independent WASM modules over USB CDC or a host pipe."""
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 import select
@@ -16,7 +17,8 @@ FRAME_LIMIT = 512
 MODULE_LIMIT = 32768
 STATUS, BEGIN, CHUNK, FINISH, RUN, RESET = range(1, 7)
 PLAY, STOP, FRAME, NATIVE_DEMO = 7, 8, 9, 10
-OUTPUT, RESULT, PIXELS = 128, 129, 130
+MANAGE, OBJECT_BEGIN, OBJECT_CHUNK, OBJECT_FINISH, OBJECT_CANCEL = range(11, 16)
+OUTPUT, RESULT, PIXELS, DATA = 128, 129, 130, 131
 
 
 class ProtocolError(RuntimeError):
@@ -40,8 +42,11 @@ def frame(kind, request_id, payload=b""):
 
 class ProcessTransport:
     """The host port runs the shared handler and interpreter with native pipes."""
-    def __init__(self, executable):
-        self.process = subprocess.Popen([str(executable)], stdin=subprocess.PIPE,
+    def __init__(self, executable, storage=None):
+        argv = [str(executable)]
+        if storage is not None:
+            argv += ["--storage", str(storage)]
+        self.process = subprocess.Popen(argv, stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, bufsize=0)
 
     def write(self, data):
@@ -120,6 +125,7 @@ class Client:
         self.output = output or (lambda data: None)
         self.request_id = 0
         self.pixel_snapshot = bytearray()
+        self.data_reply = bytearray()
 
     def read_exact(self, size, deadline):
         result = bytearray()
@@ -131,6 +137,7 @@ class Client:
         return bytes(result)
 
     def command(self, kind, payload=b""):
+        self.data_reply.clear()
         if kind == FRAME:
             self.pixel_snapshot.clear()
         self.request_id = self.request_id % 65535 + 1
@@ -154,6 +161,8 @@ class Client:
                 self.output(payload)
             elif kind == PIXELS:
                 self.pixel_snapshot.extend(payload)
+            elif kind == DATA:
+                self.data_reply.extend(payload)
             elif kind == RESULT and len(payload) >= 8:
                 code, value = struct.unpack("<Ii", payload[:8])
                 return Reply(code, value, payload[8:].decode("utf-8", errors="replace"))
@@ -190,14 +199,94 @@ class Client:
         return self.require_ok(self.command(FINISH))
 
 
+    def manage(self, operation, **fields):
+        payload = json.dumps({"op": operation, **fields}, separators=(",", ":")).encode()
+        return self.require_ok(self.command(MANAGE, payload))
+
+    def describe(self):
+        self.manage("describe")
+        return json.loads(self.data_reply)
+
+    def get_config(self, saved=False):
+        self.manage("config_saved" if saved else "config_get")
+        return json.loads(self.data_reply)
+
+    def upload_object(self, kind, data, name=None):
+        capabilities = self.describe()
+        limit = capabilities["config_limit" if kind == "config" else "module_limit"]
+        if not (1 if kind == "config" else 8) <= len(data) <= limit:
+            raise ValueError(f"{kind} exceeds receiver size limit {limit}")
+        metadata = {"kind": kind, "size": len(data), "crc32": zlib.crc32(data)}
+        if name is not None:
+            metadata["name"] = name
+        self.require_ok(self.command(OBJECT_BEGIN, json.dumps(metadata).encode()))
+        for offset in range(0, len(data), FRAME_LIMIT - 4):
+            chunk = data[offset:offset + FRAME_LIMIT - 4]
+            reply = self.require_ok(self.command(OBJECT_CHUNK, struct.pack("<I", offset) + chunk))
+            if reply.value != offset + len(chunk):
+                raise ProtocolError("receiver acknowledged an unexpected object offset")
+        return self.require_ok(self.command(OBJECT_FINISH))
+
+    def configure(self, config, save=False):
+        revision = self.describe()["active_revision"]
+        data = json.dumps(config, separators=(",", ":")).encode()
+        self.upload_object("config", data)
+        self.manage("config_validate")
+        reply = self.manage("config_apply", expected_revision=revision)
+        if save:
+            self.save_config()
+        return reply
+
+    def save_config(self):
+        description = self.describe()
+        return self.manage("config_save", expected_revision=description["active_revision"],
+                           expected_saved_revision=description["saved_revision"])
+
+    def save_procedure(self, name, data):
+        revision = self.describe()["catalog_revision"]
+        self.upload_object("procedure", data, name)
+        return self.manage("procedure_save", name=name, expected_revision=revision)
+
+    def procedures(self):
+        self.manage("procedure_list")
+        return json.loads(self.data_reply)
+
+    def get_procedure(self, name):
+        self.manage("procedure_get", name=name)
+        return bytes(self.data_reply)
+
+    def delete_procedure(self, name):
+        revision = self.describe()["catalog_revision"]
+        return self.manage("procedure_delete", name=name, expected_revision=revision)
+
+    def activate(self, name, action="play", export="run"):
+        return self.manage("procedure_activate", name=name, action=action, export=export)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     transport = parser.add_mutually_exclusive_group(required=True)
     transport.add_argument("--port", help="USB serial port, e.g. /dev/cu.usbmodem...")
     transport.add_argument("--process", type=Path, help="desktop receiver executable")
     parser.add_argument("--no-reset", action="store_true", help="deassert DTR/RTS before opening an ESP32 USB serial port")
+    parser.add_argument("--storage", type=Path, help="host persistent store file")
+    parser.add_argument("--save", action="store_true", help="save an applied --config for reboot")
+    parser.add_argument("--saved", action="store_true", help="read saved rather than active configuration")
+    parser.add_argument("--action", choices=("play", "run"), default="play")
+    parser.add_argument("--output", type=Path, help="binary readback destination")
     parser.add_argument("--function", default="run", help="zero-argument exported function")
     action = parser.add_mutually_exclusive_group()
+    action.add_argument("--describe", action="store_true")
+    action.add_argument("--config", type=Path, help="apply JSON configuration in RAM")
+    action.add_argument("--validate-config", type=Path, help="stage and validate JSON without applying")
+    action.add_argument("--get-config", action="store_true")
+    action.add_argument("--save-config", action="store_true")
+    action.add_argument("--store-procedure", metavar="NAME", help="save the supplied module under this name")
+    action.add_argument("--procedures", action="store_true")
+    action.add_argument("--get-procedure", metavar="NAME")
+    action.add_argument("--delete-procedure", metavar="NAME")
+    action.add_argument("--activate", metavar="NAME")
+    action.add_argument("--cancel-upload", action="store_true")
     action.add_argument("--status", action="store_true", help="query receiver without uploading")
     action.add_argument("--animate", action="store_true", help="start render(index) animation on the device")
     action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
@@ -206,21 +295,65 @@ def main():
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("module", nargs="?", type=Path)
     args = parser.parse_args()
+    if args.storage and not args.process:
+        parser.error("--storage requires --process")
+    if args.save and not args.config:
+        parser.error("--save requires --config")
+    if args.saved and not args.get_config:
+        parser.error("--saved requires --get-config")
+    if args.output and not args.get_procedure:
+        parser.error("--output requires --get-procedure")
+    if args.store_procedure and args.module is None:
+        parser.error("--store-procedure requires a .wasm module")
+    management = (args.describe or args.config or args.validate_config or args.get_config or args.save_config or
+                  args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
+                  args.activate or args.cancel_upload)
+    if management and args.module is not None and not args.store_procedure:
+        parser.error("module argument only applies to --store-procedure or legacy execution")
     if args.no_reset and not args.port:
         parser.error("--no-reset requires --port")
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     if args.frame_ms is not None and not 0 <= args.frame_ms <= 1000:
         parser.error("--frame-ms must be 0..1000")
-    if args.module is None and not (args.status or args.animate or args.stop or args.native_demo or args.frame_ms is not None):
+    if args.module is None and not (args.status or args.animate or args.stop or args.native_demo or args.frame_ms is not None or management):
         parser.error("provide a .wasm module or a status/animation command")
     connection = None
     try:
-        connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else ProcessTransport(args.process)
+        connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else ProcessTransport(args.process, storage=args.storage)
         def console(data):
             sys.stdout.buffer.write(data)
             sys.stdout.buffer.flush()
         client = Client(connection, timeout=args.timeout, output=console)
+        if management:
+            if args.describe:
+                print(json.dumps(client.describe(), indent=2))
+            elif args.get_config:
+                print(json.dumps(client.get_config(saved=args.saved), indent=2))
+            elif args.procedures:
+                print(json.dumps(client.procedures(), indent=2))
+            elif args.get_procedure:
+                data = client.get_procedure(args.get_procedure)
+                if args.output:
+                    args.output.write_bytes(data)
+                else:
+                    sys.stdout.buffer.write(data)
+            elif args.config:
+                client.configure(json.loads(args.config.read_text()), save=args.save)
+            elif args.validate_config:
+                client.upload_object("config", args.validate_config.read_bytes())
+                client.manage("config_validate")
+            elif args.save_config:
+                client.save_config()
+            elif args.store_procedure:
+                client.save_procedure(args.store_procedure, args.module.read_bytes())
+            elif args.delete_procedure:
+                client.delete_procedure(args.delete_procedure)
+            elif args.activate:
+                client.activate(args.activate, args.action, args.function)
+            elif args.cancel_upload:
+                client.require_ok(client.command(OBJECT_CANCEL))
+            return 0
         if args.module is not None:
             loaded = client.upload(args.module.read_bytes())
             print(f"Loaded {loaded.value} bytes", file=sys.stderr)

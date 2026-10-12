@@ -1,20 +1,72 @@
 #define _POSIX_C_SOURCE 200809L
 #include "platform.h"
 #include "config.h"
+#include "port.h"
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
 
-static const PlatformInfo info = {"host", LIGHTVM_BOARD_NAME, "memory", -1, 255};
+static const PlatformInfo info={"host",LIGHTVM_BOARD_NAME,"memory",-1,255};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) {
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    return (uint64_t)now.tv_sec * 1000000u + (uint64_t)now.tv_nsec / 1000u;
+    struct timespec now; clock_gettime(CLOCK_MONOTONIC,&now);
+    return (uint64_t)now.tv_sec*1000000u+(uint64_t)now.tv_nsec/1000u;
 }
-void platform_show_rgb(const uint8_t *rgb, size_t count) {
-    // The host uses the engine's logical buffer for FRAME snapshots.
-    (void)rgb; (void)count;
+#define PIN(n) {"GP" #n,n}
+static const BoardPin pins[]={PIN(0),PIN(1),PIN(2),PIN(3),PIN(4),PIN(5),PIN(6),PIN(7),PIN(8),PIN(9),PIN(10),PIN(11),PIN(12),PIN(13),PIN(14),PIN(15),PIN(16),PIN(17),PIN(18),PIN(19),PIN(20),PIN(21),PIN(22),PIN(26),PIN(27),PIN(28)};
+const BoardPin *platform_pins(size_t *count) { *count=sizeof(pins)/sizeof(pins[0]); return pins; }
+bool platform_pixels_open(const PixelConfig *config,void **driver) {
+    PixelConfig *p=malloc(sizeof(*p)); if (!p) return false;
+    *p=*config; *driver=p; return true;
 }
-void *platform_calloc(size_t count, size_t size) { return calloc(count, size); }
-void *platform_realloc(void *memory, size_t size) { return realloc(memory, size); }
+void platform_pixels_close(void *driver) { free(driver); }
+bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
+    (void)rgb; return driver && count==((PixelConfig *)driver)->count;
+}
+static int storage_fd=-1;
+static bool io_bytes(bool write,uint32_t offset,void *bytes,size_t size) {
+    if (storage_fd<0 || offset>STORAGE_BYTES || size>STORAGE_BYTES-offset) return false;
+    uint8_t *p=bytes;
+    while (size) {
+        ssize_t n=write ? pwrite(storage_fd,p,size,offset) : pread(storage_fd,p,size,offset);
+        if (n<0 && errno==EINTR) continue;
+        if (n<=0) return false;
+        p+=n; offset+=(uint32_t)n; size-=(size_t)n;
+    }
+    return true;
+}
+bool host_storage_open(const char *path) {
+    storage_fd=open(path,O_RDWR|O_CREAT,0600);
+    if (storage_fd<0) return false;
+    struct stat st;
+    struct flock lock={.l_type=F_WRLCK,.l_whence=SEEK_SET};
+    if (fcntl(storage_fd,F_SETLK,&lock) || fstat(storage_fd,&st)) { host_storage_close(); return false; }
+    if (st.st_size==0) {
+        uint8_t erased[4096]; memset(erased,255,sizeof(erased));
+        for (uint32_t offset=0;offset<STORAGE_BYTES;offset+=sizeof(erased))
+            if (!io_bytes(true,offset,erased,sizeof(erased))) { host_storage_close(); return false; }
+        if (fsync(storage_fd)) { host_storage_close(); return false; }
+    } else if (st.st_size!=STORAGE_BYTES) { host_storage_close(); return false; }
+    return true;
+}
+void host_storage_close(void) { if (storage_fd>=0) close(storage_fd); storage_fd=-1; }
+bool platform_storage_available(void) { return storage_fd>=0; }
+bool platform_storage_read(uint32_t offset,void *bytes,size_t size) { return io_bytes(false,offset,bytes,size); }
+bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {
+    if (offset%256 || size%256) return false;
+    return io_bytes(true,offset,(void *)bytes,size);
+}
+bool platform_storage_erase(uint32_t offset,size_t size) {
+    if (offset%4096 || size%4096 || offset>STORAGE_BYTES || size>STORAGE_BYTES-offset) return false;
+    uint8_t erased[4096]; memset(erased,255,sizeof(erased));
+    while (size) { if (!io_bytes(true,offset,erased,sizeof(erased))) return false; offset+=sizeof(erased); size-=sizeof(erased); }
+    return true;
+}
+bool platform_storage_sync(void) { return storage_fd>=0 && fsync(storage_fd)==0; }
+void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
+void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }

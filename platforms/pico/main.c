@@ -19,8 +19,6 @@ int main(void) {
     stdio_set_translate_crlf(&stdio_usb, false);
     pico_port_init();
     session_init(&session, output_message, NULL);
-    // Board startup policy: smoke-test the strip without a USB host or upload.
-    app_start_native_demo(&session.app);
     for (;;) {
         session_tick(&session);
         int byte = getchar_timeout_us(1000);

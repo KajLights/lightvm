@@ -17,7 +17,11 @@ class PixelTests(unittest.TestCase):
         self.transport = ProcessTransport(Path(os.environ.get("LIGHTVM_RECEIVER", ROOT / "build/host/lightvm")))
         self.output = bytearray()
         self.client = Client(self.transport, output=self.output.extend)
-        self.count = int(self.client.status_fields()["pixels"])
+        description = self.client.describe()
+        self.count = 175 if description["board"] == "test_175" else 100
+        self.client.configure({"schema": "lightvm.config/1", "devices": [
+            {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": self.count}}
+        ], "targets": {"A": {"device": "lights"}}})
 
     def tearDown(self):
         self.transport.close()

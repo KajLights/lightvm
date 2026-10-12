@@ -26,20 +26,23 @@ evidence separately from build success.
 | Guest `.wasm` | Effect state, optional `beforeRender`, per-pixel `render`, logical colour requests |
 | `lightvm_core` / `src/` | Loader, wasm3 bindings, RGB/HSV conversion and buffer, scheduler, module lifecycle, limits, logical commands, byte framing |
 | Native port / `platforms/<port>/` | Executable or SDK entry point, clock, allocation implementation, physical LED output, transports/event loop, SDK/toolchain setup |
-| Board/resource header | Pixel count and engine budgets; native wiring, brightness and board identity |
-| Future native adapters | Wi-Fi, MQTT, Matter, provisioning, persistence and firmware OTA |
+| Board/resource header | Pixel capacity and engine budgets; board identity |
+| Future native adapters | Wi-Fi, MQTT, Matter, provisioning and firmware OTA |
 
 The core contains no GPIO, PIO, USB, POSIX or RTOS calls, nor platform-selection
 branches. `pixels.c` always stores packed logical RGB and delegates physical output.
-The native rainbow's colour generation is shared; starting it at boot is Pico/ESP32
-entry-point policy. The host starts idle.
+The native rainbow is an explicit diagnostic. All ports start from saved JSON
+configuration and an optional named startup WASM; otherwise they stay idle.
+The shared snapshot store delegates bounded block I/O to native ports.
+See [configuration and persistence](configuration.md).
 
 `src/config.h` includes the selected `LIGHTVM_BOARD_CONFIG` header and supplies
 portable defaults. Board headers must contain constants and portable declarations,
-without SDK includes. Adjustable engine constants are `PIXEL_COUNT`, `MODULE_LIMIT`,
+without SDK includes. Adjustable engine constants are `PIXEL_CAPACITY`, `MODULE_LIMIT`,
 `VM_HEAP_LIMIT`, `VM_STACK_SIZE`, `OUTPUT_LIMIT`, `RUN_TIMEOUT_US` and
-`FRAME_INTERVAL_US`. Compile the core and entry point with the same header. Native
-constants such as Pico's `PIXEL_PIN` and `PIXEL_BRIGHTNESS` are consumed by its port.
+`FRAME_INTERVAL_US`. Compile the core and entry point with the same header.
+Native pin tables describe exposed capabilities; peripheral selection, count,
+brightness and order belong to runtime JSON.
 Current wasm3 builds enforce one 64 KiB linear-memory page and a function stack
 height of 128; these interpreter limits are common to the present ports.
 
@@ -57,15 +60,17 @@ Every port implements [platform.h](../src/platform.h):
 |---|---|
 | `platform_info()` | Stable descriptor with short whitespace-free platform, board and output identifiers; diagnostic pin (-1 if inapplicable) and output brightness 0..255 |
 | `platform_time_us()` | Monotonic 64-bit microseconds, advancing during idle waits and guest execution; used for deadlines and frame cadence |
-| `platform_show_rgb(rgb, count)` | Receive a complete successful frame of packed logical RGB; apply physical brightness and wire order in the backend |
+| `platform_pins()` | Advertise exposed, usable board pin names and aliases |
+| `platform_pixels_open/close/show` | Initialize/tear down a configured instance and submit complete packed RGB; return failures rather than abort |
+| `platform_storage_available/read/write/erase/sync` | Native bounded 512 KiB block store; 4 KiB erase and 256-byte program units; durable sync |
 | `platform_calloc`, `platform_realloc`, `platform_free` | Compatible C allocation family with `max_align_t` alignment, zeroed calloc storage, overflow checks, and failed realloc leaving its old allocation intact |
 
 The output backend must consume or copy RGB before returning. A DMA backend needs
 its own retained buffer because the core reuses the logical buffer on the next
-render. Native initialization must complete before `session_init`, which emits a
-black frame. `show_us` measures the output callback's duration; an asynchronous
-backend should document how that relates to physical transmission. Driver failure
-reporting is not yet part of this synchronous output interface.
+render. Native services must be ready before `session_init`, which mounts storage,
+validates saved configuration and initializes configured drivers with black output. `show_us` measures the output callback's duration; an asynchronous
+backend should document how that relates to physical transmission. Output failure
+stops playback with diagnostics; initialization failure leaves active hardware empty.
 
 Allocation budget accounting, including headers, remains in `vm_allocator.c`.
 The port can select an appropriate allocator or memory pool without changing the
@@ -100,7 +105,8 @@ replies to it. The adapter owns transport authentication, ordering, buffering an
 backpressure.
 
 **One task owns engine execution.** The current executing-interpreter pointer,
-tracked allocator totals and RGB buffer are global. Calls to session/app functions
+and tracked allocator totals remain global. Module state and target buffers are
+instance-owned. Calls to session/app functions
 must be serialized; neither several concurrent Sessions nor reentrant callbacks
 are supported. Future ESP32/RTOS network callbacks should enqueue commands for one
 engine task. They must not invoke wasm3, mutate its module, change the RGB buffer
@@ -109,9 +115,10 @@ the engine. Native blocking writes are outside the cooperative guest deadline.
 
 Matter/MQTT lighting controls should feed a shared controller-state API when that
 API is implemented. Vendor networking imports should not become prerequisites for
-ordinary portable animations. Firmware OTA, provisioning and storage stay native;
-animation uploads remain independent program data. The current upload slot is in
-RAM and is lost on reboot.
+ordinary portable animations. Firmware OTA and provisioning stay native.
+Snapshot storage is shared code over native block adapters. Transient uploads stay
+in RAM; named procedure saves are independent from activation. Applying hardware
+configuration destroys the instance, while RESET retains hardware and storage.
 
 ## API compatibility and capability discovery
 

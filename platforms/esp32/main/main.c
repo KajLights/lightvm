@@ -46,7 +46,6 @@ void app_main(void) {
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
     esp32_port_init();
     session_init(&session, output_message, &transport);
-    app_start_native_demo(&session.app);
     for (;;) {
         session_tick(&session);
         uint8_t input[256];
