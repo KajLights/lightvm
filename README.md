@@ -67,8 +67,8 @@ schedule bounded handlers and resumable tasks; addressable RGB pixels, digital/a
 PWM and servos share timing, publication and ownership conventions. Input
 sampling, guest execution and native waveforms have independent cadences.
 The first single-program control profile implements start/frame handlers,
-program time, typed parameters, explicit pixel presence and successful-step
-publication. Device events, resumable tasks and composition remain proposed;
+deployment-injected `ctx.pixels`, program time, typed parameters, explicit pixel
+presence and successful-step publication. Device events, resumable tasks and composition remain proposed;
 they are not supplied by the legacy API v1 adapter.
 
 Planned language bindings target that common contract. Pixelblaze source
@@ -108,12 +108,14 @@ No picolights/Adafruit imports or GPL easing source are used.
 ```sh
 python -m lightvm.compiler samples/python/rainbow.py -o build/samples/rainbow_control.wasm
 python tools/client.py --port PORT --store-procedure rainbow-control build/samples/rainbow_control.wasm
-python tools/client.py --port PORT --activate rainbow-control
+python tools/client.py --port PORT --activate rainbow-control --slot A
 python tools/client.py --port PORT --set-parameters '{"speed":0.3}'
 ```
 
-Configure logical target A first using the workflow below. The [control guide](docs/control-api.md)
-documents source syntax, compiler limits, ABI, pause/resume, passive snapshots and
+Animations receive their assigned contribution as `ctx.pixels`; source and
+manifest contain no destination name. Deployment selects the slot; this first
+runtime exposes only A. Configure its output first using the workflow below.
+The [control guide](docs/control-api.md) documents source syntax, compiler limits, ABI, pause/resume, passive snapshots and
 the distinction between painted black and erased presence. The compiler requires
 Python 3.9+; the device contains no Python interpreter. Scenes and waits follow later.
 

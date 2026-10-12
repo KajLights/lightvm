@@ -94,7 +94,7 @@ class Compiler:
         symtable.symtable(source, "<source>", "exec")
         self.aliases, self.functions, self.signatures = {}, {}, {}
         self.globals, self.parameters, self.palettes = {}, {}, {}
-        self.handlers, self.calls, self.resource = {}, {}, None
+        self.handlers, self.calls, self.retention = {}, {}, "fresh"
         self.serial = 0
 
     def fail(self, node, message):
@@ -148,17 +148,11 @@ class Compiler:
                 if len(targets) != 1 or not isinstance(targets[0], ast.Name) or n.value is None:
                     self.fail(n, "module declarations require one named initializer")
                 name, value = targets[0].id, n.value
-                if name in self.globals or name in self.parameters or name in self.palettes or name in self.aliases or name in INTRINSICS or (self.resource and name == self.resource[0]):
+                if name in self.globals or name in self.parameters or name in self.palettes or name in self.aliases or name in INTRINSICS:
                     self.fail(n, "duplicate or reserved declaration")
                 builtin = self.aliases.get(getattr(getattr(value, "func", None), "id", ""))
                 if isinstance(value, ast.Call) and builtin == "pixels":
-                    kw = {k.arg: self.literal(k.value) for k in value.keywords}
-                    if self.resource or len(value.args) != 1 or set(kw) - {"retention"} or len(kw) != len(value.keywords):
-                        self.fail(n, "declare exactly one pixel resource")
-                    binding, retention = self.literal(value.args[0]), kw.get("retention", "fresh")
-                    if binding != "A" or retention not in ("fresh", "retained"):
-                        self.fail(n, "initial profile supports A with fresh or retained pixels")
-                    self.resource = (name, retention)
+                    self.fail(n, 'pixel destinations belong to deployment; use ctx.pixels in a handler')
                 elif isinstance(value, ast.Call) and builtin == "parameter":
                     kw = {k.arg: self.literal(k.value) for k in value.keywords}
                     if len(value.args) != 2 or set(kw) - {"minimum", "maximum", "kind"} or len(kw) != len(value.keywords):
@@ -199,8 +193,7 @@ class Compiler:
                     self.globals[name] = (kind, v)
             elif not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)):
                 self.fail(n, "unsupported module statement; source is never executed by the compiler")
-        if not self.resource: self.fail(self.tree, "declare one pixels('A') resource")
-        reserved = set(self.globals) | set(self.parameters) | set(self.palettes) | {self.resource[0]}
+        reserved = set(self.globals) | set(self.parameters) | set(self.palettes)
         if reserved & set(self.functions): self.fail(self.tree, "function and declaration names must be distinct")
         # Include only original, locally authored mathematical helpers.
         helpers = [n for n in ast.parse(Path(__file__).with_name("easing.py").read_text()).body if isinstance(n, ast.FunctionDef)]
@@ -212,12 +205,19 @@ class Compiler:
         self.sdk = {h.name: "sdk." + h.name for h in helpers}
         for name, f in self.functions.items():
             if not name.startswith("sdk."):
-                protected = set(self.aliases) | set(self.parameters) | set(self.palettes) | INTRINSICS | {self.resource[0]}
+                protected = set(self.aliases) | set(self.parameters) | set(self.palettes) | INTRINSICS
                 if any(a.arg in protected for a in f.args.args):
                     self.fail(f, "arguments cannot shadow SDK declarations or builtins")
             if f.args.defaults or f.args.kw_defaults or f.args.vararg or f.args.kwarg or f.args.kwonlyargs or f.args.posonlyargs or len(f.decorator_list) > 1:
                 self.fail(f, "functions have fixed positional arguments")
-            trigger = self.aliases.get(getattr(f.decorator_list[0], "id", "")) if f.decorator_list else None
+            decorator = f.decorator_list[0] if f.decorator_list else None
+            trigger = self.aliases.get(getattr(decorator.func if isinstance(decorator, ast.Call) else decorator, "id", ""))
+            if isinstance(decorator, ast.Call):
+                if trigger != "on_frame" or decorator.args or len(decorator.keywords) != 1 or decorator.keywords[0].arg != "retention":
+                    self.fail(decorator, 'use @on_frame or @on_frame(retention="retained")')
+                self.retention = self.literal(decorator.keywords[0].value)
+                if self.retention not in ("fresh", "retained"):
+                    self.fail(decorator, "retention must be fresh or retained")
             if f.decorator_list and trigger not in ("on_start", "on_frame"):
                 self.fail(f, "only @on_start and @on_frame are supported")
             if trigger:
@@ -245,6 +245,11 @@ class Compiler:
     def const(self, kind, value):
         return f'({TYPES[kind]}.const {int(value) if kind != "float" else repr(value)})'
 
+    def is_pixels(self, n):
+        return (isinstance(n, ast.Name) and self.locals.get(n.id) == "pixels") or (
+            isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)
+            and self.locals.get(n.value.id) == "context" and n.attr == "pixels")
+
     def expr(self, n):
         if isinstance(n, ast.Constant):
             v = self.literal(n)
@@ -254,6 +259,7 @@ class Compiler:
         if isinstance(n, ast.Name):
             if n.id in self.locals:
                 if n.id not in self.assigned: self.fail(n, "local may be read before assignment")
+                if self.locals[n.id] == "context": self.fail(n, "use context properties")
                 return Expression(self.locals[n.id], f'(local.get ${n.id})')
             if n.id in self.globals:
                 if n.id in self.local_names and n.id not in self.global_names:
@@ -263,6 +269,8 @@ class Compiler:
         if isinstance(n, ast.Attribute):
             base = getattr(n.value, "id", "")
             if self.locals.get(base) == "context":
+                if n.attr == "pixels":
+                    return Expression("pixels", "(global.get $handle)")
                 if n.attr in ("program_us", "delta_us"):
                     return Expression("int", f'(local.get $context.{n.attr})')
                 if n.attr in ("time", "delta"):
@@ -273,13 +281,13 @@ class Compiler:
                 typ = "RGB" if p["type"] == "rgb8" else p["type"]
                 imp = "color" if typ == "RGB" else typ
                 return Expression(typ, f'(call $param_{imp} (i32.const {slot}))')
-            if base == self.resource[0] and n.attr == "count":
-                return Expression("int", '(call $count (global.get $handle))')
+            if self.is_pixels(n.value) and n.attr == "count":
+                return Expression("int", f'(call $count {self.expr(n.value).code})')
             self.fail(n, "unsupported property")
         if isinstance(n, ast.Subscript):
             base = getattr(n.value, "id", "")
             index = self.cast(self.expr(n.slice), "int", n)
-            if base == self.resource[0]: return Expression("RGB", f'(call $read (global.get $handle) {index})')
+            if self.is_pixels(n.value): return Expression("RGB", f'(call $read {self.expr(n.value).code} {index})')
             if base in self.palettes: return Expression("RGB", f'(call $palette_{base} {index})')
             self.fail(n, "only pixels and immutable palettes can be indexed")
         if isinstance(n, ast.UnaryOp):
@@ -309,6 +317,7 @@ class Compiler:
         if isinstance(n, ast.Compare):
             if len(n.ops) != 1: self.fail(n, "write chained comparisons as explicit boolean conditions")
             a, b = self.expr(n.left), self.expr(n.comparators[0])
+            if a.kind not in TYPES or b.kind not in TYPES: self.fail(n, "comparisons require scalar values")
             typ = "float" if "float" in (a.kind, b.kind) else a.kind
             ac, bc = self.cast(a, typ, n), self.cast(b, typ, n)
             op = {ast.Eq: "eq", ast.NotEq: "ne", ast.Lt: "lt", ast.LtE: "le", ast.Gt: "gt", ast.GtE: "ge"}.get(type(n.ops[0]))
@@ -329,17 +338,18 @@ class Compiler:
         if isinstance(n, ast.IfExp):
             condition = self.truth(self.expr(n.test))
             a, b = self.expr(n.body), self.expr(n.orelse)
+            if a.kind not in TYPES or b.kind not in TYPES: self.fail(n, "conditional expressions require scalar values")
             typ = "float" if "float" in (a.kind, b.kind) else a.kind
             return Expression(typ, f'(if (result {TYPES[typ]}) {condition} (then {self.cast(a, typ, n)}) (else {self.cast(b, typ, n)}))')
         if isinstance(n, ast.Call):
             if n.keywords: self.fail(n, "runtime calls use positional arguments")
-            if isinstance(n.func, ast.Attribute) and getattr(n.func.value, "id", "") == self.resource[0]:
+            if isinstance(n.func, ast.Attribute) and self.is_pixels(n.func.value):
                 method = n.func.attr
                 kinds = {"fill": ["RGB"], "clear": [], "erase": ["int"], "present": ["int"]}
                 if method not in kinds or len(n.args) != len(kinds[method]): self.fail(n, "invalid pixel operation")
                 args = [self.cast(self.expr(a), t, a) for a, t in zip(n.args, kinds[method])]
                 if method == "clear": method, args = "fill", ['(i32.const 0)']
-                return Expression("bool" if method == "present" else "void", f'(call ${method} (global.get $handle) {" ".join(args)})')
+                return Expression("bool" if method == "present" else "void", f'(call ${method} {self.expr(n.func.value).code} {" ".join(args)})')
             name = getattr(n.func, "id", "")
             if name in self.locals:
                 self.fail(n, "scalar values are not callable")
@@ -348,10 +358,10 @@ class Compiler:
                 typ = "int" if builtin == "rgb" else "float"
                 if len(n.args) != 3: self.fail(n, "colour helper requires three components")
                 return Expression("RGB", f'(call ${builtin} ' + ' '.join(self.cast(self.expr(a), typ, a) for a in n.args) + ')')
-            if builtin == "len" and len(n.args) == 1 and isinstance(n.args[0], ast.Name):
-                base = n.args[0].id
+            if builtin == "len" and len(n.args) == 1:
+                base = getattr(n.args[0], "id", "")
                 if base in self.palettes: return Expression("int", f'(i64.const {len(self.palettes[base])})')
-                if base == self.resource[0]: return Expression("int", '(call $count (global.get $handle))')
+                if self.is_pixels(n.args[0]): return Expression("int", f'(call $count {self.expr(n.args[0]).code})')
             if builtin in ("int", "float", "bool") and len(n.args) == 1:
                 e = self.expr(n.args[0])
                 if builtin == "bool": return Expression("bool", self.truth(e))
@@ -383,19 +393,19 @@ class Compiler:
                 if name not in self.globals: self.fail(target, "global must have a module initializer")
                 typ = self.globals[name][0]
                 return f'(global.set $g_{name} {self.cast(e, typ, target)})'
-            if name in self.parameters or name in self.palettes or name in self.aliases or name in INTRINSICS or name == self.resource[0]: self.fail(target, "cannot reassign a declaration or builtin")
-            if e.kind not in TYPES: self.fail(target, "only scalar local state is supported")
+            if name in self.parameters or name in self.palettes or name in self.aliases or name in INTRINSICS: self.fail(target, "cannot reassign a declaration or builtin")
+            if e.kind not in TYPES and e.kind != "pixels": self.fail(target, "only scalar locals and ctx.pixels aliases are supported")
             typ = self.locals.setdefault(name, e.kind)
             self.assigned.add(name)
             return f'(local.set ${name} {self.cast(e, typ, target)})'
-        if isinstance(target, ast.Subscript) and getattr(target.value, "id", "") == self.resource[0]:
+        if isinstance(target, ast.Subscript) and self.is_pixels(target.value):
             color = self.cast(e, "RGB", target)
             index = self.cast(self.expr(target.slice), "int", target)
             self.serial += 1
             temporary = f'_rhs.{self.serial}'
             self.locals[temporary] = "RGB"
             # Python evaluates the RHS before evaluating the assignment target.
-            return f'(local.set ${temporary} {color}) (call $write (global.get $handle) {index} (local.get ${temporary}))'
+            return f'(local.set ${temporary} {color}) (call $write {self.expr(target.value).code} {index} (local.get ${temporary}))'
         self.fail(target, "assign a scalar or indexed pixel")
 
     def statements(self, body):
@@ -492,7 +502,7 @@ class Compiler:
             self.fail(f, "typed functions must return a value on every path")
         code = self.statements(f.body)
         params = '(param $context.program_us i64) (param $context.delta_us i64)' if argtypes == ["context"] else ' '.join(f'(param ${a.arg} {TYPES[t]})' for a, t in zip(f.args.args, argtypes))
-        locals_code = ' '.join(f'(local ${n} {TYPES[t]})' for n, t in self.locals.items() if n not in {a.arg for a in f.args.args})
+        locals_code = ' '.join(f'(local ${n} {"i32" if t == "pixels" else TYPES[t]})' for n, t in self.locals.items() if n not in {a.arg for a in f.args.args})
         result = f'(result {TYPES[self.return_type]})' if self.return_type else ''
         return f'(func $fn_{name} {params} {result} {locals_code}\n{code}\n{"unreachable" if self.return_type else ""})'
 
@@ -513,7 +523,7 @@ class Compiler:
             (else (if (i32.ne (local.get $trigger) (i32.const 1)) (then unreachable))
               (call $fn_{self.handlers['on_frame']} (local.get $time) (local.get $delta)))) (i32.const 0))'''
         wat = '(module\n' + '\n'.join(imports + ['(global $handle (mut i32) (i32.const 0))', HELPERS] + globals_code + palettes + functions + [step]) + '\n)'
-        manifest = {"schema": "lightvm.program/1", "abi": 1, "binding": "A", "retention": self.resource[1], "parameters": [p for _, p in self.parameters.values()]}
+        manifest = {"schema": "lightvm.program/2", "abi": 1, "pixels": {"format": "rgb8", "retention": self.retention}, "parameters": [p for _, p in self.parameters.values()]}
         return wat, manifest
 
 
@@ -529,6 +539,7 @@ def compile_source(source, filename="<string>", target=None):
         if target is not None:
             if len(wasm) > target.get("module_limit", 32768): raise CompileError(ast.Module(), "artifact exceeds target module limit")
             if target.get("control_abi") != 1: raise CompileError(ast.Module(), "target does not advertise control ABI 1")
+            if manifest["schema"] not in target.get("program_schemas", []): raise CompileError(ast.Module(), "target does not advertise program schema 2")
         return Compilation(wasm, manifest, wat=wat)
     except (CompileError, SyntaxError) as error:
         n = error.node if isinstance(error, CompileError) else error

@@ -40,13 +40,24 @@ static bool in_bounds(const ControlParameter *p,ParameterValue v) {
 }
 static bool manifest(const uint8_t *bytes,size_t size,Control *c) {
     Json j; uint32_t abi;
-    static const char *const fields[]={"schema","abi","binding","retention","parameters",NULL};
+    static const char *const v1_fields[]={"schema","abi","binding","retention","parameters",NULL};
+    static const char *const v2_fields[]={"schema","abi","pixels","parameters",NULL};
+    static const char *const pixel_fields[]={"format","retention",NULL};
     static const char *const param_fields[]={"name","type","default","minimum","maximum",NULL};
-    if (size>CONTROL_MANIFEST_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,fields) ||
-        !json_equal(&j,json_get(&j,0,"schema"),"lightvm.program/1") ||
-        !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=CONTROL_ABI_VERSION ||
-        !json_equal(&j,json_get(&j,0,"binding"),"A")) return false;
-    int retention=json_get(&j,0,"retention"),params=json_get(&j,0,"parameters");
+    if (size>CONTROL_MANIFEST_LIMIT || !json_parse(&j,bytes,size) ||
+        !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=CONTROL_ABI_VERSION) return false;
+    int retention,params=json_get(&j,0,"parameters");
+    if (json_equal(&j,json_get(&j,0,"schema"),"lightvm.program/2")) {
+        int pixels=json_get(&j,0,"pixels");
+        if (!json_fields(&j,0,v2_fields) || !json_fields(&j,pixels,pixel_fields) ||
+            !json_equal(&j,json_get(&j,pixels,"format"),"rgb8")) return false;
+        retention=json_get(&j,pixels,"retention");
+    } else {
+        // Compatibility with already stored artifacts from the first compiler.
+        if (!json_fields(&j,0,v1_fields) || !json_equal(&j,json_get(&j,0,"schema"),"lightvm.program/1") ||
+            !json_equal(&j,json_get(&j,0,"binding"),"A")) return false;
+        retention=json_get(&j,0,"retention");
+    }
     if (json_equal(&j,retention,"retained")) c->retained=true;
     else if (!json_equal(&j,retention,"fresh")) return false;
     if (params<0 || j.tokens[params].type!=JSON_ARRAY || j.tokens[params].children>(int)CONTROL_PARAMETER_LIMIT) return false;
@@ -119,10 +130,10 @@ M3Result control_probe(const uint8_t *bytes,size_t size,Control *c) {
 }
 static VmInstance *owner(IM3ImportContext context) { return context->userdata; }
 static bool handle_valid(VmInstance *a,uint32_t handle) {
-    return a->control.in_step && a->control.allocation && handle==a->generation && a->target;
+    return a->control.in_step && a->control.allocation && handle==a->generation && a->control.count;
 }
 static bool index_valid(VmInstance *a,uint32_t handle,int64_t index) {
-    return handle_valid(a,handle) && index>=0 && (uint64_t)index<a->target->count;
+    return handle_valid(a,handle) && index>=0 && (uint64_t)index<a->control.count;
 }
 static void mark(uint8_t *bits,uint32_t index,bool present) {
     uint8_t mask=(uint8_t)(1u<<(index&7));
@@ -135,15 +146,15 @@ static void paint(Control *c,uint32_t index,uint32_t color,bool present) {
     mark(c->working_presence,index,present);
 }
 m3ApiRawFunction(resource) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t); m3ApiGetArg(uint32_t,slot);
+    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t); m3ApiGetArg(uint32_t,index);
     VmInstance *a=owner(_ctx);
-    if (slot || !a->control.in_step || !a->control.allocation) return invalid;
+    if (index || !a->control.in_step || !a->control.allocation) return invalid;
     m3ApiReturn(a->generation);
 }
 m3ApiRawFunction(count) {
     (void)runtime; (void)_mem; m3ApiReturnType(int64_t); m3ApiGetArg(uint32_t,handle);
     VmInstance *a=owner(_ctx); if (!handle_valid(a,handle)) return invalid;
-    m3ApiReturn((int64_t)a->target->count);
+    m3ApiReturn((int64_t)a->control.count);
 }
 m3ApiRawFunction(write_pixel) {
     (void)runtime; (void)_mem;
@@ -155,7 +166,7 @@ m3ApiRawFunction(write_pixel) {
 m3ApiRawFunction(fill) {
     (void)runtime; (void)_mem; m3ApiGetArg(uint32_t,handle); m3ApiGetArg(uint32_t,color);
     VmInstance *a=owner(_ctx); if (!handle_valid(a,handle) || color>0xffffff) return invalid;
-    for (uint32_t i=0;i<a->target->count;++i) paint(&a->control,i,color,true);
+    for (uint32_t i=0;i<a->control.count;++i) paint(&a->control,i,color,true);
     return m3_Yield();
 }
 m3ApiRawFunction(erase) {
@@ -238,18 +249,19 @@ M3Result control_prepare(VmInstance *a) {
     Control *c=&a->control;
     if (c->faulted) return "control program faulted; reactivate to recover";
     if (c->initialized) return m3Err_none;
-    if (!a->ready || !a->target || !a->target->count) return "control resource A is unavailable";
+    if (!a->ready || !a->target || !a->target->count || a->target->count>PIXEL_CAPACITY) return "assigned pixel contribution is unavailable";
     M3Result error=m3_FindFunction(&c->step,a->runtime,"control_step");
     if (error) return error;
     if (m3_GetArgCount(c->step)!=3 || m3_GetArgType(c->step,0)!=c_m3Type_i32 ||
         m3_GetArgType(c->step,1)!=c_m3Type_i64 || m3_GetArgType(c->step,2)!=c_m3Type_i64 ||
         m3_GetRetCount(c->step)!=1 || m3_GetRetType(c->step,0)!=c_m3Type_i32) return "control_step must be (i32, i64, i64) -> i32";
     if (!c->allocation) {
-        size_t rgb_bytes=(size_t)a->target->count*3;
-        c->presence_bytes=(a->target->count+7u)/8u;
+        c->count=a->target->count;
+        size_t rgb_bytes=(size_t)c->count*3;
+        c->presence_bytes=(c->count+7u)/8u;
         c->buffer_bytes=rgb_bytes*2+c->presence_bytes*2;
-        if (!vm_heap_charge(rgb_bytes)) return "control output exceeds aggregate heap budget";
-        c->output_charge=rgb_bytes;
+        if (a->output && !vm_heap_charge(rgb_bytes)) return "control output exceeds aggregate heap budget";
+        c->output_charge=a->output ? rgb_bytes : 0;
         c->allocation=demo_calloc(1,c->buffer_bytes);
         if (!c->allocation) { vm_heap_uncharge(c->output_charge); c->output_charge=0; return m3Err_mallocFailed; }
         c->committed=c->allocation; c->working=c->committed+rgb_bytes;
@@ -260,7 +272,9 @@ M3Result control_prepare(VmInstance *a) {
     return error;
 }
 M3Result control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
-    Control *c=&a->control; size_t n=(size_t)a->target->count*3;
+    Control *c=&a->control;
+    if (!c->allocation || c->faulted || trigger>1) return "control contribution is not prepared or faulted";
+    size_t n=(size_t)c->count*3;
     if (delta>INT64_MAX || c->program_us>(uint64_t)INT64_MAX-delta) return "program clock overflow";
     if (trigger) c->program_us+=delta;
     if (trigger && !c->retained) {
@@ -278,16 +292,9 @@ M3Result control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
     if (error) { c->faulted=true; a->playing=false; return error; }
     memcpy(c->committed,c->working,n); memcpy(c->presence,c->working_presence,c->presence_bytes);
     c->contribution_valid=true; ++c->contribution_frame;
-    uint64_t show_started=platform_time_us();
-    a->render_us=(uint32_t)(show_started-started);
-    // The single contribution is composited over black. Erase stores black as
-    // well as removing presence, so this is already a complete output candidate.
-    if (!a->target->driver || !a->target->type->show(a->target->driver,c->working,a->target->count)) {
-        c->faulted=true; a->playing=false; return "native pixel output failed";
-    }
-    memcpy(a->target->rgb,c->working,n);
-    a->show_us=(uint32_t)(platform_time_us()-show_started);
-    c->output_valid=true; ++c->output_frame;
+    a->render_us=(uint32_t)(platform_time_us()-started);
+    // Rendering commits only this instance's contribution. The native scheduler
+    // owns output publication; an offscreen slot never calls a physical driver.
     return m3Err_none;
 }
 
@@ -316,8 +323,8 @@ static void result(VmInstance *a,uint16_t id,enum Status code,const char *messag
 static void describe(ControlWriter *w,bool with_parameters) {
     VmInstance *a=w->vm;
     Control *c=&a->control; char b[512];
-    snprintf(b,sizeof(b),"{\"generation\":%lu,\"parameter_revision\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
-        (unsigned long)a->generation,(unsigned long)c->parameter_revision,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
+    snprintf(b,sizeof(b),"{\"slot\":\"%s\",\"generation\":%lu,\"parameter_revision\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
+        a->slot,(unsigned long)a->generation,(unsigned long)c->parameter_revision,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
     text(w,b);
     if (with_parameters) {
         text(w,",\"manifest\":"); bytes(w,a->bytes+c->manifest_offset,c->manifest_size);
@@ -375,7 +382,7 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     }
     ControlWriter writer={.vm=a,.id=id}; ControlWriter *w=&writer;
     if (snapshot) {
-        if (c->output_valid) emit(a,id,RESP_PIXELS,a->target->rgb,(size_t)a->target->count*3);
+        if (c->output_valid && a->output) emit(a,id,RESP_PIXELS,a->output->rgb,(size_t)a->output->count*3);
         // Presence is an independent contribution snapshot, not an alpha channel.
         char b[3]; text(w,"{\"presence\":\"");
         for (size_t i=0;i<c->presence_bytes;++i) { snprintf(b,sizeof(b),"%02x",c->presence[i]); text(w,b); }

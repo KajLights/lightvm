@@ -52,7 +52,7 @@ static void empty_config(App *a) {
     memset(&a->hardware, 0, sizeof(a->hardware));
     a->config_size = (uint32_t)strlen(EMPTY_CONFIG);
     memcpy(a->config_json, EMPTY_CONFIG, a->config_size);
-    a->vm.target = NULL;
+    a->vm.target = NULL; a->vm.output = NULL;
 }
 static bool config_validate(App *a, const void *data, uint32_t size, HardwareConfig *config, char *error, size_t capacity) {
     if (!hardware_parse(data, size, config, error, capacity)) return false;
@@ -72,9 +72,11 @@ static bool config_apply(App *a, const HardwareConfig *config, const void *data,
     a->hardware = *config;
     memmove(a->config_json, data, size); a->config_size = size;
     a->vm.target = config->target_a ? &a->pixels : NULL;
+    a->vm.output = a->vm.target;
     return true;
 }
-static bool activate(App *a, const char *name, uint16_t id, const char *action, const char *export_name) {
+static bool activate(App *a, const char *name, uint16_t id, const char *action, const char *export_name, const char *slot) {
+    if (strcmp(slot,"A")) { error_reply(a,id,STATUS_CONFIG,"unsupported_slot","this runtime supports deployment slot A only"); return false; }
     const StoreEntry *entry = store_find(&a->store, name);
     if (!entry || !strcmp(name, STORE_CONFIG)) { error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); return false; }
     if (strcmp(action,"play") && strcmp(action,"run")) { error_reply(a,id,STATUS_PROTOCOL,"invalid_action","action must be play or run"); return false; }
@@ -86,7 +88,7 @@ static bool activate(App *a, const char *name, uint16_t id, const char *action, 
     }
     M3Result error=vm_load(&a->vm);
     if (error) { vm_destroy(&a->vm); error_reply(a,id,STATUS_LOAD,"load_failed",error); return false; }
-    a->vm.ready=true;
+    a->vm.ready=true; memcpy(a->vm.slot,slot,strlen(slot)+1);
     memcpy(a->active_procedure,name,strlen(name)+1); a->active_crc=entry->crc;
     vm_command(&a->vm,!strcmp(action,"play") ? CMD_PLAY : CMD_RUN,id,(const uint8_t *)export_name,
                !strcmp(action,"run") ? strlen(export_name) : 0);
@@ -105,7 +107,7 @@ void app_init(App *a, SendMessage send, void *transport) {
         if (!store_read(&a->store,config,0,a->config_json,config->size)) snprintf(a->boot_error,sizeof(a->boot_error),"configuration read failed");
         else if (!config_validate(a,a->config_json,config->size,&hardware,error,sizeof(error))) snprintf(a->boot_error,sizeof(a->boot_error),"%s",error);
         else if (!config_apply(a,&hardware,a->config_json,config->size)) snprintf(a->boot_error,sizeof(a->boot_error),"native device initialization failed");
-        else if (hardware.startup[0]) (void)activate(a,hardware.startup,0,"play","");
+        else if (hardware.startup[0]) (void)activate(a,hardware.startup,0,"play","","A");
         if (a->boot_error[0]) { vm_destroy(&a->vm); pixels_destroy(&a->pixels); empty_config(a); }
     }
     a->booting=false;
@@ -132,7 +134,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"config_limit\":"); number(&w,CONFIG_LIMIT);
     literal(&w,",\"module_limit\":"); number(&w,MODULE_LIMIT);
     literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
-    literal(&w,",\"legacy_animation_api\":1,\"retention_modes\":[\"fresh\",\"retained\"],\"parameter_limit\":8,\"composition\":false,\"program_generation\":"); number(&w,a->vm.generation);
+    literal(&w,",\"program_schemas\":[\"lightvm.program/1\",\"lightvm.program/2\"],\"slots\":[\"A\"],\"slot_binding\":\"deployment\",\"legacy_animation_api\":1,\"retention_modes\":[\"fresh\",\"retained\"],\"parameter_limit\":8,\"composition\":false,\"program_generation\":"); number(&w,a->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
@@ -147,16 +149,18 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"target\":\"A\",\"uploading\":"); literal(&w,a->uploading ? "true" : "false");
     literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"capabilities");
 }
-typedef struct { char op[33],name[33],action[16],export_name[64]; uint32_t revision,saved_revision; bool has_revision,has_saved_revision; } Arguments;
+typedef struct { char op[33],name[33],action[16],export_name[64],slot[33]; uint32_t revision,saved_revision; bool has_revision,has_saved_revision; } Arguments;
 static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
     Json j;
-    memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->export_name,"run",4);
-    static const char *const fields[]={"op","name","action","export","expected_revision","expected_saved_revision",NULL};
+    memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->export_name,"run",4); memcpy(args->slot,"A",2);
+    static const char *const fields[]={"op","name","action","export","slot","expected_revision","expected_saved_revision",NULL};
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) || !json_string(&j,json_get(&j,0,"op"),args->op,sizeof(args->op))) return false;
     int name=json_get(&j,0,"name"),action=json_get(&j,0,"action"),ex=json_get(&j,0,"export");
     if (name>=0 && (!json_string(&j,name,args->name,sizeof(args->name)) || !object_name_valid(args->name))) return false;
     if (action>=0 && !json_string(&j,action,args->action,sizeof(args->action))) return false;
     if (ex>=0 && !json_string(&j,ex,args->export_name,sizeof(args->export_name))) return false;
+    int slot=json_get(&j,0,"slot");
+    if (slot>=0 && !json_string(&j,slot,args->slot,sizeof(args->slot))) return false;
     int revision=json_get(&j,0,"expected_revision"),saved=json_get(&j,0,"expected_saved_revision");
     args->has_revision=revision>=0; args->has_saved_revision=saved>=0;
     return (!args->has_revision || json_u32(&j,revision,&args->revision)) && (!args->has_saved_revision || json_u32(&j,saved,&args->saved_revision));
@@ -213,7 +217,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         if (!entry) error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); else read_object(a,id,entry);
         return;
     }
-    if (!strcmp(args.op,"procedure_activate")) { (void)activate(a,args.name,id,args.action,args.export_name); return; }
+    if (!strcmp(args.op,"procedure_activate")) { (void)activate(a,args.name,id,args.action,args.export_name,args.slot); return; }
     if (!strcmp(args.op,"config_validate") || !strcmp(args.op,"config_apply")) {
         if (!a->staged || a->object_kind!=1) { error_reply(a,id,STATUS_CONFIG,"no_candidate","upload and finish a configuration first"); return; }
         HardwareConfig config; char error[160];

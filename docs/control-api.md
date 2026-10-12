@@ -1,7 +1,8 @@
 # Control ABI 1 and the Python animation frontend
 
 The first control profile implements one independently owned RGB8 contribution
-on logical resource `A`. It follows the control feature notes' named resources,
+assigned at deployment to a source slot. Animations receive `ctx.pixels`; they
+contain no slot or physical device name. It follows the control feature notes'
 start/frame triggers, program time, typed properties, ownership and successful
 step publication. Its import namespace is `lightvm.control.v1`; the legacy
 `led` namespace and `render`/`beforeRender` callbacks remain a separate adapter.
@@ -17,28 +18,31 @@ Use Python 3.9+ with the repository's pinned requirements, from the repository
 root. Firmware does not include Python, its standard library or Wasmtime.
 
 ```python
-from lightvm import pixels, parameter, rgb, on_frame
+from lightvm import parameter, rgb, on_frame
 
-strip = pixels("A", retention="fresh")
 colour = parameter("colour", rgb(255, 64, 0), kind="rgb8")
 
 @on_frame
 def draw(ctx):
-    strip.fill(colour.value)
+    ctx.pixels.fill(colour.value)
 ```
 
 ```sh
 python -m lightvm.compiler samples/python/rainbow.py -o build/samples/rainbow_control.wasm --wat
 python tools/build_samples.py
 python tools/client.py --port PORT --store-procedure rainbow-control build/samples/rainbow_control.wasm
-python tools/client.py --port PORT --activate rainbow-control
+python tools/client.py --port PORT --activate rainbow-control --slot A
 python tools/client.py --port PORT --set-parameters '{"speed":0.3}'
 python tools/client.py --port PORT --pause
 python tools/client.py --port PORT --snapshot
 python tools/client.py --port PORT --resume
 ```
 
-Configure `A` using the existing configuration workflow before activation. A
+Deployment selects a source slot, for example `Client.activate("rainbow-control",
+slot="A")` or CLI `--slot A`. Omission retains the existing default A. This
+single-program runtime advertises `slots:["A"]`; B and the mixer remain a
+subsequent increment. Unsupported slots fail before replacing the current
+program. Configure its output using the existing configuration workflow. A
 saved startup procedure can be a control artifact; its manifest and parameter
 defaults are embedded in the stored WASM. Live parameter changes are volatile.
 The existing activation replacement guarantee remains destructive.
@@ -47,7 +51,8 @@ The existing activation replacement guarantee remains destructive.
 with `wasm`, `manifest`, `diagnostics`, `wat` and `success`. Invalid source returns
 filename/line/column diagnostics. The CLI writes WASM and a matching JSON sidecar;
 `--wat` also writes WAT. `--target descriptor.json` checks advertised control ABI
-and module size. The device still validates the artifact independently.
+and manifest schema support and module size. The device still validates the
+artifact independently.
 
 The compiler parses source with Python AST and symbol-table tools; it does not
 execute declarations or import user-selected modules. A typed expression/control
@@ -60,11 +65,11 @@ palettes use generated checked lookups; generated modules have no linear memory.
 | Construct | Initial support |
 |---|---|
 | Imports | Explicit names from `lightvm` and `lightvm.easing`; aliases supported |
-| Resources | Exactly one `pixels("A", retention="fresh" or "retained")` |
+| Pixels | Deployment injects `ctx.pixels`; optional local alias such as `strip = ctx.pixels` |
 | Parameters | Up to eight unique named bool, signed int, float or packed `rgb8` properties |
 | State | Literal-initialized module scalars and typed/inferred scalar locals; explicit `global` for mutation |
 | Functions | Fixed positional arguments with `int`, `float`, `bool` or `RGB` annotations and a result on every path |
-| Handlers | At most one each `@on_start` and `@on_frame`, taking one context; frame handler required |
+| Handlers | Optional `@on_start` and required `@on_frame`, taking one context; frame defaults fresh, or use `@on_frame(retention="retained")` |
 | Flow | `if`/`else`, conditional expressions, `for NAME in range(...)`, break/continue, return |
 | Arithmetic | `+ - * / // %`, integer `& | ^ ~`, comparisons, unary signs |
 | Booleans | Short-circuit `and`/`or` on bool operands, `not`, numeric truth in conditions |
@@ -85,6 +90,15 @@ loop variable does not change the iterator. An iteration variable cannot be
 used afterward unless it was already initialized before the loop.
 
 ## Resource and clock semantics
+
+`ctx.pixels` is the assigned, instance-owned contribution. Pixel count comes
+from deployment; the source cannot select a slot, device, pin or output. The
+same WASM can be instantiated on different sized canvases with independent
+state, clocks, parameters and paint. Native `control_prepare`/`control_step`
+commit contribution buffers without physical output; only the native playback
+presenter submits LEDs. Tests run two offscreen instances without drivers.
+This provides the ownership boundary for a future A/B mixer without claiming
+that crossfades are implemented.
 
 `ctx.program_us` and `ctx.delta_us` are signed microseconds supplied from the
 native pausable program clock. `ctx.time` and `ctx.delta` expose seconds as
@@ -123,7 +137,8 @@ saturation/value are finite fractions 0..1. Hue quantizes to 16 bits and S/V to
 8 bits by rounding half up, then uses the existing MIT integer HSV conversion.
 Native wire ordering and brightness apply once on submission, after logical RGB.
 
-Successful steps commit their contribution and then attempt output submission.
+Successful steps commit their contribution. The native presenter then attempts
+output submission for a displayed slot; offscreen steps never submit LEDs.
 A guest trap or nonzero result discards pending paint; prior commits and guest
 state are not rolled back. Output failure stops playback and retains the last
 successful output snapshot, while the successfully committed contribution remains
@@ -131,8 +146,9 @@ valid. Physical driver failure cannot promise electrical rollback. Snapshots
 report separate contribution/output validity and frame counters.
 
 For N pixels, committed/working RGB, committed/working packed presence and the
-separate output cost `9N + 2*ceil(N/8)` bytes. Interpreter allocations, buffer
-allocation headers and the already allocated output are charged to the current
+separate output cost `9N + 2*ceil(N/8)` bytes for a displayed slot. An offscreen
+instance needs `6N + 2*ceil(N/8)` bytes, without an output reservation.
+Interpreter allocations, buffer allocation headers and the already allocated output are charged to the current
 aggregate VM heap budget. Fixed module/metadata/native structures and driver
 allocations additionally occupy native RAM. No heap ceilings are raised. All
 functions compile eagerly and storage is reserved before start; rendering does
@@ -145,14 +161,20 @@ A control artifact contains exactly one `lightvm.program` custom section with
 bounded JSON (at most 8192 bytes and the existing 256-token parser limit):
 
 ```json
-{"schema":"lightvm.program/1","abi":1,"binding":"A","retention":"fresh","parameters":[{"name":"speed","type":"float","default":0.1,"minimum":-10.0,"maximum":10.0}]}
+{"schema":"lightvm.program/2","abi":1,"pixels":{"format":"rgb8","retention":"fresh"},"parameters":[{"name":"speed","type":"float","default":0.1,"minimum":-10.0,"maximum":10.0}]}
 ```
+
+The manifest describes pixel format/retention and parameters, with no deployment
+binding. Previously stored `lightvm.program/1` artifacts with `binding:"A"` remain
+loadable through the compatibility path. New compilation rejects `pixels("A")`
+with a migration diagnostic; use `ctx.pixels` and a handler retention declaration.
+The manifest schema changes independently of control ABI 1.
 
 Numeric bounds are optional and inclusive. Bool and RGB8 have intrinsic domains.
 Names use the existing 1..32-character ASCII identifier convention. The native
 loader rejects duplicate/unknown fields, malformed metadata and unsupported
-ABIs/bindings. Control artifacts must have no memory, tables, data/element or
-start sections, and may import only the following functions. wasm3 validates
+ABIs, pixel formats and retention modes. Control artifacts must have no memory,
+tables, data/element or start sections, and may import only the following functions. wasm3 validates
 actual function types and code; PLAY/FRAME validates the step export before
 initialization. Ordinary legacy modules retain their existing rules.
 
@@ -163,7 +185,7 @@ trap separately from valid return data; no negative-data error sentinel exists.
 
 | Import from `lightvm.control.v1` | WASM signature |
 |---|---|
-| `resource` | `(slot:i32) -> i32`; slot 0 resolves A |
+| `resource` | `(index:i32) -> i32`; index 0 resolves this instance's assigned contribution, independent of its deployment slot |
 | `count` | `(handle:i32) -> i64` |
 | `write` | `(handle:i32,index:i64,rgb:i32) -> void` |
 | `fill` | `(handle:i32,rgb:i32) -> void` |
@@ -179,13 +201,15 @@ step. The sole engine owner serializes guest execution and management.
 
 ## Management and replay
 
-Discovery adds `control_abi`, `legacy_animation_api`, `retention_modes`,
-`parameter_limit`, `composition:false` and `program_generation`. MANAGE operations
+Discovery adds `control_abi`, `program_schemas`, `slots`, `slot_binding:"deployment"`,
+`legacy_animation_api`, `retention_modes`, `parameter_limit`, `composition:false`
+and `program_generation`. MANAGE operations
 use the existing framing and DATA/STATUS replies:
 
 | Operation | Inputs/result |
 |---|---|
-| `program_parameters_get` | Manifest, values, generation/revision, clocks, validity, frame IDs and buffer bytes |
+| `procedure_activate` | Stored name, action and optional `slot` (default A); deployment supplies the pixel contribution |
+| `program_parameters_get` | Manifest, values, slot, generation/revision, clocks, validity, frame IDs and buffer bytes |
 | `program_parameters_set` | `values` patch, `expected_generation`, `expected_parameter_revision`; complete patch validates before applying |
 | `program_pause` / `program_resume` | `expected_generation`; preserve state and update playback selection |
 | `program_snapshot` | Passive RGB via PIXELS plus DATA containing committed presence hex and state |
@@ -226,19 +250,27 @@ library, picolights easing code or Adafruit API is embedded or imported.
 
 ## Verification record
 
-On 12 October 2026, all 76 Python tests passed on both the default host and
-175-pixel host profile, together with each profile's native contract test and
+After the destination-injection correction on 12 October 2026, all 78 Python
+tests passed on both the default host and 175-pixel host profile, together with each profile's native contract test and
 extended portable smoke checks. Native simulated tests deny rendering allocations,
 advance an uncapped 1,500,123-microsecond gap, reject aggregate-budget exhaustion,
 and inject output failure while retaining the last successful output. Stored
 control startup/default restoration is tested using the host snapshot store.
+Two native offscreen instances of identical schema-2 WASM use counts 3 and 7,
+independent global state/time/parameters, no rendering allocations, no physical
+output calls, and clean teardown. Tests also cover schema-1 compatibility and
+unsupported-slot rejection without replacement.
 
 The same core cross-built for the original Pico, XIAO ESP32-S3 and XIAO ESP32-C6.
 The six generated modules occupy approximately 1.9–2.5 KiB each without linear
-memory. Those initial checks were host/simulated and cross-build results. A subsequent
-connected Pico run is recorded below; ESP32 hardware validation remains pending.
+memory. The earlier connected Pico runs are recorded below; ESP32 hardware
+validation remains pending.
 
 ## Connected Pico animation runs, 12 October 2026
+
+These hardware results predate the destination-injection correction and describe
+the earlier schema-1 artifacts. The corrected source/API has been host tested
+and cross-built; it has not been flashed or rerun on the connected strip.
 
 The connected original Pico ran each of the six original Python animations for
 at least 30 seconds continuously on 100 WS2812B pixels, GP16, GRB ordering and

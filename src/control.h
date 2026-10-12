@@ -18,7 +18,7 @@ typedef struct {
 } ControlParameter;
 typedef struct {
     bool enabled, retained, initialized, in_step, faulted, contribution_valid, output_valid;
-    uint32_t parameter_count, parameter_revision, contribution_frame, output_frame;
+    uint32_t parameter_count, parameter_revision, contribution_frame, output_frame, count;
     ControlParameter parameters[CONTROL_PARAMETER_LIMIT];
     uint32_t manifest_offset, manifest_size;
     uint64_t program_us;

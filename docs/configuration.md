@@ -88,8 +88,10 @@ or play; the error does not remove it from the library.
 
 `procedure_activate` loads a fresh instance and either plays its existing API v1
 callbacks, starts a manifested [control ABI 1 program](control-api.md), or calls a
-zero-argument export returning void or i32. Control manifests and parameter defaults
-are embedded in the WASM; live changes do not alter the saved module. The default
+zero-argument export returning void or i32. Its optional `slot` field defaults
+to A; unsupported slots fail before replacement. New control programs receive
+`ctx.pixels` from deployment and carry no destination binding. Control manifests
+and parameter defaults are embedded in the WASM; live changes do not alter the saved module. The default
 export for `run` is `run`. Further legacy RUN calls retain that instance's state.
 Activation replacement is destructive and resets the prior guest state. Once
 replacement begins, a load or initialization failure leaves the runtime idle; storage and configuration remain available.
@@ -101,11 +103,12 @@ to that name. RESET unloads runtime state and cancels staging; it never erases
 configuration or procedures. Native-demo is an explicit diagnostic on configured A.
 
 `VmInstance` owns module bytes, wasm3 state, bindings and timing. `PixelBuffer`
-owns packed RGB and its native driver; imports resolve through the instance's
-target pointer. Output submission is separate from rendering. The aggregate VM
-heap stays bounded, and one engine owner serializes all work. Tests instantiate
-two independent memory-backed targets/VMs to verify ownership; production exposes
-only A. B, a separate U8 mix channel, composition and guest device-handle imports
+owns packed RGB and its native driver. Control imports operate on the instance's
+reserved working contribution and captured count. The optional native output
+pointer is separate from the assigned canvas; control steps never call its driver.
+The aggregate VM heap stays bounded, and one engine owner serializes all work. Tests instantiate
+two independent offscreen canvases/VMs with identical schema-2 WASM to verify
+ownership; production exposes only A. B, a separate U8 mix channel, composition and guest device-handle imports
 remain proposed in the [control model](../documents/feature-proposal-control-api.md)
 and [A/B proposal](../documents/feature-proposal-ab-transitions.md), with ordered
 scene/layer semantics in the

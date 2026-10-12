@@ -12,6 +12,12 @@ A source is one colour animation in the minimal profile, or a completed layered
 scene when [animation composition](feature-proposal-animation-composition.md)
 is supported. Scene composition runs before the transition mix.
 
+The implemented single-program API now injects `ctx.pixels` from deployment;
+animations and schema-2 manifests contain no A/B destination name. Guest steps
+produce owned contributions without physical output calls. Tests exercise two
+independent offscreen instances of identical bytecode. Production advertises
+only slot A; B, transition programs and the mixer below remain proposed.
+
 The native engine owns packed frame buffers, scheduling, compositing and physical
 output through the shared [control API and execution model](feature-proposal-control-api.md).
 The first mixer format uses RGB8 colour sources and a separate U8 mix channel

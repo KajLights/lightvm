@@ -26,7 +26,9 @@ typedef struct VmInstance {
     char animation_error[100];
     SendMessage send;
     void *transport;
-    PixelBuffer *target;
+    PixelBuffer *target; // Assigned contribution dimensions; no hardware access in control_step.
+    PixelBuffer *output; // Optional native presentation destination.
+    char slot[33];
     uint32_t generation;
     Control control;
 } VmInstance;

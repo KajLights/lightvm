@@ -19,18 +19,20 @@ static void reply(VmInstance *a, uint16_t id, enum Status code, int32_t value, c
 }
 void vm_init(VmInstance *a, PixelBuffer *target, SendMessage send, void *transport) {
     memset(a,0,sizeof(*a)); a->generation=1; a->send=send; a->transport=transport; a->target=target;
+    a->output=target && target->driver ? target : NULL; memcpy(a->slot,"A",2);
 }
 static void stop_animation(VmInstance *a) {
     a->playing=false; a->native_demo=false; a->rendering_pixel=false;
     a->render=NULL; a->before_render=NULL; a->animation_error[0]=0;
-    if (a->control.enabled && a->control.allocation) {
-        size_t n=(size_t)a->target->count*3;
+    if (a->control.enabled && a->control.allocation && a->output) {
+        size_t n=(size_t)a->control.count*3;
         memset(a->control.working,0,n);
-        if (a->target->type->show(a->target->driver,a->control.working,a->target->count)) {
-            memset(a->target->rgb,0,n); a->control.output_valid=true;
+        if (a->output->count==a->control.count && a->output->type && a->output->driver && a->output->rgb &&
+            a->output->type->show(a->output->driver,a->control.working,a->control.count)) {
+            memset(a->output->rgb,0,n); a->control.output_valid=true;
             ++a->control.output_frame;
         } else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
-    } else { pixels_clear(a->target); pixels_show(a->target); }
+    } else if (!a->control.enabled) { pixels_clear(a->target); pixels_show(a->target); }
 }
 void vm_destroy(VmInstance *a) {
     stop_animation(a);
@@ -241,16 +243,26 @@ static M3Result render_animation(VmInstance *a, uint32_t delta_ms) {
     }
     return error;
 }
-static void show_frame(VmInstance *a, uint64_t started, bool submitted) {
-    if (submitted) { ++a->frame_count; return; }
+static void show_frame(VmInstance *a, uint64_t started, bool contribution) {
     a->render_us=(uint32_t)(platform_time_us()-started);
     uint64_t show_started=platform_time_us();
-    if (!pixels_show(a->target)) {
+    bool success;
+    if (contribution) {
+        // The initial single-slot presenter composites absent pixels over black.
+        // Each instance keeps an independent committed contribution for a mixer.
+        if (!a->output) { a->show_us=0; ++a->frame_count; return; }
+        success=a->output->driver && a->output->type && a->output->rgb &&
+            a->output->count==a->control.count &&
+            a->output->type->show(a->output->driver,a->control.committed,a->control.count);
+        if (success) memcpy(a->output->rgb,a->control.committed,(size_t)a->control.count*3);
+    } else success=pixels_show(a->target);
+    if (!success) {
         a->playing=false; a->native_demo=false;
+        if (contribution) a->control.faulted=true;
         snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
     }
     a->show_us=(uint32_t)(platform_time_us()-show_started);
-    if (a->control.enabled && !a->animation_error[0]) {
+    if (a->control.enabled && success) {
         a->control.output_valid=true; ++a->control.output_frame;
     }
     ++a->frame_count;
@@ -288,6 +300,8 @@ void vm_tick(VmInstance *a) {
 }
 static void play(VmInstance *a, uint16_t id) {
     a->playing=false; a->native_demo=false; a->animation_error[0]=0;
+    bool initial=a->control.enabled && !a->control.initialized;
+    uint64_t started=platform_time_us();
     begin_execution(a,id,false);
     M3Result error=prepare_animation(a);
     end_execution(a);
@@ -295,6 +309,10 @@ static void play(VmInstance *a, uint16_t id) {
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         reply(a,id,execution_status(a,error),a->guest_exit ? a->exit_code : 0,error);
         return;
+    }
+    if (initial) {
+        show_frame(a,started,true);
+        if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
     }
     a->playing=true; a->frame_count=0;
     a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
@@ -321,7 +339,8 @@ static void frame_step(VmInstance *a, uint16_t id, uint32_t delta_ms) {
     }
     show_frame(a,started,a->control.enabled && !native);
     if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
-    const uint8_t *bytes=a->target->rgb;
+    const uint8_t *bytes=a->control.enabled && !native ?
+        (a->output ? a->output->rgb : a->control.committed) : a->target->rgb;
     for (size_t offset=0; offset<((size_t)a->target->count * 3); offset+=FRAME_LIMIT) {
         size_t count=((size_t)a->target->count * 3)-offset;
         if (count>FRAME_LIMIT) count=FRAME_LIMIT;

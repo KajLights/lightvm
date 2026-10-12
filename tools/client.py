@@ -259,8 +259,11 @@ class Client:
         revision = self.describe()["catalog_revision"]
         return self.manage("procedure_delete", name=name, expected_revision=revision)
 
-    def activate(self, name, action="play", export="run"):
-        return self.manage("procedure_activate", name=name, action=action, export=export)
+    def activate(self, name, action="play", export="run", slot=None):
+        fields = {"name": name, "action": action, "export": export}
+        if slot is not None:
+            fields["slot"] = slot
+        return self.manage("procedure_activate", **fields)
 
     def program_parameters(self):
         self.manage("program_parameters_get")
@@ -311,6 +314,7 @@ def main():
     action.add_argument("--get-procedure", metavar="NAME")
     action.add_argument("--delete-procedure", metavar="NAME")
     action.add_argument("--activate", metavar="NAME")
+    parser.add_argument("--slot", help="deployment slot for --activate (default A)")
     action.add_argument("--cancel-upload", action="store_true")
     action.add_argument("--parameters", action="store_true", help="read control parameters and program state")
     action.add_argument("--set-parameters", metavar="JSON", help="atomically update live control parameters")
@@ -381,7 +385,7 @@ def main():
             elif args.delete_procedure:
                 client.delete_procedure(args.delete_procedure)
             elif args.activate:
-                client.activate(args.activate, args.action, args.function)
+                client.activate(args.activate, args.action, args.function, args.slot)
             elif args.cancel_upload:
                 client.require_ok(client.command(OBJECT_CANCEL))
             elif args.parameters:

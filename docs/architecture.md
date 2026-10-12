@@ -124,6 +124,13 @@ Snapshot storage is shared code over native block adapters. Transient uploads st
 in RAM; named procedure saves are independent from activation. Applying hardware
 configuration destroys the instance, while RESET retains hardware and storage.
 
+Control animation source receives its assigned contribution as `ctx.pixels`.
+Manifest schema 2 describes format/retention and parameters, without a slot or
+hardware name. Native deployment selects a slot (currently A). `control_step`
+commits only that instance's reserved buffers; the scheduler's presenter owns
+physical output. Multiple offscreen instances therefore have independent state
+and contributions for subsequent scene/A/B composition.
+
 ## Proposed control model
 
 The [control API and execution model](../documents/feature-proposal-control-api.md)

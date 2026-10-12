@@ -16,7 +16,7 @@ from lightvm import Context, Pixels, Parameter, rgb
 from lightvm import easing
 from lightvm.compiler import compile_source, uleb
 
-PREFIX = 'from lightvm import pixels, parameter, rgb, hsv, on_start, on_frame, RGB\np = pixels("A")\n'
+PREFIX = 'from lightvm import parameter, rgb, hsv, on_start, on_frame, RGB\n'
 
 
 def artifact(source):
@@ -27,7 +27,7 @@ def artifact(source):
 
 
 def with_manifest(wat, manifest=None):
-    m = manifest or {'schema': 'lightvm.program/1', 'abi': 1, 'binding': 'A', 'retention': 'fresh', 'parameters': []}
+    m = manifest or {'schema': 'lightvm.program/2', 'abi': 1, 'pixels': {'format': 'rgb8', 'retention': 'fresh'}, 'parameters': []}
     name = b'lightvm.program'
     section = uleb(len(name)) + name + json.dumps(m).encode()
     return bytes(wasmtime.wat2wasm(wat)) + b'\0' + uleb(len(section)) + section
@@ -38,27 +38,27 @@ class Replay:
     def __init__(self, source, count):
         namespace = {}
         exec(compile(source, '<trusted-reference>', 'exec'), namespace)
-        self.pixels = next(v for v in namespace.values() if isinstance(v, Pixels))
         self.parameters = {v.name: v for v in namespace.values() if isinstance(v, Parameter)}
         self.handlers = {v.lightvm_trigger: v for v in namespace.values() if callable(v) and hasattr(v, 'lightvm_trigger')}
+        self.pixels = Pixels(self.handlers[1].lightvm_retention)
         self.pixels.bind(count)
         self.time = 0
         self.pixels.begin()
         if 0 in self.handlers:
-            self.handlers[0](Context(0, 0))
+            self.handlers[0](Context(0, 0, self.pixels))
         self.pixels.commit()
 
     def step(self, delta_ms):
         self.time += delta_ms * 1000
         self.pixels.begin()
-        self.handlers[1](Context(self.time, delta_ms * 1000))
+        self.handlers[1](Context(self.time, delta_ms * 1000, self.pixels))
         self.pixels.commit()
         return b''.join(c.to_bytes(3, 'big') for c in self.pixels.committed)
 
 
 class CompilerTests(unittest.TestCase):
     def test_memoryless_artifacts_and_target_admission(self):
-        source = PREFIX + '@on_frame\ndef draw(ctx):\n p.fill(rgb(1,2,3))\n'
+        source = PREFIX + '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p.fill(rgb(1,2,3))\n'
         result = artifact(source)
         module = wasmtime.Module(wasmtime.Engine(), result.wasm)
         self.assertEqual([e.name for e in module.exports], ['control_step'])
@@ -66,23 +66,40 @@ class CompilerTests(unittest.TestCase):
         self.assertLess(len(result.wasm), 4096)
         self.assertFalse(compile_source(source, target={'module_limit': 100, 'control_abi': 1}).success)
         self.assertFalse(compile_source(source, target={'module_limit': 32768}).success)
-        self.assertTrue(compile_source(source, target={'module_limit': 32768, 'control_abi': 1}).success)
+        self.assertFalse(compile_source(source, target={'module_limit': 32768, 'control_abi': 1}).success)
+        self.assertTrue(compile_source(source, target={'module_limit': 32768, 'control_abi': 1,
+                                                     'program_schemas':['lightvm.program/2']}).success)
+
+    def test_injected_pixels_and_retention_have_no_deployment_binding(self):
+        for retention in ('fresh', 'retained'):
+            source = PREFIX + f'@on_frame(retention="{retention}")\ndef draw(ctx):\n ctx.pixels.fill(rgb(1,2,3))\n'
+            result = artifact(source)
+            self.assertEqual(result.manifest, {'schema':'lightvm.program/2','abi':1,
+                'pixels':{'format':'rgb8','retention':retention},'parameters':[]})
+            self.assertEqual(Replay(source, 7).step(0), bytes([1,2,3])*7)
+        source = 'from lightvm import pixels, on_frame\np=pixels("A")\n@on_frame\ndef draw(ctx): pass\n'
+        result = compile_source(source)
+        self.assertFalse(result.success)
+        self.assertIn('deployment', result.diagnostics[0].message)
+        for decorator in ('@on_frame(retention="invalid")', '@on_start(retention="fresh")',
+                          '@on_frame(slot="A")', '@on_frame(retention="fresh", retention="retained")'):
+            self.assertFalse(compile_source(PREFIX + decorator + '\ndef draw(ctx): pass\n').success)
 
     def test_rejects_unsupported_or_ambiguous_python_with_locations(self):
         bad = [
             'import os', 'from os import system', 'from lightvm import *',
             'class Effect: pass', 'x = []', 'x = open("/tmp/no-code-execution", "w")',
-            '@on_frame\ndef draw(ctx):\n while True: pass',
+            '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n while True: pass',
             '@on_frame\nasync def draw(ctx): pass',
-            '@on_frame\ndef draw(ctx):\n raise ValueError()',
-            'def f(x: int) -> int:\n return f(x)\n@on_frame\ndef draw(ctx):\n f(1)',
+            '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n raise ValueError()',
+            'def f(x: int) -> int:\n return f(x)\n@on_frame\ndef draw(ctx):\n p = ctx.pixels\n f(1)',
             'def f(x: int) -> int:\n if x > 0: return x\n@on_frame\ndef draw(ctx): pass',
-            '@on_frame\ndef draw(ctx):\n if ctx.delta > 0.0: x = 1\n p.fill(rgb(x,0,0))',
-            '@on_frame\ndef draw(ctx):\n a = 1 and 2',
-            '@on_frame\ndef draw(ctx):\n for i in range(0): pass\n p.fill(rgb(i,0,0))',
+            '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n if ctx.delta > 0.0: x = 1\n p.fill(rgb(x,0,0))',
+            '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n a = 1 and 2',
+            '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n for i in range(0): pass\n p.fill(rgb(i,0,0))',
             'x = 9223372036854775808', 'x = 1e400', 'min = 3',
-            '@on_frame\ndef draw(ctx):\n min = 3',
-            'def f(p: int) -> int:\n return p\n@on_frame\ndef draw(ctx): pass',
+            '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n min = 3',
+            'def f(rgb: int) -> int:\n return rgb\n@on_frame\ndef draw(ctx): pass',
         ]
         for fragment in bad:
             with self.subTest(fragment=fragment):
@@ -165,6 +182,7 @@ def bump() -> int:
 
 @on_frame
 def draw(ctx):
+ p = ctx.pixels
  p[0] = rgb(-7 // 3 + 3, -7 % 3, 7 % -3 + 3)
  p[1] = rgb(int(-7.0 // 3.0) + 3, int(-7.0 % 3.0), abs(bump()))
  total = 0
@@ -189,7 +207,7 @@ def draw(ctx):
     def test_compiled_easing_agrees_with_python(self):
         for name in ('linear', 'quadratic_in', 'quadratic_out', 'quadratic_in_out',
                      'cubic_in', 'cubic_out', 'cubic_in_out', 'smoothstep'):
-            source = PREFIX + f'from lightvm.easing import {name}\n@on_frame\ndef draw(ctx):\n p.fill(rgb(int(255.0 * {name}(ctx.time - 0.5)), 0, 0))\n'
+            source = PREFIX + f'from lightvm.easing import {name}\n@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p.fill(rgb(int(255.0 * {name}(ctx.time - 0.5)), 0, 0))\n'
             self.upload(source)
             replay = Replay(source, self.count)
             for delta in (0, 500, 500, 500, 500):
@@ -203,6 +221,7 @@ def next_value() -> int:
  return value
 @on_frame
 def draw(ctx):
+ p = ctx.pixels
  for i in range(next_value(), next_value(), next_value()):
   p[0] = rgb(i, 0, 0)
  p[next_value() - 4] = rgb(next_value(), 0, 0)
@@ -232,8 +251,38 @@ def draw(ctx):
             self.assertEqual(self.client.program_parameters()['values']['color'], rgb(255,64,0))
             self.assertEqual(self.step(), bytes([255,64,0])*5)
 
+    def test_deployment_selects_slot_and_rejects_unsupported_slot_before_replacement(self):
+        source = (ROOT / 'samples/python/rainbow.py').read_text()
+        compiled = artifact(source)
+        import tempfile
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.transport.close()
+        self.transport = ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', str(ROOT / 'build/host/lightvm')),
+                                          storage=Path(folder.name) / 'store.bin')
+        self.client = Client(self.transport)
+        self.configure(self.count)
+        self.client.save_procedure('rainbow-slot', compiled.wasm)
+        self.client.activate('rainbow-slot', slot='A')
+        self.client.pause_program()
+        first = self.step(100)
+        state = self.client.program_parameters()
+        self.assertEqual(state['slot'], 'A')
+        descriptor = self.client.describe()
+        self.assertEqual(descriptor['slots'], ['A'])
+        self.assertEqual(descriptor['slot_binding'], 'deployment')
+        self.assertIn('lightvm.program/2', descriptor['program_schemas'])
+        with self.assertRaisesRegex(RuntimeError, 'slot A only'):
+            self.client.activate('rainbow-slot', slot='B')
+        self.assertEqual(self.client.program_parameters(), state)
+        self.assertEqual(self.client.snapshot()[1], first)
+        self.assertEqual(self.client.get_procedure('rainbow-slot'), compiled.wasm)
+        # The compiled program also uses direct context access and local aliases.
+        self.upload(PREFIX + '@on_frame\ndef draw(ctx):\n p=ctx.pixels\n q=p\n q[q.count-1]=rgb(len(ctx.pixels),0,0)\n')
+        self.assertEqual(self.step(), bytes((self.count-1)*3) + bytes([self.count,0,0]))
+
     def test_finite_subnormal_parameter_and_palette_bounds(self):
-        source = PREFIX + 'tiny=parameter("tiny", 1e-320)\npalette=(rgb(1,2,3),)\n@on_frame\ndef draw(ctx):\n p[0]=palette[int(ctx.time)]\n'
+        source = PREFIX + 'tiny=parameter("tiny", 1e-320)\npalette=(rgb(1,2,3),)\n@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p[0]=palette[int(ctx.time)]\n'
         self.upload(source)
         self.assertEqual(self.client.program_parameters()['values']['tiny'], 1e-320)
         first = self.step()
@@ -242,9 +291,10 @@ def draw(ctx):
 
     def test_presence_clear_erase_readback_and_retention(self):
         for retention in ('fresh', 'retained'):
-            source = PREFIX.replace('pixels("A")', f'pixels("A", retention="{retention}")') + '''phase = 0
-@on_frame
+            source = PREFIX + f'''phase = 0
+@on_frame(retention="{retention}")
 def draw(ctx):
+ p = ctx.pixels
  global phase
  if phase == 0:
   p.fill(rgb(10, 20, 30))
@@ -265,7 +315,7 @@ def draw(ctx):
             metadata, snapshot = self.client.snapshot()
             self.assertEqual(snapshot, second)
             self.assertEqual(metadata['presence'], '1d' if retention == 'retained' else '15')
-            source = PREFIX + '@on_frame\ndef draw(ctx):\n p.clear()\n'
+            source = PREFIX + '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p.clear()\n'
             self.upload(source); self.step()
             self.assertEqual(self.client.snapshot()[0]['presence'], '1f')
 
@@ -277,6 +327,7 @@ color = parameter("color", rgb(1, 2, 3), kind="rgb8")
 phase = 0
 @on_frame
 def draw(ctx):
+ p = ctx.pixels
  global phase
  phase += 1
  p.fill(color.value)
@@ -301,14 +352,16 @@ def draw(ctx):
         self.assertEqual(self.step()[:3], bytes([1,2,1]))
 
     def test_pause_stop_resume_start_once_and_passive_snapshot(self):
-        source = PREFIX.replace('pixels("A")', 'pixels("A", retention="retained")') + '''starts = 0
+        source = PREFIX + '''starts = 0
 @on_start
 def start(ctx):
+ p = ctx.pixels
  global starts
  starts += 1
  p.fill(rgb(10, 20, 30))
-@on_frame
+@on_frame(retention="retained")
 def draw(ctx):
+ p = ctx.pixels
  p[0] = rgb(starts, int(ctx.time * 10.0), 0)
 '''
         self.upload(source)
@@ -336,6 +389,7 @@ def draw(ctx):
         source = PREFIX + '''phase = 0
 @on_frame
 def draw(ctx):
+ p = ctx.pixels
  global phase
  p.fill(rgb(30, 40, 50))
  if phase > 0:
@@ -372,8 +426,17 @@ def draw(ctx):
                 except RuntimeError:
                     pass
                 self.client.require_ok(self.client.command(RESET))
-        bad = {'schema':'lightvm.program/1','abi':1,'binding':'B','retention':'fresh','parameters':[]}
-        with self.assertRaises(RuntimeError): self.client.upload(with_manifest('(module '+base+')', bad))
+        for bad in (
+            {'schema':'lightvm.program/2','abi':1,'pixels':{'format':'rgbw','retention':'fresh'},'parameters':[]},
+            {'schema':'lightvm.program/2','abi':1,'pixels':{'format':'rgb8','retention':'fresh'},'binding':'A','parameters':[]},
+            {'schema':'lightvm.program/2','abi':1,'parameters':[]},
+            {'schema':'lightvm.program/1','abi':1,'binding':'B','retention':'fresh','parameters':[]}):
+            with self.subTest(manifest=bad), self.assertRaises(RuntimeError):
+                self.client.upload(with_manifest('(module '+base+')', bad))
+        # Previously stored schema-1 artifacts continue through the adapter.
+        old = {'schema':'lightvm.program/1','abi':1,'binding':'A','retention':'fresh','parameters':[]}
+        self.client.upload(with_manifest('(module '+base+')', old))
+        self.assertEqual(self.step(), bytes(self.count*3))
         duplicate = with_manifest('(module '+base+')')
         # Append its custom section a second time.
         plain = bytes(wasmtime.wat2wasm('(module '+base+')'))
@@ -404,7 +467,7 @@ def draw(ctx):
         self.assertEqual(self.client.status_fields()['heap'], '0')
 
     def test_repeated_load_and_full_parameter_capacity(self):
-        source = PREFIX + ''.join(f'v{i}=parameter("v{i}", {i}, minimum=-100, maximum=255)\n' for i in range(8)) + '@on_frame\ndef draw(ctx):\n p.fill(rgb(v0.value,v1.value,v7.value))\n'
+        source = PREFIX + ''.join(f'v{i}=parameter("v{i}", {i}, minimum=-100, maximum=255)\n' for i in range(8)) + '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p.fill(rgb(v0.value,v1.value,v7.value))\n'
         for _ in range(5):
             self.upload(source)
             self.assertEqual(self.step()[:3], bytes([0,1,7]))

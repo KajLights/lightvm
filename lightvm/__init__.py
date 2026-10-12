@@ -42,6 +42,7 @@ def hash01(index: int, seed: int) -> float:
 class Context:
     program_us: int
     delta_us: int
+    pixels: "Pixels"
 
     @property
     def time(self):
@@ -64,10 +65,11 @@ def parameter(name, default, *, minimum=None, maximum=None, kind=None):
 
 
 class Pixels:
-    def __init__(self, name, retention="fresh"):
-        if name != "A" or retention not in ("fresh", "retained"):
-            raise ValueError("initial profile supports A with fresh or retained pixels")
-        self.name, self.retention = name, retention
+    """A deployment-owned canvas for trusted reference replay, injected in Context."""
+    def __init__(self, retention="fresh"):
+        if retention not in ("fresh", "retained"):
+            raise ValueError("pixels require fresh or retained contributions")
+        self.retention = retention
         self.count = 0
         self.committed, self.presence = [], []
         self.working, self.working_presence = [], []
@@ -113,15 +115,16 @@ class Pixels:
         self.working[index], self.working_presence[index] = 0, False
 
 
-def pixels(name, *, retention="fresh"):
-    return Pixels(name, retention)
-
-
 def on_start(function):
     function.lightvm_trigger = 0
     return function
 
 
-def on_frame(function):
-    function.lightvm_trigger = 1
-    return function
+def on_frame(function=None, *, retention="fresh"):
+    if retention not in ("fresh", "retained"):
+        raise ValueError("invalid contribution retention")
+    def decorate(handler):
+        handler.lightvm_trigger = 1
+        handler.lightvm_retention = retention
+        return handler
+    return decorate(function) if function is not None else decorate

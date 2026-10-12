@@ -16,9 +16,12 @@ adapter above this API. Pixelblaze callback names, numeric rules and available
 devices do not define or constrain the core contract.
 
 The first [control ABI 1 animation profile](../docs/control-api.md) now defines
-start/frame steps, named A bindings, program time, typed live parameters,
+start/frame steps, deployment-injected pixel contributions, program time, typed live parameters,
 fresh/retained RGB8 colour/presence and successful-step publication. An original
-restricted Python compiler and six examples target it. General event/task/device
+restricted Python compiler and six examples target it. Schema-2 artifacts have
+no destination binding: slot selection is native deployment metadata. Production
+still exposes one slot A; offscreen instances and physical publication have
+separate ownership, preparing the later A/B mixer. General event/task/device
 and multi-layer contracts below remain proposed.
 
 This proposal defines the remaining common semantics before freezing additional
