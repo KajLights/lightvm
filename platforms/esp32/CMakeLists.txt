@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.18)
+
+get_filename_component(LIGHTVM_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
+set(LIGHTVM_BOARD "" CACHE STRING "XIAO board: xiao_esp32s3 or xiao_esp32c6")
+set_property(CACHE LIGHTVM_BOARD PROPERTY STRINGS xiao_esp32s3 xiao_esp32c6)
+if(LIGHTVM_BOARD STREQUAL "xiao_esp32s3")
+    set(LIGHTVM_IDF_TARGET esp32s3)
+elseif(LIGHTVM_BOARD STREQUAL "xiao_esp32c6")
+    set(LIGHTVM_IDF_TARGET esp32c6)
+else()
+    message(FATAL_ERROR "Set LIGHTVM_BOARD=xiao_esp32s3 or xiao_esp32c6")
+endif()
+if((DEFINED IDF_TARGET AND NOT IDF_TARGET STREQUAL LIGHTVM_IDF_TARGET) OR
+   (DEFINED ENV{IDF_TARGET} AND NOT "$ENV{IDF_TARGET}" STREQUAL LIGHTVM_IDF_TARGET))
+    message(FATAL_ERROR "LIGHTVM_BOARD=${LIGHTVM_BOARD} requires IDF_TARGET=${LIGHTVM_IDF_TARGET}")
+endif()
+if(DEFINED LIGHTVM_CONFIGURED_BOARD AND NOT LIGHTVM_CONFIGURED_BOARD STREQUAL LIGHTVM_BOARD)
+    message(FATAL_ERROR "Use a separate build directory for each LIGHTVM_BOARD")
+endif()
+set(LIGHTVM_CONFIGURED_BOARD "${LIGHTVM_BOARD}" CACHE INTERNAL "Board in this build directory")
+set(IDF_TARGET "${LIGHTVM_IDF_TARGET}" CACHE STRING "ESP-IDF target")
+set(LIGHTVM_BOARD_CONFIG "${CMAKE_CURRENT_LIST_DIR}/boards/${LIGHTVM_BOARD}.h"
+    CACHE FILEPATH "Board wiring and engine resource profile")
+set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig" CACHE FILEPATH "Build-local ESP-IDF configuration")
+# ESP-IDF automatically loads sdkconfig.defaults.<target> alongside this file.
+set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
+if(NOT EXISTS "$ENV{IDF_PATH}/tools/cmake/project.cmake")
+    message(FATAL_ERROR "Activate ESP-IDF v5.5.3 with its export.sh first")
+endif()
+include("$ENV{IDF_PATH}/tools/cmake/version.cmake")
+set(IDF_VERSION "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}")
+if(NOT IDF_VERSION VERSION_EQUAL "5.5.3")
+    message(FATAL_ERROR "This port is pinned to ESP-IDF 5.5.3; found ${IDF_VERSION}")
+endif()
+# All dependencies come from the pinned SDK or the shared wasm3 helper. Avoid
+# managed-component lockfiles in the source tree and build only this component's
+# dependency closure rather than unused networking examples/services.
+set(ENV{IDF_COMPONENT_MANAGER} "0")
+set(COMPONENTS main)
+include("$ENV{IDF_PATH}/tools/cmake/project.cmake")
+project(lightvm)
+
+configure_file("${LIGHTVM_ROOT}/LICENSE" "${CMAKE_BINARY_DIR}/LICENSE" COPYONLY)
+configure_file("${LIGHTVM_ROOT}/THIRD_PARTY_NOTICES.md" "${CMAKE_BINARY_DIR}/THIRD_PARTY_NOTICES.md" COPYONLY)
+file(COPY "${LIGHTVM_ROOT}/licenses" DESTINATION "${CMAKE_BINARY_DIR}")

@@ -8,9 +8,16 @@ An effect should query `led.pixel_count()` and avoid fixed board pin/count
 assumptions; an oversized or unsupported module is rejected with a load/upload
 error. Real-time frame throughput must be measured on each target.
 
-The implemented ports are the POSIX host simulator and the original RP2040 Pico.
-XIAO ESP32-S3 and ESP32-C6 are planned targets. This separation prepares their
-ports; it does not implement ESP-IDF, networking, Matter or OTA.
+The implemented ports are the POSIX host simulator, original RP2040 Pico and a
+shared ESP-IDF port for XIAO ESP32-S3 and ESP32-C6. The XIAO firmwares are
+cross-build verified; hardware validation remains pending. Networking, Matter
+and OTA are subsequent native adapters.
+
+Multi-board support is a maintained requirement from the initial prototype.
+Compatible identical WASM bytes and API semantics must work across host, Pico,
+S3 and C6; native wiring/resource profiles may differ. CI builds every firmware,
+tests both host profiles and exercises a portable smoke runner. Record hardware
+evidence separately from build success.
 
 ## Ownership and source boundaries
 
@@ -24,7 +31,7 @@ ports; it does not implement ESP-IDF, networking, Matter or OTA.
 
 The core contains no GPIO, PIO, USB, POSIX or RTOS calls, nor platform-selection
 branches. `pixels.c` always stores packed logical RGB and delegates physical output.
-The native rainbow's colour generation is shared; starting it at boot is Pico
+The native rainbow's colour generation is shared; starting it at boot is Pico/ESP32
 entry-point policy. The host starts idle.
 
 `src/config.h` includes the selected `LIGHTVM_BOARD_CONFIG` header and supplies
@@ -132,6 +139,50 @@ baseline capabilities; there is no advertised network/Matter/OTA support.
 The desktop client uses the advertised module-size limit before beginning an
 upload. Profiles can change resource capacity without changing API semantics.
 
+## ESP32 native port
+
+The separate `platforms/esp32/` SDK project selects `xiao_esp32s3` or
+`xiao_esp32c6` through `LIGHTVM_BOARD`. It derives and validates the SDK target,
+loads the corresponding portable header and keeps generated SDK configuration
+in each board's build directory. `LIGHTVM_BOARD_CONFIG` can replace the resource/
+wiring header. SDK/toolchain version 5.5.3 and wasm3 v0.5.0 are pinned; host/Pico
+still use the repository's ordinary CMake entry point.
+
+The IDF main component calls the shared core helper after SDK dependency
+discovery. SDK compile options apply to the interpreter and engine libraries;
+wasm3's intentional type aliasing is compiled with `-fno-strict-aliasing` on all
+GNU/Clang native ports. No architecture branches enter the shared engine.
+
+`app_main` owns one session on a 16 KiB native stack and yields every millisecond,
+including under continuous input. The shared 500 ms guest deadline remains
+cooperative; native compilation/output and SDK stacks are outside its budget.
+The port supplies `esp_timer_get_time`, ordinary C allocators, USB Serial/JTAG
+and synchronous RMT output. PSRAM, radio stacks and automatic light sleep are
+not enabled. USB pins are rejected as strip outputs. Native driver failures
+are fatal through SDK checks because the current output contract has no error
+return; recoverable output-failure reporting is separate work.
+
+The RMT backend retains one scaled GRB buffer, emits 800 kHz bits plus a 300 µs
+reset and waits for transmission before returning. Thus `show_us` includes
+physical transmission/latch plus scheduling overhead. It uses one hardware
+channel with the target's native memory-block size and requires no DMA.
+
+USB uses raw driver bytes rather than translated stdio; console/boot logs are
+disabled on the protocol channel. Partial writes are retried within a finite
+deadline, and a failed reply suppresses further output until input resumes.
+An interrupted transfer may require a new client connection; no infinite USB
+wait is allowed to stop animation. The client's optional `--no-reset` mode
+deasserts DTR/RTS before opening to avoid intended reset/download transitions.
+It drains pre-request stale/ROM boot bytes until quiet, bounded to half a second.
+Real OS/driver opening behavior still requires hardware verification.
+
+See [README](../README.md) for exact build/flash commands and the dated validation
+matrix. `tools/smoke_device.py` uses the same commands and identical WASM bytes
+over serial or pipes, comparing explicit logical RGB frames to a matching host
+profile. Serial runs additionally verify state through close/open and autonomous
+playback while disconnected. This does not validate physical colour order,
+wiring or real-time throughput without observed hardware checks.
+
 ## Building another port
 
 For a port compatible with the repository's ordinary CMake executable, add a
@@ -155,7 +206,7 @@ target_link_libraries(your_native_firmware PRIVATE lightvm_core)
 ```
 
 The native firmware supplies `platform.h` implementations and an SDK entry point
-(for example a future ESP-IDF `app_main`). Native build flags/SDK configuration
+(for example ESP-IDF `app_main`). Native build flags/SDK configuration
 are the port's responsibility; the shared build does not install an ESP32 SDK or
 select a FreeRTOS task. Preserve distribution notices when packaging firmware.
 

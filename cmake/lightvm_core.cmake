@@ -43,6 +43,10 @@ function(lightvm_add_core)
         m3_env.c m3_exec.c m3_function.c m3_info.c m3_module.c m3_parse.c)
     list(TRANSFORM M3_FILES PREPEND "${M3_DIR}/")
     add_library(wasm3 STATIC ${M3_FILES})
+    # wasm3 intentionally aliases its typed code/stack slots. Keep optimizers
+    # from applying incompatible strict-aliasing assumptions on any native port.
+    target_compile_options(wasm3 PRIVATE
+        $<$<C_COMPILER_ID:GNU,Clang,AppleClang>:-fno-strict-aliasing>)
     target_include_directories(wasm3 PUBLIC "${M3_DIR}")
     target_compile_definitions(wasm3 PRIVATE
         d_m3MaxLinearMemoryPages=1 d_m3MaxFunctionStackHeight=128

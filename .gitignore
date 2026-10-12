@@ -1,4 +1,5 @@
 /build/
+/platforms/esp32/build/
 /.venv/
 __pycache__/
 *.py[cod]

@@ -3,7 +3,7 @@
 LightVM's original code and documentation are licensed under the MIT License in
 [LICENSE](LICENSE), copyright 2026 Kaj Wik Siebert. Dependencies retain the
 licenses and copyright notices listed below. The review covers the current
-native receiver, RP2040 Pico build and pinned Python tools.
+native receiver, RP2040 Pico and XIAO ESP32 builds, and pinned Python tools.
 
 | Component | Version | License | Use | Preserved notice |
 |---|---|---|---|---|
@@ -15,6 +15,12 @@ native receiver, RP2040 Pico build and pinned Python tools.
 | Wasmtime Python | 25.0.0 | Apache-2.0 WITH LLVM-exception | Desktop WAT compilation and tests | [License and exception](licenses/wasmtime-py-25.0.0.txt) |
 | Newlib | 4.3.0, Arm GNU Toolchain 13.2.Rel1 | Per-source permissive licenses for the linked ARM C/math routines | Firmware C and math libraries | [Upstream license collection](licenses/newlib-4.3.0.txt) |
 | GCC runtime | Arm GNU Toolchain 13.2.Rel1 | GPL-3.0-or-later WITH GCC-exception-3.1 | Firmware compiler support routines | [GPL](licenses/gcc-gpl-3.0.txt), [runtime exception](licenses/gcc-runtime-exception.txt) |
+| ESP-IDF | v5.5.3 (`2c211b236707889e8400c4dc5644dd5c4ee071e0`) | Apache-2.0; selected MIT/BSD components below | S3/C6 SDK, USB Serial/JTAG and RMT | [Apache license](licenses/esp-idf-5.5.3.txt), [per-file copyright/attribution](licenses/esp-idf-additional-notices.txt) |
+| FreeRTOS / Xtensa support | IDF-selected kernel 10.5.1 and SDK ports | MIT | ESP32 scheduling and native context support | [Preserved copyright/license headers](licenses/esp-idf-additional-notices.txt) |
+| TLSF | IDF submodule `2867f6883a12920b1969ff9624c0ab0e4185c2ce` | BSD-3-Clause | Native allocator and ROM allocator patches | [BSD conditions](licenses/tlsf-esp-idf-5.5.3.txt), [copyright headers](licenses/esp-idf-additional-notices.txt) |
+| Mbed TLS / micro-ecc | IDF-selected submodules | Apache-2.0 option / BSD-2-Clause | SDK/bootloader security components (unused features are discarded) | [Mbed TLS license](licenses/mbedtls-esp-idf-5.5.3.txt), [selected headers and micro-ecc license](licenses/esp-idf-additional-notices.txt) |
+| Espressif Newlib | 4.3.0, toolchain `esp-14.2.0_20251107` | Per-source permissive licenses | S3/C6 C/math routines | [License collection](licenses/newlib-esp-14.2.0_20251107.txt) |
+| Espressif GCC runtime | GCC 14.2.0, toolchain `esp-14.2.0_20251107` | GPL-3.0-or-later WITH GCC-exception-3.1 | Xtensa/RISC-V compiler support routines | [GPL](licenses/gcc-gpl-3.0.txt), [runtime exception](licenses/gcc-runtime-exception.txt) |
 
 The linked dependencies permit LightVM's own code to remain MIT-licensed when
 these upstream notices and conditions are preserved. The GCC runtime exception
@@ -45,6 +51,23 @@ redirects its allocator calls through LightVM's tracked allocator. The upstream
 source checkout is unchanged; its MIT notice remains in the copied source and
 in the interpreter notice above.
 
+The shared native build disables strict-aliasing optimization for wasm3's
+intentional type-punned code/stack representation. This changes compile options,
+not the dependency source.
+
+`platforms/esp32/main/ws2812_encoder.c` adapts the composite byte/copy encoder
+from ESP-IDF v5.5.3's `examples/peripherals/rmt/led_strip/main/led_strip_encoder.c`.
+Its Espressif copyright and Apache-2.0 identifier are retained. LightVM changes
+the timings to integer 800 kHz symbols and a 300 us reset at 20 MHz, and uses
+the encoder through the shared synchronous native output contract.
+
+The ESP32 project compiles only its required SDK component closure. Radio stacks,
+vendor radio libraries and PSRAM are not part of this first port. Preserve the
+selected SDK copyright headers and permissive license texts supplied here with
+the application and bootloader. Additional SDK features/dependencies require
+their own notice review when introduced; these notices do not cover every
+optional component in an ESP-IDF source checkout.
+
 The native Pico SDK, USB and PIO integration lives in `platforms/pico/`. The
 shared engine has no Pico SDK dependency. Future platform ports must preserve
 the notices for their selected native SDKs and linked services.
@@ -64,3 +87,8 @@ Upstream sources: [wasm3](https://github.com/wasm3/wasm3/tree/v0.5.0),
 [Wasmtime Python](https://github.com/bytecodealliance/wasmtime-py),
 [Newlib 4.3.0](https://github.com/mirror/newlib-cygwin/blob/newlib-4.3.0/COPYING.NEWLIB),
 and [GCC runtime exception](https://github.com/gcc-mirror/gcc/blob/releases/gcc-13.2.0/COPYING.RUNTIME).
+
+ESP32 upstream sources: [ESP-IDF v5.5.3](https://github.com/espressif/esp-idf/tree/v5.5.3),
+[RMT encoder example](https://github.com/espressif/esp-idf/blob/v5.5.3/examples/peripherals/rmt/led_strip/main/led_strip_encoder.c),
+[TLSF](https://github.com/espressif/tlsf/tree/2867f6883a12920b1969ff9624c0ab0e4185c2ce),
+and [Espressif toolchain release](https://github.com/espressif/crosstool-NG/releases/tag/esp-14.2.0_20251107).

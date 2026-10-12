@@ -1,0 +1,2019 @@
+ESP-IDF v5.5.3 selected source copyright and license notices.
+Collected from the S3/C6 application and bootloader compilation inputs.
+Apache-2.0 full text: esp-idf-5.5.3.txt. Mbed TLS uses its Apache option.
+
+
+Sources: components/app_update/esp_ota_app_desc.c, components/pthread/pthread_cond_var.c
+
+/*
+ * SPDX-FileCopyrightText: 2017-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/app_update/esp_ota_ops.c, components/bootloader_support/src/bootloader_init.c, components/bootloader_support/src/esp_image_format.c, components/bootloader_support/src/flash_encrypt.c, components/bootloader_support/src/secure_boot.c, components/esp_driver_gpio/src/gpio.c, components/esp_hw_support/intr_alloc.c, components/esp_hw_support/port/esp32s3/rtc_sleep.c, components/esp_hw_support/port/esp32s3/rtc_time.c, components/esp_hw_support/power_supply/brownout.c, components/esp_hw_support/sleep_console.c, components/esp_hw_support/sleep_gpio.c, components/esp_rom/patches/esp_rom_spiflash.c, components/esp_security/src/esp_hmac.c, components/esp_system/crosscore_int.c, components/esp_system/esp_ipc.c, components/esp_system/int_wdt.c, components/esp_system/panic.c, components/esp_system/port/arch/xtensa/debug_helpers.c, components/esp_system/port/cpu_start.c, components/esp_system/port/panic_handler.c, components/esp_system/port/soc/esp32s3/clk.c, components/esp_system/startup_funcs.c, components/esp_system/task_wdt/task_wdt_impl_timergroup.c, components/freertos/FreeRTOS-Kernel/portable/riscv/portasm.S, components/hal/ds_hal.c, components/hal/gpio_hal.c, components/hal/i2c_hal.c, components/hal/sdio_slave_hal.c, components/hal/spi_flash_hal_iram.c, components/hal/spi_hal.c, components/hal/touch_sens_hal.c, components/hal/uart_hal.c, components/heap/heap_caps.c, components/heap/heap_caps_base.c, components/heap/heap_caps_init.c, components/heap/multi_heap.c, components/log/src/buffer/log_buffers.c, components/newlib/src/locks.c, components/newlib/src/reent_syscalls.c, components/newlib/src/stdatomic.c, components/newlib/src/time.c, components/spi_flash/cache_utils.c, components/spi_flash/esp_flash_api.c, components/spi_flash/esp_flash_spi_init.c, components/spi_flash/flash_mmap.c, components/spi_flash/flash_ops.c, components/spi_flash/spi_flash_chip_drivers.c, components/spi_flash/spi_flash_chip_generic.c, components/spi_flash/spi_flash_os_func_app.c, components/spi_flash/spi_flash_os_func_noos.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader/subproject/components/micro-ecc/uECC_verify_antifault.c
+
+/*
+ * SPDX-FileCopyrightText: 2014, Kenneth MacKay
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
+ * SPDX-FileContributor: 2020-2021 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/bootloader/subproject/main/bootloader_start.c, components/bootloader_support/bootloader_flash/src/flash_qio_mode.c, components/bootloader_support/src/flash_partitions.c, components/cxx/cxx_guards.cpp, components/esp_hw_support/esp_clk.c, components/esp_hw_support/mac_addr.c, components/esp_hw_support/periph_ctrl.c, components/esp_hw_support/sleep_modem.c, components/esp_hw_support/spi_bus_lock.c, components/esp_partition/partition.c, components/esp_partition/partition_target.c, components/esp_system/esp_err.c, components/esp_system/freertos_hooks.c, components/esp_system/port/arch/riscv/expression_with_stack.c, components/esp_system/port/arch/xtensa/expression_with_stack.c, components/esp_system/port/arch/xtensa/panic_arch.c, components/esp_system/startup.c, components/esp_system/task_wdt/task_wdt.c, components/hal/esp32s3/touch_sensor_hal.c, components/hal/spi_flash_hal.c, components/hal/spi_hal_iram.c, components/hal/spi_slave_hd_hal.c, components/hal/usb_wrap_hal.c, components/log/src/log_level/tag_log_level/cache/log_binary_heap.c, components/log/src/log_level/tag_log_level/linked_list/log_linked_list.c, components/log/src/log_level/tag_log_level/tag_log_level.c, components/log/src/os/log_lock.c, components/log/src/os/log_timestamp.c, components/log/src/os/log_write.c, components/newlib/src/heap.c, components/newlib/src/newlib_init.c, components/soc/esp32s3/i2c_periph.c, components/soc/esp32s3/ledc_periph.c, components/soc/esp32s3/uart_periph.c, components/spi_flash/spi_flash_chip_mxic.c, components/spi_flash/spi_flash_chip_winbond.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/bootloader_flash/src/bootloader_flash.c, components/esp_hw_support/port/esp32s3/rtc_clk.c, components/esp_hw_support/sleep_modes.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32c6.c, components/bootloader_support/src/bootloader_random_esp32c6.c, components/efuse/esp32c6/esp_efuse_fields.c, components/esp_driver_rmt/src/rmt_common.c, components/esp_driver_rmt/src/rmt_encoder.c, components/esp_driver_rmt/src/rmt_encoder_bytes.c, components/esp_driver_rmt/src/rmt_encoder_copy.c, components/esp_driver_rmt/src/rmt_encoder_simple.c, components/esp_driver_rmt/src/rmt_rx.c, components/esp_driver_rmt/src/rmt_tx.c, components/esp_hw_support/modem_clock.c, components/esp_hw_support/port/esp32c6/io_mux.c, components/esp_hw_support/port/esp32c6/rtc_time.c, components/esp_hw_support/port/esp32c6/sar_periph_ctrl.c, components/esp_hw_support/port/esp32s3/io_mux.c, components/esp_hw_support/port/esp32s3/sar_periph_ctrl.c, components/esp_hw_support/sleep_retention.c, components/esp_hw_support/sleep_system_peripheral.c, components/esp_mm/esp_mmu_map.c, components/esp_rom/patches/esp_rom_systimer.c, components/esp_rom/patches/esp_rom_tlsf.c, components/esp_security/src/esp_crypto_lock.c, components/esp_system/port/esp_system_chip.c, components/esp_system/port/soc/esp32c6/clk.c, components/esp_system/port/soc/esp32c6/system_internal.c
+
+/*
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32s3.c, components/bootloader_support/src/esp32s3/bootloader_esp32s3.c, components/esp_hw_support/port/esp32s3/esp_memprot.c, components/esp_hw_support/regi2c_ctrl.c, components/esp_system/port/arch/xtensa/trax.c, components/esp_system/system_time.c, components/hal/aes_hal.c, components/mbedtls/port/aes/dma/esp_aes_gdma_impl.c, components/newlib/src/port/esp_time_impl.c, components/riscv/instruction_decode.c, components/riscv/interrupt.c, components/soc/esp32c6/pcnt_periph.c, components/soc/esp32s3/dedic_gpio_periph.c, components/spi_flash/spi_flash_hpm_enable.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_clock_init.c, components/efuse/esp32s3/esp_efuse_table.c, components/efuse/esp32s3/esp_efuse_utility.c, components/efuse/src/esp_efuse_api.c, components/efuse/src/esp_efuse_startup.c, components/efuse/src/esp_efuse_utility.c, components/esp_system/stack_check.c, components/esp_timer/src/system_time.c, components/freertos/port_systick.c, components/pthread/pthread_local_storage.c
+
+/*
+ * SPDX-FileCopyrightText: 2017-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_clock_loader.c, components/bootloader_support/src/bootloader_console_loader.c, components/bootloader_support/src/bootloader_panic.c, components/bootloader_support/src/bootloader_random_esp32s3.c, components/esp_hw_support/port/esp_memprot_conv.c, components/mbedtls/port/md/esp_md.c, components/soc/esp32s3/gdma_periph.c, components/soc/esp32s3/timer_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_common.c, components/esp_common/src/esp_err_to_name.c, components/esp_system/port/soc/esp32s3/reset_reason.c, components/heap/port/memory_layout_utils.c, components/mbedtls/esp_crt_bundle/esp_crt_bundle.c, components/pthread/pthread.c
+
+/*
+ * SPDX-FileCopyrightText: 2018-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_common_loader.c, components/esp_hw_support/dma/gdma.c, components/hal/gdma_hal_top.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_console.c, components/bootloader_support/src/bootloader_mem.c, components/esp_driver_gpio/src/dedic_gpio.c, components/esp_hw_support/clk_ctrl_os.c, components/esp_hw_support/cpu.c, components/esp_hw_support/deprecated/gdma_legacy.c, components/esp_hw_support/dma/async_memcpy_gdma.c, components/esp_hw_support/dma/gdma_etm.c, components/esp_hw_support/dma/gdma_sleep_retention.c, components/esp_security/src/esp_ds.c, components/esp_system/port/arch/riscv/panic_arch.c, components/hal/hmac_hal.c, components/hal/i2s_hal.c, components/hal/sha_hal.c, components/hal/usb_dwc_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_efuse.c, components/esp_driver_gpio/src/rtc_io.c, components/esp_hw_support/mspi_timing_tuning/mspi_timing_tuning.c, components/esp_mm/heap_align_hw.c, components/esp_system/port/soc/esp32s3/apb_backup_dma.c, components/hal/adc_hal_common.c, components/hal/ledc_hal_iram.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_random.c
+
+/*
+ * SPDX-FileCopyrightText: 2010-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_sha.c, components/esp_hw_support/clk_utils.c, components/esp_hw_support/sleep_mspi.c, components/esp_rom/patches/esp_rom_usb_serial.c, components/esp_security/src/esp_crypto_periph_clk.c, components/esp_system/esp_system_console.c, components/hal/twai_hal_v1.c, components/hal/uhci_hal.c, components/log/src/log_format_text.c, components/mbedtls/port/esp_ds/esp_ds_common.c, components/mbedtls/port/esp_ds/esp_rsa_dec_alt.c, components/riscv/rv_utils.c, components/soc/esp32c6/power_supply_periph.c, components/soc/esp32s3/cam_periph.c, components/soc/esp32s3/power_supply_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_utility.c, components/esp_system/port/soc/esp32s3/system_internal.c, components/mbedtls/port/sha/esp_sha.c
+
+/*
+ * SPDX-FileCopyrightText: 2018-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32c6/bootloader_ecdsa.c, components/esp_hw_support/port/esp32s3/cpu_region_protect.c, components/esp_hw_support/revision.c, components/esp_hw_support/spi_share_hw_ctrl.c, components/esp_security/src/esp_dpa_protection.c, components/esp_system/port/arch/xtensa/esp_ipc_isr_port.c, components/hal/esp32c6/clk_tree_hal.c, components/hal/esp32c6/pmu_hal.c, components/hal/esp32s3/clk_tree_hal.c, components/hal/lp_timer_hal.c, components/hal/mpi_hal.c, components/hal/sdmmc_hal.c, components/mbedtls/port/esp_platform_time.c, components/riscv/vectors_intc.S, components/soc/esp32c6/mpi_periph.c, components/soc/esp32s3/mpi_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32c6/bootloader_esp32c6.c, components/bootloader_support/src/esp32c6/bootloader_soc.c, components/efuse/esp32c6/esp_efuse_rtc_calib.c, components/efuse/esp32c6/esp_efuse_utility.c, components/esp_app_format/esp_app_desc.c, components/esp_bootloader_format/esp_bootloader_desc.c, components/esp_driver_gpio/src/gpio_etm.c, components/esp_hw_support/esp_clock_output.c, components/esp_hw_support/esp_etm.c, components/esp_hw_support/lowpower/port/esp32c6/sleep_clock.c, components/esp_hw_support/port/esp32c6/rtc_clk_init.c, components/esp_hw_support/port/pau_regdma.c, components/esp_hw_support/port/regdma_link.c, components/esp_hw_support/sar_periph_ctrl_common.c, components/esp_system/port/soc/esp32c6/cache_err_int.c, components/esp_system/port/soc/esp32c6/reset_reason.c, components/freertos/app_startup.c, components/hal/esp32c6/pau_hal.c, components/hal/gdma_hal_ahb_v1.c, components/soc/esp32c6/gdma_periph.c, components/soc/esp32c6/i2c_periph.c, components/soc/esp32c6/i2s_periph.c, components/soc/esp32c6/ledc_periph.c, components/soc/esp32c6/mcpwm_periph.c, components/soc/esp32c6/parlio_periph.c, components/soc/esp32c6/rmt_periph.c, components/soc/esp32c6/spi_periph.c, components/soc/esp32c6/temperature_sensor_periph.c, components/soc/esp32c6/twai_periph.c, components/soc/esp32c6/uart_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32c6/secure_boot_secure_features.c, components/esp_driver_gpio/src/gpio_glitch_filter_ops.c, components/esp_hw_support/port/esp32c6/systimer.c, components/esp_hw_support/port/esp32s3/systimer.c, components/hal/etm_hal.c, components/newlib/src/pthread.c, components/soc/esp32c6/adc_periph.c, components/soc/esp32c6/dedic_gpio_periph.c, components/soc/esp32c6/gpio_periph.c, components/soc/esp32c6/interrupts.c, components/soc/esp32c6/rtc_io_periph.c, components/soc/esp32c6/sdm_periph.c, components/soc/esp32s3/twai_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32s3/bootloader_soc.c, components/esp_hw_support/adc_share_hw_ctrl.c, components/esp_rom/patches/esp_rom_hp_regi2c_esp32c6.c, components/hal/adc_hal.c, components/hal/adc_oneshot_hal.c, components/hal/ledc_hal.c, components/heap/port/esp32s3/memory_layout.c, components/log/src/noos/log_lock.c, components/log/src/noos/log_timestamp.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32s3/secure_boot_secure_features.c, components/soc/esp32s3/adc_periph.c, components/soc/esp32s3/touch_sensor_periph.c, components/spi_flash/spi_flash_chip_th.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/cxx/cxx_exception_stubs.cpp, components/esp_mm/port/esp32c6/ext_mem_layout.c, components/freertos/port_common.c, components/hal/lcd_hal.c, components/hal/spi_flash_encrypt_hal_iram.c, components/newlib/src/assert.c, components/newlib/src/realpath.c, components/newlib/src/sysconf.c, components/pthread/pthread_rwlock.c, components/soc/esp32s3/lcd_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/cxx/cxx_init.cpp, components/esp_hw_support/lowpower/port/esp32c6/sleep_modem_state.c, components/esp_hw_support/port/esp32c6/esp_cpu_intr.c, components/esp_hw_support/port/esp32s3/esp_cpu_intr.c, components/esp_system/port/image_process.c, components/esp_timer/src/esp_timer_init.c, components/freertos/esp_additions/idf_additions_event_groups.c, components/hal/usb_serial_jtag_hal.c, components/log/src/log_print.c, components/log/src/log_timestamp_common.c, components/log/src/noos/util.c, components/newlib/src/flockfile.c, components/newlib/src/init.c, components/soc/esp32c6/system_retention_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32c6/esp_efuse_table.c, components/esp_system/port/arch/xtensa/debug_stubs.c
+
+/*
+ * SPDX-FileCopyrightText: 2017-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32s3/esp_efuse_fields.c, components/efuse/src/efuse_controller/keys/with_key_purposes/esp_efuse_api_key.c, components/efuse/src/esp_efuse_fields.c, components/esp_system/port/esp_ipc_isr.c, components/esp_timer/src/esp_timer.c, components/esp_timer/src/esp_timer_impl_systimer.c, components/riscv/vectors.S
+
+/*
+ * SPDX-FileCopyrightText: 2017-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32s3/esp_efuse_rtc_calib.c, components/esp_hw_support/dma/esp_async_memcpy.c, components/hal/brownout_hal.c, components/hal/mpu_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_driver_gpio/src/gpio_flex_glitch_filter.c, components/esp_driver_gpio/src/gpio_pin_glitch_filter.c, components/esp_hw_support/lowpower/port/esp32c6/sleep_cpu_asm.S, components/esp_hw_support/port/esp32c6/chip_info.c, components/esp_hw_support/sleep_event.c, components/esp_mm/port/esp32s3/ext_mem_layout.c, components/esp_rom/patches/esp_rom_cache_esp32s2_esp32s3.c, components/esp_rom/patches/esp_rom_cache_writeback_esp32s3.S, components/esp_system/systick_etm.c, components/esp_timer/src/esp_timer_etm.c, components/hal/esp32c6/efuse_hal.c, components/hal/esp32c6/modem_clock_hal.c, components/hal/parlio_hal.c, components/soc/esp32c6/sdio_slave_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_driver_usb_serial_jtag/src/usb_serial_jtag.c, components/esp_system/port/soc/esp32s3/cache_err_int.c, components/esp_system/xt_wdt.c, components/hal/cache_hal.c, components/hal/ecc_hal.c, components/hal/efuse_hal.c, components/hal/mmu_hal.c, components/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c, components/mbedtls/port/ecc/ecc_alt.c, components/mbedtls/port/ecc/esp_ecc.c
+
+/*
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_driver_usb_serial_jtag/src/usb_serial_jtag_connection_monitor.c, components/esp_hw_support/esp_gpio_reserve.c, components/esp_hw_support/lowpower/port/esp32c6/sleep_cpu.c, components/esp_hw_support/lowpower/port/esp32s3/sleep_cpu.c, components/esp_hw_support/port/esp32c6/cpu_region_protect.c, components/esp_hw_support/port/esp32c6/esp_clk_tree.c, components/esp_hw_support/port/esp32c6/ocode_init.c, components/esp_hw_support/port/esp32c6/pmu_param.c, components/esp_hw_support/port/esp32s3/esp_clk_tree.c, components/esp_hw_support/port/esp_clk_tree_common.c, components/esp_hw_support/sleep_wake_stub.c, components/esp_system/hw_stack_guard.c, components/freertos/heap_idf.c, components/hal/color_hal.c, components/hal/hal_utils.c, components/log/src/log_level/log_level.c, components/log/src/os/util.c, components/log/src/util.c, components/newlib/src/getentropy.c, components/newlib/src/scandir.c, components/pthread/pthread_semaphore.c, components/riscv/interrupt_plic.c, components/soc/esp32c6/etm_periph.c, components/soc/esp32c6/timer_periph.c, components/soc/esp32c6/wdt_periph.c, components/soc/esp32s3/wdt_periph.c, components/spi_flash/spi_flash_wrap.c
+
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/dma/esp_dma_utils.c, components/esp_hw_support/dma/gdma_link.c, components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_by_mspi_delay.c, components/esp_hw_support/port/esp32c6/pmu_init.c, components/esp_hw_support/port/esp32c6/pmu_sleep.c, components/esp_ringbuf/ringbuf.c, components/esp_system/port/arch/riscv/debug_helpers.c, components/esp_timer/src/esp_timer_impl_common.c, components/freertos/esp_additions/idf_additions.c, components/hal/apm_hal.c, components/mbedtls/port/bignum/bignum_alt.c
+
+/*
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/esp_memory_utils.c, components/esp_rom/patches/esp_rom_sys.c, components/esp_timer/src/ets_timer_legacy.c
+
+/*
+ * SPDX-FileCopyrightText: 2010-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/hw_random.c
+
+/*
+ * SPDX-FileCopyrightText: 2016-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_config.c, components/hal/esp32s3/rtc_cntl_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c6/rtc_clk.c, components/esp_rom/patches/esp_rom_wdt.c, components/heap/port/esp32c6/memory_layout.c
+
+/*
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32s3/chip_info.c
+
+/*
+ * SPDX-FileCopyrightText: 2013-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32s3/rtc_clk_init.c, components/esp_hw_support/port/esp32s3/rtc_init.c, components/esp_system/esp_system.c, components/esp_system/port/soc/esp32s3/highint_hdl.S, components/hal/mcpwm_hal.c, components/hal/pcnt_hal.c, components/hal/sdm_hal.c, components/mbedtls/port/mbedtls_debug.c, components/newlib/src/abort.c, components/soc/esp32s3/rmt_periph.c, components/spi_flash/flash_brownout_hook.c, components/spi_flash/memspi_host_driver.c, components/spi_flash/spi_flash_chip_gd.c, components/spi_flash/spi_flash_chip_mxic_opi.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/rtc_module.c, components/esp_pm/pm_trace.c
+
+/*
+ * SPDX-FileCopyrightText: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/sleep_usb.c, components/esp_rom/patches/esp_rom_gpio.c, components/esp_rom/patches/esp_rom_multi_heap.c, components/esp_security/src/init.c, components/hal/cam_hal.c, components/log/src/log.c, components/newlib/src/syscalls.c, components/soc/esp32s3/usb_dwc_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_mm/esp_cache_msync.c
+
+/*
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_mm/esp_cache_utils.c
+
+/*
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+*
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+
+Sources: components/esp_pm/pm_impl.c
+
+/*
+ * SPDX-FileCopyrightText: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_pm/pm_locks.c
+
+/*
+ * SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_rom/patches/esp_rom_efuse.c, components/hal/rmt_hal.c, components/newlib/src/poll.c, components/soc/esp32s3/temperature_sensor_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_rom/patches/esp_rom_longjmp.S
+
+/*
+    Copyright (c) 2001-2006 by Tensilica Inc.
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+
+Sources: components/esp_rom/patches/esp_rom_print.c, components/esp_rom/patches/esp_rom_uart.c, components/soc/lldesc.c
+
+/*
+ * SPDX-FileCopyrightText: 2010-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_system/port/arch/riscv/debug_stubs.c, components/freertos/esp_additions/freertos_compatibility.c, components/hal/esp32s3/efuse_hal.c, components/hal/systimer_hal.c, components/hal/timer_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_system/port/arch/xtensa/esp_ipc_isr_handler.S, components/esp_system/port/arch/xtensa/esp_ipc_isr_routines.S
+
+/*
+ * SPDX-FileCopyrightText: 2017-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_system/port/arch/xtensa/expression_with_stack_asm.S, components/hal/i2c_hal_iram.c, components/hal/rtc_io_hal.c, components/hal/spi_flash_hal_gpspi.c, components/hal/touch_sensor_hal.c, components/hal/uart_hal_iram.c, components/newlib/src/reent_init.c, components/soc/esp32s3/sdmmc_periph.c, components/soc/esp32s3/spi_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/freertos/FreeRTOS-Kernel/event_groups.c, components/freertos/FreeRTOS-Kernel/list.c, components/freertos/FreeRTOS-Kernel/queue.c, components/freertos/FreeRTOS-Kernel/timers.c
+
+/*
+ * FreeRTOS Kernel V10.5.1 (ESP-IDF SMP modified)
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+
+Sources: components/freertos/FreeRTOS-Kernel/portable/riscv/port.c, components/freertos/FreeRTOS-Kernel/tasks.c
+
+/*
+ * FreeRTOS Kernel V10.5.1 (ESP-IDF SMP modified)
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+
+Sources: components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c
+
+/*
+ * FreeRTOS Kernel V10.5.1
+ * Copyright (C) 2015-2019 Cadence Design Systems, Inc.
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+
+Sources: components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S
+
+/*
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2016-2023 Espressif Systems (Shanghai) CO LTD
+ */
+/*
+ * Copyright (c) 2015-2019 Cadence Design Systems, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+
+Sources: components/freertos/FreeRTOS-Kernel/portable/xtensa/xtensa_init.c, components/freertos/FreeRTOS-Kernel/portable/xtensa/xtensa_overlay_os_hook.c, components/xtensa/xtensa_context.S, components/xtensa/xtensa_intr_asm.S
+
+/*
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
+ */
+/*
+ * Copyright (c) 2015-2019 Cadence Design Systems, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+
+Sources: components/freertos/FreeRTOS-Kernel/stream_buffer.c
+
+/*
+ * FreeRTOS Kernel V10.5.1 (ESP-IDF SMP modified)
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+
+Sources: components/hal/xt_wdt_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/heap/tlsf/tlsf.c
+
+/*
+ * SPDX-FileCopyrightText: 2006-2016 Matthew Conte
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+
+Sources: components/mbedtls/mbedtls/3rdparty/everest/library/Hacl_Curve25519_joined.c
+
+/*
+ *  Interface to code from Project Everest
+ *
+ *  Copyright 2016-2018 INRIA and Microsoft Corporation
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  This file is part of Mbed TLS (https://tls.mbed.org)
+ */
+
+
+Sources: components/mbedtls/mbedtls/3rdparty/everest/library/everest.c
+
+/*
+ *  Interface to code from Project Everest
+ *
+ *  Copyright 2016-2018 INRIA and Microsoft Corporation
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  This file is part of Mbed TLS (https://tls.mbed.org).
+ */
+
+
+Sources: components/mbedtls/mbedtls/3rdparty/everest/library/x25519.c
+
+/*
+ *  ECDH with curve-optimized implementation multiplexing
+ *
+ *  Copyright 2016-2018 INRIA and Microsoft Corporation
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  This file is part of Mbed TLS (https://tls.mbed.org)
+ */
+
+
+Sources: components/mbedtls/mbedtls/3rdparty/p256-m/p256-m/p256-m.c
+
+/*
+ * Implementation of curve P-256 (ECDH and ECDSA)
+ *
+ * Copyright The Mbed TLS Contributors
+ * Author: Manuel Pégourié-Gonnard.
+ * SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/3rdparty/p256-m/p256-m_driver_entrypoints.c, components/mbedtls/mbedtls/library/block_cipher.c, components/mbedtls/mbedtls/library/pkcs7.c, components/mbedtls/mbedtls/library/psa_crypto.c, components/mbedtls/mbedtls/library/psa_crypto_aead.c, components/mbedtls/mbedtls/library/psa_crypto_cipher.c, components/mbedtls/mbedtls/library/psa_crypto_client.c, components/mbedtls/mbedtls/library/psa_crypto_ecp.c, components/mbedtls/mbedtls/library/psa_crypto_ffdh.c, components/mbedtls/mbedtls/library/psa_crypto_hash.c, components/mbedtls/mbedtls/library/psa_crypto_mac.c, components/mbedtls/mbedtls/library/psa_crypto_pake.c, components/mbedtls/mbedtls/library/psa_crypto_rsa.c, components/mbedtls/mbedtls/library/psa_crypto_se.c, components/mbedtls/mbedtls/library/psa_crypto_slot_management.c, components/mbedtls/mbedtls/library/psa_crypto_storage.c, components/mbedtls/mbedtls/library/psa_its_file.c, components/mbedtls/mbedtls/library/psa_util.c
+
+/*
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/aes.c
+
+/*
+ *  FIPS-197 compliant AES implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/aesce.c
+
+/*
+ *  Armv8-A Cryptographic Extension support functions for Aarch64
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/aesni.c
+
+/*
+ *  AES-NI support functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/aria.c
+
+/*
+ *  ARIA implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/asn1parse.c
+
+/*
+ *  Generic ASN.1 parsing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/asn1write.c
+
+/*
+ * ASN.1 buffer writing functionality
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/base64.c
+
+/*
+ *  RFC 1521 base64 encoding/decoding
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/bignum.c
+
+/*
+ *  Multi-precision integer library
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/bignum_core.c
+
+/*
+ *  Core bignum functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/bignum_mod.c
+
+/**
+ *  Modular bignum functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/bignum_mod_raw.c
+
+/*
+ *  Low-level modular bignum functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/camellia.c
+
+/*
+ *  Camellia implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ccm.c
+
+/*
+ *  NIST SP800-38C compliant CCM implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/chacha20.c
+
+/**
+ * \file chacha20.c
+ *
+ * \brief ChaCha20 cipher.
+ *
+ * \author Daniel King <damaki.gh@gmail.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/chachapoly.c
+
+/**
+ * \file chachapoly.c
+ *
+ * \brief ChaCha20-Poly1305 AEAD construction based on RFC 7539.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/cipher.c
+
+/**
+ * \file cipher.c
+ *
+ * \brief Generic cipher wrapper for Mbed TLS
+ *
+ * \author Adriaan de Jong <dejong@fox-it.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/cipher_wrap.c
+
+/**
+ * \file cipher_wrap.c
+ *
+ * \brief Generic cipher wrapper for Mbed TLS
+ *
+ * \author Adriaan de Jong <dejong@fox-it.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/cmac.c
+
+/**
+ * \file cmac.c
+ *
+ * \brief NIST SP800-38B compliant CMAC implementation for AES and 3DES
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/constant_time.c
+
+/**
+ *  Constant-time functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ctr_drbg.c
+
+/*
+ *  CTR_DRBG implementation based on AES-256 (NIST SP 800-90)
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/debug.c
+
+/*
+ *  Debugging routines
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/des.c
+
+/*
+ *  FIPS-46-3 compliant Triple-DES implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/dhm.c
+
+/*
+ *  Diffie-Hellman-Merkle key exchange
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ecdh.c
+
+/*
+ *  Elliptic curve Diffie-Hellman
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ecdsa.c
+
+/*
+ *  Elliptic curve DSA
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ecjpake.c
+
+/*
+ *  Elliptic curve J-PAKE
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ecp.c
+
+/*
+ *  Elliptic curves over GF(p): generic functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ecp_curves.c, components/mbedtls/mbedtls/library/ecp_curves_new.c
+
+/*
+ *  Elliptic curves over GF(p): curve-specific data and functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/entropy.c
+
+/*
+ *  Entropy accumulator implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/entropy_poll.c
+
+/*
+ *  Platform-specific and custom entropy polling functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/error.c
+
+/*
+ *  Error message information
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/gcm.c
+
+/*
+ *  NIST SP800-38D compliant GCM implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/hkdf.c
+
+/*
+ *  HKDF implementation -- RFC 5869
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/hmac_drbg.c
+
+/*
+ *  HMAC_DRBG implementation (NIST SP 800-90)
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/lmots.c
+
+/*
+ * The LM-OTS one-time public-key signature scheme
+ *
+ * Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/lms.c
+
+/*
+ *  The LMS stateful-hash public-key signature scheme
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/md.c
+
+/**
+ * \file md.c
+ *
+ * \brief Generic message digest wrapper for Mbed TLS
+ *
+ * \author Adriaan de Jong <dejong@fox-it.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/md5.c
+
+/*
+ *  RFC 1321 compliant MD5 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/memory_buffer_alloc.c
+
+/*
+ *  Buffer-based memory allocator
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/mps_reader.c
+
+/*
+ *  Message Processing Stack, Reader implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/mps_trace.c
+
+/*
+ *  Message Processing Stack, Trace module
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/nist_kw.c
+
+/*
+ *  Implementation of NIST SP 800-38F key wrapping, supporting KW and KWP modes
+ *  only
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/oid.c
+
+/**
+ * \file oid.c
+ *
+ * \brief Object Identifier (OID) database
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/padlock.c
+
+/*
+ *  VIA PadLock support functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pem.c
+
+/*
+ *  Privacy Enhanced Mail (PEM) decoding
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pk.c
+
+/*
+ *  Public Key abstraction layer
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pk_ecc.c
+
+/*
+ *  ECC setters for PK.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pk_wrap.c
+
+/*
+ *  Public Key abstraction layer: wrapper functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pkcs12.c
+
+/*
+ *  PKCS#12 Personal Information Exchange Syntax
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pkcs5.c
+
+/**
+ * \file pkcs5.c
+ *
+ * \brief PKCS#5 functions
+ *
+ * \author Mathias Olsson <mathias@kompetensum.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pkparse.c
+
+/*
+ *  Public Key layer for parsing key files and structures
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/pkwrite.c
+
+/*
+ *  Public Key layer for writing key files and structures
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/platform.c
+
+/*
+ *  Platform abstraction layer
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/platform_util.c
+
+/*
+ * Common and shared functions used by multiple modules in the Mbed TLS
+ * library.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/poly1305.c
+
+/**
+ * \file poly1305.c
+ *
+ * \brief Poly1305 authentication algorithm.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/psa_crypto_driver_wrappers_no_static.c
+
+/*  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ripemd160.c
+
+/*
+ *  RIPE MD-160 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/rsa.c
+
+/*
+ *  The RSA public-key cryptosystem
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/rsa_alt_helpers.c
+
+/*
+ *  Helper functions for the RSA module
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/sha1.c
+
+/*
+ *  FIPS-180-1 compliant SHA-1 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/sha256.c
+
+/*
+ *  FIPS-180-2 compliant SHA-256 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/sha3.c
+
+/*
+ *  FIPS-202 compliant SHA3 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/sha512.c
+
+/*
+ *  FIPS-180-2 compliant SHA-384/512 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_cache.c
+
+/*
+ *  SSL session cache implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_ciphersuites.c
+
+/**
+ * \file ssl_ciphersuites.c
+ *
+ * \brief SSL ciphersuites for Mbed TLS
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_client.c
+
+/*
+ *  TLS 1.2 and 1.3 client-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_cookie.c
+
+/*
+ *  DTLS cookie callbacks implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_debug_helpers_generated.c
+
+/*
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_msg.c
+
+/*
+ *  Generic SSL/TLS messaging layer functions
+ *  (record layer + retransmission state machine)
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_ticket.c
+
+/*
+ *  TLS server tickets callbacks implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls.c
+
+/*
+ *  TLS shared functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls12_client.c
+
+/*
+ *  TLS client-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls12_server.c
+
+/*
+ *  TLS server-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls13_client.c
+
+/*
+ *  TLS 1.3 client-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls13_generic.c
+
+/*
+ *  TLS 1.3 functionality shared between client and server
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls13_keys.c
+
+/*
+ *  TLS 1.3 key schedule
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/ssl_tls13_server.c
+
+/*
+ *  TLS 1.3 server-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/threading.c
+
+/*
+ *  Threading abstraction layer
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/timing.c
+
+/*
+ *  Portable interface to the CPU cycle counter
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/version.c
+
+/*
+ *  Version information
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/version_features.c
+
+/*
+ *  Version feature information
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509.c
+
+/*
+ *  X.509 common functions for parsing and verification
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509_create.c
+
+/*
+ *  X.509 base functions for creating certificates / CSRs
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509_crl.c
+
+/*
+ *  X.509 Certificate Revocation List (CRL) parsing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509_crt.c
+
+/*
+ *  X.509 certificate parsing and verification
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509_csr.c
+
+/*
+ *  X.509 Certificate Signing Request (CSR) parsing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509write.c
+
+/*
+ *  X.509 internal, common functions for writing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509write_crt.c
+
+/*
+ *  X.509 certificate writing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/mbedtls/library/x509write_csr.c
+
+/*
+ *  X.509 Certificate Signing Request writing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+
+Sources: components/mbedtls/port/aes/dma/esp_aes.c
+
+/**
+ * \brief AES block cipher, ESP DMA hardware accelerated version
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
+ *  Additions Copyright (C) 2016-2020, Espressif Systems (Shanghai) PTE Ltd
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+
+Sources: components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+
+/*
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/mbedtls/port/aes/esp_aes_common.c
+
+/*
+ * AES block cipher, ESP hardware accelerated version, common
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/aes/esp_aes_gcm.c
+
+/*
+ * GCM block cipher, ESP DMA hardware accelerated version
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/aes/esp_aes_xts.c
+
+/**
+ * \brief AES block cipher, ESP32-S2 hardware accelerated version
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
+ *  Additions Copyright (C) 2016-2020, Espressif Systems (Shanghai) PTE Ltd
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+
+Sources: components/mbedtls/port/bignum/esp_bignum.c
+
+/*
+ * Multi-precision integer library
+ * ESP-IDF hardware accelerated parts based on mbedTLS implementation
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/esp_ds/esp_rsa_sign_alt.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: The Mbed TLS Contributors
+ */
+
+
+Sources: components/mbedtls/port/esp_hardware.c
+
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/mbedtls/port/esp_hmac_pbkdf2.c
+
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ */
+
+
+Sources: components/mbedtls/port/esp_mem.c, components/newlib/src/random.c, components/newlib/src/termios.c, components/soc/esp32s3/gpio_periph.c, components/soc/esp32s3/rtc_io_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2018-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/mbedtls/port/esp_timing.c
+
+/*
+ * Portable interface to the CPU cycle counter
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/sha/core/esp_sha1.c
+
+/*
+ * SHA-1 implementation with hardware ESP support added.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/sha/core/esp_sha256.c
+
+/*
+ * SHA-256 implementation with hardware ESP support added.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/sha/core/esp_sha512.c
+
+/*
+ * SHA-512 implementation with hardware ESP support added.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ */
+
+
+Sources: components/mbedtls/port/sha/core/esp_sha_gdma_impl.c, components/soc/esp32s3/i2s_periph.c, components/soc/esp32s3/interrupts.c, components/soc/esp32s3/mcpwm_periph.c, components/soc/esp32s3/pcnt_periph.c, components/soc/esp32s3/sdm_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/mbedtls/port/sha/core/sha.c
+
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * ESP hardware accelerated SHA1/256/512 implementation
+ * based on mbedTLS FIPS-197 compliant version.
+ *
+ */
+
+
+Sources: components/soc/dport_access_common.c
+
+/*
+ * SPDX-FileCopyrightText: 2010-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/spi_flash/esp32s3/spi_flash_oct_flash_init.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/xtensa/eri.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
+
+Sources: components/xtensa/xtensa_intr.c
+
+/*
+ * Copyright (c) 2015-2019 Cadence Design Systems, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+
+Sources: components/xtensa/xtensa_vectors.S
+
+/*
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+/*
+ * Copyright (c) 2015-2019 Cadence Design Systems, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+
+TLSF full BSD conditions: tlsf-esp-idf-5.5.3.txt
+
+
+micro-ecc BSD license
+Copyright (c) 2014, Kenneth MacKay
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+ * Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+

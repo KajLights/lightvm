@@ -11,6 +11,9 @@ elseif(LIGHTVM_PICO AND NOT LIGHTVM_PLATFORM STREQUAL "pico")
     message(FATAL_ERROR "LIGHTVM_PICO conflicts with LIGHTVM_PLATFORM=${LIGHTVM_PLATFORM}")
 endif()
 set_property(CACHE LIGHTVM_PLATFORM PROPERTY STRINGS host pico)
+if(LIGHTVM_PLATFORM STREQUAL "esp32")
+    message(FATAL_ERROR "ESP32 uses its SDK project: idf.py -C platforms/esp32 -B <absolute-build-dir> -D LIGHTVM_BOARD=<board> build")
+endif()
 set(LIGHTVM_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/${LIGHTVM_PLATFORM}"
     CACHE PATH "Native port directory (may be outside the source tree)")
 set(LIGHTVM_BOARD_CONFIG "${LIGHTVM_PLATFORM_DIR}/board_config.h"

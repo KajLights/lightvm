@@ -71,11 +71,35 @@ class ProcessTransport:
 
 
 class SerialTransport:
-    def __init__(self, port):
+    def __init__(self, port, no_reset=False):
         import serial
-        self.serial = serial.Serial(port, 115200, timeout=0.1, write_timeout=3)
-        # USB CDC uses DTR to indicate that a host is connected. Opening does
-        # not reset this firmware, so repeated uploads use the same runtime.
+        if no_reset:
+            # Set control lines before opening: ESP32 USB Serial/JTAG interprets
+            # DTR/RTS transitions as reset/download requests.
+            self.serial = serial.Serial(port=None, baudrate=115200, timeout=0.1, write_timeout=3)
+            self.serial.dtr = False
+            self.serial.rts = False
+            self.serial.port = port
+            try:
+                self.serial.open()
+                # A fresh connection can contain ROM boot text or a reply from
+                # an interrupted request. Nothing is requested yet: drain until
+                # quiet, with a bound, before parsing this connection's frames.
+                deadline = time.monotonic() + 0.5
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    self.serial.timeout = min(0.1, remaining)
+                    if not self.serial.read(4096):
+                        break
+                self.serial.timeout = 0.1
+            except Exception:
+                self.serial.close()
+                raise
+        else:
+            # Preserve Pico CDC's existing DTR host-connection behavior.
+            self.serial = serial.Serial(port, 115200, timeout=0.1, write_timeout=3)
 
     def write(self, data):
         self.serial.write(data)
@@ -171,6 +195,7 @@ def main():
     transport = parser.add_mutually_exclusive_group(required=True)
     transport.add_argument("--port", help="USB serial port, e.g. /dev/cu.usbmodem...")
     transport.add_argument("--process", type=Path, help="desktop receiver executable")
+    parser.add_argument("--no-reset", action="store_true", help="deassert DTR/RTS before opening an ESP32 USB serial port")
     parser.add_argument("--function", default="run", help="zero-argument exported function")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--status", action="store_true", help="query receiver without uploading")
@@ -181,6 +206,8 @@ def main():
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("module", nargs="?", type=Path)
     args = parser.parse_args()
+    if args.no_reset and not args.port:
+        parser.error("--no-reset requires --port")
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     if args.frame_ms is not None and not 0 <= args.frame_ms <= 1000:
@@ -189,7 +216,7 @@ def main():
         parser.error("provide a .wasm module or a status/animation command")
     connection = None
     try:
-        connection = SerialTransport(args.port) if args.port else ProcessTransport(args.process)
+        connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else ProcessTransport(args.process)
         def console(data):
             sys.stdout.buffer.write(data)
             sys.stdout.buffer.flush()
