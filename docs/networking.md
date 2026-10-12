@@ -5,6 +5,12 @@ Pico W, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTTP. USB continue
 working when networking is disabled, unavailable or reconnecting. All paths share
 one runtime, library and configuration; commands execute between engine steps.
 
+Wi-Fi devices advertise a DHCP hostname of `lightvm-xxxxxx`, using the last three
+bytes of the station MAC address as six lowercase hexadecimal digits, as in
+picolights (for example, `lightvm-0421e0`). The name is stable across reboots and
+network changes. Routers that register DHCP names in local DNS can resolve it;
+the DNS suffix, if any, depends on the router.
+
 HTTP has **no authentication or encryption**. It is intended for your trusted LAN.
 The server exposes commands, not the editor's static files. Firmware OTA, MQTT,
 mDNS, HTTPS, source storage and a recovery access point are not included.

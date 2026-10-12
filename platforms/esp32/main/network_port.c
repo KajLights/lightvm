@@ -41,6 +41,10 @@ static bool configure(void *ctx,const NetworkConfig *c) {
         if (!events) return false;
         if (!station) station=esp_netif_create_default_wifi_sta();
         if (!station) return false;
+        uint8_t mac[6]; char hostname[sizeof("lightvm-ffffff")];
+        if (esp_read_mac(mac,ESP_MAC_WIFI_STA)!=ESP_OK) return false;
+        snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
+        if (esp_netif_set_hostname(station,hostname)!=ESP_OK) return false;
         wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT(); init.nvs_enable=0;
         if (!wifi_created) { if (esp_wifi_init(&init)!=ESP_OK) return false; wifi_created=true; }
         if (esp_wifi_set_storage(WIFI_STORAGE_RAM)!=ESP_OK || esp_wifi_set_mode(WIFI_MODE_STA)!=ESP_OK) return false;

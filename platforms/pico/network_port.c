@@ -13,6 +13,7 @@ _Static_assert(PIXEL_CAPACITY<=1024u, "Pico W RAM gate reserves at most 1024 phy
 static App *engine;
 static bool initialized;
 static bool observed[NETWORK_LIMIT];
+static char hostname[sizeof("lightvm-ffffff")];
 #if LIGHTVM_HTTP
 static void stop_http(void);
 #endif
@@ -24,10 +25,17 @@ static int result(void *ctx,const cyw43_ev_scan_result_t *r) {
     }
     return 0;
 }
+static void enable_station(void) {
+    cyw43_arch_enable_sta_mode();
+    const uint8_t *mac=cyw43_state.netif[CYW43_ITF_STA].hwaddr;
+    snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
+    // lwIP retains this pointer; DHCP waits for the link before advertising it.
+    netif_set_hostname(&cyw43_state.netif[CYW43_ITF_STA],hostname);
+}
 static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
     uint32_t country=!strcmp(c->country,"XX")?CYW43_COUNTRY_WORLDWIDE:CYW43_COUNTRY(c->country[0],c->country[1],0);
-    if (initialized && c->wifi_enabled && cyw43_arch_get_country_code()==country) { cyw43_arch_enable_sta_mode(); return true; }
+    if (initialized && c->wifi_enabled && cyw43_arch_get_country_code()==country) { enable_station(); return true; }
     if (initialized) {
 #if LIGHTVM_HTTP
         stop_http();
@@ -36,7 +44,7 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     }
     if (!c->wifi_enabled) return true;
     if (cyw43_arch_init_with_country(country)) return false;
-    initialized=true; cyw43_arch_enable_sta_mode(); return true;
+    initialized=true; enable_station(); return true;
 }
 static bool scan(void *ctx) {
     (void)ctx; memset(observed,0,sizeof(observed)); cyw43_wifi_scan_options_t options={0};
