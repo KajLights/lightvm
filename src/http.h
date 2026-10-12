@@ -1,6 +1,7 @@
 #ifndef LIGHTVM_HTTP_H
 #define LIGHTVM_HTTP_H
 #include "app.h"
+#include "discovery.h"
 #define HTTP_SESSIONS 4u
 #define HTTP_QUEUE 4u
 #define HTTP_INPUT_LIMIT (2048u+HEADER_SIZE+FRAME_LIMIT)
@@ -17,11 +18,12 @@ typedef struct {
     char method[8],path[80],token[33];
     uint8_t body[HEADER_SIZE+FRAME_LIMIT]; size_t size;
     unsigned error;
+    bool discovery_only;
     HttpIO io;
 } HttpRequest;
 typedef struct { char token[33]; uint64_t source,expires; } HttpSession;
 typedef struct {
-    App *app; HttpSession sessions[HTTP_SESSIONS]; uint64_t sequence;
+    App *app; Discovery *discovery; HttpSession sessions[HTTP_SESSIONS]; uint64_t sequence;
     HttpRequest queue[HTTP_QUEUE],active; unsigned head,count;
     uint8_t response[HTTP_RESPONSE_LIMIT]; size_t used,sent;
     char header[512]; size_t header_size,header_sent;

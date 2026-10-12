@@ -7,6 +7,47 @@ import { join as pathJoin } from "node:path";
 import { fileURLToPath } from "node:url";
 import { crc32, frame, FrameDecoder, LightVMClient, COMMAND } from "../web/protocol.mjs";
 
+test("discovery bootstraps over HTTP, validates addresses and pins the bridge IP", async () => {
+  const { DeviceDiscovery } = await import("../web/discovery.mjs");
+  const calls = [], payload = { schema: "lightvm.discovery/1", devices: [
+    { hostname: "lightvm-123456.local", device_id: "pico-1234", board: "pico_w", ip: "192.168.1.20", port: 8080, url: "https://untrusted.example" },
+    { hostname: "lightvm-abcdef.local", device_id: "esp32-abcdef", board: "xiao_esp32c6", ip: "192.168.1.21", port: 80 },
+  ], truncated: true };
+  const discovery = new DeviceDiscovery({ fetch: async (url, options) => { calls.push({ url, options }); return new Response(JSON.stringify(payload)); } });
+  const found = await discovery.find();
+  assert.equal(calls[0].url, "http://lightvm.local/api/v1/devices");
+  assert.equal(calls[0].options.method, "GET"); assert.equal(calls[0].options.credentials, "omit");
+  assert.equal(calls[0].options.targetAddressSpace, "local"); assert.equal(calls[0].options.redirect, "error");
+  assert.equal(found.devices[0].url, "http://192.168.1.20:8080"); assert.equal(found.truncated, true);
+  await discovery.find(); assert.equal(calls[1].url, "http://192.168.1.20:8080/api/v1/devices");
+  assert.equal(calls.some(call => call.url.includes("sessions") || call.url.includes("command")), false);
+});
+
+test("discovery falls back from a lost bridge and drops stale lists", async () => {
+  const { DeviceDiscovery, deviceList } = await import("../web/discovery.mjs");
+  const calls = [], discovery = new DeviceDiscovery({ fetch: async url => {
+    calls.push(url); if (!url.includes("lightvm.local")) throw new TypeError("offline");
+    return new Response(JSON.stringify({ schema: "lightvm.discovery/1", devices: [] }));
+  } });
+  discovery.seed = "http://192.168.1.20";
+  assert.deepEqual((await discovery.find()).devices, []);
+  assert.deepEqual(calls, ["http://192.168.1.20/api/v1/devices", "http://lightvm.local/api/v1/devices"]);
+  assert.throws(() => deviceList({ schema: "lightvm.discovery/1", devices: [{ ip: "192.168.1.20", port: 0 }] }), /invalid/);
+  assert.throws(() => deviceList({ schema: "lightvm.discovery/1", devices: Array(9).fill({}) }), /valid device list/);
+  const offline = new DeviceDiscovery({ fetch: async () => { throw new TypeError("offline"); } });
+  offline.seed = "http://192.168.1.20";
+  await assert.rejects(offline.find(), /No devices found/); assert.equal(offline.seed, "");
+});
+
+test("a stalled discovery read aborts without opening a command session", async () => {
+  const { DeviceDiscovery } = await import("../web/discovery.mjs");
+  let aborted = false;
+  const discovery = new DeviceDiscovery({ timeout: 10, fetch: (url, { signal }) => new Promise((resolve, reject) => {
+    signal.addEventListener("abort", () => { aborted = true; reject(new Error("aborted")); });
+  }) });
+  await assert.rejects(discovery.read("http://lightvm.local"), /aborted/); assert.equal(aborted, true);
+});
+
 test("framing agrees with Python zlib, including incremental CRC", () => {
   assert.equal(crc32(new TextEncoder().encode("123456789")), 0xcbf43926);
   assert.equal(Buffer.from(frame(1, 42, new TextEncoder().encode("hello"))).toString("hex"),

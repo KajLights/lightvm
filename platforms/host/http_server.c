@@ -10,6 +10,7 @@
 #include <string.h>
 #include <signal.h>
 static Http server;
+static Discovery discovery;
 static int listener=-1;
 typedef struct { int fd; HttpInput input; HttpRequest request; uint64_t deadline; } Connection;
 static Connection clients[8];
@@ -24,6 +25,7 @@ void host_http_stop(void) {
     listener=-1;
     for (unsigned i=0;i<8;i++) close_connection(&clients[i]);
     http_disconnect_sessions(&server);
+    discovery_stop(&discovery,platform_time_us());
 }
 bool host_http_start(App *app,const char *address,unsigned port) {
     http_init(&server,app); for (unsigned i=0;i<8;i++) clients[i].fd=-1;
@@ -33,6 +35,11 @@ bool host_http_start(App *app,const char *address,unsigned port) {
     struct sockaddr_in addr={.sin_family=AF_INET,.sin_port=htons((uint16_t)port)};
     if (inet_pton(AF_INET,address,&addr.sin_addr)!=1 || bind(listener,(struct sockaddr *)&addr,sizeof(addr)) || listen(listener,8) || fcntl(listener,F_SETFL,O_NONBLOCK)) { close(listener); listener=-1; return false; }
     socklen_t size=sizeof(addr); getsockname(listener,(struct sockaddr *)&addr,&size);
+    // The simulator returns itself for browser/integration testing. It never
+    // joins multicast or advertises the default loopback-only HTTP listener.
+    uint8_t ip[4]; memcpy(ip,&addr.sin_addr.s_addr,4);
+    discovery_start(&discovery,"lightvm-host",app->device_id,platform_info()->board,ip,ntohs(addr.sin_port),NULL,NULL,platform_time_us());
+    server.discovery=&discovery;
     fprintf(stderr,"HTTP listening on http://%s:%u\n",address,ntohs(addr.sin_port)); fflush(stderr); return true;
 }
 void host_http_poll(void) {

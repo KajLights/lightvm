@@ -29,7 +29,14 @@ static HttpSession *session(Http *h,const char *token,uint64_t now) {
 }
 static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     if (r->error) return r->error;
+    if (r->discovery_only && strcmp(r->path,"/api/v1/devices")) return 404;
     if (!strcmp(r->method,"OPTIONS")) return 204;
+    if (!strcmp(r->path,"/api/v1/devices")) {
+        if (strcmp(r->method,"GET")) return 405;
+        if (r->size) return 400;
+        h->used=discovery_json(h->discovery,(char *)h->response,sizeof(h->response),now);
+        return h->used?200:500;
+    }
     if (!strcmp(r->method,"POST") && !strcmp(r->path,"/api/v1/sessions")) {
         if (r->size) return 400;
         HttpSession *s=NULL;
@@ -57,7 +64,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
 }
 static void headers(Http *h,unsigned code,bool binary) {
     const char *reason=code==200?"OK":code==201?"Created":code==204?"No Content":code==400?"Bad Request":code==404?"Not Found":code==405?"Method Not Allowed":code==413?"Payload Too Large":code==415?"Unsupported Media Type":code==503?"Service Unavailable":"Internal Server Error";
-    h->header_size=(size_t)snprintf(h->header,sizeof(h->header),"HTTP/1.1 %u %s\r\nContent-Type: %s\r\nContent-Length: %lu\r\nConnection: close\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, X-LightVM-Session\r\n\r\n",code,reason,binary?"application/octet-stream":"application/json",(unsigned long)h->used);
+    h->header_size=(size_t)snprintf(h->header,sizeof(h->header),"HTTP/1.1 %u %s\r\nContent-Type: %s\r\nContent-Length: %lu\r\nConnection: close\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, X-LightVM-Session\r\n\r\n",code,reason,binary?"application/octet-stream":"application/json",(unsigned long)h->used);
 }
 void http_tick(Http *h,uint64_t now) {
     expire(h,now);
@@ -66,7 +73,7 @@ void http_tick(Http *h,uint64_t now) {
         h->used=0; h->sent=0; h->header_sent=0; h->overflow=false; h->reply_source=0;
         unsigned code=execute(h,&h->active,now);
         if (code>=400) { h->used=(size_t)snprintf((char *)h->response,sizeof(h->response),"{\"error\":%u}",code); }
-        headers(h,code,code==200); h->deadline=now+2000000u; h->sending=true; h->closing=false;
+        headers(h,code,code==200 && !strcmp(h->active.path,"/api/v1/command")); h->deadline=now+2000000u; h->sending=true; h->closing=false;
     }
     if (!h->sending) return;
     const uint8_t *bytes=NULL; size_t count=0;

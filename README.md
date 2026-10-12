@@ -56,7 +56,7 @@ is currently one resident `VmInstance` and one owned RGB target. The execution
 pointer and aggregate allocator accounting remain serialized; concurrent engine
 execution is unsupported.
 
-Storage has native adapters on host, Pico and ESP32. Optional [Wi-Fi and HTTP management](docs/networking.md) coexist with USB. MQTT,
+Storage has native adapters on host, Pico and ESP32. Optional [Wi-Fi and HTTP management](docs/networking.md), including `lightvm.local` device discovery, coexist with USB. MQTT,
 Matter and firmware OTA remain planned native services. Firmware OTA replaces the native
 engine and services; an animation upload replaces a RAM-resident WASM program.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).

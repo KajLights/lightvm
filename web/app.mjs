@@ -2,7 +2,10 @@ import { LightVMClient, COMMAND } from "./protocol.mjs";
 import { SerialTransport, HttpTransport } from "./transports.mjs";
 
 import { Connections } from "./connections.mjs";
+import { DeviceDiscovery } from "./discovery.mjs";
 const paths = new Connections();
+const discovery = new DeviceDiscovery();
+let nearbyDevices = [], findingDevices = false;
 let parameterState = null;
 const $ = id => document.getElementById(id);
 const textarea = $("source"), storageKey = "lightvm.editor.draft.v1";
@@ -63,6 +66,8 @@ function buttons() {
   $("stop").disabled = busy || !client;
   $("download").disabled = !artifact;
   $("connect-http").disabled = busy || paths.paths.has("http");
+  $("discover-devices").disabled = busy || findingDevices;
+  $("nearby-devices").disabled = busy || !nearbyDevices.length || paths.paths.has("http");
   $("command-path").disabled = busy || !paths.paths.size;
   for (const id of ["network-refresh", "config-refresh", "procedures-refresh", "parameters-refresh"]) $(id).disabled = busy || !client;
   $("config-fields").disabled = busy || !client;
@@ -240,7 +245,49 @@ async function connectPath(key, transport) {
   } catch (error) { if (candidate) await candidate.close(); else await transport.close(); throw error; }
 }
 $("connect").onclick = () => action(() => connectPath("usb", new SerialTransport()));
-$("connect-http").onclick = () => action(() => connectPath("http", new HttpTransport($("http-address").value)));
+$("connect-http").onclick = () => action(async () => {
+  let address = $("http-address").value;
+  if (new URL(address).hostname === "lightvm.local") {
+    const result = await discovery.read(address);
+    const device = target ? result.devices.find(device => device.device_id === target.device_id) : result.devices[0];
+    if (!device) throw new Error("The connected USB device is absent from this device list. Refresh discovery or enter its address.");
+    address = device.url; $("http-address").value = address;
+  }
+  await connectPath("http", new HttpTransport(address));
+});
+async function findDevices() {
+  if (findingDevices) return;
+  findingDevices = true; $("discovery-state").textContent = "Looking for devices…"; buttons();
+  try {
+    const seeds = [paths.paths.get("http")?.client.transport?.url, suggestedHttpAddress, $("http-address").value, discovery.seed];
+    const result = await discovery.find(seeds);
+    const selected = $("nearby-devices").value;
+    const previousAddress = nearbyDevices.find(device => device.device_id === selected)?.url;
+    nearbyDevices = result.devices;
+    const options = [new Option("Choose a device", ""), ...nearbyDevices.map(device => new Option(`${device.board} · ${device.hostname}`, device.device_id))];
+    const select = $("nearby-devices");
+    // Keep selector nodes/focus stable when a background refresh is unchanged.
+    if (select.options.length !== options.length || options.some((option, index) => option.value !== select.options[index]?.value || option.text !== select.options[index]?.text)) select.replaceChildren(...options);
+    if (nearbyDevices.some(device => device.device_id === selected)) select.value = selected;
+    const updated = nearbyDevices.find(device => device.device_id === selected);
+    if (updated && $("http-address").value === previousAddress) $("http-address").value = updated.url;
+    const matching = target ? nearbyDevices.find(device => device.device_id === target.device_id) : nearbyDevices[0];
+    if (!$("http-address").value && matching) { $("http-address").value = matching.url; select.value = matching.device_id; }
+    $("discovery-state").textContent = `${nearbyDevices.length} ${nearbyDevices.length === 1 ? "device" : "devices"} found${result.truncated ? " · list full; use a device address for others" : ""}.`;
+  } catch (error) {
+    nearbyDevices = []; $("nearby-devices").replaceChildren(new Option("No devices found", ""));
+    $("discovery-state").textContent = error.message;
+  } finally { findingDevices = false; buttons(); }
+}
+$("discover-devices").onclick = findDevices;
+$("nearby-devices").onchange = () => {
+  const device = nearbyDevices.find(device => device.device_id === $("nearby-devices").value);
+  if (device) $("http-address").value = device.url;
+};
+// Discovery reads only metadata and never creates a session or changes the
+// selected command path. Periodic refresh picks up new devices and expirations.
+findDevices();
+setInterval(() => { if (!busy && !document.hidden) findDevices(); }, 10000);
 $("command-path").onchange = () => action(async () => {
   paths.select($("command-path").value); client = paths.active.client; target = paths.active.description;
   await refreshDevice(); await refreshNetwork(); await refreshProcedures(); await refreshParameters(); pathUI();

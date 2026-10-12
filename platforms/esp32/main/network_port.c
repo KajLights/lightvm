@@ -13,6 +13,10 @@
 #if LIGHTVM_HTTP
 #include "http.h"
 #include "esp_http_server.h"
+#include "lwip/sockets.h"
+#include "lwip/inet.h"
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdatomic.h>
 #endif
 static App *engine;
@@ -22,6 +26,10 @@ static esp_netif_t *station;
 static QueueHandle_t events;
 static bool observed[NETWORK_LIMIT];
 static int failure;
+#if LIGHTVM_HTTP
+static void stop_discovery(void);
+#endif
+static char hostname[sizeof("lightvm-ffffff")];
 static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
     (void)ctx; int value=0;
     if (base==WIFI_EVENT && id==WIFI_EVENT_SCAN_DONE) value=1;
@@ -32,6 +40,9 @@ static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
 }
 static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
+#if LIGHTVM_HTTP
+    stop_discovery();
+#endif
     if (!c->wifi_enabled && !initialized) return true;
     if (!initialized) {
         // LightVM's snapshot is the sole credential store. NVS is for PHY calibration.
@@ -41,7 +52,7 @@ static bool configure(void *ctx,const NetworkConfig *c) {
         if (!events) return false;
         if (!station) station=esp_netif_create_default_wifi_sta();
         if (!station) return false;
-        uint8_t mac[6]; char hostname[sizeof("lightvm-ffffff")];
+        uint8_t mac[6];
         if (esp_read_mac(mac,ESP_MAC_WIFI_STA)!=ESP_OK) return false;
         snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
         if (esp_netif_set_hostname(station,hostname)!=ESP_OK) return false;
@@ -69,13 +80,13 @@ static int scan_poll(void *ctx,const char *ssid,bool *visible) {
     if (ssid && visible) { *visible=false; for (unsigned i=0;i<engine->network.config.count;i++) if (!strcmp(ssid,engine->network.config.networks[i].ssid)) *visible=observed[i]; }
     return 1;
 }
-static bool connect(void *ctx,const WifiNetwork *network) {
+static bool connect_network(void *ctx,const WifiNetwork *network) {
     (void)ctx; failure=0;
     wifi_config_t config={0}; memcpy(config.sta.ssid,network->ssid,strlen(network->ssid)); memcpy(config.sta.password,network->password,strlen(network->password));
     config.sta.threshold.authmode=network->password[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
     return esp_wifi_set_config(WIFI_IF_STA,&config)==ESP_OK && esp_wifi_connect()==ESP_OK;
 }
-static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capacity) {
+static int link_state(void *ctx,char *ip,size_t capacity,char *error,size_t error_capacity) {
     (void)ctx; wifi_ap_record_t ap; esp_netif_ip_info_t info;
     if (initialized && esp_wifi_sta_get_ap_info(&ap)==ESP_OK && esp_netif_get_ip_info(station,&info)==ESP_OK && info.ip.addr) {
         snprintf(ip,capacity,IPSTR,IP2STR(&info.ip)); return 1;
@@ -88,6 +99,61 @@ static uint32_t random_value(void *ctx) { (void)ctx; return esp_random(); }
 #if LIGHTVM_HTTP
 static Http http;
 static httpd_handle_t handle;
+static httpd_handle_t bootstrap_handle;
+static Discovery discovery;
+static int discovery_socket=-1;
+static uint8_t discovery_input[DISCOVERY_PACKET_LIMIT+1];
+static bool discovery_send(void *ctx,const uint8_t *bytes,size_t size,const uint8_t ip[4],uint16_t port) {
+    (void)ctx; if (discovery_socket<0) return false;
+    struct sockaddr_in target={.sin_family=AF_INET,.sin_port=htons(port)};
+    memcpy(&target.sin_addr.s_addr,ip,4);
+    return sendto(discovery_socket,bytes,size,0,(struct sockaddr *)&target,sizeof(target))==(ssize_t)size;
+}
+static void stop_discovery(void) {
+    discovery_stop(&discovery,platform_time_us());
+    if (discovery_socket>=0) close(discovery_socket);
+    discovery_socket=-1;
+}
+static bool start_discovery(uint16_t port) {
+    discovery_socket=socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP); if (discovery_socket<0) return false;
+    int yes=1,ttl=255; struct in_addr local;
+    struct sockaddr_in address={.sin_family=AF_INET,.sin_port=htons(DISCOVERY_PORT),.sin_addr={.s_addr=htonl(INADDR_ANY)}};
+    struct ip_mreq group={0}; inet_pton(AF_INET,"224.0.0.251",&group.imr_multiaddr);
+    if (inet_pton(AF_INET,engine->network.ip,&local)!=1) goto failed;
+    group.imr_interface=local;
+    if (setsockopt(discovery_socket,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(yes)) ||
+        setsockopt(discovery_socket,IPPROTO_IP,IP_MULTICAST_TTL,&ttl,sizeof(ttl)) ||
+        setsockopt(discovery_socket,IPPROTO_IP,IP_TTL,&ttl,sizeof(ttl)) ||
+        setsockopt(discovery_socket,IPPROTO_IP,IP_MULTICAST_IF,&local,sizeof(local)) ||
+        bind(discovery_socket,(struct sockaddr *)&address,sizeof(address)) ||
+        setsockopt(discovery_socket,IPPROTO_IP,IP_ADD_MEMBERSHIP,&group,sizeof(group)) ||
+        fcntl(discovery_socket,F_SETFL,O_NONBLOCK)) goto failed;
+    uint8_t ip[4]; memcpy(ip,&local.s_addr,4);
+    discovery_start(&discovery,hostname,engine->device_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
+    if (!discovery.active) goto failed;
+    return true;
+failed:
+    stop_discovery(); return false;
+}
+static void poll_discovery(uint64_t now,uint16_t port) {
+    bool enabled=handle && engine->network.state==NET_CONNECTED && engine->network.config.http_enabled;
+    struct in_addr address={0}; inet_pton(AF_INET,engine->network.ip,&address);
+    if (discovery.active && (!enabled || memcmp(&address.s_addr,discovery.devices[0].ip,4) || port!=discovery.devices[0].port)) stop_discovery();
+    static uint64_t retry;
+    if (enabled && !discovery.active && now>=retry) { start_discovery(port); retry=now+5000000u; }
+    if (discovery_socket<0) return;
+    // Bound ingress per engine step, including on a busy multicast network.
+    for (unsigned i=0;i<4;i++) {
+        struct sockaddr_in from; socklen_t length=sizeof(from);
+        ssize_t n=recvfrom(discovery_socket,discovery_input,sizeof(discovery_input),0,(struct sockaddr *)&from,&length);
+        if (n<0) break;
+        if ((size_t)n<=DISCOVERY_PACKET_LIMIT) {
+            uint8_t ip[4]; memcpy(ip,&from.sin_addr.s_addr,4);
+            discovery_receive(&discovery,discovery_input,(size_t)n,ip,ntohs(from.sin_port),now);
+        }
+    }
+    discovery_tick(&discovery,now);
+}
 static QueueHandle_t ingress,transmit;
 typedef struct { httpd_req_t *request; atomic_bool occupied,failed,done; bool closing; } Client;
 static Client clients[6];
@@ -130,7 +196,8 @@ static esp_err_t request(httpd_req_t *r) {
     if (!c) { httpd_resp_set_status(r,"503 Service Unavailable"); return httpd_resp_send(r,NULL,0); }
     atomic_store(&c->failed,false); atomic_store(&c->done,false); c->closing=false;
     Incoming incoming={.client=c}; HttpRequest *q=&incoming.request;
-    snprintf(q->method,sizeof(q->method),"%s",r->method==HTTP_POST?"POST":r->method==HTTP_DELETE?"DELETE":"OPTIONS");
+    q->discovery_only=r->handle==bootstrap_handle;
+    snprintf(q->method,sizeof(q->method),"%s",r->method==HTTP_POST?"POST":r->method==HTTP_DELETE?"DELETE":r->method==HTTP_GET?"GET":"OPTIONS");
     if (strlen(r->uri)>=sizeof(q->path)) q->error=400; else strcpy(q->path,r->uri);
     if (r->content_len>sizeof(q->body)) q->error=413;
     if (r->method==HTTP_POST && !strcmp(q->path,"/api/v1/command")) {
@@ -154,17 +221,27 @@ static bool start_http(uint16_t port) {
     httpd_config_t config=HTTPD_DEFAULT_CONFIG(); config.server_port=port; config.uri_match_fn=httpd_uri_match_wildcard;
     config.max_open_sockets=6; config.recv_wait_timeout=2; config.send_wait_timeout=2; config.stack_size=6144;
     if (httpd_start(&handle,&config)!=ESP_OK) return false;
-    const httpd_method_t methods[]={HTTP_POST,HTTP_DELETE,HTTP_OPTIONS};
-    for (unsigned i=0;i<3;i++) { httpd_uri_t route={.uri="/api/v1/*",.method=methods[i],.handler=request}; if (httpd_register_uri_handler(handle,&route)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; } }
+    const httpd_method_t methods[]={HTTP_GET,HTTP_POST,HTTP_DELETE,HTTP_OPTIONS};
+    for (unsigned i=0;i<4;i++) { httpd_uri_t route={.uri="/api/v1/*",.method=methods[i],.handler=request}; if (httpd_register_uri_handler(handle,&route)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; } }
+    if (port!=80) {
+        config.server_port=80; config.ctrl_port++; config.max_open_sockets=2; config.stack_size=4096;
+        if (httpd_start(&bootstrap_handle,&config)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; }
+        const httpd_method_t bootstrap_methods[]={HTTP_GET,HTTP_OPTIONS};
+        for (unsigned i=0;i<2;i++) {
+            httpd_uri_t route={.uri="/api/v1/devices",.method=bootstrap_methods[i],.handler=request};
+            if (httpd_register_uri_handler(bootstrap_handle,&route)!=ESP_OK) { httpd_stop(bootstrap_handle); bootstrap_handle=NULL; httpd_stop(handle); handle=NULL; return false; }
+        }
+    }
     return true;
 }
 #endif
 void esp32_network_init(App *app) {
     engine=app;
-    app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect,link,disconnect,random_value};
+    app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect_network,link_state,disconnect,random_value};
     NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 #if LIGHTVM_HTTP
     http_init(&http,app); ingress=xQueueCreate(HTTP_QUEUE,sizeof(Incoming)); transmit=xQueueCreate(4,sizeof(Outgoing));
+    http.discovery=&discovery;
     if (!ingress || !transmit || xTaskCreate(sender,"http-output",4096,NULL,5,NULL)!=pdPASS) { strcpy(app->network_error,"HTTP task allocation failed"); }
 #endif
 }
@@ -189,6 +266,7 @@ void esp32_network_poll(void) {
     previous=engine->network.state;
     bool enabled=engine->network.config.http_enabled;
     if (handle && !engine->network_pending && (!enabled || listening_port!=engine->network.config.port)) {
+        stop_discovery();
         if (!atomic_exchange(&stopping,true)) { http_disconnect_sessions(&http); xQueueReset(ingress); }
         bool busy=false;
         for (unsigned i=0;i<6;i++) if (atomic_load(&clients[i].occupied)) {
@@ -196,9 +274,11 @@ void esp32_network_poll(void) {
             if (!close_client(&clients[i])) busy=true;
         }
         if (busy) return;
+        if (bootstrap_handle) { httpd_stop(bootstrap_handle); bootstrap_handle=NULL; }
         httpd_stop(handle); handle=NULL; atomic_store(&stopping,false);
     }
     if (!handle && !engine->network_pending && enabled && ingress && transmit) { if (start_http(engine->network.config.port)) listening_port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
+    poll_discovery(platform_time_us(),listening_port);
     if (handle) {
         Incoming incoming;
         // Ingress is the four-command queue. Transfer only when the shared

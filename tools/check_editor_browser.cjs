@@ -35,6 +35,12 @@ function announcedUrl(child, output) {
     const cdp = await browser.newBrowserCDPSession();
     await cdp.send('Browser.grantPermissions', { origin: editorUrl, permissions: ['localNetwork', 'loopbackNetwork', 'localNetworkAccess'] });
     page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+    // Route only the bootstrap hostname to the actual simulator metadata.
+    // DNS packet interoperability is tested separately; HTTP and UI are real.
+    await page.route('http://lightvm.local/api/v1/devices', async route => {
+      const response = await route.fetch({ url: url + '/api/v1/devices' });
+      await route.fulfill({ response });
+    });
     const errors = []; page.on('pageerror', error => errors.push(error.message)); page.on("console", m => { if (m.type()==="error") console.log(m.text()); }); page.on("requestfailed", r => console.log("REQUEST FAILED", r.url(), r.failure()));
     // The serial API is simulated over a second logical HTTP session. Native
     // pipe/HTTP concurrency is covered independently by tests/test_http.py.
@@ -55,8 +61,12 @@ function announcedUrl(child, output) {
       Object.defineProperty(navigator, 'serial', { value: { requestPort: async () => new Port() } });
     }, url);
     await page.goto(editorUrl);
-    await page.locator('#http-address').fill(url); await page.locator('#connect-http').click();
+    await page.waitForFunction(() => document.querySelector('#discovery-state').textContent.includes('1 device found'));
+    assert.equal(await page.locator('#http-address').inputValue(), url);
+    assert.equal(await page.locator('#nearby-devices option').count(), 2);
+    await page.locator('#connect-http').click();
     await page.waitForFunction(() => document.querySelector('#path-health').textContent.includes('HTTP: connected') && !document.querySelector('#config-fields').disabled);
+    console.log('Automatic discovery selects the bridge IP and connects through the device picker: passed');
     const config = { schema: 'lightvm.config/1', devices: [{ id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 5 } }], targets: { A: { device: 'lights' } } };
     await page.locator('#config-json').fill(JSON.stringify(config)); await page.locator('#config-save').click();
     await page.waitForFunction(() => document.querySelector('#output-binding').textContent.includes('5 pixels') && !document.querySelector('#config-fields').disabled);

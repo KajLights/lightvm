@@ -30,6 +30,14 @@ source; **Download .wasm** downloads the compiled binary with its program manife
 
 ## Connect and upload
 
+For a provisioned Wi-Fi/HTTP board, the editor automatically fetches a device list
+through `lightvm.local`. Choose a board under **Nearby devices** and click
+**Connect HTTP**. **Refresh** retries the search. The list is supplied by a board,
+so no desktop discovery helper is needed; browsers may request local-network
+permission. A USB connection or direct HTTP address can also seed discovery.
+See [networking](networking.md#local-device-discovery) for provisioning, custom
+ports, discovery limits and the endpoint available to other tools.
+
 1. Run the current LightVM firmware and connect the board normally over USB.
    Close other serial clients using the same device.
 2. Configure the light strip's pin/count and bind it to slot A using the existing

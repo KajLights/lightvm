@@ -12,8 +12,8 @@ network changes. Routers that register DHCP names in local DNS can resolve it;
 the DNS suffix, if any, depends on the router.
 
 HTTP has **no authentication or encryption**. It is intended for your trusted LAN.
-The server exposes commands, not the editor's static files. Firmware OTA, MQTT,
-mDNS, HTTPS, source storage and a recovery access point are not included.
+The server exposes commands and discovery metadata, not the editor's static files.
+Firmware OTA, MQTT, HTTPS, source storage and a recovery access point are not included.
 
 ## Build
 
@@ -87,7 +87,54 @@ Omit `--no-reset` for Pico/Pico W. `--get-network` omits passwords;
 network settings may be changed through either path. Network changes preserve the
 program and output configuration, but can terminate HTTP access. Read the new IP
 through USB or your router, then reconnect; the editor can fill the address from
-USB status. Addresses are entered directly; mDNS discovery is not implemented.
+USB status. The editor also finds devices through the discovery endpoint below;
+direct addresses remain available when multicast is blocked.
+
+## Local device discovery
+
+Wi-Fi/HTTP firmware on Pico W and both ESP32 profiles advertises
+`_lightvm._tcp.local` with its command port, stable device ID, board and API version.
+Each board also answers the shared `lightvm.local` IPv4 name. This bootstrap name
+may reach any LightVM board; each board retains its unique `lightvm-xxxxxx.local`
+name, probes for collisions and chooses another suffix if necessary.
+
+The editor fetches `http://lightvm.local/api/v1/devices` automatically and displays
+a **Nearby devices** picker. The board performs DNS-SD queries; the browser only
+uses HTTP. Select a device and click **Connect HTTP**. Reads and commands use the
+selected IP and port, so the shared name cannot switch boards during a session.
+USB and known HTTP addresses can seed discovery when `.local` resolution is
+unavailable. **Refresh** retries discovery, and background refresh runs every ten
+seconds while the editor is visible. Discovery never creates command sessions,
+changes the selected command path, or replays a command.
+
+The unauthenticated, read-only endpoint is also available to other tools:
+
+```sh
+curl http://lightvm.local/api/v1/devices
+```
+
+It returns `schema:"lightvm.discovery/1"`, `available`, `capacity:8`, `truncated`
+and `devices`. The first entry is the responding board; entries contain
+`hostname`, `device_id`, `board`, `ip`, `port` and `url`. The cache holds this board
+and up to seven peers. Incomplete records are hidden, graceful shutdown removes
+peers immediately, and silent departures expire within 30 seconds. A full cache
+sets `truncated:true` instead of allocating or evicting live devices.
+
+Discovery starts only when Wi-Fi is connected and the command listener is ready.
+Radio loss, disablement and reconfiguration clear the cache; IP/port changes
+restart announcements. If commands use another port, a discovery-only listener
+remains on port 80. It exposes `/api/v1/devices`, not command sessions. Both
+listeners share existing bounded ingress and response buffers. ESP32 HTTP builds
+reserve sixteen lwIP sockets for the two servers, clients and multicast socket;
+existing build-local SDK configurations must adopt `CONFIG_LWIP_MAX_SOCKETS=16`.
+
+The shared implementation is IPv4-only and scoped to LightVM's DNS-SD records,
+with 1024-byte packets, bounded DNS compression traversal, delayed multicast
+answers, known-answer suppression and no heap-owned device list. Multicast is
+local to the LAN; isolated guest networks and VLANs need an existing multicast
+forwarder or a direct address. Browser local-network permission still applies.
+The host simulator returns itself for HTTP/UI testing and does not advertise on
+the LAN. USB-only and Wi-Fi-only builds omit discovery entirely.
 
 Network settings have their own durable revision and do not form part of
 `lightvm.config/1`. A commit validates a staged candidate, checks its expected
@@ -129,10 +176,11 @@ and `http_port`. Discovery distinguishes compiled `wifi_supported` and
 
 | Request | Reply |
 |---|---|
+| `GET /api/v1/devices` | 200 JSON: bounded DNS-SD device list; no session required |
 | `POST /api/v1/sessions`, empty body | 201 JSON: `session_id`, `device_id`, `boot_id`, `expires_in_ms` |
 | `POST /api/v1/command`, `X-LightVM-Session` header | 200 binary response frames ending in STATUS |
 | `DELETE /api/v1/sessions/{session_id}` | 204; release that session's candidate |
-| `OPTIONS` | CORS preflight for POST/DELETE, Content-Type and X-LightVM-Session |
+| `OPTIONS` | CORS preflight for GET/POST/DELETE, Content-Type and X-LightVM-Session |
 
 Command bodies use `application/octet-stream` and exactly one protocol-v1 frame,
 including its existing 16-byte header and CRC. Responses concatenate OUTPUT,
@@ -253,3 +301,47 @@ VM ceiling, and the retained 200-pixel GP16/GRB configuration at brightness 32.
 The saved `rainbow` program resumes with no boot or animation error and 11,870
 bytes of VM heap in use. Network settings are initially disabled; Wi-Fi provisioning
 and the wireless acceptance checks remain pending.
+
+### Device discovery validation, 12 October 2026
+
+The discovery builds pass all four host C contracts, all 92 Python integration
+tests and all 12 editor Node tests. DNS tests exercise two-board exchange,
+compressed names, record truncation, cache limits, TTL expiry, goodbye records,
+shared aliases, legacy unicast replies, known-answer suppression and unique-name
+conflicts. Packet mutations also pass AddressSanitizer and UndefinedBehaviorSanitizer.
+The Chrome acceptance check verifies automatic bootstrap, IP selection, HTTP and
+USB concurrency, compiler/upload/management flows, stable focused form controls
+and mobile layout. Its simulator bootstrap DNS name is routed to the real host;
+the live Pico W check below additionally verifies actual multicast and Wi-Fi.
+
+| Board | Discovery application `.bin` bytes | Static RAM bytes |
+|---|---:|---:|
+| Pico W | 563,568 | 162,940 |
+| XIAO ESP32-C6 | 985,312 | 269,002 |
+| XIAO ESP32-S3 | 865,024 | 247,555 |
+
+The Pico comparison against the same pre-discovery source/toolchain is +15,424
+bytes of flash and +3,716 static bytes, leaving 6,020 bytes after the existing RAM
+reservations. The C6 application partition retains 63,264 bytes. These figures
+exclude peak dynamic transport/task allocations; a non-default command port
+starts an additional ESP32 HTTP task for the discovery-only listener. Fresh ESP32
+builds use the updated sixteen-socket SDK default. USB-only host and Wi-Fi-only
+Pico builds also pass. ESP32 physical radio validation remains pending.
+
+### Pico W discovery deployment, 12 October 2026
+
+The connected Pico W's active/saved output configuration and stored `rainbow`
+module were backed up and checked before flashing the discovery UF2. Every UF2
+block targets flash below `0x10180000`, preserving snapshot storage. After boot,
+the configurations and module bytes match the backup, Wi-Fi reconnects using the
+saved credentials, and the 200-pixel GP16/GRB output retains brightness limit 100
+and its `rainbow` startup program. USB and HTTP report no boot or animation error;
+the active VM heap remains 11,870 bytes and playback continues during HTTP reads.
+
+Actual `lightvm.local` resolution and `GET /api/v1/devices` both succeed. macOS
+Bonjour browsing discovers `_lightvm._tcp.local` as `lightvm-0160a2`. A Chrome
+check using actual DNS, with no bootstrap interception, automatically finds the
+Pico W, selects its IP, connects over HTTP and displays the 200-pixel slot A
+binding without page errors. The check closes its session without changing the
+program or configuration. Multi-board physical discovery, AP-loss recovery and
+sustained resource measurements remain separate acceptance work.

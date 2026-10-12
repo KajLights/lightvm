@@ -9,6 +9,13 @@ static bool close_sink(void *context) { Sink *s=context; if (s->close_stalled) r
 static void drain(Http *http,uint64_t now,Sink *sink) { for (unsigned i=0;i<200 && !sink->closed;i++) http_tick(http,now+i); CHECK(sink->closed); sink->bytes[sink->used]=0; }
 int main(void) {
     static App app; static Http http; app_init(&app,NULL,NULL); strcpy(app.device_id,"test"); strcpy(app.boot_id,"boot"); http_init(&http,&app);
+    Sink list={0}; HttpRequest get={.method="GET",.path="/api/v1/devices",.io={&list,output,close_sink}};
+    CHECK(http_submit(&http,&get)); drain(&http,0,&list);
+    CHECK(strstr((char *)list.bytes,"200 OK") && strstr((char *)list.bytes,"Content-Type: application/json") && strstr((char *)list.bytes,"\"devices\":[]"));
+    CHECK(!http.sessions[0].source);
+    memset(&list,0,sizeof(list)); get.discovery_only=true; strcpy(get.method,"POST"); strcpy(get.path,"/api/v1/sessions"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"404 Not Found") && !http.sessions[0].source);
+    get.discovery_only=false; strcpy(get.path,"/api/v1/devices");
+    memset(&list,0,sizeof(list)); strcpy(get.method,"POST"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"405 Method Not Allowed"));
     Sink sink={0}; HttpRequest request={.method="POST",.path="/api/v1/sessions",.io={&sink,output,close_sink}};
     CHECK(http_submit(&http,&request)); drain(&http,0,&sink); CHECK(strstr((char *)sink.bytes,"201 Created"));
     char token[33]; strcpy(token,http.sessions[0].token); uint64_t source=http.sessions[0].source;

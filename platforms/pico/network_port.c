@@ -7,6 +7,8 @@
 #include <string.h>
 #if LIGHTVM_HTTP
 #include "http.h"
+#include "lwip/udp.h"
+#include "lwip/igmp.h"
 #endif
 _Static_assert(VM_HEAP_LIMIT==64u*1024u, "Pico W network builds require the 64 KiB heap profile used by the RAM gate");
 _Static_assert(PIXEL_CAPACITY<=1024u, "Pico W RAM gate reserves at most 1024 physical pixels");
@@ -16,6 +18,7 @@ static bool observed[NETWORK_LIMIT];
 static char hostname[sizeof("lightvm-ffffff")];
 #if LIGHTVM_HTTP
 static void stop_http(void);
+static void stop_discovery(void);
 #endif
 static int result(void *ctx,const cyw43_ev_scan_result_t *r) {
     (void)ctx;
@@ -67,7 +70,49 @@ static void disconnect(void *ctx) { (void)ctx; if (initialized) cyw43_wifi_leave
 static uint32_t random_value(void *ctx) { (void)ctx; return get_rand_32(); }
 #if LIGHTVM_HTTP
 static Http http;
+static Discovery discovery;
+static struct udp_pcb *discovery_pcb;
+static uint8_t discovery_input[DISCOVERY_PACKET_LIMIT];
+static ip4_addr_t discovery_group;
+static bool discovery_send(void *ctx,const uint8_t *bytes,size_t size,const uint8_t ip[4],uint16_t port) {
+    (void)ctx; if (!discovery_pcb) return false;
+    struct pbuf *p=pbuf_alloc(PBUF_TRANSPORT,(u16_t)size,PBUF_RAM); if (!p) return false;
+    ip_addr_t target; IP_ADDR4(&target,ip[0],ip[1],ip[2],ip[3]);
+    err_t result=pbuf_take(p,bytes,(u16_t)size);
+    if (result==ERR_OK) result=udp_sendto_if(discovery_pcb,p,&target,port,&cyw43_state.netif[CYW43_ITF_STA]);
+    pbuf_free(p); return result==ERR_OK;
+}
+static void discovery_received(void *ctx,struct udp_pcb *pcb,struct pbuf *p,const ip_addr_t *address,u16_t port) {
+    (void)ctx; (void)pcb;
+    if (p && IP_IS_V4(address) && p->tot_len<=sizeof(discovery_input) && pbuf_copy_partial(p,discovery_input,p->tot_len,0)==p->tot_len) {
+        const ip4_addr_t *a=ip_2_ip4(address); uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
+        discovery_receive(&discovery,discovery_input,p->tot_len,ip,port,platform_time_us());
+    }
+    if (p) pbuf_free(p);
+}
+static void stop_discovery(void) {
+    discovery_stop(&discovery,platform_time_us());
+    if (discovery_pcb) {
+        igmp_leavegroup_netif(&cyw43_state.netif[CYW43_ITF_STA],&discovery_group);
+        udp_remove(discovery_pcb); discovery_pcb=NULL;
+    }
+}
+static bool start_discovery(uint16_t port) {
+    struct netif *netif=&cyw43_state.netif[CYW43_ITF_STA];
+    discovery_pcb=udp_new_ip_type(IPADDR_TYPE_V4); if (!discovery_pcb) return false;
+    IP4_ADDR(&discovery_group,224,0,0,251);
+    if (udp_bind(discovery_pcb,IP_ANY_TYPE,DISCOVERY_PORT)!=ERR_OK || igmp_joingroup_netif(netif,&discovery_group)!=ERR_OK) {
+        udp_remove(discovery_pcb); discovery_pcb=NULL; return false;
+    }
+    discovery_pcb->ttl=255; udp_set_multicast_ttl(discovery_pcb,255);
+    udp_recv(discovery_pcb,discovery_received,NULL);
+    const ip4_addr_t *a=netif_ip4_addr(netif); uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
+    discovery_start(&discovery,hostname,engine->device_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
+    if (!discovery.active) { stop_discovery(); return false; }
+    return true;
+}
 static struct tcp_pcb *listener;
+static struct tcp_pcb *bootstrap_listener;
 typedef struct { struct tcp_pcb *pcb; HttpInput input; HttpRequest request; uint64_t deadline,close_deadline; bool closing; } Client;
 static Client clients[4];
 static int output(void *ctx,const uint8_t *bytes,size_t size) {
@@ -112,21 +157,32 @@ static err_t accept_client(void *ctx,struct tcp_pcb *pcb,err_t error) {
     Client *c=NULL; for (unsigned i=0;i<4;i++) if (!clients[i].pcb) { c=&clients[i]; break; }
     if (!c) { tcp_abort(pcb); return ERR_ABRT; }
     memset(c,0,sizeof(*c)); c->pcb=pcb; c->deadline=platform_time_us()+2000000u; c->request.io=(HttpIO){c,output,close_client};
+    c->request.discovery_only=pcb->local_port==80 && engine->network.config.port!=80;
     tcp_arg(pcb,c); tcp_recv(pcb,receive); tcp_err(pcb,failed); return ERR_OK;
 }
 static void stop_http(void) {
+    stop_discovery();
     for (unsigned i=0;i<4;i++) {
         Client *c=&clients[i]; http_cancel_io(&http,c);
         if (!close_client(c) && c->pcb) { tcp_arg(c->pcb,NULL); tcp_err(c->pcb,NULL); tcp_abort(c->pcb); c->pcb=NULL; }
     }
     if (listener) { tcp_close(listener); listener=NULL; }
+    if (bootstrap_listener) { tcp_close(bootstrap_listener); bootstrap_listener=NULL; }
     http_disconnect_sessions(&http);
 }
+static struct tcp_pcb *listen_http(uint16_t port) {
+    struct tcp_pcb *pcb=tcp_new_ip_type(IPADDR_TYPE_V4); if (!pcb) return NULL;
+    if (tcp_bind(pcb,IP_ANY_TYPE,port)!=ERR_OK) { tcp_close(pcb); return NULL; }
+    struct tcp_pcb *listening=tcp_listen_with_backlog(pcb,4); if (!listening) { tcp_close(pcb); return NULL; }
+    tcp_accept(listening,accept_client); return listening;
+}
 static bool start_http(uint16_t port) {
-    struct tcp_pcb *pcb=tcp_new_ip_type(IPADDR_TYPE_V4); if (!pcb) return false;
-    if (tcp_bind(pcb,IP_ANY_TYPE,port)!=ERR_OK) { tcp_close(pcb); return false; }
-    listener=tcp_listen_with_backlog(pcb,4); if (!listener) { tcp_close(pcb); return false; }
-    tcp_accept(listener,accept_client); return true;
+    listener=listen_http(port); if (!listener) return false;
+    if (port!=80) {
+        bootstrap_listener=listen_http(80);
+        if (!bootstrap_listener) { tcp_close(listener); listener=NULL; return false; }
+    }
+    return true;
 }
 #endif
 void pico_network_init(App *app) {
@@ -134,6 +190,7 @@ void pico_network_init(App *app) {
     app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect,link,disconnect,random_value};
 #if LIGHTVM_HTTP
     http_init(&http,app);
+    http.discovery=&discovery;
 #endif
     NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 }
@@ -149,6 +206,14 @@ void pico_network_poll(void) {
         if (!listener && enabled) { if (start_http(engine->network.config.port)) port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
     }
     uint64_t now=platform_time_us();
+    static uint64_t discovery_retry;
+    if (listener && enabled) {
+        const ip4_addr_t *a=netif_ip4_addr(&cyw43_state.netif[CYW43_ITF_STA]);
+        uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
+        if (discovery.active && memcmp(ip,discovery.devices[0].ip,4)) stop_discovery();
+        if (!discovery.active && now>=discovery_retry) { start_discovery(port); discovery_retry=now+5000000u; }
+        discovery_tick(&discovery,now);
+    }
     for (unsigned i=0;i<4;i++) {
         Client *c=&clients[i];
         if (c->pcb && !c->input.ready && now>=c->deadline) { http_cancel_io(&http,c); close_client(c); }

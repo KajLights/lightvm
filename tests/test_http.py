@@ -85,6 +85,21 @@ class HttpTests(unittest.TestCase):
             self.assertIn('X-LightVM-Session', response.headers['Access-Control-Allow-Headers'])
         self.assertEqual(self.pipe.status_fields()['uploading'], '0')
 
+    def test_discovery_is_json_read_only_and_includes_bridge(self):
+        from urllib.request import urlopen
+        with urlopen(self.url + '/api/v1/devices') as response:
+            self.assertEqual(response.headers['Content-Type'], 'application/json')
+            self.assertEqual(response.headers['Access-Control-Allow-Origin'], '*')
+            self.assertEqual(response.headers['Cache-Control'], 'no-store')
+            result = json.load(response)
+        self.assertEqual(result['schema'], 'lightvm.discovery/1')
+        self.assertEqual(result['capacity'], 8)
+        self.assertEqual(len(result['devices']), 1)
+        bridge = result['devices'][0]
+        self.assertEqual(bridge['device_id'], self.pipe.describe()['device_id'])
+        self.assertEqual(bridge['url'], self.url)
+        self.assertEqual(self.pipe.status_fields()['uploading'], '0')
+
     def test_same_ids_and_identity_across_concurrent_paths(self):
         other = self.connect()
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:

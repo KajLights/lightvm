@@ -65,7 +65,7 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/devices.c"
         "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/network.c")
     if(LIGHTVM_HTTP)
-        target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c")
+        target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c" "${LIGHTVM_ROOT}/src/discovery.c")
     endif()
     target_compile_features(lightvm_core PUBLIC c_std_11)
     target_compile_options(lightvm_core PRIVATE -Wall -Wextra -Werror)
