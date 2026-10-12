@@ -10,10 +10,17 @@ Users should be able to prepare the next animation, preview it, then crossfade,
 wipe or dissolve into it while both animations continue running.
 
 The native engine owns packed frame buffers, scheduling, compositing and physical
-output. Colour programs produce RGB; transition programs produce one blend byte
-per pixel. This makes transitions programmable while keeping their storage and
-execution costs bounded. A simple uniform crossfade is the first example of the
-same mechanism used for a custom spatial reveal.
+output through the shared [control API and execution model](feature-proposal-control-api.md).
+The first mixer format uses RGB8 colour sources and a separate U8 mix channel
+per pixel, expressing destination coverage. This makes transitions programmable
+while keeping their storage and execution costs bounded. A simple uniform
+crossfade is the first example of the same mechanism used for a spatial reveal.
+
+Addressable RGB/RGBW colour buffers have no alpha-channel requirement. The mix
+channel is separate from the source colours and the RGBW white emitter. Future
+colour formats must preserve or explicitly version this initial blend.
+Pixelblaze compatibility belongs above the independent control API, alongside
+the legacy animation API v1 adapter.
 
 This develops the A/B and one-byte transition-channel design discussed on
 10 October 2026 in the archived picolights chat, **Review animation effects and**.
@@ -30,7 +37,7 @@ They choose a two-second soft wipe and press **Go**. Rainbow and sparkle both
 keep moving while the wipe reveals B. When the transition completes, B becomes
 the program source and A is available for the next animation.
 
-The editor shows A, B, the transition mask and the final output. A transition
+The editor shows A, B, the transition mix and the final output. A transition
 slider can move the reveal forward or backward, or hold it partway through while
 the source animations keep playing. **Auto** advances that same transition over
 a selected duration. **Cut** switches immediately. A button, potentiometer or
@@ -52,8 +59,8 @@ column are adaptations for an embedded RGB animation engine.
 | [ETC Express two-scene mode](https://support.etcconnect.com/ETC/Consoles/Express_Expression_and_Insight/Express_Support/A_%2F%2F_B_Faders_and_Buttons_Not_Controlling_Cues_on_an_Express) | Two banks describe scenes for the same channels; A/B controls crossfade between them | Keep two explicit sources ready and expose one transition control |
 | [ETC Express cue playback](https://support.etcconnect.com/ETC/Consoles/Express_Expression_and_Insight/Express_User_Manual/Playing_cues_on_Express_consoles) | Selecting a cue does not start it; Go starts playback, with timed fades or manual control of fade completion | Separate preparation from taking an animation; keep duration and manual progress in native controller state |
 | [Blackmagic ATEM vision mixing](https://www.blackmagicdesign.com/uk/products/atemtelevisionstudio/gettingstarted) | Preview selects the next source; a T-bar or Auto performs mix and wipe transitions, including soft edges | Show program and preview roles, support Cut and Auto, and permit manual control of the same transition |
-| [Resolume A/B crossfader](https://resolume.com/support/en/composition) | Content is assigned to A/B buses, each bus is composited, and a slider blends their outputs; mixer curves are configurable | Keep slot identity separate from its current output role and expose easing independently of mask shape |
-| [After Effects Gradient Wipe](https://helpx.adobe.com/after-effects/desktop/apply-effects-and-animation-presets/list-of-effects/transition-effects.html) | A separate grayscale layer controls reveal order; transition completion and softness determine transparency | Treat the transition as a scalar field over pixels, with scripts defining ordering and intermediate weights |
+| [Resolume A/B crossfader](https://resolume.com/support/en/composition) | Content is assigned to A/B buses, each bus is composited, and a slider blends their outputs; mixer curves are configurable | Keep slot identity separate from its current output role and expose easing independently of mix shape |
+| [After Effects Gradient Wipe](https://helpx.adobe.com/after-effects/desktop/apply-effects-and-animation-presets/list-of-effects/transition-effects.html) | A separate grayscale layer controls reveal order; progress and softness determine the reveal | Use a separate mix channel over pixels, with scripts defining ordering and intermediate weights |
 
 These precedents suggest three independent concepts: the two sources, the shape
 of the transition, and its progress. LightVM should give each an explicit API.
@@ -73,7 +80,7 @@ both source animations their own live frames and state.
 - Run two independently loaded colour programs and one transition program.
 - Keep both animations moving during a transition, including at a held progress.
 - Support uniform crossfades, directional wipes, centre wipes, soft wipes and
-  seeded dissolves through a common one-byte mask contract.
+  seeded dissolves through a common one-byte mix contract.
 - Give manual control, timed playback and external controllers the same state
   and lifecycle rules.
 - Declare and enforce the total memory budget before admitting a combination.
@@ -113,12 +120,12 @@ either source or the transition while the take is active. A second Go returns
 The operator must finish, cut or return to the source before preparing a third
 animation. This avoids needing a hidden third colour slot or an unbounded queue.
 
-## Transition progress and mask semantics
+## Transition progress and mix channel semantics
 
 Native controller state owns duration, progress, playback mode and completion.
 Use a progress value `p` in 0..65535, representing 0..100 percent from the chosen
 source to the chosen destination. A transition script produces destination
-coverage `w[i]` in 0..255 for each pixel:
+coverage `mix[i]` in 0..255 for each pixel:
 
 - `0` selects the source colour.
 - `255` selects the destination colour.
@@ -127,16 +134,16 @@ coverage `w[i]` in 0..255 for each pixel:
 For every component, use widened integer arithmetic and rounded division:
 
 ```text
-output[i] = (source[i] * (255 - w[i]) + destination[i] * w[i] + 127) / 255
+output[i] = (source[i] * (255 - mix[i]) + destination[i] * mix[i] + 127) / 255
 ```
 
 The compositor guarantees the exact source frame at `p = 0` and exact destination
-frame at `p = 65535`, overriding the script's mask at those endpoints. This makes
-completion independent of whether a custom mask happens to write every pixel.
-During intermediate frames the mask starts at zero; unwritten pixels select the
+frame at `p = 65535`, overriding the script's mix at those endpoints. This makes
+completion independent of whether a custom mix happens to write every pixel.
+During intermediate frames the mix starts at zero; unwritten pixels select the
 source and out-of-range writes are errors.
 
-The mask is destination coverage for the current take. In a B-to-A transition,
+The mix is destination coverage for the current take. In a B-to-A transition,
 255 therefore selects A. A UI displaying a fixed A/B blend position converts
 that orientation explicitly; the script does not need different endpoint rules
 for each direction. Spatial direction, such as forward versus backward wipe, is
@@ -154,54 +161,58 @@ transition and a positive duration within the device's advertised range. Use Cut
 for an immediate switch. Starting a take or moving its slider applies at the
 next frame boundary.
 
-Easing maps native progress into the progress seen by the mask program. It must
+Easing maps native progress into the progress seen by the mix program. It must
 be monotonic with exact endpoints. Apply it once; softness and spatial ordering
 belong to the script. The controller reports both raw and eased progress.
 
 ## Script contract and examples
 
-Introduce a versioned `transition-v1` execution profile using the existing
-once-per-frame and per-pixel callback structure:
+Introduce a versioned transition capability over the control execution model.
+A frame trigger makes one bounded mix step runnable; the guest fills an indexed
+coverage buffer. The core does not require Pixelblaze-style per-pixel exports.
+The following operations describe the intended semantics; exact import names,
+step exports and context layouts remain to be fixed with the common control ABI:
 
 | Interface | Proposed contract |
 |---|---|
-| Export `render(index: i32) -> void` | Required; emit coverage for the current pixel |
-| Export `beforeRender(delta_ms: i32) -> void` | Optional; precompute values once per transition frame |
-| Import `lightvm.transition.v1.pixel_count() -> i32` | Logical output length |
-| Import `lightvm.transition.v1.progress() -> i32` | Eased destination progress, 0..65535, stable throughout the frame |
-| Import `lightvm.transition.v1.seed() -> i32` | Stable seed for this take |
-| Import `lightvm.transition.v1.weight(value: i32) -> void` | Write 0..255 coverage during `render`; last write wins |
+| Frame task step | Fill the mix channel within the frame budget; no suspended waits in this seekable step |
+| Read transition context | Logical output length, frame/program time, eased progress and seed; stable throughout the step |
+| Write coverage at index | Stage U8 destination coverage, 0..255; status separate from data; last assignment wins |
+| Fill coverage range | Stage uniform coverage over a validated range; same semantics as indexed writes |
+| Successful step publication | Admit the complete mix to this frame's composite after validation |
 
-The initial profile requires a seekable mask: for the same index, progress, seed
-and parameters it produces the same weight, regardless of the previous progress
+The initial profile requires a seekable mix channel: for the same index,
+progress, seed and parameters it produces the same weight, regardless of previous progress
 values. It may cache calculations in bounded state. Its visible output must not
 depend on accumulating elapsed time or consuming a random sequence on every
 frame. This contract enables manual scrubbing, reversal and predictable preview.
 A later timed profile could support transitions whose own animation evolves
 independently of progress, with its available controls advertised explicitly.
 
-These programs remain one-byte animations executed by the same interpreter and
-scheduler machinery as colour programs. They have scalar output and additional
-transition context. They receive no physical-output access and no writable
-access to A/B frames. Native range fills can follow as an optimization without
-changing the meaning of per-pixel coverage.
+These programs use the same interpreter and bounded task machinery as colour
+programs. Their output is an indexed scalar resource with transition context.
+They receive no physical-output access and no writable access to A/B frames.
+A frontend may offer procedural per-pixel helpers and compile their iteration
+inside the frame step without making those helper names part of the core ABI.
 
-Illustrative frontend pseudocode, with normalized progress `t` in 0..1:
+Illustrative frontend pseudocode, with normalized `context.progress` in 0..1:
 
 ```text
 # Crossfade: every pixel gets the same destination coverage.
-render(index):
-    weight(round(255 * t))
+on_frame(context):
+    mix.fill(round(255 * context.progress))
 
 # Hard forward wipe: each pixel has a fixed reveal threshold.
-render(index):
-    threshold = (index + 0.5) / pixelCount
-    weight(255 if t >= threshold else 0)
+on_frame(context):
+    for index in range(mix.count):
+        threshold = (index + 0.5) / mix.count
+        mix[index] = 255 if context.progress >= threshold else 0
 
 # Dissolve: hash returns the same threshold for this pixel and seed.
-render(index):
-    threshold = normalizedHash(index, seed)
-    weight(255 if t >= threshold else 0)
+on_frame(context):
+    for index in range(mix.count):
+        threshold = normalizedHash(index, context.seed)
+        mix[index] = 255 if context.progress >= threshold else 0
 ```
 
 For a soft wipe, replace the hard threshold with a smooth ramp around it. Expand
@@ -219,36 +230,40 @@ flowchart LR
     A[Slot A RGB] --> C[Native compositor]
     B[Slot B RGB] --> C
     P[Native progress and easing] --> T[Transition script]
-    T --> M[U8 destination coverage]
+    T --> M[U8 mix channel]
     M --> C
     C --> O[Composite RGB]
     O --> L[Native brightness and LED output]
 ```
 
-One engine owner processes commands between frames, captures the frame's time
-and controller state, renders the running slots, renders the mask, composites
-and submits one output frame. Both running colour instances receive the same
-elapsed-time sample. A held instance receives no accumulated catch-up time when
-resumed. Preserve the existing fractional-millisecond carry and gap cap for
-colour callbacks; automatic transition progress uses its own monotonic clock so
-an overdue transition can finish at the next successful frame.
+One engine owner services queued commands/events and due task steps, captures
+the frame's time/input/controller context, updates the running sources, evaluates
+the mix, composites and submits one output frame. Both running colour instances
+receive the same frame-time sample. Input sampling and native waveform generation
+remain independent of this cadence. A held instance receives no accumulated
+program-time catch-up on resume. The legacy adapter preserves its fractional
+millisecond carry and gap cap; general control clocks retain actual elapsed time.
+Automatic progress uses its declared job clock so an overdue take can finish at
+the next successful frame, with paused time excluded.
 
-Allocate output storage before playback. Preserve current API v1 behaviour:
-each colour frame starts black, `beforeRender` runs once, and `render` runs in
-index order. Legacy `led.rgb` and `led.hsv` resolve to the executing slot's buffer
-through its instance context. Any future effect that retains its previous frame
-needs a separate, explicitly budgeted profile; the composite must never become
+Allocate output storage and task/event/job capacity before playback. Preserve
+API v1 behaviour in its adapter: each legacy colour frame starts black,
+`beforeRender` runs once, and `render` runs in index order. Its `led.rgb` and
+`led.hsv` resolve to the executing slot's buffer. New control programs use
+explicitly retained or scratch pixel buffers and indexed updates; each admitted
+format and publication buffer is budgeted. The composite must never become
 either slot's animation history.
 
-Only submit output after all required guest callbacks succeed. Guest state may
-already have advanced when a later callback fails; holding the last output does
-not imply rollback of interpreter state. Physical brightness and wire ordering
-remain in the native port and apply once to the composite.
+Only submit a frame after its required source/mix steps succeed. Successful
+task suspensions publish batches according to the common control model, while
+the mixer submits complete composites at frame boundaries. Previously committed
+steps and guest state are not rolled back when a later frame step fails.
+Physical brightness and wire ordering remain native and apply once to the composite.
 
 Snapshots carry frame IDs and validity. A failed render invalidates each source
-or mask buffer it partially overwrote; a read reports that state instead of
+or mix buffer it partially overwrote; a read reports that state instead of
 returning it as a complete frame. The separate output buffer retains the last
-successful composite. Retaining older A/B/mask snapshots after a failure would
+successful composite. Retaining older A/B/mix snapshots after a failure would
 require additional storage beyond the baseline below.
 
 Pixel-slot programs initially have permission to produce colour only. General
@@ -265,17 +280,19 @@ For `N` RGB pixels, the baseline engine storage is:
 |---|---:|
 | Slot A RGB | 3N |
 | Slot B RGB | 3N |
-| Transition coverage | N |
+| Mix channel | N |
 | Composite RGB | 3N |
 | Total frame storage | 10N |
 
-This is 1,000 bytes for the current 100-pixel profiles and 40,960 bytes for
+This is 1,000 bytes for 100 pixels and 40,960 bytes for
 4,096 pixels. RGBW would require 13N bytes when that output format is supported.
 These are frame-storage calculations, not total device memory requirements.
 
 Admission must also count retained module bytes, compiled interpreter code,
 instance state, linear memories, execution stacks, allocator overhead, upload
-storage, native stacks and driver buffers. Include the peak during preparation
+storage, native stacks, event queues, tasks, subscriptions, timers, jobs,
+continuation state and driver buffers. Higher-precision/RGBW buffers and retained
+publication buffers require an explicit additional budget. Include the peak during preparation
 and replacement, not just steady playback. Identical modules may initially have
 duplicated code storage; sharing immutable code is a later optimization.
 
@@ -293,11 +310,11 @@ bytes before taking it. Frame buffers and runtime execution storage are reserved
 at preparation; rendering must perform no dynamic allocation or `memory.grow`.
 Instrument the prototype to establish that guarantee across guest call paths.
 
-A scalar crossfade or procedural mask could eventually avoid the N-byte stored
-mask, provided its externally visible semantics remain identical. The first
-implementation should retain the full mask for simple verification and preview.
+A scalar crossfade or procedural mix could eventually avoid the N-byte stored
+mix, provided its externally visible semantics remain identical. The first
+implementation should retain the full mix for simple verification and preview.
 
-Budget the whole frame: A, B, mask generation, mixing and output. Report each
+Budget the whole frame: A, B, mix generation, mixing and output. Report each
 stage, missed frame deadlines and peak memory. The current 500 ms guest deadline
 is a recovery bound, not a usable rendering target; three guests must not each
 receive a separate full frame budget. Use a shared deadline and bounded guest
@@ -342,7 +359,7 @@ Suggested logical operations, independent of USB, HTTP or MQTT framing:
 | `pause_all()` / `resume_all()` | Freeze or resume source animation time and transition progress |
 | `stop()` | Blank output, end the take and hold loaded instances |
 | `unload(target)` | Release an unlocked, hidden target |
-| `snapshot(A or B or mask or output)` | Read a completed logical buffer with its frame ID, or report invalid contents, without stepping playback |
+| `snapshot(A or B or mix or output)` | Read a completed logical buffer with its frame ID, or report invalid contents, without stepping playback |
 | `status()` | Read roles, generations, preparation state, progress, errors and budgets |
 
 Automatic takes commit at the destination endpoint after successful frame
@@ -357,7 +374,7 @@ Return a take ID for subsequent controls; an old take ID cannot affect a newer
 one. Coalesce queued slider updates and use bounded transfer/snapshot queues.
 Transport callbacks enqueue work for the sole engine owner.
 
-Discovery advertises the mixer/profile versions, slot count, mask format,
+Discovery advertises the mixer/profile versions, slot count, mix format,
 supported controls, transition scripts, snapshots, preparation guarantees and
 resource limits. The editor shows unsupported operations before deployment.
 Keep mixer ABI, colour ABI and transport versions separate. Legacy one-program
@@ -375,13 +392,19 @@ the new management API.
 | Browser or transport disconnect | Continue the selected native playback mode; a held manual take remains held |
 | Pause all playback | Retain frames, guest state and progress; exclude paused time on resume |
 | Stop | Blank physical output, end the take and hold loaded instances; a new Play selects a program source explicitly |
-| Native output failure | Report and stop if the port exposes recoverable failure; otherwise retain the port's documented fatal behaviour |
+| Native output failure | Report the instance/driver failure and stop mixer playback; do not promote the destination |
 
 A fault does not silently choose the incoming effect or promote a partially
 rendered destination. Recovery is an explicit Cut to a healthy prepared slot,
-repreparation of the failed instance, or Stop. The present native output contract
-returns no failure status, so recoverable driver errors require that contract to
-be extended before the corresponding guarantee is advertised.
+repreparation of the failed instance, or Stop. The current native pixel driver
+contract already reports open/show failure; mixer recovery must preserve and
+test those diagnostics. A submitted electrical frame cannot be rolled back.
+
+A take is a job with an ID and generation. Queue completion, cancellation and
+failure events for subsequent control steps after committing the corresponding
+role/state change. Never reenter a guest from the compositor or a native output
+callback. Pause and Stop follow the shared job/lifecycle rules; stopping cancels
+take work and its registrations without unloading reusable colour artifacts.
 
 ## Editor integration and delivery sequence
 
@@ -394,7 +417,7 @@ progress, pixel position and a 0..255 coverage output.
 
 The editor should show readiness, program/preview labels, live preview state,
 transition controls and the resource total for the selected combination. Read
-A/B/mask/output snapshots passively. Device snapshots use bounded rates; local
+A/B/mix/output snapshots passively. Device snapshots use bounded rates; local
 preview runs the same logical scheduler, endpoint and compositing rules without
 requiring device streaming at full frame rate. Runtime diagnostics identify the
 slot or transition and its artifact generation.
@@ -417,8 +440,8 @@ Deliver the feature in three increments:
 - Run stateful A/B examples and show both advancing through a held and moving
   transition. Completion preserves the destination's state.
 - Verify exact endpoints, rounded intermediate colours and A-to-B/B-to-A takes
-  using identical mask bytecode. Include one-pixel and odd-length wipe cases.
-- Holding or revisiting a progress value reproduces the same mask for the same
+  using identical mix bytecode. Include one-pixel and odd-length wipe cases.
+- Holding or revisiting a progress value reproduces the same mix for the same
   parameters and seed. Dissolve thresholds remain stable without an N-byte
   threshold array.
 - Reject busy takes, stale generations, invalid weights, unsupported imports and
@@ -434,6 +457,6 @@ Deliver the feature in three increments:
 
 The first prototype should settle aggregate allocator accounting, preparation
 scheduling and the smallest useful resource profile for three instances. Stable
-slot identity, destination-mask semantics and completion rules should be fixed
+slot identity, destination-mix semantics and completion rules should be fixed
 before implementing editor or transport adapters, since those rules define the
 portable behaviour of the feature.

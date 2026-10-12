@@ -1,7 +1,9 @@
 # Multi-platform engine and native ports
 
 LightVM is intended to run portable lighting programs on multiple board families.
-Its unit of portability is the WASM module plus the versioned animation API.
+Its unit of portability is the WASM module plus its versioned guest contract.
+The implemented contract is currently legacy animation API v1; the proposed
+control API extends portability to event-driven device programs.
 Each native firmware rebuilds the same engine/interpreter and supplies the local
 hardware and services. Resource budgets and physical capabilities can differ.
 An effect should query `led.pixel_count()` and avoid fixed board pin/count
@@ -119,6 +121,35 @@ ordinary portable animations. Firmware OTA and provisioning stay native.
 Snapshot storage is shared code over native block adapters. Transient uploads stay
 in RAM; named procedure saves are independent from activation. Applying hardware
 configuration destroys the instance, while RESET retains hardware and storage.
+
+## Proposed control model
+
+The [control API and execution model](../documents/feature-proposal-control-api.md)
+defines LightVM's next guest contract independently, with documented picolights
+lineage. It separates resources/capabilities, properties/samples, actions/jobs,
+events/triggers, tasks and clocks. Pixelblaze compatibility is a frontend or
+adapter above that model. The contracts below continue to describe implemented
+animation API v1.
+
+The proposed core serializes event delivery and bounded guest steps. Native
+interrupts and transport callbacks capture/enqueue work; only the engine owner
+enters WASM. Input sampling, guest frame/control cadence and native PWM/servo
+waveforms have independent schedules. A suspended task permits other work to
+run and publishes its successful batch before waiting; a failing step cannot
+roll back earlier commits or general guest state.
+
+New resources declare snapshot/readback semantics, buffer retention, publication,
+units, ownership and lifecycle. Addressable RGB/RGBW buffers mix through a
+separate A/B mix channel, with no alpha-channel requirements;
+ordinary actuators initially have an exclusive writer. The legacy adapter keeps
+API v1's black-at-frame-start and callback/delta rules. Control contexts, event
+records and task continuation layouts remain proposed; no GPIO/ADC/PWM/servo
+support is implied by the current driver registry.
+
+The [device proposal](../documents/feature-proposal-device-support.md) describes
+definitions, native driver servicing and resource planning. Aggregate admission
+must include event queues, tasks, subscriptions, timers, jobs, continuation state
+and pixel buffers in addition to interpreter and native port storage.
 
 ## API compatibility and capability discovery
 

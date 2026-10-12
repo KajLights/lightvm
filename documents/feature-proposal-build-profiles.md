@@ -15,7 +15,8 @@ omitting the HTTP management server and unused drivers. Support for a feature
 on a board establishes that it can be selected, rather than requiring every
 instance of that board to include it.
 
-This complements the [device support](feature-proposal-device-support.md) and
+This complements the [control API](feature-proposal-control-api.md),
+[device support](feature-proposal-device-support.md) and
 [web editor](feature-proposal-web-editor.md) proposals. The profile format,
 feature catalogue and build options below are proposed, not implemented.
 
@@ -29,7 +30,7 @@ Keep the following layers distinct:
 | Board definition | Physical capabilities, pin aliases, reserved resources and available flash/RAM |
 | Build profile | Drivers, services, transports, storage layout and resource limits selected for an instance's firmware |
 | Hardware configuration | Named peripheral instances, wiring and settings using drivers present in that firmware |
-| Program execution profile | Guest callback and import contract, such as animation API v1 or the proposed `device-v1` |
+| Program execution contract | Guest step/event and capability contract, such as proposed `control-v1`, or the legacy animation API v1 adapter |
 
 A build profile is reusable, but its assignment is a choice for each physical
 board instance. Selecting a profile for one XIAO ESP32-S3 must not change the
@@ -48,7 +49,8 @@ feature catalogue:
 
 | Selection | Examples |
 |---|---|
-| Device drivers | WS2812B, digital input/output, analogue input, PWM, tone, servo, individual I2C sensors and displays |
+| Device drivers | WS2812B/RGBW, digital input/output, analogue input/output where supported, PWM, tone, servo, individual I2C sensors and displays |
+| Control capabilities | Addressable pixel buffers and A/B mixing, event capture, timers, bounded tasks/jobs and optional feedback/stream operations |
 | Management transports | USB, embedded HTTP API, optional BLE management |
 | Network services | MQTT, Matter, discovery and provisioning |
 | Native dependencies | Wi-Fi or another supported network interface, TLS and shared bus drivers |
@@ -150,7 +152,8 @@ does not fit. Omitting OTA should allow a supported layout with more space for
 the application.
 
 RAM planning must include static data, engine and guest budgets, native task
-stacks, device buffers, networking/TLS allocations and update buffers. The
+stacks, device/pixel buffers, event queues, subscriptions, guest tasks,
+timers/jobs, continuation storage, networking/TLS allocations and update buffers. The
 existing interpreter heap cap is only one part of the total. Report linker
 measurements separately from declared dynamic bounds and measured peaks under
 service load. Reserve explicit operating headroom and reject configurations

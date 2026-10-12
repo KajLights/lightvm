@@ -4,8 +4,9 @@ LightVM is a [Kajlights](https://kajlights.com/) project developing a native Web
 runtime for programmable lighting across microcontrollers and native hosts, under the
 [Kajlights GitHub organisation](https://github.com/Kajlights).
 
-The goal is one portable animation API and the same `.wasm` programs across
-supported boards, within each board's resource limits. The shared C engine and
+The goal is one portable, language-neutral control API and the same `.wasm`
+programs across supported boards, within each board's resource limits. The
+implemented guest contract is currently animation API v1. The shared C engine and
 wasm3 interpreter are rebuilt for each processor; native ports supply the clock,
 LED output, memory allocation, transports and startup policy. Adding a board
 should not require board-specific imports or pin assumptions in an effect.
@@ -57,6 +58,23 @@ provisioning and firmware OTA remain planned native services. Firmware OTA repla
 engine and services; an animation upload replaces a RAM-resident WASM program.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).
 
+The [control API and execution model proposal](documents/feature-proposal-control-api.md)
+defines the next API independently, with documented roots in picolights. Named
+resources expose typed properties/samples, actions/jobs and events. Triggers
+schedule bounded handlers and resumable tasks; addressable RGB pixels, digital/analogue IO,
+PWM and servos share timing, publication and ownership conventions. Input
+sampling, guest execution and native waveforms have independent cadences.
+These are proposed capabilities, not additions already supplied by API v1.
+
+Planned language bindings target that common contract. Pixelblaze source
+compatibility belongs in an independent frontend/adapter. A legacy adapter must
+preserve existing API v1 module behaviour as the new contract is introduced. The
+[device](documents/feature-proposal-device-support.md),
+[editor](documents/feature-proposal-web-editor.md) and
+[A/B transition](documents/feature-proposal-ab-transitions.md) proposals follow
+the common model. Addressable RGB/RGBW buffers use a separate A/B mix channel;
+there are no alpha-channel requirements.
+
 The [build profiles proposal](documents/feature-proposal-build-profiles.md)
 describes selecting drivers, HTTP, MQTT, OTA and resource/storage settings for
 each board instance. Instances of the same board model can use different feature
@@ -104,7 +122,9 @@ An animation exports `render(index: i32) -> void`. It may also export
 The index runs from 0 through `led.pixel_count() - 1` (0..99 in the supplied Pico example).
 Elapsed time is measured by the port's monotonic clock;
 fractional milliseconds carry into later frames, and long gaps are capped at
-1,000 ms. These callbacks are inspired by Pixelblaze's rendering model.
+1,000 ms. This prototype historically adopted Pixelblaze-style callbacks;
+it remains the legacy compatibility contract, not the definition of the
+independently designed control API.
 
 | Import from `led` | Signature | Meaning |
 |---|---|---|

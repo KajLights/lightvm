@@ -4,9 +4,15 @@ Status: Proposed
 Date: 12 October 2026
 
 LightVM should provide a browser editor for creating, previewing and deploying
-lighting programs in several languages. Users should be able to choose Python,
-a Pixelblaze language frontend, or a Scratch-like block editor while using the
-same device connection and lighting controls.
+lighting and device-control programs in several languages. Python, C, a
+Scratch-like block editor and an optional Pixelblaze compatibility frontend
+should use the same device connection and independently designed
+[control API and execution model](feature-proposal-control-api.md).
+
+The common model covers resources, properties and samples, actions/jobs, events,
+triggers, resumable tasks and time. Addressable RGB pixels, digital/analogue IO, PWM and
+servos use its shared conventions. Language syntax and compatibility rules belong
+in frontends; Pixelblaze does not define the core ABI.
 
 A public HTTPS hosting service should serve the full editor and compiler assets,
 similar to CircuitPython's externally hosted editor. The user's browser downloads
@@ -36,7 +42,8 @@ disconnecting USB leaves playback running. Saving a program for startup after a
 reboot is a separate action, available on devices with persistent storage.
 
 Program controls such as speed, colour and sparkle density appear from a common
-parameter schema. Compilation errors point to source lines or blocks; device
+parameter schema. The same definitions expose buttons, sampled inputs, timed
+actions and device events. Compilation errors point to source lines or blocks; device
 errors explain unsupported features, resource limits or runtime failures.
 
 Choosing another language starts or opens a project in that language. Automatic
@@ -50,8 +57,8 @@ storage and the HTTP mappings below remain proposed.
 
 ## Goals and scope
 
-- Make lighting programming approachable to beginners while supporting text
-  programming and existing Pixelblaze-style patterns.
+- Make lighting and device programming approachable to beginners while
+  supporting text programming and optional source compatibility adapters.
 - Keep programs portable across supported boards within advertised capabilities
   and resource limits.
 - Let the editor and compiler evolve independently of native firmware releases.
@@ -60,23 +67,28 @@ storage and the HTTP mappings below remain proposed.
 - Support local compilation and USB use without a mandatory cloud account.
 
 The initial release should deliver USB editing on the existing Pico and host
-targets, with one usable language frontend and browser preview. Python,
-Pixelblaze and blocks are the intended language set, introduced in stages.
+targets, with one usable language frontend and browser preview. Python, C,
+blocks and an optional Pixelblaze compatibility frontend can follow in stages.
 Network editing follows a native port with networking support. Full Python
 compatibility, firmware OTA, collaborative editing and direct browser Matter
 commissioning are outside the initial release.
 
 ## Current platform
 
-LightVM already has a portable animation API, transport-independent commands,
+LightVM already has legacy animation API v1, transport-independent commands,
 USB CDC framing, resource reporting and RGB snapshots. The POSIX host and
-original RP2040 Pico share the wasm3 interpreter and C engine. Networking,
-persistence, provisioning and Matter adapters remain planned features.
+original RP2040 Pico share the wasm3 interpreter and C engine. Configuration and
+named compiled-procedure persistence are implemented. Networking, editable
+project storage, provisioning and Matter adapters remain planned features.
 
 The existing animation API requires `render(index: i32) -> void` and optionally
 calls `beforeRender(delta_ms: i32) -> void`. Programs import `led.pixel_count`,
 `led.rgb` and `led.hsv`. Physical wiring, wire order and brightness belong to the
-native output backend. Unsupported imports are rejected.
+native output backend. Unsupported imports are rejected. These callbacks remain
+a compatibility contract, not the foundation of the proposed control ABI.
+General triggers, suspended tasks and retained pixel control are not implemented
+by API v1. Addressable RGB/RGBW output has no alpha-channel requirement; A/B
+transitions use a separate mix channel.
 
 The default engine profile limits uploads to 32 KiB, interpreter heap use to
 128 KiB and WASM linear memory to one 64 KiB page. Its cooperative execution
@@ -116,7 +128,7 @@ Public HTTPS hosting service
             download
                 |
 User's browser
-    Python / Pixelblaze / block editor
+    Python / C / blocks / compatibility frontends
                 |
        browser compiler worker
                 |
@@ -156,7 +168,9 @@ There are three independently versioned contracts:
    a manifest, diagnostics and source mappings.
 2. **Management API:** identity, transfers, activation, controller state,
    parameters, storage and diagnostics.
-3. **Animation ABI:** the imports and exports available to guest programs.
+3. **Control ABI:** execution contexts, event/task semantics, device capabilities
+   and buffer formats available to guest programs. Legacy animation API v1 is
+   an independently advertised compatibility contract.
 
 The existing serial framing version remains separate. New management commands
 do not require a framing change unless the wire format changes.
@@ -167,12 +181,35 @@ device does not need a Python or Pixelblaze parser.
 
 ## Language frontends
 
+### Shared execution semantics
+
+Every frontend targets the [control proposal](feature-proposal-control-api.md).
+Its project declares bindings and triggers, required device capabilities,
+buffer formats, clock policies and task/job/resource bounds. Source-level
+functions, events and waits lower to typed operations and bounded execution
+steps. The device has one WASM execution owner; no frontend may call guest code
+from a physical interrupt or require a native thread per script.
+
+Waits suspend one task and permit other work to run. Publish its successful
+output batch before suspension, so a set-red/wait/set-black sequence displays
+red while waiting. Continuation state can live in guest memory. The compiler
+must diagnose unsupported suspension and excessive bounds rather than turning
+wait into a blocking sleep. Exact step/context encodings remain control-ABI
+implementation decisions.
+
+Preserve explicit retrigger policies, event ordering, cancellation and lifecycle
+behaviour. A frame callback is one trigger, not a compulsory entry point for
+button, sensor or actuator programs. Numeric syntax may differ by frontend;
+capability units and wire encodings must not.
+
 ### Python
 
-Start with a documented lighting subset of Python: functions, numeric variables,
-conditionals, loops, bounded arrays and selected lighting/math helpers. Reject
+Start with a documented lighting/control subset of Python: functions, numeric variables,
+conditionals, loops, bounded arrays and selected lighting/device helpers. Reject
 unsupported syntax with specific diagnostics. Source-level helpers should expose
-natural Python names while compiling to the shared animation ABI.
+natural Python names while compiling to the shared control ABI. Event and timer
+decorators and resumable waits are explicit frontend features, with bounded
+state-machine lowering where supported.
 
 A full Python runtime compiled to WASM is a separate feasibility task, requiring
 measurements of module size, memory use, imports and rendering throughput. A
@@ -181,23 +218,40 @@ Pico profile.
 
 ### Pixelblaze
 
-Implement a compatibility frontend with a published support matrix. The existing
-callback names match Pixelblaze's rendering model, but compatibility also requires
-its 16.16 fixed-point arithmetic, normalized colour values, initialization rules,
-math/time helpers and control exports. Spatial rendering, pixel maps, sensors and
-other advanced APIs can be introduced as optional capabilities.
+Implement an independent compatibility frontend with a published support matrix.
+Its initialization, `beforeRender`, per-pixel callbacks, 16.16 numeric behaviour,
+colour conventions, helpers and control exports lower to LightVM's own resources
+and execution steps. A compiled wrapper can iterate pixels within a frame task;
+the core need not adopt that callback contract. Pixel maps, sensors and other
+features require corresponding advertised capabilities and explicit lowering.
 
-The frontend should translate `pixelCount`, colour calls and control exports into
-LightVM operations. It should report unsupported APIs explicitly. Pixelblaze
-compatibility must be assessed with representative patterns and documented
-semantic differences.
+Running unchanged scripts is a compatibility goal where supported, not a claim
+that syntax resemblance establishes compatibility. Test representative patterns
+and document unsupported APIs and semantic differences. Source compatibility
+does not authorize copying upstream compiler, runtime or helper implementations.
+
+### C
+
+Generate typed declarations and context/result layouts from the same capability
+definitions. C authors can write bounded event handlers or explicit state
+machines using timers and task state. Ordinary blocking C functions do not become
+suspendable simply because the ABI exposes waits. Preserve the existing
+freestanding/WASI examples through their advertised execution contracts.
 
 ### Blocks
 
-Use Blockly or a similar block editor with lighting-specific blocks for colour,
-time, position, repetition and parameters. Initially generate the supported Python
-subset or a shared intermediate representation. Blockly provides editor and code
-generation facilities; LightVM supplies execution semantics.
+Use Blockly or a similar editor with device blocks and Scratch-like triggers:
+on start, on press/release, on a message, every interval, on a frame, on a
+threshold crossing and on job completion. Add waits, repeat/forever, cancellation
+and broadcast-and-wait over the shared task model. Device descriptors supply
+typed reporters and actions for colour, sampled values, duty and calibrated
+servo targets.
+
+Initially generate a supported language subset or shared intermediate
+representation, including continuation state. Blockly supplies editing and code
+generation facilities; LightVM defines execution semantics. A blocks project
+records whether repeated triggers queue, restart, ignore an active script or
+admit multiple instances. Those choices cannot remain implicit editor behaviour.
 
 Preserve the block workspace as the project's authoritative source. Generated
 text can be shown to help users learn, but editing that text should create a text
@@ -207,13 +261,15 @@ project unless a restricted reverse conversion is explicitly supported.
 
 A project should preserve its language and language version, source files or block
 workspace, entry points, compiler version, parameter definitions and preview
-configuration. It should be exportable as a file without a cloud account.
+configuration. Include device bindings, trigger definitions, task policies,
+buffer formats and clock/pause semantics. It should be exportable as a file
+without a cloud account.
 
 Compilation produces:
 
 - A `.wasm` program.
-- A manifest identifying its required animation ABI, imports, WASM features,
-  declared memory and program parameters.
+- A manifest identifying its required control/legacy ABI, imports, capabilities,
+  WASM features, bindings, parameters and memory/task/event/job/buffer bounds.
 - Diagnostics tied to source locations or block IDs.
 - Source mappings or debug metadata where the toolchain supports them.
 
@@ -252,7 +308,8 @@ payload limit.
 | Program parameters | `GET/PATCH /api/v1/parameters` | Read schema/values and submit typed updates |
 | Snapshot | `GET /api/v1/frame` | Read the last successful logical RGB frame without pausing |
 | Debug step | `POST /api/v1/runtime/step` | Pause and render with an explicit elapsed time |
-| Events | `GET /api/v1/events` | Optional state, error and bounded log stream |
+| Events | `GET /api/v1/events` | Optional observable state, device/job outcomes, errors and bounded logs; does not consume guest events |
+| Device action | `POST /api/v1/devices/{id}/actions/{action}` | Proposed typed action invocation with declared acceptance, retry and job semantics |
 | Editable project | `GET /api/v1/programs/{id}/project` | Optional source/block readback |
 | Save for startup | `POST /api/v1/programs/{id}/persist` | Optional explicit persistence operation |
 
@@ -261,17 +318,22 @@ operations return a stable capability error. Polling remains available when even
 streams are unsupported.
 
 The descriptor should include a stable device ID shared across transports,
-firmware version, management API and animation ABI versions, supported import
+firmware version, management API and control/legacy ABI versions, supported import
 signatures, WASM feature profile, resource limits, logical pixel count/topology,
 transport limits and authentication method. Optional capabilities include
 staging, rollback, persistence, source readback, parameters, snapshots and logs.
-Clients should tolerate additive descriptor fields.
+Clients should tolerate additive descriptor fields. Include device properties,
+actions/event schemas, input quality, output ownership, supported retrigger
+policies and event/task/job limits. A compiled driver and a configured instance
+are separate facts.
 
-Separate `play`, `pause` and `stop`: pause retains the displayed frame and program
-state; stop clears output while retaining the loaded program. Power-off should
-blank output without losing the user's selected program or brightness setting.
-Define whether animation time continues while power is off, and use the same
-policy through every adapter.
+Use the shared lifecycle rules: pause freezes program time and pausable work,
+retains lighting and applies each actuator's advertised pause policy; native
+servicing and safety deadlines continue. Stop cancels owned tasks/jobs/timers and
+applies per-capability output policies while retaining the loaded program.
+Lighting power-off blanks lighting without changing unrelated devices or losing
+the selected program/brightness. Define its animation-time policy consistently
+through every adapter. Transport disconnect leaves autonomous work running.
 
 ### Upload and activation guarantees
 
@@ -389,7 +451,7 @@ A local Matter controller or bridge is the practical integration route.
 
 ## Native engine changes
 
-Retain one owner for interpreter execution, module lifecycle and RGB state.
+Retain one owner for interpreter execution, module lifecycle and resource state.
 Each connection gets its own byte decoder or message adapter, while requests
 enter a bounded queue carrying their source, identity and reply destination.
 Disconnecting a transport must not destroy the running program or leave queued
@@ -397,21 +459,29 @@ requests holding invalid transport pointers.
 
 Separate engine state from connection/session state before allowing HTTP and
 USB together. Keep authentication and transport details native; ordinary
-animations should not import network or vendor APIs. Maintain the existing
-animation contract for simple effects and version any breaking extensions.
+programs should not import network or vendor APIs. Inputs and API invocations
+enter the shared bounded event/task scheduler; physical waveform generation
+remains native. Preserve animation API v1 through its adapter and version the
+independent control contract and capabilities explicitly.
 
 ## Preview and validation
 
-Preview should execute the compiled artifact with the same callback order,
-elapsed-time rules and colour conversion as the device. It should use the target
-pixel count/topology, and distinguish logical colour from physical brightness
-scaling. A later wasm3 browser build can improve engine parity if its cost is
-justified; native browser WASM can provide the initial visual preview.
+Preview should execute the compiled artifact with the same event ordering,
+clock contexts, snapshots, task suspension/retrigger policies, publication and
+colour composition as the device. Use the target capabilities, resource bounds
+and pixel topology. Simulated buttons, analogue samples, messages and job
+outcomes form a timestamped replay trace. Distinguish commanded actuator state
+from measured feedback and logical colour from physical brightness.
+
+Legacy animation preview retains API v1 callback/delta/colour rules. A later
+wasm3 browser build can improve engine parity if justified; native browser WASM
+can supply the initial preview, but must run the same logical scheduler model.
 
 Device acceptance remains authoritative. Browser preview does not reproduce
 wasm3 heap allocation, interpreter performance or hardware output timing.
-Compare deterministic RGB frames against the host engine and measure frame
-timing on each supported board, with its native services active.
+Compare event traces, published output batches and deterministic colour frames
+against the host engine. Measure input latency, native waveforms, frame timing
+and resource use on each board with its native services active.
 
 ## Delivery phases
 
@@ -419,14 +489,14 @@ timing on each supported board, with its native services active.
 |---|---|---|
 | 1 | Descriptor, TypeScript USB SDK, browser preview and one text frontend | Connect to the Pico, compile/preview/upload an effect, report errors, and continue playback after disconnect; expose legacy replacement and explicit persistent procedure/configuration saving |
 | 2 | Project import/export, staged activation where supported, controller state and parameters | Preserve editable source, adjust controls during playback, reject stale updates, and verify declared replacement guarantees under failed uploads and activation |
-| 3 | Remaining language frontends and lighting blocks | Python, Pixelblaze and blocks share the ABI and parameter schema; publish compatibility limits and compare representative programs with host/device output |
+| 3 | Remaining language frontends and device/lighting blocks | Bindings share the control ABI, triggers/tasks and parameter schema; verify waits, repeated events, actuator ownership and colour composition; publish compatibility limits |
 | 4 | Network-capable native port and embedded HTTP API server | Demonstrate the public editor connecting directly to the device, discovery/device launch page, pairing and concurrent USB/HTTP request routing on supported browsers and hardware |
 | 5 | Optional persistence, BLE and Matter integration | Verify reboot recovery and interrupted saves where supported; validate BLE transfers and consistent Matter/controller state |
 
-The first frontend should be selected with a small compiler feasibility prototype.
-The Pixelblaze rendering model is already a close fit, but that does not remove
-the work needed for numeric and helper compatibility. Blocks can follow whichever
-compiler path becomes stable first.
+Select the first frontend with a small compiler feasibility prototype against
+LightVM's own control semantics and board budgets. Do not select the core ABI
+to match a source language. Blocks can follow a stable compiler path that can
+express resumable tasks; Pixelblaze compatibility is independently staged.
 
 Cross-phase validation should cover partial transfers, retries, disconnects,
 oversized modules, unsupported imports, runtime timeouts, slow clients, competing
@@ -439,7 +509,8 @@ its implementation and failure behaviour are verified.
 - Choose the first language frontend and define the initial Python/Pixelblaze
   compatibility boundaries.
 - Choose shared compiler representation and source mapping conventions.
-- Define typed parameter encodings and any required animation ABI extension.
+- Fix the shared control step/context contract, typed parameter/event encodings,
+  continuation bounds, pixel formats and separate A/B mix semantics.
 - Establish replacement guarantees feasible on the Pico and future network boards.
 - Select project packaging, device storage quotas and startup recovery policy.
 - Select public HTTPS hosting for the editor and compiler assets.
@@ -452,6 +523,7 @@ its implementation and failure behaviour are verified.
   `src/session.h`, `src/protocol.h`, `src/config.h` and `tools/client.py`.
 - [CircuitPython workflows and device discovery](https://docs.circuitpython.org/en/latest/docs/workflows.html).
 - [Pixelblaze language reference](https://electromage.com/docs/language-reference/).
+- [Control API, prior art and picolights provenance](feature-proposal-control-api.md).
 - [Blockly code generation](https://docs.blockly.com/guides/create-custom-blocks/code-generation/overview/).
 - [Web Serial and connection signals](https://developer.chrome.com/docs/capabilities/serial).
 - [Firefox desktop Web Serial support](https://blog.mozilla.org/en/firefox/firefox-web-serial-adafruit/).

@@ -103,7 +103,9 @@ owns packed RGB and its native driver; imports resolve through the instance's
 target pointer. Output submission is separate from rendering. The aggregate VM
 heap stays bounded, and one engine owner serializes all work. Tests instantiate
 two independent memory-backed targets/VMs to verify ownership; production exposes
-only A. B, U8 masks, composition and guest device-handle imports remain proposed.
+only A. B, a separate U8 mix channel, composition and guest device-handle imports
+remain proposed in the [control model](../documents/feature-proposal-control-api.md)
+and [A/B proposal](../documents/feature-proposal-ab-transitions.md).
 
 ## USB management v1
 

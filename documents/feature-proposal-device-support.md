@@ -6,7 +6,10 @@ Date: 12 October 2026
 
 LightVM should support a small set of inputs and outputs that make programming
 and logic tangible: press a button, compare a sensor value, change a light, play
-a note or move a servo. This should be a core feature alongside the
+a note or move a servo. Devices share the independently designed
+[control API and execution model](feature-proposal-control-api.md): named
+resources, typed properties and samples, actions/jobs, events and resumable
+tasks. Addressable RGB lighting is one capability within that model. This complements the
 [web editor](feature-proposal-web-editor.md) and
 [portable native ports](../docs/architecture.md).
 
@@ -16,8 +19,10 @@ definition, then generate the shared validation and binding metadata from it.
 Native drivers implement the hardware behaviour. This gives new devices a clear
 extension path while keeping the Pico firmware small.
 
-All interfaces and examples below are proposed. The implemented baseline remains
-the single WS2812B output and animation API v1.
+All general device interfaces and examples below are proposed. The implemented
+baseline remains configured WS2812B RGB output and legacy animation API v1.
+Pixelblaze source compatibility belongs in a frontend or adapter; it does not
+define the device or execution contracts.
 
 ## Implemented foundation
 
@@ -37,9 +42,11 @@ basic types, rather than separate drivers for every component.
 | Device type | Examples and lessons | Required configuration | Defaults and optional configuration |
 |---|---|---|---|
 | WS2812B pixels | Existing strips and rings; colour, loops and position | Output pin and pixel count | GRB order, output brightness limit, primary animation output |
+| Pixel buffer | Retained indexed RGB colours mapped to addressable output | Size and output binding | RGB/RGBW format, topology, clear and publication policy |
 | Digital input | Button, toggle switch or digital sensor; conditions and state changes | Input pin | Pull, active level and debounce interval; a button preset supplies suitable defaults |
 | Digital output | LED or active buzzer; booleans and timed sequences | Output pin | Active level and logical safe value, initially off |
 | Analogue input | Potentiometer or LDR divider; thresholds and mapping | ADC-capable pin | Sampling interval, smoothing and configured input endpoints |
+| Analogue output | DAC level or voltage; distinct from PWM | A supported DAC channel or external driver | Declared units, calibration and safe level; optional after the starter release |
 | PWM output | LED dimming; proportional values | Output pin | Frequency and safe duty cycle, initially zero |
 | Tone output | Passive piezo; notes and timing | Output pin | Supported frequency range and maximum note duration; silence on stop |
 | Positional servo | Pointer or simple mechanism; angles and state machines | Output pin and a selected servo calibration preset or explicit pulse limits | Period, permitted angle range and release on stop |
@@ -47,8 +54,11 @@ basic types, rather than separate drivers for every component.
 These are software capabilities, not promises that every connected component can
 be driven directly from a GPIO. Wiring templates should specify the resistor,
 driver, power supply and common ground required by the selected component.
-Distinguish active buzzers from passive piezos, and positional servos from
-continuous rotation servos in the editor.
+Distinguish active buzzers from passive piezos, positional servos from continuous
+rotation servos, and true analogue output from PWM in the editor. Pixel buffers
+are logical resources; WS2812B and RGBW output are physical capabilities.
+Explicit RGBW control is optional with its own driver and buffer budget.
+There are no alpha-channel requirements. A/B effects use a separate mix channel.
 
 After the starter release, add one named I2C temperature/humidity driver and a
 small monochrome display. These exercise bus sharing, measurement units and
@@ -72,7 +82,7 @@ boundary and the single owner of engine execution.
 | `PIXEL_CAPACITY` limits runtime pixel configuration; no output is valid | General execution with an empty configuration is available |
 | `PixelBuffer` owns dynamically configured RGB and native driver state | Additional target types can build on explicit ownership |
 | `VmInstance` links legacy `led` imports to its assigned target | Add generated generic device bindings alongside these imports |
-| `prepare_animation` requires `render(index)` | Add a general periodic execution profile for programs with no renderer |
+| `prepare_animation` requires `render(index)` | Preserve it through a legacy adapter; add event dispatch and bounded task steps for general programs |
 | `app_tick` only services active playback or the native demo | Native input sampling and timed output expiry need service while guest execution is idle |
 | Pixel driver open/close/show operations report failure | Extend registered driver contracts to non-pixel capabilities |
 | STATUS describes one pin, brightness and pixel count | Structured discovery must report types, instances, state and resource limits |
@@ -82,7 +92,9 @@ Picolights provides a useful precedent: its
 [`device_factory`](../../picolights/picolights/devices/config.py) registers named
 types, `DeviceList` instantiates configured devices, and
 [`PropertyManager`](../../picolights/picolights/devices/controller.py) exposes
-properties. Reuse those concepts. LightVM should use explicit field types,
+properties. Its animation helpers and transitions also establish buffer,
+publication and completion concepts. The [control proposal](feature-proposal-control-api.md#prior-art-and-provenance)
+records the Git lineage and upstream reuse constraints. LightVM should use explicit field types,
 operation signatures and validation instead of dynamic Python imports and
 untyped property messages. Devices need no MQTT connection to work.
 
@@ -117,11 +129,13 @@ flowchart TD
 ```
 
 A device definition should contain its stable type ID and version, required
-fields, defaults, ranges, units, editor labels, capability versions, import
-names/signatures, valid execution contexts and result/error semantics. It should
-also identify resource requirements, driver state bounds, stop behaviour and
-preview support. Cross-field and hardware constraints remain explicit validation
-hooks where declarative rules are insufficient.
+fields, defaults, ranges, units, editor labels, capability versions, properties,
+actions, job outcomes and event schemas. Record import signatures, permitted
+execution contexts, sample validity/age, error semantics, ownership, output
+publication and pause/stop behaviour. Event definitions include capture time,
+filtering, delivery/coalescing policy and bounds. Resource planning includes
+driver state, buffers, queues, subscriptions, timers, jobs and continuation
+storage. Cross-field and hardware constraints remain explicit validation hooks.
 
 For example, a shortened definition could be:
 
@@ -140,7 +154,7 @@ imports:
       - {name: device, type: i32, kind: device_handle}
       - {name: value, type: i32, minimum: 0, maximum: 1}
     result: {type: i32, convention: status}
-    contexts: [tick, beforeRender]
+    contexts: [task_step]
 ```
 
 The generator should emit compact C descriptors, field validation, import
@@ -150,8 +164,9 @@ the firmware validates the same rules using bounded structures. Match schema
 IDs, versions and content hashes when loading an editor's cached definitions.
 
 Each native driver implements configuration validation/resource planning,
-initialization, native servicing, input snapshots, staged output commit, safe
-state and teardown. The registry connects a type to the selected port's driver
+initialization, native servicing, input snapshots/event capture, staged output
+commit, job expiry, safe state and teardown. The registry connects a type to the
+selected port's driver
 implementation. Hardware-specific code can be shared within a port, for example
 PWM allocation used by dimming, tone and servo drivers.
 
@@ -213,7 +228,8 @@ instead of silently treating a failed sample as zero.
 [C6 ADC documentation](https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32c6/api-reference/peripherals/adc_oneshot.html).
 
 The first implementation should use fixed upper bounds for instance count,
-aggregate pixel bytes, driver state, input events and native driver buffers.
+aggregate pixel bytes, driver state, input events, tasks, subscriptions,
+timers, jobs, continuation storage and native driver buffers.
 Allocate or reserve device storage when applying configuration, never during a
 guest callback. Account for it separately from the existing wasm3 heap budget.
 The initial pixel driver may advertise a maximum of one strip while the registry
@@ -240,48 +256,59 @@ Use typed, versioned imports for guest calls, with schema-driven discovery and
 management outside the guest. A generic string-based property interface would
 make units, signatures and compiler checks harder to maintain.
 
-All signatures below use `i32`; `h` is an opaque device handle. Resolve a name
-once during initialization and cache its handle. Names are UTF-8 strings in
-guest linear memory; the core validates pointer and length bounds. Generated
-language bindings hide pointers, handle checks and error decoding.
+The [common control model](feature-proposal-control-api.md) defines the semantics;
+the table below sketches capability groups, not a frozen binary ABI. Resolve
+logical names during initialization and cache opaque handles. Check generation,
+capability, ownership, arguments and execution context on every operation.
+Names and structured data use validated guest pointers/lengths; generated
+bindings hide those details. New calls return status separately from data,
+including reads, so negative measurements cannot become error codes.
+Successful status is zero; defined negative status codes identify failures.
 
-| Import namespace | Proposed operations | Meaning |
+| Proposed capability group | Operations | Meaning |
 |---|---|---|
-| `lightvm.devices.v1` | `find(name_ptr, name_len) -> h` | Find a configured instance by logical name |
-| `lightvm.digital_input.v1` | `read(h) -> value`, `rose(h) -> flag`, `fell(h) -> flag` | Logical 0/1 state and debounced transition flags for this tick |
-| `lightvm.digital_output.v1` | `write(h, value) -> status` | Stage a logical 0/1 output |
-| `lightvm.analog_input.v1` | `read(h) -> value`, `age_ms(h) -> value` | Cached normalized value and sample age |
-| `lightvm.pwm_output.v1` | `duty(h, value) -> status` | Stage duty in 0..65535; frequency belongs to configuration |
-| `lightvm.tone_output.v1` | `play(h, hz, duration_ms) -> status`, `stop(h) -> status` | Stage one bounded note or silence |
-| `lightvm.servo.v1` | `angle(h, millidegrees) -> status`, `release(h) -> status` | Stage a calibrated position or disable pulses |
-| `lightvm.pixels.v1` | `count(h) -> value`, `rgb(h, index, r, g, b) -> status`, `hsv(h, index, hue, s, v) -> status` | Explicit pixel output using the existing RGB and HSV ranges |
+| Device registry | Resolve, inspect capabilities | Find a configured resource and validate its binding |
+| Runtime | Subscribe, schedule, emit, wait, cancel | Select triggers and manage bounded tasks, timers and jobs |
+| Digital input | Read snapshot, subscribe to transitions | Logical state plus ordered debounced events; edge flags are conveniences |
+| Digital output | Write, pulse | Stage a logical value or start a bounded native pulse job |
+| Analogue input | Read sample, observe change/threshold | Value, timestamp, validity and optional calibrated units |
+| Analogue output | Write level/voltage | True DAC capability, separately advertised from PWM |
+| PWM output | Set duty, enable/disable, inspect achieved timing | Normalized duty with fixed or explicitly variable period |
+| Tone output | Play, stop, inspect/cancel job | Native frequency generation, duration and terminal outcome |
+| Positional servo | Set calibrated target, release | Angle in declared units; command state is distinct from feedback |
+| Addressable pixels | Inspect, get, set, fill, clear, request publication | Explicit indexed RGB buffer access, retention and colour conversion |
+| RGBW output | Write explicit emitter channels | Optional independent white-channel control |
 
-Handles are positive; successful status calls return zero. These scalar reads
-return nonnegative values and all failures return defined negative error codes. Check
-handle generation, capability, arguments and execution context at every call.
-Errors include `invalid_handle`, `wrong_capability`, `out_of_range`,
-`sample_unavailable` and `invalid_context`. Generated beginner bindings turn
-unexpected errors into useful runtime diagnostics; advanced bindings may inspect
-them. Native commit failures are reported separately after staged writes.
+Use booleans for logical state and a common normalized encoding for fractions.
+The proposed scalar level/duty range is 0..65535; physical units such as hertz,
+microseconds and millidegrees are explicit metadata. Signed measurements and
+commands remain valid data. The control ABI must fix encodings and structured
+sample/event layouts before implementation. Pixel format and colour conversion
+are separately versioned decisions, rather than inherited from
+legacy `led.rgb`/`led.hsv` integer ranges.
 
-Future signed or structured sensor results should use a status return plus a
-validated output buffer, with its layout defined by the capability. Negative
-temperatures must remain valid measurements rather than becoming error codes.
+Errors include `invalid_handle`, `wrong_capability`, `not_owner`, `out_of_range`,
+`sample_unavailable`, `invalid_context` and resource exhaustion. Beginner bindings
+turn unexpected errors into useful diagnostics; advanced bindings may inspect
+them. Job failure and native commit failure are subsequent outcomes, distinct
+from accepting a staged request.
 
-Reads use a stable snapshot within each tick. Output writes are valid in `tick`
-or legacy `beforeRender`; explicit pixel writes can also run during `render`.
-Pixel buffers start black each iteration. Scalar outputs retain the last
-committed value until changed or stopped. A second write to the same output in
-an iteration replaces the first. A new note replaces the current note; playing
-the same note each tick intentionally restarts its duration.
+Reads use a stable snapshot for one guest step. Output publication occurs after
+a successful step or explicit batch, including before a task suspends. Retained
+pixel buffers and scalar outputs keep committed contents until changed or stopped;
+scratch buffers have a declared reset policy. The last assignment by one writer
+wins within its batch. Actuator ownership governs competing writers; A/B colour
+sources use the separate mix channel. Property assignment must not implicitly restart
+a job; explicit actions have documented replacement/retry behaviour.
 
 Keep `led.pixel_count`, `led.rgb`, `led.hsv`, `render` and `beforeRender` unchanged
 for animation API v1. Its imports target the configured primary strip. Reject a
 legacy animation when that output is unavailable. The old rainbow should retain
 its current colours, callback order and lack of guest linear memory.
 
-Device capability/import versions and the general execution profile are separate
-from animation API, management API, configuration schema and framing versions.
+Device capability/import versions, buffer formats and the general execution
+contract are separate from animation API, management API, configuration schema
+and framing versions.
 Additive discovery fields need no ABI break. Changed units or semantics require
 a new capability/import version. A device links only the APIs implemented by
 its firmware; missing required APIs or configured instances produce explicit
@@ -289,43 +316,49 @@ compatibility errors before execution.
 
 ## Execution and output lifecycle
 
-Add a `device-v1` execution profile requiring `tick(delta_ms: i32) -> void` and
-optionally accepting `render(index: i32) -> void` for the primary strip. In this
-profile, `tick` runs before the optional renderer. `beforeRender` belongs to the
-legacy profile; reject an ambiguous combination rather than advancing program
-state twice. The compiler manifest selects the profile and the runtime validates
-its exports.
+The proposed `control-v1` execution contract dispatches lifecycle, input,
+message, timer, frame and completion work as bounded guest steps. The exact
+export/context layout remains to be fixed. It does not require a renderer or
+impose the legacy `tick`/`beforeRender`/`render` shape on every device program.
+Periodic update functions are frontend conveniences over scheduled tasks.
 
-Each scheduled iteration services due native work, freezes input state, invokes
-the guest, and commits staged outputs only after all guest callbacks succeed.
-Use the existing elapsed-time carry and 1000 ms gap cap. Missed iterations should
-not create an unbounded catch-up queue. Advertise scheduling and callback budgets;
-the present 500 ms deadline is a recovery bound, not a suitable interactive target.
+Each step captures a stable input snapshot and clock context, executes runnable
+guest work, and publishes its successful output batch. A language frontend may
+lower waits to resumable state machines in guest memory. Waiting yields this
+task, allowing other tasks and native servicing to continue. Define queue,
+restart, ignore-while-active and bounded-multiple-instance retrigger policies.
 
-Native servicing must also run when the guest is stopped or paused. Debounce and
-input sampling operate at their configured native cadence, independently of
-pixel count. Latch observed transitions until the next snapshot; repeated reads
-of `rose` and `fell` see the same flags. Bound pending events and expose overflow.
-This supports human interaction, not arbitrary high-speed pulse counting. Clear
-old transition flags and seed current state when starting or resuming a program.
+Input sampling, guest control/frame cadence and native waveform generation have
+independent schedules. Native servicing continues when the guest is stopped or
+paused. Ordered event records preserve presses/releases and repeated transitions;
+snapshot `rose`/`fell` summaries are not the canonical event representation.
+Declare debounce, coalescing, overflow and startup/pause delivery policies.
+High-speed counting/capture needs its own native capability rather than relying
+on a human-input event queue.
 
-Tone expiry uses monotonic native time and never depends on another guest callback.
-Servo pulses and tone waveforms come from native peripherals; guest code never
-sleeps or bit-bangs them. Bus-based sensors introduced later must use bounded
-native servicing and cached results rather than blocking guest imports on a
-conversion or absent peripheral.
+Use native monotonic capture/dispatch timestamps and pausable program time as
+specified in the control proposal. The legacy millisecond carry and 1000 ms gap
+cap remain confined to animation API v1. General deadlines retain actual elapsed
+time; missed periodic intervals cannot create an unbounded catch-up queue. The
+present 500 ms deadline is a recovery bound, not an interactive scheduling target.
 
-Do not execute physical outputs from guest start functions during candidate
-validation. Initialization may resolve bindings; output writes are confined to
-the execution contexts above. Check required bindings before allowing playback.
+Tone/pulse expiry uses native time and does not need another guest callback.
+Servo pulses and tone waveforms come from native peripherals. Bus-based sensors
+use bounded native servicing and cached samples/jobs instead of blocking a guest
+import on a conversion or absent peripheral.
+
+Initialization may resolve bindings and prepare state while validating a
+candidate, but cannot change physical output. After successful activation,
+the start trigger can stage output through an ordinary task step. Reserve
+resources and validate required bindings before that trigger runs.
 
 | Event | Required behaviour |
 |---|---|
-| Successful iteration | Commit staged outputs; there is no promise of electrically simultaneous updates across devices |
-| Guest trap or timeout | Discard pending writes and stop playback; pixels retain their last submitted frame, digital/PWM outputs use their safe values, tone is silenced and servos release pulses |
+| Successful step or suspension | Publish its output batch before waiting; there is no promise of electrically simultaneous updates across devices |
+| Guest trap or timeout | Discard unpublished writes from the failing step and stop playback; previously committed steps remain; pixels retain their last submitted frame, digital/PWM outputs use safe values, tone is silenced and servos release pulses |
 | Native output failure | Stop playback, report the failing instance and attempt the configured safe states; earlier native writes may already have happened |
-| Stop, unload or hardware reconfiguration | Clear pixel output, set digital/PWM safe values, silence tone and release servo pulses |
-| Pause | Retain pixels and ordinary scalar outputs; silence tone and release servos; resuming permits new commands |
+| Stop, unload or hardware reconfiguration | Cancel owned tasks, jobs, timers and subscriptions; clear pixel output, set digital/PWM safe values, silence tone and release servo pulses; reconfiguration invalidates handles |
+| Pause | Freeze program time and pausable tasks/jobs; retain pixels and ordinary scalar outputs; silence tone and release servos; native servicing/deadlines continue and resume uses a fresh snapshot |
 | Browser or USB disconnect | Continue autonomous playback, consistent with the web editor proposal |
 
 Servo release means no control pulses; it cannot guarantee a mechanism's physical
@@ -334,8 +367,9 @@ controller brightness/power. Matter and other adapters use that controller state
 for lighting. Lighting power-off should not implicitly rewrite every unrelated
 device; a general stop action applies the lifecycle rules above.
 
-Only one task owns the registry, interpreter and commits. Native interrupts and
-network callbacks can publish samples or enqueue commands, but cannot call WASM.
+One native engine owner controls the registry, interpreter and commits. Native
+interrupts and network callbacks can publish samples or enqueue commands, but
+cannot call WASM. Several guest tasks can be active and step through that owner.
 If future A/B effects run together, pixel composition and ownership of actuator
 writes need separate rules. Blending light frames does not define how two
 programs should control one servo.
@@ -363,26 +397,42 @@ current USB frames carry at most 512 payload bytes. Hardware forms should show
 only choices valid for the connected board. Keep physical configuration distinct
 from live program parameters such as speed or colour.
 
-Generate language declarations and simple Blockly blocks from the shared
-definitions. Semantic helpers such as `button.pressed`, `dial.value` and
-`servo.angle` make the low-level imports approachable. A supported Python frontend
-could expose this illustrative program:
+Generate language declarations, typed reporters/actions and Scratch-like trigger
+blocks from the shared definitions. Distinguish a held-state reporter from a
+pressed-event trigger. Semantic helpers such as `dial.level` and `servo.target`
+make the low-level imports approachable. A supported Python frontend could expose
+this illustrative program, assuming a configured PWM device named `dimmer` as
+well as the button, dial and indicator; decorators and waits are proposed
+lowering features:
 
 ```python
 button = devices.input("button")
 dial = devices.analog("dial")
 indicator = devices.output("indicator")
+dimmer = devices.pwm("dimmer")
 
-def tick(delta_ms):
-    indicator.write(button.read() and dial.read() > 32767)
+@on(button.pressed, policy="queue")
+def flash(event):
+    indicator.write(True)
+    wait_ms(1000)  # Publish, then suspend only this task.
+    indicator.write(False)
+
+@every_ms(20)
+def sample_dial(context):
+    level = dial.sample()  # Includes timestamp and validity.
+    if level.valid:
+        # Control an independent output while the flash task may be waiting.
+        dimmer.duty(level.normalized)
 ```
 
-Every frontend targets the same device semantics, with its own numeric/unit
-conversion rules. Device definitions do not add arbitrary Python support or
+Every frontend targets the same device, trigger and task semantics, with its own
+numeric/unit conversion rules. Device definitions do not add arbitrary Python support or
 Pixelblaze syntax automatically; capability availability and frontend support
 both need checking. Simulation drivers should offer interactive buttons, analogue
-sliders, light output, note events and servo position. Mark missing simulations
-explicitly. Preview does not validate wiring, electrical behaviour or board timing.
+sliders, addressable RGB output, note/job events and commanded servo position. Replaying
+timestamped inputs should reproduce task steps and published batches. Mark
+missing simulations explicitly. Preview does not validate wiring, measured
+servo arrival, electrical behaviour or board timing.
 
 Pico, XIAO ESP32-S3 and XIAO ESP32-C6 use the same shared definitions and imports.
 Their ports supply different GPIO/ADC/PWM implementations and resource planners.
@@ -395,9 +445,9 @@ networking and Matter active on the ESP32 ports.
 
 | Increment | Deliverable | Acceptance criteria |
 |---|---|---|
-| 1 | Definition format, generator, bounded registry, saved pixel configuration, digital input/output and general execution profile | Existing rainbow remains compatible; a button/LED program runs with zero pixels; invalid handles/configuration are diagnosed; adding the second type needs no scheduler/loader switch |
+| 1 | Definition format, generator, bounded registry, digital input/output, lifecycle/timer events and bounded handlers | Existing rainbow remains compatible; a button/LED program runs with zero pixels; repeated edges retain order; invalid handles/configuration are diagnosed; adding the second type needs no scheduler/loader switch |
 | 2 | Shared hardware discovery/configuration, USB support and editor integration | Required fields generate forms and bindings; bad pins/resource conflicts fail before apply; stale revisions are rejected; simulated and physical button/LED projects agree |
-| 3 | Analogue, PWM, tone and positional servo drivers | Knob dimming, alarm and pointer examples run; readings expose validity/age; timer conflicts, note expiry and stop/trap policies are verified |
+| 3 | Resumable waits, retained pixel buffers, analogue/PWM/tone/servo capabilities and native jobs | Red/wait/black publishes before suspension while other work runs; sample validity/age, retrigger/cancellation, ownership, timer conflicts and native expiry are verified |
 | 4 | ESP32 native implementations | Identical compatible WASM works on Pico, S3 and C6 with board configuration changes only; resource use and interaction timing are measured under native service load |
 | 5 | One I2C sensor and optional display | Shared bus ownership, address conflicts, bounded servicing, disconnected hardware and missing preview support behave predictably |
 
@@ -409,8 +459,9 @@ forms should consume the implemented configuration and persistence operations.
 Acceptance tests should cover missing fields/devices/imports, signature mismatch,
 stale handles, instance/buffer exhaustion, initialization failure, duplicate pin
 aliases and PWM conflicts across types. Exercise stable input snapshots, debounce,
-event overflow, bounded deadlines, failed frames, partial native commits, note
-expiry, pause/stop/unload and browser disconnect. Compare logical outputs and
+event overflow/order, retrigger policies, task suspension/cancellation, signed
+results, retained buffers, bounded deadlines, failed steps/frames, partial native
+commits, note expiry, pause/stop/unload and browser disconnect. Compare logical outputs and
 scripted input sequences in the host before hardware checks on each board.
 
 Use an additional simulated device as an extension exercise: add its definition,
@@ -421,8 +472,8 @@ practical test of extensibility.
 ## Implementation decisions
 
 The first prototype should settle the definition/generator format, handle and
-error encoding, execution-profile selection, resource allocator hooks and the
-smallest practical Pico storage bounds. It should establish which editor forms
+error encoding, the common step/context and event/task contract, resource
+allocator hooks and the smallest practical Pico storage bounds. It should establish which editor forms
 and language bindings can be generated directly and which operations need
 handwritten lowering.
 
