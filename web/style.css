@@ -101,3 +101,14 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 @media (max-width: 950px) { .pipeline { display: none; } .workspace { grid-template-columns: minmax(0, 1fr) 280px; gap: 15px; } .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; } .file-label { font-size: 10px; } .header-note { display: none; } #draft-state { display: none; } }
 @media (max-width: 720px) { .site-header { height: 68px; } main { padding-top: 25px; } .workspace { grid-template-columns: 1fr; } .sidebar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .activity-card { grid-column: 1 / -1; } .CodeMirror, #source { height: 390px; } }
 @media (max-width: 460px) { .sidebar { display: flex; } .editor-toolbar { align-items: flex-start; } .file-label { padding-top: 9px; } .toolbar-actions { max-width: 190px; } .badge { max-width: 160px; font-size: 9px; } .editor-footer { font-size: 9px; } }
+
+.management-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+.management-grid fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.management-grid label, .device-card label { display: block; font-size: 11px; color: var(--muted); margin: 12px 0 6px; }
+.management-grid input:not([type=checkbox]), .device-card input, .management-grid select, .device-card select { width: 100%; min-width: 0; padding: 9px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+.management-grid input[type=checkbox] { accent-color: var(--accent); }
+.management-grid button, #connect-http { margin-top: 8px; }
+.config-code { width: 100%; min-height: 215px; resize: vertical; padding: 12px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; font: 11px/1.6 'JetBrains Mono', monospace; }
+.wifi-network { border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin-top: 12px; }
+.wifi-network .button-pair { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 720px) { .management-grid { grid-template-columns: 1fr; } }

@@ -2,6 +2,8 @@
 #include "platform.h"
 #include "config.h"
 #include "port.h"
+#include "protocol.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
@@ -28,6 +30,12 @@ bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     (void)rgb; return driver && count==((PixelConfig *)driver)->count;
 }
 static int storage_fd=-1;
+static uint32_t storage_identity;
+void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) {
+    char hostname[128]="localhost"; gethostname(hostname,sizeof(hostname)-1);
+    snprintf(device,capacity,"host-%08lx-%08lx",(unsigned long)crc32_bytes((const uint8_t *)hostname,strlen(hostname)),(unsigned long)(storage_fd>=0?storage_identity:(uint32_t)getpid()));
+    snprintf(boot,boot_capacity,"%lx-%llx",(unsigned long)getpid(),(unsigned long long)platform_time_us());
+}
 static bool io_bytes(bool write,uint32_t offset,void *bytes,size_t size) {
     if (storage_fd<0 || offset>STORAGE_BYTES || size>STORAGE_BYTES-offset) return false;
     uint8_t *p=bytes;
@@ -40,6 +48,7 @@ static bool io_bytes(bool write,uint32_t offset,void *bytes,size_t size) {
     return true;
 }
 bool host_storage_open(const char *path) {
+    storage_identity=crc32_bytes((const uint8_t *)path,strlen(path));
     storage_fd=open(path,O_RDWR|O_CREAT,0600);
     if (storage_fd<0) return false;
     struct stat st;

@@ -1,9 +1,30 @@
 // LightVM protocol v1. Compatible with tools/client.py and src/protocol.c.
-export const COMMAND = { STATUS: 1, BEGIN: 2, CHUNK: 3, FINISH: 4, PLAY: 7, STOP: 8, MANAGE: 11 };
+export const COMMAND = { STATUS: 1, BEGIN: 2, CHUNK: 3, FINISH: 4, PLAY: 7, STOP: 8, MANAGE: 11, OBJECT_BEGIN: 12, OBJECT_CHUNK: 13, OBJECT_FINISH: 14, OBJECT_CANCEL: 15 };
 const OUTPUT = 128, RESULT = 129, PIXELS = 130, DATA = 131;
 const MAGIC = new Uint8Array([87, 65, 83, 77]);
 const encoder = new TextEncoder(), decoder = new TextDecoder();
 export const FRAME_LIMIT = 512;
+
+// Preserve native signed i64 parameters instead of rounding them through JS Number.
+export function parseJSON(text) {
+  const integers = [];
+  const protectedText = text.replace(/"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g, token => {
+    if (token.startsWith('"') || !/^-?\d+$/.test(token) || Number.isSafeInteger(Number(token))) return token;
+    const index = integers.push(BigInt(token)) - 1;
+    return JSON.stringify(`\u0000lightvm.integer.${index}`);
+  });
+  return JSON.parse(protectedText, (_, value) => {
+    if (typeof value === "string" && value.startsWith("\u0000lightvm.integer.")) return integers[Number(value.slice(17))];
+    return value;
+  });
+}
+export function encodeJSON(value) {
+  if (typeof value === "bigint") return value.toString();
+  if (Array.isArray(value)) return `[${value.map(encodeJSON).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value).filter(([, item]) => item !== undefined).map(([key, item]) => `${JSON.stringify(key)}:${encodeJSON(item)}`).join(",")}}`;
+  if (typeof value === "number" && !Number.isFinite(value)) throw new Error("Parameter numbers must be finite.");
+  return JSON.stringify(value);
+}
 
 export function crc32(bytes, previous = 0) {
   let crc = (previous ^ 0xffffffff) >>> 0;
@@ -90,7 +111,14 @@ export class LightVMClient {
     const code = view.getUint32(0, true), value = view.getInt32(4, true);
     const message = decoder.decode(payload.subarray(8));
     clearTimeout(pending.timer); this.pending = null;
-    if (code) pending.reject(new Error(`Device error ${code}: ${message}`));
+    if (code) {
+      const error = new Error(`Device error ${code}: ${message}`);
+      error.code = code;
+      let details;
+      try { details = JSON.parse(decoder.decode(join(pending.data))); } catch {}
+      error.conflict = details?.error === "stale_revision" || /\bstale\b/.test(message);
+      pending.reject(error);
+    }
     else pending.resolve({ code, value, message, data: join(pending.data), pixels: join(pending.pixels) });
   }
 
@@ -118,10 +146,10 @@ export class LightVMClient {
   }
 
   async manage(op, fields = {}) {
-    return this.command(COMMAND.MANAGE, encoder.encode(JSON.stringify({ op, ...fields })));
+    return this.command(COMMAND.MANAGE, encoder.encode(encodeJSON({ op, ...fields })));
   }
 
-  async describe() { return JSON.parse(decoder.decode((await this.manage("describe")).data)); }
+  async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionApi = description.connection_api; return description; }
 
   async upload(wasm, limit, onProgress = () => {}) {
     if (!Number.isInteger(limit) || limit < 8 || wasm.length < 8 || wasm.length > limit) {
@@ -143,7 +171,54 @@ export class LightVMClient {
     await this.command(COMMAND.FINISH);
   }
 
+  async json(op, fields = {}) { return parseJSON(decoder.decode((await this.manage(op, fields)).data)); }
+
+  async uploadObject(kind, data, name) {
+    const limits = await this.describe(), limit = kind === "procedure" ? limits.module_limit : limits.config_limit;
+    if (data.length < (kind === "procedure" ? 8 : 1) || data.length > limit) throw new Error(`Object exceeds the ${limit}-byte limit.`);
+    await this.command(COMMAND.OBJECT_BEGIN, encoder.encode(JSON.stringify({ kind, size: data.length, crc32: crc32(data), ...(name ? { name } : {}) })));
+    for (let offset = 0; offset < data.length; offset += FRAME_LIMIT - 4) {
+      const part = data.subarray(offset, offset + FRAME_LIMIT - 4), payload = new Uint8Array(part.length + 4);
+      new DataView(payload.buffer).setUint32(0, offset, true); payload.set(part, 4);
+      const reply = await this.command(COMMAND.OBJECT_CHUNK, payload);
+      if (reply.value !== offset + part.length) { this.fail(new Error("Unexpected upload offset.")); throw new Error("Unexpected upload offset."); }
+    }
+    await this.command(COMMAND.OBJECT_FINISH);
+  }
+
+  async configure(config, { save = false, validate = false } = {}) {
+    const state = await this.describe();
+    await this.uploadObject("config", encoder.encode(JSON.stringify(config)));
+    await this.manage("config_validate");
+    if (validate) { await this.command(COMMAND.OBJECT_CANCEL); return; }
+    const applied = await this.manage("config_apply", { expected_revision: state.active_revision });
+    if (save) {
+      await this.manage("config_save", { expected_revision: applied.value >>> 0, expected_saved_revision: state.saved_revision });
+    }
+  }
+
+  async configureNetwork(config) {
+    const state = await this.describe();
+    await this.uploadObject("network", encoder.encode(JSON.stringify(config)));
+    await this.manage("network_validate");
+    return this.manage("network_commit", { expected_revision: state.network_revision });
+  }
+
+  async saveProcedure(name, wasm) {
+    const state = await this.describe(); await this.uploadObject("procedure", wasm, name);
+    return this.manage("procedure_save", { name, expected_revision: state.catalog_revision });
+  }
+
+  async deleteProcedure(name) {
+    const state = await this.describe(); return this.manage("procedure_delete", { name, expected_revision: state.catalog_revision });
+  }
+
+  async setParameters(values, state) {
+    return this.json("program_parameters_set", { values, expected_generation: state.generation, expected_parameter_revision: state.parameter_revision });
+  }
+
   async close() {
+    if (!this.closed && !this.pending && this.connectionApi) await this.manage("session_close").catch(() => {});
     this.fail(new Error("Connection closed."));
     await this.transport.close();
   }

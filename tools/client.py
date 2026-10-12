@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upload and execute independent WASM modules over USB CDC or a host pipe."""
+"""Upload and execute independent WASM modules over USB CDC, HTTP or a host pipe."""
 import argparse
 import json
 from dataclasses import dataclass
@@ -118,6 +118,54 @@ class SerialTransport:
         self.serial.close()
 
 
+class HttpTransport:
+    """One logical session across independent HTTP exchanges; never replay commands."""
+    def __init__(self, url, timeout=5):
+        from urllib.parse import urlsplit
+        from urllib.request import build_opener, ProxyHandler
+        parsed = urlsplit(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ("", "/"):
+            raise ValueError("--url must be a device HTTP origin, e.g. http://192.168.1.20")
+        self.url = url.rstrip("/")
+        self.timeout = timeout
+        self.opener = build_opener(ProxyHandler({}))
+        self.buffer = bytearray()
+        self.session = None
+        self.identity = json.loads(self.exchange("/api/v1/sessions", b""))
+        self.session = self.identity["session_id"]
+
+    def exchange(self, path, data=None, method="POST"):
+        from urllib.request import Request
+        from urllib.error import URLError
+        headers = {"Content-Type": "application/octet-stream"}
+        if self.session:
+            headers["X-LightVM-Session"] = self.session
+        try:
+            with self.opener.open(Request(self.url + path, data=data, headers=headers, method=method), timeout=self.timeout) as response:
+                result = response.read(4 * 1024 * 1024 + 1)
+                if len(result) > 4 * 1024 * 1024:
+                    raise ProtocolError("HTTP response exceeds client limit")
+                return result
+        except URLError as error:
+            raise ProtocolError(f"HTTP request failed: {error}; reconnect and inspect state before retrying") from error
+
+    def write(self, data):
+        self.buffer = bytearray(self.exchange("/api/v1/command", data))
+
+    def read(self, size, timeout):
+        result = bytes(self.buffer[:size])
+        del self.buffer[:size]
+        return result
+
+    def close(self):
+        if self.session:
+            try:
+                self.exchange("/api/v1/sessions/" + self.session, method="DELETE")
+            except ProtocolError:
+                pass
+            self.session = None
+
+
 class Client:
     def __init__(self, transport, timeout=5, output=None):
         self.transport = transport
@@ -205,7 +253,9 @@ class Client:
 
     def describe(self):
         self.manage("describe")
-        return json.loads(self.data_reply)
+        description = json.loads(self.data_reply)
+        self.connection_api = description.get("connection_api", 0)
+        return description
 
     def get_config(self, saved=False):
         self.manage("config_saved" if saved else "config_get")
@@ -213,8 +263,8 @@ class Client:
 
     def upload_object(self, kind, data, name=None):
         capabilities = self.describe()
-        limit = capabilities["config_limit" if kind == "config" else "module_limit"]
-        if not (1 if kind == "config" else 8) <= len(data) <= limit:
+        limit = capabilities["module_limit" if kind == "procedure" else "config_limit"]
+        if not (8 if kind == "procedure" else 1) <= len(data) <= limit:
             raise ValueError(f"{kind} exceeds receiver size limit {limit}")
         metadata = {"kind": kind, "size": len(data), "crc32": zlib.crc32(data)}
         if name is not None:
@@ -228,14 +278,41 @@ class Client:
         return self.require_ok(self.command(OBJECT_FINISH))
 
     def configure(self, config, save=False):
-        revision = self.describe()["active_revision"]
+        description = self.describe()
+        revision = description["active_revision"]
         data = json.dumps(config, separators=(",", ":")).encode()
         self.upload_object("config", data)
         self.manage("config_validate")
         reply = self.manage("config_apply", expected_revision=revision)
         if save:
-            self.save_config()
+            self.manage("config_save", expected_revision=reply.value & 0xffffffff,
+                        expected_saved_revision=description["saved_revision"])
         return reply
+
+    def close(self):
+        if getattr(self, "connection_api", 0) and isinstance(self.transport, SerialTransport):
+            try:
+                self.manage("session_close")
+            except (ProtocolError, OSError):
+                pass
+        self.transport.close()
+
+    def network_config(self):
+        self.manage("network_get")
+        return json.loads(self.data_reply)
+
+    def network_status(self):
+        self.manage("network_status")
+        return json.loads(self.data_reply)
+
+    def configure_network(self, config, validate=False):
+        revision = self.describe()["network_revision"]
+        self.upload_object("network", json.dumps(config, ensure_ascii=False, separators=(",", ":")).encode())
+        reply = self.manage("network_validate")
+        if validate:
+            self.require_ok(self.command(OBJECT_CANCEL))
+            return reply
+        return self.manage("network_commit", expected_revision=revision)
 
     def save_config(self):
         description = self.describe()
@@ -295,6 +372,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     transport = parser.add_mutually_exclusive_group(required=True)
     transport.add_argument("--port", help="USB serial port, e.g. /dev/cu.usbmodem...")
+    transport.add_argument("--url", help="device HTTP origin, e.g. http://192.168.1.20")
     transport.add_argument("--process", type=Path, help="desktop receiver executable")
     parser.add_argument("--no-reset", action="store_true", help="deassert DTR/RTS before opening an ESP32 USB serial port")
     parser.add_argument("--storage", type=Path, help="host persistent store file")
@@ -304,6 +382,10 @@ def main():
     parser.add_argument("--output", type=Path, help="binary readback destination")
     parser.add_argument("--function", default="run", help="zero-argument exported function")
     action = parser.add_mutually_exclusive_group()
+    action.add_argument("--network", type=Path, help="validate, save and apply network JSON")
+    action.add_argument("--validate-network", type=Path, help="validate network JSON without saving")
+    action.add_argument("--get-network", action="store_true", help="read network settings; passwords omitted")
+    action.add_argument("--network-status", action="store_true")
     action.add_argument("--describe", action="store_true")
     action.add_argument("--config", type=Path, help="apply JSON configuration in RAM")
     action.add_argument("--validate-config", type=Path, help="stage and validate JSON without applying")
@@ -338,7 +420,7 @@ def main():
         parser.error("--output requires --get-procedure")
     if args.store_procedure and args.module is None:
         parser.error("--store-procedure requires a .wasm module")
-    management = (args.describe or args.config or args.validate_config or args.get_config or args.save_config or
+    management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
                   args.activate or args.cancel_upload or args.parameters or args.set_parameters is not None or
                   args.pause or args.resume or args.snapshot)
@@ -353,14 +435,22 @@ def main():
     if args.module is None and not (args.status or args.animate or args.stop or args.frame_ms is not None or management):
         parser.error("provide a .wasm module or a status/animation command")
     connection = None
+    client = None
     try:
-        connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else ProcessTransport(args.process, storage=args.storage)
+        connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else HttpTransport(args.url, args.timeout) if args.url else ProcessTransport(args.process, storage=args.storage)
         def console(data):
             sys.stdout.buffer.write(data)
             sys.stdout.buffer.flush()
         client = Client(connection, timeout=args.timeout, output=console)
         if management:
-            if args.describe:
+            if args.network or args.validate_network:
+                path = args.network or args.validate_network
+                client.configure_network(json.loads(path.read_text()), validate=bool(args.validate_network))
+            elif args.get_network:
+                print(json.dumps(client.network_config(), indent=2, ensure_ascii=False))
+            elif args.network_status:
+                print(json.dumps(client.network_status(), indent=2))
+            elif args.describe:
                 print(json.dumps(client.describe(), indent=2))
             elif args.get_config:
                 print(json.dumps(client.get_config(saved=args.saved), indent=2))
@@ -422,7 +512,9 @@ def main():
         print(f"Error: {error}", file=sys.stderr)
         return 1
     finally:
-        if connection:
+        if client:
+            client.close()
+        elif connection:
             connection.close()
 
 

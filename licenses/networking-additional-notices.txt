@@ -1,0 +1,3741 @@
+Selected native source headers from the pinned networking builds.
+Full license terms are retained in the other files in this directory.
+
+Sources: ESP-IDF 5.5.3/components/app_update/esp_ota_app_desc.c, ESP-IDF 5.5.3/components/lwip/port/esp32xx/vfs_lwip.c, ESP-IDF 5.5.3/components/pthread/pthread_cond_var.c
+/*
+ * SPDX-FileCopyrightText: 2017-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/app_update/esp_ota_ops.c, ESP-IDF 5.5.3/components/bootloader_support/src/esp_image_format.c, ESP-IDF 5.5.3/components/bootloader_support/src/flash_encrypt.c, ESP-IDF 5.5.3/components/bootloader_support/src/secure_boot.c, ESP-IDF 5.5.3/components/esp_driver_gpio/src/gpio.c, ESP-IDF 5.5.3/components/esp_driver_uart/src/uart.c, ESP-IDF 5.5.3/components/esp_hw_support/intr_alloc.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/rtc_sleep.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/rtc_time.c, ESP-IDF 5.5.3/components/esp_hw_support/power_supply/brownout.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_console.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_gpio.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_spiflash.c, ESP-IDF 5.5.3/components/esp_security/src/esp_hmac.c, ESP-IDF 5.5.3/components/esp_system/crosscore_int.c, ESP-IDF 5.5.3/components/esp_system/esp_ipc.c, ESP-IDF 5.5.3/components/esp_system/int_wdt.c, ESP-IDF 5.5.3/components/esp_system/panic.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/debug_helpers.c, ESP-IDF 5.5.3/components/esp_system/port/cpu_start.c, ESP-IDF 5.5.3/components/esp_system/port/panic_handler.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32s3/clk.c, ESP-IDF 5.5.3/components/esp_system/startup_funcs.c, ESP-IDF 5.5.3/components/esp_system/task_wdt/task_wdt_impl_timergroup.c, ESP-IDF 5.5.3/components/esp_wifi/esp32s3/esp_adapter.c, ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/portable/riscv/portasm.S, ESP-IDF 5.5.3/components/hal/ds_hal.c, ESP-IDF 5.5.3/components/hal/gpio_hal.c, ESP-IDF 5.5.3/components/hal/i2c_hal.c, ESP-IDF 5.5.3/components/hal/sdio_slave_hal.c, ESP-IDF 5.5.3/components/hal/spi_flash_hal_iram.c, ESP-IDF 5.5.3/components/hal/spi_hal.c, ESP-IDF 5.5.3/components/hal/touch_sens_hal.c, ESP-IDF 5.5.3/components/hal/uart_hal.c, ESP-IDF 5.5.3/components/heap/heap_caps.c, ESP-IDF 5.5.3/components/heap/heap_caps_base.c, ESP-IDF 5.5.3/components/heap/heap_caps_init.c, ESP-IDF 5.5.3/components/heap/multi_heap.c, ESP-IDF 5.5.3/components/log/src/buffer/log_buffers.c, ESP-IDF 5.5.3/components/lwip/apps/dhcpserver/dhcpserver.c, ESP-IDF 5.5.3/components/newlib/src/locks.c, ESP-IDF 5.5.3/components/newlib/src/reent_syscalls.c, ESP-IDF 5.5.3/components/newlib/src/stdatomic.c, ESP-IDF 5.5.3/components/newlib/src/time.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_cxx_api.cpp, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_page.cpp, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_pagemanager.cpp, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_storage.cpp, ESP-IDF 5.5.3/components/spi_flash/cache_utils.c, ESP-IDF 5.5.3/components/spi_flash/esp_flash_api.c, ESP-IDF 5.5.3/components/spi_flash/esp_flash_spi_init.c, ESP-IDF 5.5.3/components/spi_flash/flash_mmap.c, ESP-IDF 5.5.3/components/spi_flash/flash_ops.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_drivers.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_generic.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_os_func_app.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_os_func_noos.c, ESP-IDF 5.5.3/components/vfs/vfs.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls-bignum.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls-ec.c
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/bootloader_flash/src/bootloader_flash.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/rtc_clk.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_modes.c, ESP-IDF 5.5.3/components/esp_phy/src/phy_init.c, ESP-IDF 5.5.3/components/esp_wifi/src/wifi_init.c
+/*
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32c6.c, ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_random_esp32c6.c, ESP-IDF 5.5.3/components/efuse/esp32c6/esp_efuse_fields.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_common.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_encoder.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_encoder_bytes.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_encoder_copy.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_encoder_simple.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_rx.c, ESP-IDF 5.5.3/components/esp_driver_rmt/src/rmt_tx.c, ESP-IDF 5.5.3/components/esp_hw_support/modem_clock.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/io_mux.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/rtc_time.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/sar_periph_ctrl.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/io_mux.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/sar_periph_ctrl.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_retention.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_system_peripheral.c, ESP-IDF 5.5.3/components/esp_mm/esp_mmu_map.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_systimer.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_tlsf.c, ESP-IDF 5.5.3/components/esp_security/src/esp_crypto_lock.c, ESP-IDF 5.5.3/components/esp_system/port/esp_system_chip.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32c6/clk.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32c6/system_internal.c, ESP-IDF 5.5.3/components/esp_wifi/esp32c6/esp_adapter.c, ESP-IDF 5.5.3/components/lwip/port/hooks/tcp_isn_default.c
+/*
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32s3.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/esp_memprot.c, ESP-IDF 5.5.3/components/esp_hw_support/regi2c_ctrl.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/trax.c, ESP-IDF 5.5.3/components/esp_system/system_time.c, ESP-IDF 5.5.3/components/hal/aes_hal.c, ESP-IDF 5.5.3/components/mbedtls/port/aes/dma/esp_aes_gdma_impl.c, ESP-IDF 5.5.3/components/newlib/src/port/esp_time_impl.c, ESP-IDF 5.5.3/components/riscv/instruction_decode.c, ESP-IDF 5.5.3/components/riscv/interrupt.c, ESP-IDF 5.5.3/components/soc/esp32c6/pcnt_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/dedic_gpio_periph.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_hpm_enable.c, ESP-IDF 5.5.3/components/vfs/vfs_semihost.c
+/*
+ * SPDX-FileCopyrightText: 2020-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c, ESP-IDF 5.5.3/components/bootloader_support/src/flash_partitions.c, ESP-IDF 5.5.3/components/cxx/cxx_guards.cpp, ESP-IDF 5.5.3/components/esp_coex/esp32s3/esp_coex_adapter.c, ESP-IDF 5.5.3/components/esp_driver_uart/src/uart_vfs.c, ESP-IDF 5.5.3/components/esp_hw_support/esp_clk.c, ESP-IDF 5.5.3/components/esp_hw_support/mac_addr.c, ESP-IDF 5.5.3/components/esp_hw_support/periph_ctrl.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_modem.c, ESP-IDF 5.5.3/components/esp_hw_support/spi_bus_lock.c, ESP-IDF 5.5.3/components/esp_partition/partition.c, ESP-IDF 5.5.3/components/esp_partition/partition_target.c, ESP-IDF 5.5.3/components/esp_phy/src/phy_override.c, ESP-IDF 5.5.3/components/esp_system/esp_err.c, ESP-IDF 5.5.3/components/esp_system/freertos_hooks.c, ESP-IDF 5.5.3/components/esp_system/port/arch/riscv/expression_with_stack.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/expression_with_stack.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/panic_arch.c, ESP-IDF 5.5.3/components/esp_system/startup.c, ESP-IDF 5.5.3/components/esp_system/task_wdt/task_wdt.c, ESP-IDF 5.5.3/components/esp_vfs_console/vfs_console.c, ESP-IDF 5.5.3/components/hal/esp32s3/touch_sensor_hal.c, ESP-IDF 5.5.3/components/hal/spi_flash_hal.c, ESP-IDF 5.5.3/components/hal/spi_hal_iram.c, ESP-IDF 5.5.3/components/hal/spi_slave_hd_hal.c, ESP-IDF 5.5.3/components/hal/usb_wrap_hal.c, ESP-IDF 5.5.3/components/log/src/log_level/tag_log_level/cache/log_binary_heap.c, ESP-IDF 5.5.3/components/log/src/log_level/tag_log_level/linked_list/log_linked_list.c, ESP-IDF 5.5.3/components/log/src/log_level/tag_log_level/tag_log_level.c, ESP-IDF 5.5.3/components/log/src/os/log_lock.c, ESP-IDF 5.5.3/components/log/src/os/log_timestamp.c, ESP-IDF 5.5.3/components/log/src/os/log_write.c, ESP-IDF 5.5.3/components/lwip/apps/sntp/sntp.c, ESP-IDF 5.5.3/components/lwip/port/debug/lwip_debug.c, ESP-IDF 5.5.3/components/newlib/src/heap.c, ESP-IDF 5.5.3/components/newlib/src/newlib_init.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_api.cpp, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_partition_manager.cpp, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_types.cpp, ESP-IDF 5.5.3/components/soc/esp32s3/i2c_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/ledc_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/uart_periph.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_mxic.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_winbond.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls-rsa.c
+/*
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_clock_init.c, ESP-IDF 5.5.3/components/efuse/esp32s3/esp_efuse_table.c, ESP-IDF 5.5.3/components/efuse/esp32s3/esp_efuse_utility.c, ESP-IDF 5.5.3/components/efuse/src/esp_efuse_api.c, ESP-IDF 5.5.3/components/efuse/src/esp_efuse_startup.c, ESP-IDF 5.5.3/components/efuse/src/esp_efuse_utility.c, ESP-IDF 5.5.3/components/esp_system/stack_check.c, ESP-IDF 5.5.3/components/esp_timer/src/system_time.c, ESP-IDF 5.5.3/components/freertos/port_systick.c, ESP-IDF 5.5.3/components/pthread/pthread_local_storage.c
+/*
+ * SPDX-FileCopyrightText: 2017-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_common.c, ESP-IDF 5.5.3/components/esp_coex/src/coexist_debug.c, ESP-IDF 5.5.3/components/esp_coex/src/coexist_debug_diagram.c, ESP-IDF 5.5.3/components/esp_common/src/esp_err_to_name.c, ESP-IDF 5.5.3/components/esp_event/default_event_loop.c, ESP-IDF 5.5.3/components/esp_event/esp_event_private.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32s3/reset_reason.c, ESP-IDF 5.5.3/components/heap/port/memory_layout_utils.c, ESP-IDF 5.5.3/components/mbedtls/esp_crt_bundle/esp_crt_bundle.c, ESP-IDF 5.5.3/components/pthread/pthread.c
+/*
+ * SPDX-FileCopyrightText: 2018-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_common_loader.c, ESP-IDF 5.5.3/components/esp_hw_support/dma/gdma.c, ESP-IDF 5.5.3/components/hal/gdma_hal_top.c
+/*
+ * SPDX-FileCopyrightText: 2020-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_efuse.c, ESP-IDF 5.5.3/components/esp_driver_gpio/src/rtc_io.c, ESP-IDF 5.5.3/components/esp_hw_support/mspi_timing_tuning/mspi_timing_tuning.c, ESP-IDF 5.5.3/components/esp_mm/heap_align_hw.c, ESP-IDF 5.5.3/components/esp_netif/lwip/esp_netif_lwip.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32s3/apb_backup_dma.c, ESP-IDF 5.5.3/components/hal/adc_hal_common.c, ESP-IDF 5.5.3/components/hal/ledc_hal_iram.c, ESP-IDF 5.5.3/components/lwip/apps/ping/ping_sock.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_eap_client.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_hostap.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_wpa3.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_wpas_glue.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_wps.c
+/*
+ * SPDX-FileCopyrightText: 2019-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_mem.c, ESP-IDF 5.5.3/components/esp_driver_gpio/src/dedic_gpio.c, ESP-IDF 5.5.3/components/esp_http_server/src/httpd_ws.c, ESP-IDF 5.5.3/components/esp_hw_support/clk_ctrl_os.c, ESP-IDF 5.5.3/components/esp_hw_support/cpu.c, ESP-IDF 5.5.3/components/esp_hw_support/deprecated/gdma_legacy.c, ESP-IDF 5.5.3/components/esp_hw_support/dma/async_memcpy_gdma.c, ESP-IDF 5.5.3/components/esp_hw_support/dma/gdma_etm.c, ESP-IDF 5.5.3/components/esp_hw_support/dma/gdma_sleep_retention.c, ESP-IDF 5.5.3/components/esp_security/src/esp_ds.c, ESP-IDF 5.5.3/components/esp_system/port/arch/riscv/panic_arch.c, ESP-IDF 5.5.3/components/hal/hmac_hal.c, ESP-IDF 5.5.3/components/hal/i2s_hal.c, ESP-IDF 5.5.3/components/hal/sha_hal.c, ESP-IDF 5.5.3/components/hal/usb_dwc_hal.c, ESP-IDF 5.5.3/components/lwip/port/hooks/lwip_default_hooks.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/crypto_mbedtls.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/tls_mbedtls.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_common.c
+/*
+ * SPDX-FileCopyrightText: 2020-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_random.c
+/*
+ * SPDX-FileCopyrightText: 2010-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_random_esp32s3.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp_memprot_conv.c, ESP-IDF 5.5.3/components/mbedtls/port/md/esp_md.c, ESP-IDF 5.5.3/components/soc/esp32s3/gdma_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/timer_periph.c
+/*
+ * SPDX-FileCopyrightText: 2020-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_sha.c, ESP-IDF 5.5.3/components/esp_hw_support/clk_utils.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_mspi.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_usb_serial.c, ESP-IDF 5.5.3/components/esp_security/src/esp_crypto_periph_clk.c, ESP-IDF 5.5.3/components/esp_system/esp_system_console.c, ESP-IDF 5.5.3/components/esp_wifi/regulatory/esp_wifi_regulatory.c, ESP-IDF 5.5.3/components/hal/twai_hal_v1.c, ESP-IDF 5.5.3/components/hal/uhci_hal.c, ESP-IDF 5.5.3/components/log/src/log_format_text.c, ESP-IDF 5.5.3/components/mbedtls/port/esp_ds/esp_ds_common.c, ESP-IDF 5.5.3/components/mbedtls/port/esp_ds/esp_rsa_dec_alt.c, ESP-IDF 5.5.3/components/riscv/rv_utils.c, ESP-IDF 5.5.3/components/soc/esp32c6/power_supply_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/cam_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/power_supply_periph.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/fastpsk.c
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/bootloader_utility.c, ESP-IDF 5.5.3/components/esp_event/esp_event.c, ESP-IDF 5.5.3/components/esp_http_server/src/httpd_parse.c, ESP-IDF 5.5.3/components/esp_http_server/src/httpd_txrx.c, ESP-IDF 5.5.3/components/esp_http_server/src/httpd_uri.c, ESP-IDF 5.5.3/components/esp_http_server/src/util/ctrl_sock.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32s3/system_internal.c, ESP-IDF 5.5.3/components/mbedtls/port/sha/esp_sha.c
+/*
+ * SPDX-FileCopyrightText: 2018-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/esp32c6/bootloader_ecdsa.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/cpu_region_protect.c, ESP-IDF 5.5.3/components/esp_hw_support/revision.c, ESP-IDF 5.5.3/components/esp_hw_support/spi_share_hw_ctrl.c, ESP-IDF 5.5.3/components/esp_security/src/esp_dpa_protection.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/esp_ipc_isr_port.c, ESP-IDF 5.5.3/components/hal/esp32c6/clk_tree_hal.c, ESP-IDF 5.5.3/components/hal/esp32c6/pmu_hal.c, ESP-IDF 5.5.3/components/hal/esp32s3/clk_tree_hal.c, ESP-IDF 5.5.3/components/hal/lp_timer_hal.c, ESP-IDF 5.5.3/components/hal/mpi_hal.c, ESP-IDF 5.5.3/components/hal/sdmmc_hal.c, ESP-IDF 5.5.3/components/mbedtls/port/esp_platform_time.c, ESP-IDF 5.5.3/components/riscv/vectors_intc.S, ESP-IDF 5.5.3/components/soc/esp32c6/mpi_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/mpi_periph.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_wpa2_api_port.c
+/*
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/esp32c6/secure_boot_secure_features.c, ESP-IDF 5.5.3/components/esp_driver_gpio/src/gpio_glitch_filter_ops.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/systimer.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/systimer.c, ESP-IDF 5.5.3/components/hal/etm_hal.c, ESP-IDF 5.5.3/components/newlib/src/pthread.c, ESP-IDF 5.5.3/components/soc/esp32c6/adc_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/dedic_gpio_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/gpio_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/interrupts.c, ESP-IDF 5.5.3/components/soc/esp32c6/rtc_io_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/sdm_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/twai_periph.c
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/bootloader_support/src/esp32s3/secure_boot_secure_features.c, ESP-IDF 5.5.3/components/soc/esp32s3/adc_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/touch_sensor_periph.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_th.c, ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/crypto_ops.c
+/*
+ * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/cxx/cxx_exception_stubs.cpp, ESP-IDF 5.5.3/components/esp_mm/port/esp32c6/ext_mem_layout.c, ESP-IDF 5.5.3/components/freertos/port_common.c, ESP-IDF 5.5.3/components/hal/lcd_hal.c, ESP-IDF 5.5.3/components/hal/spi_flash_encrypt_hal_iram.c, ESP-IDF 5.5.3/components/newlib/src/assert.c, ESP-IDF 5.5.3/components/newlib/src/realpath.c, ESP-IDF 5.5.3/components/newlib/src/sysconf.c, ESP-IDF 5.5.3/components/pthread/pthread_rwlock.c, ESP-IDF 5.5.3/components/soc/esp32s3/lcd_periph.c, ESP-IDF 5.5.3/components/vfs/vfs_eventfd.c
+/*
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/cxx/cxx_init.cpp, ESP-IDF 5.5.3/components/esp_hw_support/lowpower/port/esp32c6/sleep_modem_state.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/esp_cpu_intr.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/esp_cpu_intr.c, ESP-IDF 5.5.3/components/esp_system/port/image_process.c, ESP-IDF 5.5.3/components/esp_timer/src/esp_timer_init.c, ESP-IDF 5.5.3/components/freertos/esp_additions/idf_additions_event_groups.c, ESP-IDF 5.5.3/components/hal/usb_serial_jtag_hal.c, ESP-IDF 5.5.3/components/log/src/log_print.c, ESP-IDF 5.5.3/components/log/src/log_timestamp_common.c, ESP-IDF 5.5.3/components/lwip/port/acd_dhcp_check.c, ESP-IDF 5.5.3/components/newlib/src/flockfile.c, ESP-IDF 5.5.3/components/newlib/src/init.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_platform.cpp, ESP-IDF 5.5.3/components/soc/esp32c6/system_retention_periph.c, ESP-IDF 5.5.3/components/vfs/nullfs.c
+/*
+ * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/efuse/esp32c6/esp_efuse_rtc_calib.c, ESP-IDF 5.5.3/components/efuse/esp32c6/esp_efuse_utility.c, ESP-IDF 5.5.3/components/esp_app_format/esp_app_desc.c, ESP-IDF 5.5.3/components/esp_bootloader_format/esp_bootloader_desc.c, ESP-IDF 5.5.3/components/esp_coex/esp32c6/esp_coex_adapter.c, ESP-IDF 5.5.3/components/esp_driver_gpio/src/gpio_etm.c, ESP-IDF 5.5.3/components/esp_hw_support/esp_clock_output.c, ESP-IDF 5.5.3/components/esp_hw_support/esp_etm.c, ESP-IDF 5.5.3/components/esp_hw_support/lowpower/port/esp32c6/sleep_clock.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/rtc_clk_init.c, ESP-IDF 5.5.3/components/esp_hw_support/port/pau_regdma.c, ESP-IDF 5.5.3/components/esp_hw_support/port/regdma_link.c, ESP-IDF 5.5.3/components/esp_hw_support/sar_periph_ctrl_common.c, ESP-IDF 5.5.3/components/esp_netif/lwip/esp_netif_sntp.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32c6/cache_err_int.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32c6/reset_reason.c, ESP-IDF 5.5.3/components/freertos/app_startup.c, ESP-IDF 5.5.3/components/hal/esp32c6/pau_hal.c, ESP-IDF 5.5.3/components/hal/gdma_hal_ahb_v1.c, ESP-IDF 5.5.3/components/soc/esp32c6/gdma_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/i2c_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/i2s_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/ledc_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/mcpwm_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/parlio_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/rmt_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/spi_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/temperature_sensor_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/twai_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/uart_periph.c
+/*
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/efuse/esp32c6/esp_efuse_table.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/debug_stubs.c
+/*
+ * SPDX-FileCopyrightText: 2017-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/efuse/esp32s3/esp_efuse_fields.c, ESP-IDF 5.5.3/components/efuse/src/efuse_controller/keys/with_key_purposes/esp_efuse_api_key.c, ESP-IDF 5.5.3/components/efuse/src/esp_efuse_fields.c, ESP-IDF 5.5.3/components/esp_system/port/esp_ipc_isr.c, ESP-IDF 5.5.3/components/esp_timer/src/esp_timer.c, ESP-IDF 5.5.3/components/esp_timer/src/esp_timer_impl_systimer.c, ESP-IDF 5.5.3/components/riscv/vectors.S
+/*
+ * SPDX-FileCopyrightText: 2017-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/efuse/esp32s3/esp_efuse_rtc_calib.c, ESP-IDF 5.5.3/components/esp_hw_support/dma/esp_async_memcpy.c, ESP-IDF 5.5.3/components/hal/brownout_hal.c, ESP-IDF 5.5.3/components/hal/mpu_hal.c
+/*
+ * SPDX-FileCopyrightText: 2020-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_driver_gpio/src/gpio_flex_glitch_filter.c, ESP-IDF 5.5.3/components/esp_driver_gpio/src/gpio_pin_glitch_filter.c, ESP-IDF 5.5.3/components/esp_hw_support/lowpower/port/esp32c6/sleep_cpu_asm.S, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/chip_info.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_event.c, ESP-IDF 5.5.3/components/esp_mm/port/esp32s3/ext_mem_layout.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_cache_esp32s2_esp32s3.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_cache_writeback_esp32s3.S, ESP-IDF 5.5.3/components/esp_system/systick_etm.c, ESP-IDF 5.5.3/components/esp_timer/src/esp_timer_etm.c, ESP-IDF 5.5.3/components/hal/esp32c6/efuse_hal.c, ESP-IDF 5.5.3/components/hal/esp32c6/modem_clock_hal.c, ESP-IDF 5.5.3/components/hal/parlio_hal.c, ESP-IDF 5.5.3/components/lwip/port/sockets_ext.c, ESP-IDF 5.5.3/components/soc/esp32c6/sdio_slave_periph.c
+/*
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_driver_uart/src/uart_wakeup.c, ESP-IDF 5.5.3/components/mbedtls/port/aes/dma/esp_aes_dma_core.c
+/*
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_driver_uart/src/uhci.c
+/*
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_driver_usb_serial_jtag/src/usb_serial_jtag.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32s3/cache_err_int.c, ESP-IDF 5.5.3/components/esp_system/xt_wdt.c, ESP-IDF 5.5.3/components/hal/cache_hal.c, ESP-IDF 5.5.3/components/hal/ecc_hal.c, ESP-IDF 5.5.3/components/hal/efuse_hal.c, ESP-IDF 5.5.3/components/hal/mmu_hal.c, ESP-IDF 5.5.3/components/mbedtls/port/crypto_shared_gdma/esp_crypto_shared_gdma.c, ESP-IDF 5.5.3/components/mbedtls/port/ecc/ecc_alt.c, ESP-IDF 5.5.3/components/mbedtls/port/ecc/esp_ecc.c
+/*
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_driver_usb_serial_jtag/src/usb_serial_jtag_connection_monitor.c, ESP-IDF 5.5.3/components/esp_hw_support/esp_gpio_reserve.c, ESP-IDF 5.5.3/components/esp_hw_support/lowpower/port/esp32c6/sleep_cpu.c, ESP-IDF 5.5.3/components/esp_hw_support/lowpower/port/esp32s3/sleep_cpu.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/cpu_region_protect.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/esp_clk_tree.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/ocode_init.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/pmu_param.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/esp_clk_tree.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp_clk_tree_common.c, ESP-IDF 5.5.3/components/esp_hw_support/sleep_wake_stub.c, ESP-IDF 5.5.3/components/esp_system/hw_stack_guard.c, ESP-IDF 5.5.3/components/freertos/heap_idf.c, ESP-IDF 5.5.3/components/hal/color_hal.c, ESP-IDF 5.5.3/components/hal/hal_utils.c, ESP-IDF 5.5.3/components/log/src/log_level/log_level.c, ESP-IDF 5.5.3/components/log/src/os/util.c, ESP-IDF 5.5.3/components/log/src/util.c, ESP-IDF 5.5.3/components/lwip/port/if_index.c, ESP-IDF 5.5.3/components/newlib/src/getentropy.c, ESP-IDF 5.5.3/components/newlib/src/scandir.c, ESP-IDF 5.5.3/components/pthread/pthread_semaphore.c, ESP-IDF 5.5.3/components/riscv/interrupt_plic.c, ESP-IDF 5.5.3/components/soc/esp32c6/etm_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/timer_periph.c, ESP-IDF 5.5.3/components/soc/esp32c6/wdt_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/wdt_periph.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_wrap.c
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_http_server/src/httpd_main.c, ESP-IDF 5.5.3/components/esp_http_server/src/httpd_sess.c
+/*
+ * SPDX-FileCopyrightText: 2018-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/adc_share_hw_ctrl.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_hp_regi2c_esp32c6.c, ESP-IDF 5.5.3/components/esp_wifi/src/wifi_default.c, ESP-IDF 5.5.3/components/esp_wifi/src/wifi_default_ap.c, ESP-IDF 5.5.3/components/esp_wifi/src/wifi_netif.c, ESP-IDF 5.5.3/components/hal/adc_hal.c, ESP-IDF 5.5.3/components/hal/adc_oneshot_hal.c, ESP-IDF 5.5.3/components/hal/ledc_hal.c, ESP-IDF 5.5.3/components/heap/port/esp32s3/memory_layout.c
+/*
+ * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/dma/esp_dma_utils.c, ESP-IDF 5.5.3/components/esp_hw_support/dma/gdma_link.c, ESP-IDF 5.5.3/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_by_mspi_delay.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/pmu_init.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/pmu_sleep.c, ESP-IDF 5.5.3/components/esp_phy/src/phy_common.c, ESP-IDF 5.5.3/components/esp_ringbuf/ringbuf.c, ESP-IDF 5.5.3/components/esp_system/port/arch/riscv/debug_helpers.c, ESP-IDF 5.5.3/components/esp_timer/src/esp_timer_impl_common.c, ESP-IDF 5.5.3/components/freertos/esp_additions/idf_additions.c, ESP-IDF 5.5.3/components/hal/apm_hal.c, ESP-IDF 5.5.3/components/mbedtls/port/bignum/bignum_alt.c
+/*
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/esp_memory_utils.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_sys.c, ESP-IDF 5.5.3/components/esp_timer/src/ets_timer_legacy.c
+/*
+ * SPDX-FileCopyrightText: 2010-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/hw_random.c
+/*
+ * SPDX-FileCopyrightText: 2016-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/mspi_timing_config.c, ESP-IDF 5.5.3/components/esp_wifi/src/smartconfig.c, ESP-IDF 5.5.3/components/hal/esp32s3/rtc_cntl_hal.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_partition.cpp
+/*
+ * SPDX-FileCopyrightText: 2019-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/port/esp32c6/rtc_clk.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_wdt.c, ESP-IDF 5.5.3/components/heap/port/esp32c6/memory_layout.c
+/*
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/chip_info.c
+/*
+ * SPDX-FileCopyrightText: 2013-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/rtc_clk_init.c, ESP-IDF 5.5.3/components/esp_hw_support/port/esp32s3/rtc_init.c, ESP-IDF 5.5.3/components/esp_system/esp_system.c, ESP-IDF 5.5.3/components/esp_system/port/soc/esp32s3/highint_hdl.S, ESP-IDF 5.5.3/components/hal/mcpwm_hal.c, ESP-IDF 5.5.3/components/hal/pcnt_hal.c, ESP-IDF 5.5.3/components/hal/sdm_hal.c, ESP-IDF 5.5.3/components/mbedtls/port/mbedtls_debug.c, ESP-IDF 5.5.3/components/newlib/src/abort.c, ESP-IDF 5.5.3/components/soc/esp32s3/rmt_periph.c, ESP-IDF 5.5.3/components/spi_flash/flash_brownout_hook.c, ESP-IDF 5.5.3/components/spi_flash/memspi_host_driver.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_gd.c, ESP-IDF 5.5.3/components/spi_flash/spi_flash_chip_mxic_opi.c
+/*
+ * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/rtc_module.c, ESP-IDF 5.5.3/components/esp_phy/esp32c6/phy_init_data.c, ESP-IDF 5.5.3/components/esp_phy/esp32s3/phy_init_data.c, ESP-IDF 5.5.3/components/esp_phy/src/lib_printf.c, ESP-IDF 5.5.3/components/esp_pm/pm_trace.c, ESP-IDF 5.5.3/components/esp_wifi/src/lib_printf.c
+/*
+ * SPDX-FileCopyrightText: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_hw_support/sleep_usb.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_gpio.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_multi_heap.c, ESP-IDF 5.5.3/components/esp_security/src/init.c, ESP-IDF 5.5.3/components/hal/cam_hal.c, ESP-IDF 5.5.3/components/log/src/log.c, ESP-IDF 5.5.3/components/newlib/src/syscalls.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_bootloader.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_bootloader_aes.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_bootloader_xts_aes.c, ESP-IDF 5.5.3/components/soc/esp32s3/usb_dwc_periph.c
+/*
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_mm/esp_cache_msync.c
+/*
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_mm/esp_cache_utils.c
+/*
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+*
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+Sources: ESP-IDF 5.5.3/components/esp_netif/esp_netif_defaults.c, ESP-IDF 5.5.3/components/esp_netif/esp_netif_objects.c, ESP-IDF 5.5.3/components/esp_phy/src/btbb_init.c, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/expression_with_stack_asm.S, ESP-IDF 5.5.3/components/hal/i2c_hal_iram.c, ESP-IDF 5.5.3/components/hal/rtc_io_hal.c, ESP-IDF 5.5.3/components/hal/spi_flash_hal_gpspi.c, ESP-IDF 5.5.3/components/hal/touch_sensor_hal.c, ESP-IDF 5.5.3/components/hal/uart_hal_iram.c, ESP-IDF 5.5.3/components/newlib/src/reent_init.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_handle_locked.cpp, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_handle_simple.cpp, ESP-IDF 5.5.3/components/soc/esp32s3/sdmmc_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/spi_periph.c
+/*
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_netif/esp_netif_handlers.c, ESP-IDF 5.5.3/components/esp_netif/lwip/esp_netif_lwip_defaults.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_efuse.c, ESP-IDF 5.5.3/components/hal/rmt_hal.c, ESP-IDF 5.5.3/components/newlib/src/poll.c, ESP-IDF 5.5.3/components/nvs_flash/src/nvs_encrypted_partition.cpp, ESP-IDF 5.5.3/components/soc/esp32s3/temperature_sensor_periph.c
+/*
+ * SPDX-FileCopyrightText: 2019-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_netif/lwip/netif/esp_pbuf_ref.c, ESP-IDF 5.5.3/components/mbedtls/port/esp_hardware.c
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_netif/lwip/netif/ethernetif.c, ESP-IDF 5.5.3/components/esp_netif/lwip/netif/wlanif.c
+/*
+ * SPDX-FileCopyrightText: 2001-2004 Swedish Institute of Computer Science
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * SPDX-FileContributor: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_pm/pm_impl.c
+/*
+ * SPDX-FileCopyrightText: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_pm/pm_locks.c
+/*
+ * SPDX-FileCopyrightText: 2016-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_psram/system_layer/esp_psram_mspi.c
+/*
+ * SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+*
+* SPDX-License-Identifier: Apache-2.0
+*/
+
+Sources: ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_longjmp.S
+/*
+    Copyright (c) 2001-2006 by Tensilica Inc.
+
+    Permission is hereby granted, free of charge, to any person obtaining
+    a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+Sources: ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_print.c, ESP-IDF 5.5.3/components/esp_rom/patches/esp_rom_uart.c, ESP-IDF 5.5.3/components/esp_wifi/src/smartconfig_ack.c, ESP-IDF 5.5.3/components/soc/lldesc.c
+/*
+ * SPDX-FileCopyrightText: 2010-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_system/port/arch/riscv/debug_stubs.c, ESP-IDF 5.5.3/components/freertos/esp_additions/freertos_compatibility.c, ESP-IDF 5.5.3/components/hal/esp32s3/efuse_hal.c, ESP-IDF 5.5.3/components/hal/systimer_hal.c, ESP-IDF 5.5.3/components/hal/timer_hal.c
+/*
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/esp_ipc_isr_handler.S, ESP-IDF 5.5.3/components/esp_system/port/arch/xtensa/esp_ipc_isr_routines.S
+/*
+ * SPDX-FileCopyrightText: 2017-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/event_groups.c, ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/list.c, ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/queue.c, ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/timers.c
+/*
+ * FreeRTOS Kernel V10.5.1 (ESP-IDF SMP modified)
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c, ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/tasks.c
+/*
+ * FreeRTOS Kernel V10.5.1 (ESP-IDF SMP modified)
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/portable/xtensa/port.c
+/*
+ * FreeRTOS Kernel V10.5.1
+ * Copyright (C) 2015-2019 Cadence Design Systems, Inc.
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/portable/xtensa/portasm.S
+/*
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2016-2023 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/portable/xtensa/xtensa_init.c, ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/portable/xtensa/xtensa_overlay_os_hook.c, ESP-IDF 5.5.3/components/xtensa/xtensa_context.S, ESP-IDF 5.5.3/components/xtensa/xtensa_intr_asm.S
+/*
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/freertos/FreeRTOS-Kernel/stream_buffer.c
+/*
+ * FreeRTOS Kernel V10.5.1 (ESP-IDF SMP modified)
+ * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+ *
+ * SPDX-FileCopyrightText: 2021 Amazon.com, Inc. or its affiliates
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * https://www.FreeRTOS.org
+ * https://github.com/FreeRTOS
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/hal/xt_wdt_hal.c
+/*
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/heap/tlsf/tlsf.c
+/*
+ * SPDX-FileCopyrightText: 2006-2016 Matthew Conte
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+Sources: ESP-IDF 5.5.3/components/http_parser/http_parser.c
+/* Based on src/http/ngx_http_parse.c from NGINX copyright Igor Sysoev
+ *
+ * Additional changes are licensed under the same terms as NGINX and
+ * copyright Joyent, Inc. and other Node contributors. All rights reserved.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/apps/ping/esp_ping.c, ESP-IDF 5.5.3/components/spi_flash/esp32s3/spi_flash_oct_flash_init.c
+/*
+ * SPDX-FileCopyrightText: 2019-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/auth.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/auth.c
+/*
+ * auth.c - PPP authentication and phase control.
+ *
+ * Copyright (c) 1993-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * Derived from main.c, which is:
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ccp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ccp.c
+/*
+ * ccp.c - PPP Compression Control Protocol.
+ *
+ * Copyright (c) 1994-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-md5.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/chap-md5.c
+/*
+ * chap-md5.c - New CHAP/MD5 implementation.
+ *
+ * Copyright (c) 2003 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-new.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/chap-new.c
+/*
+ * chap-new.c - New CHAP implementation.
+ *
+ * Copyright (c) 2003 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap_ms.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/chap_ms.c
+/*
+ * chap_ms.c - Microsoft MS-CHAP compatible implementation.
+ *
+ * Copyright (c) 1995 Eric Rosenquist.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/demand.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/demand.c
+/*
+ * demand.c - Support routines for demand-dialling.
+ *
+ * Copyright (c) 1996-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eap.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/eap.c
+/*
+ * eap.c - Extensible Authentication Protocol for PPP (RFC 2284)
+ *
+ * Copyright (c) 2001 by Sun Microsystems, Inc.
+ * All rights reserved.
+ *
+ * Non-exclusive rights to redistribute, modify, translate, and use
+ * this software in source and binary forms, in whole or in part, is
+ * hereby granted, provided that the above copyright notice is
+ * duplicated in any source form, and that neither the name of the
+ * copyright holder nor the author is used to endorse or promote
+ * products derived from this software.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * Original version by James Carlson
+ *
+ * This implementation of EAP supports MD5-Challenge and SRP-SHA1
+ * authentication styles.  Note that support of MD5-Challenge is a
+ * requirement of RFC 2284, and that it's essentially just a
+ * reimplementation of regular RFC 1994 CHAP using EAP messages.
+ *
+ * As an authenticator ("server"), there are multiple phases for each
+ * style.  In the first phase of each style, the unauthenticated peer
+ * name is queried using the EAP Identity request type.  If the
+ * "remotename" option is used, then this phase is skipped, because
+ * the peer's name is presumed to be known.
+ *
+ * For MD5-Challenge, there are two phases, and the second phase
+ * consists of sending the challenge itself and handling the
+ * associated response.
+ *
+ * For SRP-SHA1, there are four phases.  The second sends 's', 'N',
+ * and 'g'.  The reply contains 'A'.  The third sends 'B', and the
+ * reply contains 'M1'.  The forth sends the 'M2' value.
+ *
+ * As an authenticatee ("client"), there's just a single phase --
+ * responding to the queries generated by the peer.  EAP is an
+ * authenticator-driven protocol.
+ *
+ * Based on draft-ietf-pppext-eap-srp-03.txt.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ecp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ecp.c
+/*
+ * ecp.c - PPP Encryption Control Protocol.
+ *
+ * Copyright (c) 2002 Google, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * Derived from ccp.c, which is:
+ *
+ * Copyright (c) 1994-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eui64.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/eui64.c
+/*
+ * eui64.c - EUI64 routines for IPv6CP.
+ *
+ * Copyright (c) 1999 Tommi Komulainen.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Tommi Komulainen
+ *     <Tommi.Komulainen@iki.fi>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: eui64.c,v 1.6 2002/12/04 23:03:32 paulus Exp $
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/fsm.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/fsm.c
+/*
+ * fsm.c - {Link, IP} Control Protocol Finite State Machine.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipcp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ipcp.c
+/*
+ * ipcp.c - PPP IP Control Protocol.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipv6cp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ipv6cp.c
+/*
+ * ipv6cp.c - PPP IPV6 Control Protocol.
+ *
+ * Copyright (c) 1999 Tommi Komulainen.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Tommi Komulainen
+ *     <Tommi.Komulainen@iki.fi>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/lcp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/lcp.c
+/*
+ * lcp.c - PPP Link Control Protocol.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/magic.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/magic.c
+/*
+ * magic.c - PPP Magic Number routines.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/mppe.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/mppe.c
+/*
+ * mppe.c - interface MPPE to the PPP code.
+ *
+ * By Frank Cusack <fcusack@fcusack.com>.
+ * Copyright (c) 2002,2003,2004 Google, Inc.
+ * All rights reserved.
+ *
+ * License:
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation is hereby granted, provided that the above copyright
+ * notice appears in all copies.  This software is provided without any
+ * warranty, express or implied.
+ *
+ * Changelog:
+ *      08/12/05 - Matt Domsch <Matt_Domsch@dell.com>
+ *                 Only need extra skb padding on transmit, not receive.
+ *      06/18/04 - Matt Domsch <Matt_Domsch@dell.com>, Oleg Makarenko <mole@quadra.ru>
+ *                 Use Linux kernel 2.6 arc4 and sha1 routines rather than
+ *                 providing our own.
+ *      2/15/04 - TS: added #include <version.h> and testing for Kernel
+ *                    version before using
+ *                    MOD_DEC_USAGE_COUNT/MOD_INC_USAGE_COUNT which are
+ *                    deprecated in 2.6
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/multilink.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/multilink.c
+/*
+ * multilink.c - support routines for multilink.
+ *
+ * Copyright (c) 2000-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/arc4.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/arc4.c
+/*
+ *  An implementation of the ARCFOUR algorithm
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *  
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *  
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/des.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/des.c
+/*
+ *  FIPS-46-3 compliant Triple-DES implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *  
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *  
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md4.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/md4.c
+/*
+ *  RFC 1186/1320 compliant MD4 implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *  
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *  
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md5.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/md5.c
+/*
+ *  RFC 1321 compliant MD5 implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *  
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *  
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/sha1.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/sha1.c
+/*
+ *  FIPS-180-1 compliant SHA-1 implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *  
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *  
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ppp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ppp.c
+/*****************************************************************************
+* ppp.c - Network Point to Point Protocol program file.
+*
+* Copyright (c) 2003 by Marc Boucher, Services Informatiques (MBSI) inc.
+* portions Copyright (c) 1997 by Global Election Systems Inc.
+*
+* The authors hereby grant permission to use, copy, modify, distribute,
+* and license this software and its documentation for any purpose, provided
+* that existing copyright notices are retained in all copies and that this
+* notice and the following disclaimer are included verbatim in any
+* distributions. No written agreement, license, or royalty fee is required
+* for any of the authorized uses.
+*
+* THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
+* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+* IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+* NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+* THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+******************************************************************************
+* REVISION HISTORY
+*
+* 03-01-01 Marc Boucher <marc@mbsi.ca>
+*   Ported to lwIP.
+* 97-11-05 Guy Lancaster <lancasterg@acm.org>, Global Election Systems Inc.
+*   Original.
+*****************************************************************************/
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppcrypt.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/pppcrypt.c
+/*
+ * pppcrypt.c - PPP/DES linkage for MS-CHAP and EAP SRP-SHA1
+ *
+ * Extracted from chap_ms.c by James Carlson.
+ *
+ * Copyright (c) 1995 Eric Rosenquist.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppoe.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/pppoe.c
+/*****************************************************************************
+* pppoe.c - PPP Over Ethernet implementation for lwIP.
+*
+* Copyright (c) 2006 by Marc Boucher, Services Informatiques (MBSI) inc.
+*
+* The authors hereby grant permission to use, copy, modify, distribute,
+* and license this software and its documentation for any purpose, provided
+* that existing copyright notices are retained in all copies and that this
+* notice and the following disclaimer are included verbatim in any 
+* distributions. No written agreement, license, or royalty fee is required
+* for any of the authorized uses.
+*
+* THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
+* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+* IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+* NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+* THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+******************************************************************************
+* REVISION HISTORY
+*
+* 06-01-01 Marc Boucher <marc@mbsi.ca>
+*   Ported to lwIP.
+*****************************************************************************/
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/upap.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/upap.c
+/*
+ * upap.c - User/Password Authentication Protocol.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/utils.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/utils.c
+/*
+ * utils.c - various utility functions used in pppd.
+ *
+ * Copyright (c) 1999-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/vj.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/vj.c
+/*
+ * Routines to compress and uncompess tcp packets (for transmission
+ * over low speed serial lines.
+ *
+ * Copyright (c) 1989 Regents of the University of California.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are permitted
+ * provided that the above copyright notice and this paragraph are
+ * duplicated in all such forms and that any documentation,
+ * advertising materials, and other materials related to such
+ * distribution and use acknowledge that the software was developed
+ * by the University of California, Berkeley.  The name of the
+ * University may not be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * Van Jacobson (van@helios.ee.lbl.gov), Dec 31, 1989:
+ *   Initial distribution.
+ *
+ * Modified June 1993 by Paul Mackerras, paulus@cs.anu.edu.au,
+ * so that the entire packet being decompressed doesn't have
+ * to be in contiguous memory (just the compressed header).
+ *
+ * Modified March 1998 by Guy Lancaster, glanca@gesn.com,
+ * for a 16 bit processor.
+ */
+
+Sources: ESP-IDF 5.5.3/components/lwip/port/freertos/sys_arch.c
+/*
+ * SPDX-FileCopyrightText: 2001-2003 Swedish Institute of Computer Science
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * SPDX-FileContributor: 2018-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/3rdparty/everest/library/Hacl_Curve25519_joined.c
+/*
+ *  Interface to code from Project Everest
+ *
+ *  Copyright 2016-2018 INRIA and Microsoft Corporation
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  This file is part of Mbed TLS (https://tls.mbed.org)
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/3rdparty/everest/library/everest.c
+/*
+ *  Interface to code from Project Everest
+ *
+ *  Copyright 2016-2018 INRIA and Microsoft Corporation
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  This file is part of Mbed TLS (https://tls.mbed.org).
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/3rdparty/everest/library/x25519.c
+/*
+ *  ECDH with curve-optimized implementation multiplexing
+ *
+ *  Copyright 2016-2018 INRIA and Microsoft Corporation
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ *  This file is part of Mbed TLS (https://tls.mbed.org)
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/3rdparty/p256-m/p256-m/p256-m.c
+/*
+ * Implementation of curve P-256 (ECDH and ECDSA)
+ *
+ * Copyright The Mbed TLS Contributors
+ * Author: Manuel Pégourié-Gonnard.
+ * SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/aes.c
+/*
+ *  FIPS-197 compliant AES implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/aesce.c
+/*
+ *  Armv8-A Cryptographic Extension support functions for Aarch64
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/aesni.c
+/*
+ *  AES-NI support functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/aria.c
+/*
+ *  ARIA implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/asn1parse.c
+/*
+ *  Generic ASN.1 parsing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/asn1write.c
+/*
+ * ASN.1 buffer writing functionality
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/base64.c
+/*
+ *  RFC 1521 base64 encoding/decoding
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/bignum.c
+/*
+ *  Multi-precision integer library
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/bignum_core.c
+/*
+ *  Core bignum functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/bignum_mod.c
+/**
+ *  Modular bignum functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/bignum_mod_raw.c
+/*
+ *  Low-level modular bignum functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/camellia.c
+/*
+ *  Camellia implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ccm.c
+/*
+ *  NIST SP800-38C compliant CCM implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/chacha20.c
+/**
+ * \file chacha20.c
+ *
+ * \brief ChaCha20 cipher.
+ *
+ * \author Daniel King <damaki.gh@gmail.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/chachapoly.c
+/**
+ * \file chachapoly.c
+ *
+ * \brief ChaCha20-Poly1305 AEAD construction based on RFC 7539.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/cipher.c
+/**
+ * \file cipher.c
+ *
+ * \brief Generic cipher wrapper for Mbed TLS
+ *
+ * \author Adriaan de Jong <dejong@fox-it.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/cipher_wrap.c
+/**
+ * \file cipher_wrap.c
+ *
+ * \brief Generic cipher wrapper for Mbed TLS
+ *
+ * \author Adriaan de Jong <dejong@fox-it.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/cmac.c
+/**
+ * \file cmac.c
+ *
+ * \brief NIST SP800-38B compliant CMAC implementation for AES and 3DES
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/constant_time.c
+/**
+ *  Constant-time functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ctr_drbg.c
+/*
+ *  CTR_DRBG implementation based on AES-256 (NIST SP 800-90)
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/debug.c
+/*
+ *  Debugging routines
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/des.c
+/*
+ *  FIPS-46-3 compliant Triple-DES implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/dhm.c
+/*
+ *  Diffie-Hellman-Merkle key exchange
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ecdh.c
+/*
+ *  Elliptic curve Diffie-Hellman
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ecdsa.c
+/*
+ *  Elliptic curve DSA
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ecjpake.c
+/*
+ *  Elliptic curve J-PAKE
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ecp.c
+/*
+ *  Elliptic curves over GF(p): generic functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ecp_curves.c, ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ecp_curves_new.c
+/*
+ *  Elliptic curves over GF(p): curve-specific data and functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/entropy.c
+/*
+ *  Entropy accumulator implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/entropy_poll.c
+/*
+ *  Platform-specific and custom entropy polling functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/error.c
+/*
+ *  Error message information
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/gcm.c
+/*
+ *  NIST SP800-38D compliant GCM implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/hkdf.c
+/*
+ *  HKDF implementation -- RFC 5869
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/hmac_drbg.c
+/*
+ *  HMAC_DRBG implementation (NIST SP 800-90)
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/lmots.c
+/*
+ * The LM-OTS one-time public-key signature scheme
+ *
+ * Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/lms.c
+/*
+ *  The LMS stateful-hash public-key signature scheme
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/md.c
+/**
+ * \file md.c
+ *
+ * \brief Generic message digest wrapper for Mbed TLS
+ *
+ * \author Adriaan de Jong <dejong@fox-it.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/md5.c
+/*
+ *  RFC 1321 compliant MD5 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/memory_buffer_alloc.c
+/*
+ *  Buffer-based memory allocator
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/mps_reader.c
+/*
+ *  Message Processing Stack, Reader implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/mps_trace.c
+/*
+ *  Message Processing Stack, Trace module
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/nist_kw.c
+/*
+ *  Implementation of NIST SP 800-38F key wrapping, supporting KW and KWP modes
+ *  only
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/oid.c
+/**
+ * \file oid.c
+ *
+ * \brief Object Identifier (OID) database
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/padlock.c
+/*
+ *  VIA PadLock support functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pem.c
+/*
+ *  Privacy Enhanced Mail (PEM) decoding
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pk.c
+/*
+ *  Public Key abstraction layer
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pk_ecc.c
+/*
+ *  ECC setters for PK.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pk_wrap.c
+/*
+ *  Public Key abstraction layer: wrapper functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pkcs12.c
+/*
+ *  PKCS#12 Personal Information Exchange Syntax
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pkcs5.c
+/**
+ * \file pkcs5.c
+ *
+ * \brief PKCS#5 functions
+ *
+ * \author Mathias Olsson <mathias@kompetensum.com>
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pkcs7.c
+/*
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pkparse.c
+/*
+ *  Public Key layer for parsing key files and structures
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/pkwrite.c
+/*
+ *  Public Key layer for writing key files and structures
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/platform.c
+/*
+ *  Platform abstraction layer
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/platform_util.c
+/*
+ * Common and shared functions used by multiple modules in the Mbed TLS
+ * library.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/poly1305.c
+/**
+ * \file poly1305.c
+ *
+ * \brief Poly1305 authentication algorithm.
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ripemd160.c
+/*
+ *  RIPE MD-160 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/rsa.c
+/*
+ *  The RSA public-key cryptosystem
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/rsa_alt_helpers.c
+/*
+ *  Helper functions for the RSA module
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/sha1.c
+/*
+ *  FIPS-180-1 compliant SHA-1 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/sha256.c
+/*
+ *  FIPS-180-2 compliant SHA-256 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/sha3.c
+/*
+ *  FIPS-202 compliant SHA3 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/sha512.c
+/*
+ *  FIPS-180-2 compliant SHA-384/512 implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_cache.c
+/*
+ *  SSL session cache implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_ciphersuites.c
+/**
+ * \file ssl_ciphersuites.c
+ *
+ * \brief SSL ciphersuites for Mbed TLS
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_client.c
+/*
+ *  TLS 1.2 and 1.3 client-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_cookie.c
+/*
+ *  DTLS cookie callbacks implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_msg.c
+/*
+ *  Generic SSL/TLS messaging layer functions
+ *  (record layer + retransmission state machine)
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_ticket.c
+/*
+ *  TLS server tickets callbacks implementation
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls.c
+/*
+ *  TLS shared functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls12_client.c
+/*
+ *  TLS client-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls12_server.c
+/*
+ *  TLS server-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls13_client.c
+/*
+ *  TLS 1.3 client-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls13_generic.c
+/*
+ *  TLS 1.3 functionality shared between client and server
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls13_keys.c
+/*
+ *  TLS 1.3 key schedule
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/ssl_tls13_server.c
+/*
+ *  TLS 1.3 server-side functions
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/threading.c
+/*
+ *  Threading abstraction layer
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/timing.c
+/*
+ *  Portable interface to the CPU cycle counter
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/version.c
+/*
+ *  Version information
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/version_features.c
+/*
+ *  Version feature information
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509.c
+/*
+ *  X.509 common functions for parsing and verification
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509_create.c
+/*
+ *  X.509 base functions for creating certificates / CSRs
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509_crl.c
+/*
+ *  X.509 Certificate Revocation List (CRL) parsing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509_crt.c
+/*
+ *  X.509 certificate parsing and verification
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509_csr.c
+/*
+ *  X.509 Certificate Signing Request (CSR) parsing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509write.c
+/*
+ *  X.509 internal, common functions for writing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509write_crt.c
+/*
+ *  X.509 certificate writing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/mbedtls/library/x509write_csr.c
+/*
+ *  X.509 Certificate Signing Request writing
+ *
+ *  Copyright The Mbed TLS Contributors
+ *  SPDX-License-Identifier: Apache-2.0 OR GPL-2.0-or-later
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/aes/dma/esp_aes.c
+/**
+ * \brief AES block cipher, ESP DMA hardware accelerated version
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
+ *  Additions Copyright (C) 2016-2020, Espressif Systems (Shanghai) PTE Ltd
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/aes/esp_aes_common.c
+/*
+ * AES block cipher, ESP hardware accelerated version, common
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/aes/esp_aes_gcm.c
+/*
+ * GCM block cipher, ESP DMA hardware accelerated version
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/aes/esp_aes_xts.c
+/**
+ * \brief AES block cipher, ESP32-S2 hardware accelerated version
+ * Based on mbedTLS FIPS-197 compliant version.
+ *
+ *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
+ *  Additions Copyright (C) 2016-2020, Espressif Systems (Shanghai) PTE Ltd
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *  not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ *  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/bignum/esp_bignum.c
+/*
+ * Multi-precision integer library
+ * ESP-IDF hardware accelerated parts based on mbedTLS implementation
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/esp_ds/esp_rsa_sign_alt.c
+/*
+ * SPDX-FileCopyrightText: 2020-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: The Mbed TLS Contributors
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/esp_hmac_pbkdf2.c
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/esp_mem.c, ESP-IDF 5.5.3/components/newlib/src/random.c, ESP-IDF 5.5.3/components/newlib/src/termios.c, ESP-IDF 5.5.3/components/soc/esp32s3/gpio_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/rtc_io_periph.c
+/*
+ * SPDX-FileCopyrightText: 2018-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/esp_timing.c
+/*
+ * Portable interface to the CPU cycle counter
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2022 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/net_sockets.c
+/*
+ * TCP/IP or UDP/IP networking functions
+ * modified for LWIP support on ESP32
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2015 Angus Gratton
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/sha/core/esp_sha1.c
+/*
+ * SHA-1 implementation with hardware ESP support added.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/sha/core/esp_sha256.c
+/*
+ * SHA-256 implementation with hardware ESP support added.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/sha/core/esp_sha512.c
+/*
+ * SHA-512 implementation with hardware ESP support added.
+ *
+ * SPDX-FileCopyrightText: The Mbed TLS Contributors
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * SPDX-FileContributor: 2016-2025 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/sha/core/esp_sha_gdma_impl.c, ESP-IDF 5.5.3/components/soc/esp32s3/i2s_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/interrupts.c, ESP-IDF 5.5.3/components/soc/esp32s3/mcpwm_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/pcnt_periph.c, ESP-IDF 5.5.3/components/soc/esp32s3/sdm_periph.c, ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_owe.c
+/*
+ * SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/mbedtls/port/sha/core/sha.c
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * ESP hardware accelerated SHA1/256/512 implementation
+ * based on mbedTLS FIPS-197 compliant version.
+ *
+ */
+
+Sources: ESP-IDF 5.5.3/components/soc/dport_access_common.c
+/*
+ * SPDX-FileCopyrightText: 2010-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/crypto/fastpbkdf2.c
+/*
+ * SPDX-FileCopyrightText: 2015 Joseph Birr-Pixton <jpixton@gmail.com>
+ *
+ * SPDX-License-Identifier: CC0-1.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/esp_supplicant/src/esp_wpa_main.c
+/*
+ * SPDX-FileCopyrightText: 2019-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/port/eloop.c
+/*
+ * Event loop based on select() loop
+ * Copyright (c) 2002-2009, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/port/os_xtensa.c
+/*
+ * wpa_supplicant/hostapd / Internal implementation of OS specific functions
+ * Copyright (c) 2005-2006, Jouni Malinen <j@w1.fi>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
+ *
+ * This file is an example of operating system specific  wrapper functions.
+ * This version implements many of the functions internally, so it can be used
+ * to fill in missing functions from the target system C libraries.
+ *
+ * Some of the functions are using standard C library calls in order to keep
+ * this file in working condition to allow the functions to be tested on a
+ * Linux target. Please note that OS_NO_C_LIB_DEFINES needs to be defined for
+ * this file to work correctly. Note that these implementations are only
+ * examples and are not optimized for speed.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/ap_config.c
+/*
+ * hostapd / Configuration helper functions
+ * Copyright (c) 2003-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/comeback_token.c
+/*
+ * hostapd / Comeback token mechanism for SAE
+ * Copyright (c) 2002-2017, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/ieee802_11.c
+/*
+ * hostapd / IEEE 802.11 Management
+ * Copyright (c) 2002-2017, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/ieee802_1x.c
+/*
+ * hostapd / IEEE 802.1X-2004 Authenticator
+ * Copyright (c) 2002-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/pmksa_cache_auth.c
+/*
+ * hostapd - PMKSA cache for IEEE 802.11i RSN
+ * Copyright (c) 2004-2008, 2012-2015, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/sta_info.c
+/*
+ * hostapd / Station table
+ * Copyright (c) 2002-2017, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/wpa_auth.c
+/*
+ * IEEE 802.11 RSN / WPA Authenticator
+ * Copyright (c) 2004-2011, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/ap/wpa_auth_ie.c
+/*
+ * hostapd - WPA/RSN IE and KDE definitions
+ * Copyright (c) 2004-2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/common/dragonfly.c
+/*
+ * Shared Dragonfly functionality
+ * Copyright (c) 2012-2016, Jouni Malinen <j@w1.fi>
+ * Copyright (c) 2019, The Linux Foundation
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/common/ieee802_11_common.c
+/*
+ * IEEE 802.11 Common routines
+ * Copyright (c) 2002-2019, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/common/sae.c
+/*
+ * Simultaneous authentication of equals
+ * Copyright (c) 2012-2016, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/common/sae_pk.c
+/*
+ * SAE-PK
+ * Copyright (c) 2020, The Linux Foundation
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/common/wpa_common.c
+/*
+ * WPA/RSN - Shared functions for supplicant and authenticator
+ * Copyright (c) 2002-2018, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/aes-ccm.c
+/*
+ * Counter with CBC-MAC (CCM) with AES
+ *
+ * Copyright (c) 2010-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/aes-gcm.c
+/*
+ * Galois/Counter Mode (GCM) and GMAC with AES
+ *
+ * Copyright (c) 2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/aes-siv.c
+/*
+ * AES SIV (RFC 5297)
+ * Copyright (c) 2013 Cozybit, Inc.
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/aes-unwrap.c
+/*
+ * AES key unwrap (RFC3394)
+ *
+ * Copyright (c) 2003-2007, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/aes-wrap.c
+/*
+ * AES Key Wrap Algorithm (RFC3394)
+ *
+ * Copyright (c) 2003-2007, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/ccmp.c
+/*
+ * CTR with CBC-MAC Protocol (CCMP)
+ * Copyright (c) 2010-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/des-internal.c
+/*
+ * DES and 3DES-EDE ciphers
+ *
+ * Modifications to LibTomCrypt implementation:
+ * Copyright (c) 2006-2009, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/dh_group5.c
+/*
+ * Diffie-Hellman group 5 operations
+ * Copyright (c) 2009, 2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/dh_groups.c
+/*
+ * Diffie-Hellman groups
+ * Copyright (c) 2007, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/md4-internal.c
+/*
+ * MD4 hash implementation
+ * Copyright (c) 2006, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/ms_funcs.c
+/*
+ * WPA Supplicant / shared MSCHAPV2 helper functions / RFC 2433 / RFC 2759
+ * Copyright (c) 2004-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/rc4.c
+/*
+ * RC4 stream cipher
+ * Copyright (c) 2002-2005, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha1-prf.c
+/*
+ * SHA1-based PRF
+ * Copyright (c) 2003-2005, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha1-tlsprf.c
+/*
+ * TLS PRF (SHA1 + MD5)
+ * Copyright (c) 2003-2005, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha1-tprf.c
+/*
+ * SHA1 T-PRF for EAP-FAST
+ * Copyright (c) 2003-2005, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha256-kdf.c
+/*
+ * HMAC-SHA256 KDF (RFC 5295) and HKDF-Expand(SHA256) (RFC 5869)
+ * Copyright (c) 2014-2017, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha256-prf.c
+/*
+ * SHA256-based PRF (IEEE 802.11r)
+ * Copyright (c) 2003-2016, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha256-tlsprf.c
+/*
+ * TLS PRF P_SHA256
+ * Copyright (c) 2011, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha384-prf.c
+/*
+ * SHA384-based KDF (IEEE 802.11ac)
+ * Copyright (c) 2003-2017, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/crypto/sha384-tlsprf.c
+/*
+ * TLS PRF P_SHA384
+ * Copyright (c) 2011-2019, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_common/eap_wsc_common.c
+/*
+ * EAP-WSC common routines for Wi-Fi Protected Setup
+ * Copyright (c) 2007, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap.c
+/*
+ * EAP peer state machines (RFC 4137)
+ * Copyright (c) 2004-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ *
+ * This file implements the Peer State Machine as defined in RFC 4137. The used
+ * states and state transitions match mostly with the RFC. However, there are
+ * couple of additional transitions for working around small issues noticed
+ * during testing. These exceptions are explained in comments within the
+ * functions in this file. The method functions, m.func(), are similar to the
+ * ones used in RFC 4137, but some small changes have used here to optimize
+ * operations and to add functionality needed for fast re-authentication
+ * (session resumption).
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_common.c
+/*
+ * EAP common peer/server definitions
+ * Copyright (c) 2004-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_fast.c
+/*
+ * EAP peer method: EAP-FAST (RFC 4851)
+ * Copyright (c) 2004-2015, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_fast_common.c
+/*
+ * EAP-FAST common helper functions (RFC 4851)
+ * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_fast_pac.c
+/*
+ * EAP peer method: EAP-FAST PAC file processing
+ * Copyright (c) 2004-2006, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_mschapv2.c
+/*
+ * EAP peer method: EAP-MSCHAPV2 (draft-kamath-pppext-eap-mschapv2-00.txt)
+ * Copyright (c) 2004-2008, 2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_peap.c
+/*
+ * EAP peer method: EAP-PEAP (draft-josefsson-pppext-eap-tls-eap-10.txt)
+ * Copyright (c) 2004-2019, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_peap_common.c
+/*
+ * EAP-PEAP common routines
+ * Copyright (c) 2008-2011, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_tls.c
+/*
+ * EAP peer method: EAP-TLS (RFC 5216, RFC 9190)
+ * Copyright (c) 2004-2008, 2012-2019, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_tls_common.c
+/*
+ * EAP peer: EAP-TLS/PEAP/TTLS/FAST common functions
+ * Copyright (c) 2004-2013, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/eap_peer/eap_ttls.c
+/*
+ * EAP peer method: EAP-TTLS (RFC 5281)
+ * Copyright (c) 2004-2015, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/rsn_supp/pmksa_cache.c
+/*
+ * WPA Supplicant - RSN PMKSA cache
+ * Copyright (c) 2004-2009, 2011-2015, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/rsn_supp/wpa.c
+/*
+ * WPA Supplicant - WPA state machine and EAPOL-Key processing
+ * Copyright (c) 2003-2010, Jouni Malinen <j@w1.fi>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/rsn_supp/wpa_ie.c
+/*
+ * wpa_supplicant - WPA/RSN IE and KDE processing
+ * Copyright (c) 2003-2008, Jouni Malinen <j@w1.fi>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/base64.c
+/*
+ * Base64 encoding/decoding (RFC1341)
+ * Copyright (c) 2005-2019, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/bitfield.c
+/*
+ * Bitfield
+ * Copyright (c) 2013, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/common.c
+/*
+ * wpa_supplicant/hostapd / common helper functions, etc.
+ * Copyright (c) 2002-2019, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/ext_password.c
+/*
+ * External password backend
+ * Copyright (c) 2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/json.c
+/*
+ * JavaScript Object Notation (JSON) parser (RFC7159)
+ * Copyright (c) 2017, Qualcomm Atheros, Inc.
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/uuid.c
+/*
+ * Universally Unique IDentifier (UUID)
+ * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/wpa_debug.c
+/*
+ * wpa_supplicant/hostapd / Debug prints
+ * Copyright (c) 2002-2013, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/utils/wpabuf.c
+/*
+ * Dynamic data buffer
+ * Copyright (c) 2007-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * Alternatively, this software may be distributed under the terms of BSD
+ * license.
+ *
+ * See README and COPYING for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps.c
+/*
+ * Wi-Fi Protected Setup
+ * Copyright (c) 2007-2009, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps_attr_build.c
+/*
+ * Wi-Fi Protected Setup - attribute building
+ * Copyright (c) 2008-2016, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps_attr_parse.c
+/*
+ * Wi-Fi Protected Setup - attribute parsing
+ * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps_attr_process.c
+/*
+ * Wi-Fi Protected Setup - attribute processing
+ * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps_common.c
+/*
+ * Wi-Fi Protected Setup - common functionality
+ * Copyright (c) 2008-2012, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps_dev_attr.c
+/*
+ * Wi-Fi Protected Setup - device attributes
+ * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/wpa_supplicant/src/wps/wps_enrollee.c
+/*
+ * Wi-Fi Protected Setup - Enrollee
+ * Copyright (c) 2008, Jouni Malinen <j@w1.fi>
+ *
+ * This software may be distributed under the terms of the BSD license.
+ * See README for more details.
+ */
+
+Sources: ESP-IDF 5.5.3/components/xtensa/eri.c
+/*
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
+Sources: ESP-IDF 5.5.3/components/xtensa/xtensa_intr.c
+/*
+ * Copyright (c) 2015-2019 Cadence Design Systems, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+Sources: ESP-IDF 5.5.3/components/xtensa/xtensa_vectors.S
+/*
+ * SPDX-FileCopyrightText: 2015-2019 Cadence Design Systems, Inc.
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ */
+
+Sources: Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_ctrl.c, Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_ll.c, Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_lwip.c, Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_stats.c
+/*
+ * This file is part of the cyw43-driver
+ *
+ * Copyright (C) 2019-2022 George Robotics Pty Ltd
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. Any redistribution, use, or modification in source or binary form is done
+ *    solely for personal benefit and not for any commercial purpose or for
+ *    monetary gain.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE LICENSOR AND COPYRIGHT OWNER "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE LICENSOR OR COPYRIGHT OWNER BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * This software is also available for use with certain devices under different
+ * terms, as set out in the top level LICENSE file.  For commercial licensing
+ * options please email contact@georgerobotics.com.au.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/audio/audio_device.c
+/* 
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Reinhard Panhuber, Jerzy Kasenberg
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/cdc/cdc_device.c, Pico SDK 1.5.1/lib/tinyusb/src/class/midi/midi_device.c
+/* 
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/dfu/dfu_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021 XMOS LIMITED
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/dfu/dfu_rt_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Sylvain Munaut <tnt@246tNt.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/hid/hid_device.c, Pico SDK 1.5.1/lib/tinyusb/src/class/msc/msc_device.c, Pico SDK 1.5.1/lib/tinyusb/src/class/vendor/vendor_device.c, Pico SDK 1.5.1/lib/tinyusb/src/device/usbd.c, Pico SDK 1.5.1/lib/tinyusb/src/device/usbd_control.c, Pico SDK 1.5.1/lib/tinyusb/src/tusb.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/net/ecm_rndis_device.c
+/* 
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Peter Lawrence
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/net/ncm_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Jacob Berg Potter
+ * Copyright (c) 2020 Peter Lawrence
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/usbtmc/usbtmc_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Nathan Conrad
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/video/video_device.c
+/* 
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021 Koji KITAYAMA
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/common/tusb_fifo.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Copyright (c) 2020 Reinhard Panhuber - rework to unmasked pointers
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/portable/raspberrypi/rp2040/dcd_rp2040.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2021 Ha Thach (tinyusb.org) for Double Buffered
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+Sources: Pico SDK 1.5.1/src/common/pico_sync/critical_section.c, Pico SDK 1.5.1/src/common/pico_sync/lock_core.c, Pico SDK 1.5.1/src/common/pico_sync/mutex.c, Pico SDK 1.5.1/src/common/pico_sync/sem.c, Pico SDK 1.5.1/src/common/pico_time/time.c, Pico SDK 1.5.1/src/common/pico_time/timeout_helper.c, Pico SDK 1.5.1/src/common/pico_util/pheap.c, Pico SDK 1.5.1/src/common/pico_util/queue.c, Pico SDK 1.5.1/src/rp2_common/hardware_claim/claim.c, Pico SDK 1.5.1/src/rp2_common/hardware_clocks/clocks.c, Pico SDK 1.5.1/src/rp2_common/hardware_dma/dma.c, Pico SDK 1.5.1/src/rp2_common/hardware_exception/exception.c, Pico SDK 1.5.1/src/rp2_common/hardware_flash/flash.c, Pico SDK 1.5.1/src/rp2_common/hardware_gpio/gpio.c, Pico SDK 1.5.1/src/rp2_common/hardware_irq/irq.c, Pico SDK 1.5.1/src/rp2_common/hardware_irq/irq_handler_chain.S, Pico SDK 1.5.1/src/rp2_common/hardware_pio/pio.c, Pico SDK 1.5.1/src/rp2_common/hardware_pll/pll.c, Pico SDK 1.5.1/src/rp2_common/hardware_sync/sync.c, Pico SDK 1.5.1/src/rp2_common/hardware_timer/timer.c, Pico SDK 1.5.1/src/rp2_common/hardware_uart/uart.c, Pico SDK 1.5.1/src/rp2_common/hardware_vreg/vreg.c, Pico SDK 1.5.1/src/rp2_common/hardware_watchdog/watchdog.c, Pico SDK 1.5.1/src/rp2_common/hardware_xosc/xosc.c, Pico SDK 1.5.1/src/rp2_common/pico_bit_ops/bit_ops_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_bootrom/bootrom.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cyw43_bus_pio_spi.c, Pico SDK 1.5.1/src/rp2_common/pico_divider/divider.S, Pico SDK 1.5.1/src/rp2_common/pico_fix/rp2040_usb_device_enumeration/rp2040_usb_device_enumeration.c, Pico SDK 1.5.1/src/rp2_common/pico_float/float_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_float/float_init_rom.c, Pico SDK 1.5.1/src/rp2_common/pico_float/float_math.c, Pico SDK 1.5.1/src/rp2_common/pico_float/float_v1_rom_shim.S, Pico SDK 1.5.1/src/rp2_common/pico_int64_ops/pico_int64_ops_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_malloc/pico_malloc.c, Pico SDK 1.5.1/src/rp2_common/pico_mem_ops/mem_ops_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_platform/platform.c, Pico SDK 1.5.1/src/rp2_common/pico_runtime/runtime.c, Pico SDK 1.5.1/src/rp2_common/pico_standard_link/binary_info.c, Pico SDK 1.5.1/src/rp2_common/pico_standard_link/crt0.S, Pico SDK 1.5.1/src/rp2_common/pico_standard_link/new_delete.cpp, Pico SDK 1.5.1/src/rp2_common/pico_stdio/stdio.c, Pico SDK 1.5.1/src/rp2_common/pico_stdlib/stdlib.c
+/*
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+Sources: Pico SDK 1.5.1/src/rp2_common/pico_async_context/async_context_base.c, Pico SDK 1.5.1/src/rp2_common/pico_async_context/async_context_poll.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch_freertos.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch_poll.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch_threadsafe_background.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cyw43_driver.c, Pico SDK 1.5.1/src/rp2_common/pico_lwip/lwip_nosys.c, Pico SDK 1.5.1/src/rp2_common/pico_rand/rand.c
+/*
+ * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+Sources: Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus_driver.c
+/*
+ * Copyright (c) 2023 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+Sources: Pico SDK 1.5.1/src/rp2_common/pico_stdio_usb/reset_interface.c
+/**
+ * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+Sources: Pico SDK 1.5.1/src/rp2_common/pico_stdio_usb/stdio_usb.c
+/**
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+Sources: Pico SDK 1.5.1/src/rp2_common/pico_stdio_usb/stdio_usb_descriptors.c
+/*
+ * This file is based on a file originally part of the
+ * MicroPython project, http://micropython.org/
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2019 Damien P. George
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+Sources: Pico SDK 1.5.1/src/rp2_common/pico_unique_id/unique_id.c
+/*
+ * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+

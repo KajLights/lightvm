@@ -23,13 +23,14 @@ static bool scan(int bank, Store *s) {
     uint32_t base = (uint32_t)bank * STORE_BANK_BYTES;
     if (!platform_storage_read(base, directory, sizeof(directory)) ||
         !platform_storage_read(base + COMMIT_OFFSET, commit, sizeof(commit))) return false;
-    if (memcmp(directory, "LVS1", 4) || read_u32(directory + 4) != 1 ||
+    if (memcmp(directory, "LVS1", 4) || (read_u32(directory + 4) != 1 && read_u32(directory + 4) != 2) ||
         read_u32(directory + 1020) != crc32_bytes(directory, 1020) ||
         read_u32(commit) != COMMIT_MAGIC || read_u32(commit + 4) != read_u32(directory + 8) ||
         read_u32(commit + 8) != read_u32(directory + 1020) || read_u32(commit + 12) != crc32_bytes(commit, 12)) return false;
     memset(s, 0, sizeof(*s)); s->bank = bank; s->available = true;
     s->generation = read_u32(directory + 8); s->count = read_u32(directory + 12);
     s->config_revision = read_u32(directory + 16);
+    s->network_revision = read_u32(directory + 4)==2 ? read_u32(directory + 20) : 0;
     if (!s->generation || s->count > STORE_ENTRY_LIMIT) return false;
     uint32_t expected = STORE_DATA_OFFSET;
     for (uint32_t i = 0; i < s->count; ++i) {
@@ -37,7 +38,7 @@ static bool scan(int bank, Store *s) {
         StoreEntry *entry = &s->entries[i];
         if (!memchr(record, 0, 33)) return false;
         memcpy(entry->name, record, 33);
-        bool config = !strcmp(entry->name, STORE_CONFIG);
+        bool config = !strcmp(entry->name, STORE_CONFIG) || !strcmp(entry->name, STORE_NETWORK);
         if (!config && !object_name_valid(entry->name)) return false;
         for (uint32_t k = 0; k < i; ++k) if (!strcmp(s->entries[k].name, entry->name)) return false;
         entry->offset = read_u32(record + 36); entry->size = read_u32(record + 40); entry->crc = read_u32(record + 44);
@@ -80,14 +81,15 @@ uint32_t store_free_bytes(const Store *s) {
 }
 static bool mutate(Store *s, const char *name, const uint8_t *data, uint32_t size, bool remove) {
     if (!s->available || s->generation == UINT32_MAX) return false;
-    bool config = !strcmp(name, STORE_CONFIG);
+    bool config = !strcmp(name, STORE_CONFIG) || !strcmp(name, STORE_NETWORK);
     if (!config && !object_name_valid(name)) return false;
     if (!remove && (!size || size > (config ? CONFIG_LIMIT : MODULE_LIMIT))) return false;
     const StoreEntry *old = store_find(s, name);
     if (remove && !old) return false;
     Store next = *s;
     next.bank = s->bank == 0 ? 1 : 0; next.generation++; next.count = 0;
-    if (config) { if (next.config_revision == UINT32_MAX) return false; next.config_revision++; }
+    if (!strcmp(name,STORE_NETWORK)) { if (next.network_revision==UINT32_MAX) return false; next.network_revision++; }
+    if (!strcmp(name,STORE_CONFIG)) { if (next.config_revision == UINT32_MAX) return false; next.config_revision++; }
     uint32_t end = STORE_DATA_OFFSET;
     for (uint32_t i = 0; i < s->count; ++i) {
         if (!strcmp(s->entries[i].name, name)) continue;
@@ -100,7 +102,7 @@ static bool mutate(Store *s, const char *name, const uint8_t *data, uint32_t siz
         e->size = size; e->crc = crc32_bytes(data, size); e->offset = end; end += aligned(size);
     }
     unsigned procedures = 0;
-    for (uint32_t i = 0; i < next.count; ++i) if (strcmp(next.entries[i].name, STORE_CONFIG)) ++procedures;
+    for (uint32_t i = 0; i < next.count; ++i) if (strcmp(next.entries[i].name, STORE_CONFIG) && strcmp(next.entries[i].name, STORE_NETWORK)) ++procedures;
     if (procedures > PROCEDURE_LIMIT || end > STORE_BANK_BYTES) return false;
     uint32_t base = (uint32_t)next.bank * STORE_BANK_BYTES;
     // Yield between native erase units; never erase the current committed bank.
@@ -123,7 +125,8 @@ static bool mutate(Store *s, const char *name, const uint8_t *data, uint32_t siz
     }
     uint8_t directory[DIRECTORY_BYTES];
     memset(directory, 255, sizeof(directory)); memcpy(directory, "LVS1", 4);
-    write_u32(directory + 4, 1); write_u32(directory + 8, next.generation);
+    write_u32(directory + 4, 2); write_u32(directory + 8, next.generation);
+    write_u32(directory + 20, next.network_revision);
     write_u32(directory + 12, next.count); write_u32(directory + 16, next.config_revision);
     for (uint32_t i = 0; i < next.count; ++i) {
         uint8_t *record = directory + 32 + i * 64;

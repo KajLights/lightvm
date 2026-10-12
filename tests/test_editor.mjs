@@ -72,3 +72,77 @@ test("browser protocol uploads and plays a real animation on wasm3", { skip: !ex
     assert.equal((await client.status()).mode, "idle");
   } finally { await client.close(); process.kill(); rmSync(directory, { recursive: true }); }
 });
+
+test("HTTP transport preserves command frames and never retries uncertain mutations", async () => {
+  const { HttpTransport } = await import("../web/transports.mjs");
+  const calls = [];
+  const transport = new HttpTransport("http://192.168.1.2", { fetch: async function(url, options) {
+    assert.equal(this, globalThis);
+    calls.push({ url, options });
+    if (url.endsWith("/sessions")) return new Response(JSON.stringify({ session_id: "1".repeat(32), device_id: "board", boot_id: "boot" }));
+    if (options.method === "DELETE") return new Response(null, { status: 204 });
+    throw new TypeError("Connection lost after execution");
+  } });
+  await transport.open();
+  await assert.rejects(transport.write(frame(COMMAND.STOP, 1)), /local-network permission/);
+  assert.equal(calls.filter(call => call.url.endsWith("/command")).length, 1);
+  assert.equal(calls[1].options.credentials, "omit");
+  assert.equal(calls[1].options.headers["X-LightVM-Session"], "1".repeat(32));
+  assert.deepEqual(calls[1].options.body, frame(COMMAND.STOP, 1));
+  await transport.close();
+});
+
+test("path selection rejects other devices and boot epochs and does not fail over", async () => {
+  const { Connections } = await import("../web/connections.mjs");
+  const paths = new Connections(), usb = {}, http = {}, description = { device_id: "one", boot_id: "boot" };
+  paths.attach("usb", usb, description);
+  assert.throws(() => paths.attach("http", http, { device_id: "two", boot_id: "boot" }), /different device/);
+  assert.throws(() => paths.attach("http", http, { device_id: "one", boot_id: "next" }), /rebooted/);
+  paths.attach("http", http, description);
+  const pinned = paths.active.client; paths.select("usb"); assert.equal(pinned, http);
+  paths.detach("usb"); assert.equal(paths.active, null); assert.equal(paths.paths.get("http").client, http);
+});
+
+test("configuration save retains the revisions from its own apply operation", async () => {
+  const client = new LightVMClient({ write: async () => {}, close: async () => {} });
+  let reads = 0;
+  client.describe = async () => { reads++; return { active_revision: 12, saved_revision: 3 }; };
+  client.uploadObject = async () => {};
+  const calls = [];
+  client.manage = async (op, fields) => {
+    calls.push({ op, fields });
+    if (op === "config_apply") return { value: -2147483648 };
+    if (op === "config_save") throw new Error("stale revision from another client");
+    return {};
+  };
+  await assert.rejects(client.configure({}, { save: true }), /stale revision/);
+  assert.equal(reads, 1);
+  assert.deepEqual(calls.at(-1), { op: "config_save", fields: { expected_revision: 2147483648, expected_saved_revision: 3 } });
+  assert.equal(calls.filter(call => call.op === "config_apply").length, 1);
+});
+
+test("revision conflicts stay connected and expose the need to refresh state", async () => {
+  const transport = { write: async bytes => {
+    const id = new DataView(bytes.buffer, bytes.byteOffset).getUint16(6, true);
+    transport.onData(frame(131, id, new TextEncoder().encode('{"error":"stale_revision"}')));
+    const status = new Uint8Array(8); new DataView(status.buffer).setUint32(0, 7, true);
+    transport.onData(frame(129, id, status));
+  }, close: async () => {} };
+  const client = new LightVMClient(transport);
+  await assert.rejects(client.manage("config_save"), error => error.code === 7 && error.conflict);
+  assert.equal(client.closed, false);
+});
+
+
+test("parameter JSON preserves i64 boundaries and quoted numeric text", async () => {
+  const { parseJSON, encodeJSON } = await import("../web/protocol.mjs");
+  const source = '{"values":{"low":-9223372036854775808,"high":9223372036854775807,"small":42,"real":1.25},"label":"9223372036854775807"}';
+  const parsed = parseJSON(source);
+  assert.equal(parsed.values.low, -9223372036854775808n);
+  assert.equal(parsed.values.high, 9223372036854775807n);
+  assert.equal(parsed.values.small, 42);
+  assert.equal(parsed.values.real, 1.25);
+  assert.equal(parsed.label, "9223372036854775807");
+  assert.equal(encodeJSON(parsed), source);
+  assert.throws(() => encodeJSON({ value: Infinity }), /finite/);
+});

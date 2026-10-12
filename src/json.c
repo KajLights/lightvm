@@ -12,27 +12,39 @@ static int hex(char c) {
 }
 bool json_string(const Json *j, int t, char *out, size_t capacity) {
     if (t < 0 || t >= j->count || j->tokens[t].type != JSON_STRING || !capacity) return false;
-    size_t used = 0;
-    for (size_t p = j->tokens[t].start; p < j->tokens[t].end; ++p) {
-        unsigned char c = (unsigned char)j->text[p];
-        if (c == '\\') {
-            c = (unsigned char)j->text[++p];
-            const char *esc = "\"\\/bfnrt", *decoded = "\"\\/\b\f\n\r\t";
-            const char *found = strchr(esc, c);
-            if (found) c = (unsigned char)decoded[found - esc];
-            else if (c == 'u') {
-                unsigned value = 0;
-                for (int k = 0; k < 4; ++k) value = value * 16u + (unsigned)hex(j->text[++p]);
-                // Config identifiers and field names are ASCII. Reject lossy decoding.
-                if (value > 127 || !value) return false;
-                c = (unsigned char)value;
+    size_t used=0;
+    for (size_t p=j->tokens[t].start;p<j->tokens[t].end;p++) {
+        unsigned char c=(unsigned char)j->text[p]; uint32_t value=c;
+        if (c=='\\') {
+            c=(unsigned char)j->text[++p];
+            const char *esc="\"\\/bfnrt", *decoded="\"\\/\b\f\n\r\t";
+            const char *found=strchr(esc,c);
+            if (found) value=(unsigned char)decoded[found-esc];
+            else if (c=='u') {
+                value=0; for (int k=0;k<4;k++) value=value*16u+(unsigned)hex(j->text[++p]);
+                if (value>=0xd800 && value<=0xdbff) {
+                    if (p+6>=j->tokens[t].end || j->text[p+1]!='\\' || j->text[p+2]!='u') return false;
+                    p+=2; uint32_t low=0; for (int k=0;k<4;k++) low=low*16u+(unsigned)hex(j->text[++p]);
+                    if (low<0xdc00 || low>0xdfff) return false;
+                    value=0x10000+((value-0xd800)<<10)+(low-0xdc00);
+                } else if (value>=0xdc00 && value<=0xdfff) return false;
             } else return false;
+        } else if (c>=128) {
+            unsigned n; uint32_t minimum;
+            if (c>=0xc2 && c<=0xdf) { n=1; value=c&31; minimum=0x80; }
+            else if (c>=0xe0 && c<=0xef) { n=2; value=c&15; minimum=0x800; }
+            else if (c>=0xf0 && c<=0xf4) { n=3; value=c&7; minimum=0x10000; }
+            else return false;
+            for (unsigned k=0;k<n;k++) { if (++p>=j->tokens[t].end) return false; c=(unsigned char)j->text[p]; if ((c&0xc0)!=0x80) return false; value=(value<<6)|(c&63); }
+            if (value<minimum || value>0x10ffff || (value>=0xd800 && value<=0xdfff)) return false;
         }
-        if (!c || used + 1 >= capacity) return false;
-        out[used++] = (char)c;
+        if (!value) return false;
+        unsigned n=value<0x80?1:value<0x800?2:value<0x10000?3:4;
+        if (used+n>=capacity) return false;
+        if (n==1) out[used++]=(char)value;
+        else { out[used++]=(char)((n==2?0xc0:n==3?0xe0:0xf0)|(value>>(6*(n-1)))); for (unsigned k=n-1;k>0;k--) out[used++]=(char)(0x80|((value>>(6*(k-1)))&63)); }
     }
-    out[used] = 0;
-    return true;
+    out[used]=0; return true;
 }
 bool json_equal(const Json *j, int t, const char *value) {
     char buffer[128];

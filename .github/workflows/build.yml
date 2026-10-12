@@ -14,8 +14,12 @@ jobs:
       fail-fast: false
       matrix:
         profile: [host, host-175]
+        transport: [usb, http]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -27,33 +31,42 @@ jobs:
           if [[ '${{ matrix.profile }}' == host-175 ]]; then
             board_args=(-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h")
           fi
-          cmake -S . -B build/${{ matrix.profile }} -DLIGHTVM_PLATFORM=host -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
-          cmake --build build/${{ matrix.profile }} --parallel 2
-          size build/${{ matrix.profile }}/lightvm > build/${{ matrix.profile }}/size.txt
+          cmake -S . -B build/${{ matrix.profile }}-${{ matrix.transport }} -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=${{ matrix.transport == 'http' && 'ON' || 'OFF' }} -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
+          cmake --build build/${{ matrix.profile }}-${{ matrix.transport }} --parallel 2
+          size build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm > build/${{ matrix.profile }}-${{ matrix.transport }}/size.txt
       - name: Contract and integration tests
         env:
-          LIGHTVM_RECEIVER: ${{ github.workspace }}/build/${{ matrix.profile }}/lightvm
+          LIGHTVM_RECEIVER: ${{ github.workspace }}/build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
         run: |
-          ctest --test-dir build/${{ matrix.profile }} --output-on-failure
+          ctest --test-dir build/${{ matrix.profile }}-${{ matrix.transport }} --output-on-failure
           python -m unittest discover -s tests -v
+          node --test tests/test_editor.mjs
       - name: Portable smoke checks
         shell: bash
         run: |
           board=simulator
           if [[ '${{ matrix.profile }}' == host-175 ]]; then board=test_175; fi
-          python tools/smoke_device.py --process build/${{ matrix.profile }}/lightvm --board "$board" --reference build/${{ matrix.profile }}/lightvm
+          python tools/smoke_device.py --process build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm --board "$board" --reference build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
       - uses: actions/upload-artifact@v4
         with:
-          name: lightvm-${{ matrix.profile }}
+          name: lightvm-${{ matrix.profile }}-${{ matrix.transport }}
           path: |
-            build/${{ matrix.profile }}/lightvm
-            build/${{ matrix.profile }}/size.txt
-            build/${{ matrix.profile }}/LICENSE
-            build/${{ matrix.profile }}/THIRD_PARTY_NOTICES.md
-            build/${{ matrix.profile }}/licenses/
+            build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
+            build/${{ matrix.profile }}-${{ matrix.transport }}/size.txt
+            build/${{ matrix.profile }}-${{ matrix.transport }}/LICENSE
+            build/${{ matrix.profile }}-${{ matrix.transport }}/THIRD_PARTY_NOTICES.md
+            build/${{ matrix.profile }}-${{ matrix.transport }}/licenses/
 
   pico:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: pico, board: pico, wifi: 'OFF', http: 'OFF'}
+          - {name: pico-w-usb, board: pico_w, wifi: 'OFF', http: 'OFF'}
+          - {name: pico-w-wifi, board: pico_w, wifi: 'ON', http: 'OFF'}
+          - {name: pico-w-http, board: pico_w, wifi: 'ON', http: 'ON'}
     steps:
       - uses: actions/checkout@v4
       - name: Install pinned Pico SDK and Arm compiler
@@ -61,25 +74,26 @@ jobs:
         run: |
           mkdir -p build/deps
           git clone --branch 1.5.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git build/deps/pico-sdk
-          git -C build/deps/pico-sdk submodule update --init lib/tinyusb
+          git -C build/deps/pico-sdk submodule update --init lib/tinyusb lib/cyw43-driver lib/lwip
           curl --fail --location --retry 3 https://developer.arm.com/-/media/Files/downloads/gnu/13.2.Rel1/binrel/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi.tar.xz -o build/deps/arm.tar.xz
           tar -xJf build/deps/arm.tar.xz -C build/deps
           echo "$PWD/build/deps/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin" >> "$GITHUB_PATH"
       - name: Build firmware
         run: |
-          cmake -S . -B build/pico -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
-          cmake --build build/pico --parallel 2
-          arm-none-eabi-size build/pico/lightvm.elf > build/pico/size.txt
+          cmake -S . -B build/${{ matrix.name }} -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=${{ matrix.board }} -DLIGHTVM_WIFI=${{ matrix.wifi }} -DLIGHTVM_HTTP=${{ matrix.http }} -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/${{ matrix.name }} --parallel 2
+          arm-none-eabi-size build/${{ matrix.name }}/lightvm.elf > build/${{ matrix.name }}/size.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: lightvm-pico
+          name: lightvm-${{ matrix.name }}
           path: |
-            build/pico/lightvm.uf2
-            build/pico/lightvm.elf
-            build/pico/size.txt
-            build/pico/LICENSE
-            build/pico/THIRD_PARTY_NOTICES.md
-            build/pico/licenses/
+            build/${{ matrix.name }}/lightvm.uf2
+            build/${{ matrix.name }}/lightvm.elf
+            build/${{ matrix.name }}/size.txt
+            build/${{ matrix.name }}/LICENSE
+            build/${{ matrix.name }}/THIRD_PARTY_NOTICES.md
+            build/${{ matrix.name }}/licenses/
+            build/${{ matrix.name }}/ram-report.json
 
   esp32:
     runs-on: ubuntu-24.04
@@ -90,6 +104,7 @@ jobs:
       fail-fast: false
       matrix:
         board: [xiao_esp32s3, xiao_esp32c6]
+        transport: [usb, wifi, http]
     defaults:
       run:
         shell: bash
@@ -98,21 +113,21 @@ jobs:
       - name: Build firmware and record size
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}" -D LIGHTVM_BOARD=${{ matrix.board }} build
-          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}" size > build/${{ matrix.board }}/size.txt
+          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ matrix.transport == 'http' && 'ON' || 'OFF' }} build
+          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" size > build/${{ matrix.board }}-${{ matrix.transport }}/size.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: lightvm-${{ matrix.board }}
+          name: lightvm-${{ matrix.board }}-${{ matrix.transport }}
           path: |
-            build/${{ matrix.board }}/lightvm.bin
-            build/${{ matrix.board }}/lightvm.elf
-            build/${{ matrix.board }}/lightvm.map
-            build/${{ matrix.board }}/bootloader/bootloader.bin
-            build/${{ matrix.board }}/partition_table/partition-table.bin
-            build/${{ matrix.board }}/flasher_args.json
-            build/${{ matrix.board }}/flash_args
-            build/${{ matrix.board }}/sdkconfig
-            build/${{ matrix.board }}/size.txt
-            build/${{ matrix.board }}/LICENSE
-            build/${{ matrix.board }}/THIRD_PARTY_NOTICES.md
-            build/${{ matrix.board }}/licenses/
+            build/${{ matrix.board }}-${{ matrix.transport }}/lightvm.bin
+            build/${{ matrix.board }}-${{ matrix.transport }}/lightvm.elf
+            build/${{ matrix.board }}-${{ matrix.transport }}/lightvm.map
+            build/${{ matrix.board }}-${{ matrix.transport }}/bootloader/bootloader.bin
+            build/${{ matrix.board }}-${{ matrix.transport }}/partition_table/partition-table.bin
+            build/${{ matrix.board }}-${{ matrix.transport }}/flasher_args.json
+            build/${{ matrix.board }}-${{ matrix.transport }}/flash_args
+            build/${{ matrix.board }}-${{ matrix.transport }}/sdkconfig
+            build/${{ matrix.board }}-${{ matrix.transport }}/size.txt
+            build/${{ matrix.board }}-${{ matrix.transport }}/LICENSE
+            build/${{ matrix.board }}-${{ matrix.transport }}/THIRD_PARTY_NOTICES.md
+            build/${{ matrix.board }}-${{ matrix.transport }}/licenses/

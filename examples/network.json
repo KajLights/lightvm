@@ -1,0 +1,12 @@
+{
+  "schema": "lightvm.network/1",
+  "wifi": {
+    "enabled": true,
+    "country": "XX",
+    "networks": [
+      {"ssid": "preferred", "password": "replace-this-password"},
+      {"ssid": "backup", "password": "replace-this-password", "hidden": true}
+    ]
+  },
+  "http": {"enabled": true, "port": 80}
+}

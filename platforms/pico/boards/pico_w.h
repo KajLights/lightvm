@@ -1,0 +1,7 @@
+#ifndef LIGHTVM_PICO_W_BOARD_CONFIG_H
+#define LIGHTVM_PICO_W_BOARD_CONFIG_H
+#define LIGHTVM_BOARD_NAME "pico_w"
+#if LIGHTVM_WIFI
+#define VM_HEAP_LIMIT (64u * 1024u)
+#endif
+#endif

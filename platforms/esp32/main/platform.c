@@ -5,6 +5,9 @@
 #include "driver/gpio.h"
 #include "driver/rmt_tx.h"
 #include "esp_timer.h"
+#include "esp_mac.h"
+#include "esp_random.h"
+#include <stdio.h>
 #include "esp_partition.h"
 #include "soc/soc_caps.h"
 #include <stdlib.h>
@@ -13,6 +16,11 @@ static const PlatformInfo info={"esp32",LIGHTVM_BOARD_NAME,"ws2812",-1,0};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return (uint64_t)esp_timer_get_time(); }
 void esp32_port_init(void) {}
+void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) {
+    uint8_t mac[6]; esp_read_mac(mac,ESP_MAC_WIFI_STA);
+    snprintf(device,capacity,"esp32-%02x%02x%02x%02x%02x%02x",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+    snprintf(boot,boot_capacity,"%08lx%08lx",(unsigned long)esp_random(),(unsigned long)esp_random());
+}
 #define PIN(d,g) {"D" #d,g},{"GPIO" #g,g}
 #if CONFIG_IDF_TARGET_ESP32S3
 static const BoardPin pins[]={PIN(0,1),PIN(1,2),PIN(2,3),PIN(3,4),PIN(4,5),PIN(5,6),PIN(6,43),PIN(7,44),PIN(8,7),PIN(9,8),PIN(10,9)};

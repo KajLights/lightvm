@@ -1,10 +1,14 @@
 import { LightVMClient, COMMAND } from "./protocol.mjs";
-import { SerialTransport } from "./transports.mjs";
+import { SerialTransport, HttpTransport } from "./transports.mjs";
 
+import { Connections } from "./connections.mjs";
+const paths = new Connections();
+let parameterState = null;
 const $ = id => document.getElementById(id);
 const textarea = $("source"), storageKey = "lightvm.editor.draft.v1";
 let editor, worker, compilerReady = false, revision = 0, artifact = null;
 let client = null, target = null, outputReady = false, busy = false;
+let polling = false, suggestedHttpAddress = "";
 let debounce, compilationDeadline, initializationDeadline, marks = [], errorLines = [];
 let fileRevision = 0;
 
@@ -52,12 +56,23 @@ function log(message, kind = "") {
 }
 function notice(message = "") { $("notice").textContent = message; $("notice").hidden = !message; }
 function buttons() {
-  $("connect").disabled = busy || Boolean(client) || !isSecureContext || !navigator.serial;
-  $("connect").hidden = Boolean(client); $("disconnect").hidden = !client;
+  $("connect").disabled = busy || paths.paths.has("usb") || !isSecureContext || !navigator.serial;
+  $("connect").hidden = paths.paths.has("usb"); $("disconnect").hidden = !client;
   $("disconnect").disabled = busy;
   $("upload").disabled = busy || !client || !artifact || !outputReady;
   $("stop").disabled = busy || !client;
   $("download").disabled = !artifact;
+  $("connect-http").disabled = busy || paths.paths.has("http");
+  $("command-path").disabled = busy || !paths.paths.size;
+  for (const id of ["network-refresh", "config-refresh", "procedures-refresh", "parameters-refresh"]) $(id).disabled = busy || !client;
+  $("config-fields").disabled = busy || !client;
+  $("procedure-fields").disabled = busy || !client || !target?.storage_available;
+  $("procedure-save").disabled = busy || !client || !artifact || !target?.storage_available;
+  $("network-fields").disabled = busy || !client || !(target?.wifi_supported || target?.http_supported) || !target?.storage_available;
+  $("wifi-enabled").disabled = !target?.wifi_supported;
+  $("http-enabled").disabled = !target?.http_supported;
+  $("parameter-fields").disabled = busy || !client || !parameterState;
+
 }
 function clearMarks() {
   marks.forEach(mark => mark.clear()); marks = [];
@@ -152,19 +167,32 @@ function startCompiler() {
 
 function browserHelp() {
   if (!isSecureContext) notice("Open this page through HTTPS or http://localhost. Browser USB connections require a secure context.");
-  else if (!navigator.serial) notice("USB Serial is unavailable in this browser. Open the page in desktop Chrome or Edge. Editing and .wasm downloads remain available.");
+  else if (!navigator.serial) notice("USB Serial is unavailable in this browser. HTTP connections, editing and downloads remain available; browser local-network permissions may apply.");
   else notice();
   buttons();
 }
 async function action(operation) {
+  const connection = client;
   busy = true; notice(); buttons();
   try { await operation(); }
   catch (error) {
-    if (error.name !== "NotFoundError") { notice(error.message); log(error.message, "error"); }
+    if (error.name !== "NotFoundError") {
+      let refreshed = false;
+      if (error.conflict && connection && !connection.closed) {
+        try {
+          await refreshDevice(connection); await refreshNetwork(connection);
+          await refreshProcedures(connection); await refreshParameters(connection);
+          refreshed = true;
+        } catch {}
+      }
+      notice(error.message + (refreshed ? " Device state refreshed. Review it before trying again." : ""));
+      log(error.message, "error");
+    }
     else log("Device selection cancelled.");
   } finally { busy = false; buttons(); }
 }
 function disconnected(error) {
+  parameterState = null;
   client = null; target = null; outputReady = false;
   $("device-summary").textContent = "Connect a LightVM board over USB.";
   $("device-dot").className = "status-dot"; $("device-details").hidden = true;
@@ -172,32 +200,52 @@ function disconnected(error) {
   changed();
 }
 
-$("connect").onclick = () => action(async () => {
-  // Keep the chooser in the click's user activation; do not await compiler work.
-  const transport = new SerialTransport();
+function pathUI() {
+  const selector = $("command-path"); selector.replaceChildren();
+  if (!paths.selected) { const option = document.createElement("option"); option.value = ""; option.textContent = "Select a connected path"; selector.append(option); }
+  for (const [key, connection] of paths.paths) {
+    const option = document.createElement("option"); option.value = key; option.textContent = connection.client.transport.label; selector.append(option);
+  }
+  selector.value = paths.selected || "";
+  $("path-health").textContent = ["usb", "http"].map(key => `${key.toUpperCase()}: ${paths.paths.has(key) ? "connected" : "disconnected"}`).join(" · ");
+  buttons();
+}
+async function refreshDevice(connection = client) {
+  if (!connection) return;
+  const description = await connection.describe(), config = await connection.json("config_get");
+  if (connection !== client) return;
+  target = description; const binding = config.targets?.A?.device, output = config.devices?.find(device => device.id === binding);
+  outputReady = Boolean(output?.config?.count); $("config-json").value = JSON.stringify(config, null, 2);
+  $("device-summary").textContent = connection.transport.label; $("device-dot").className = "status-dot connected"; $("device-details").hidden = false;
+  $("board").textContent = description.board; $("module-limit").textContent = `${description.module_limit.toLocaleString()} bytes`;
+  $("output-binding").textContent = outputReady ? `${output.config.count} pixels · slot A` : "Slot A is not configured";
+  parameterState = null; $("parameters").replaceChildren();
+  $("parameter-state").textContent = "Load a control program to edit its parameters.";
+  buttons();
+}
+async function connectPath(key, transport) {
   let candidate;
   try {
     await transport.open();
-    candidate = new LightVMClient(transport, { onOutput: text => log(text), onDisconnect: error => { if (client === candidate) disconnected(error); } });
-    await candidate.status();
+    candidate = new LightVMClient(transport, { onOutput: text => log(text), onDisconnect: error => {
+      if (paths.paths.get(key)?.client === candidate) paths.detach(key);
+      if (client === candidate) disconnected(error);
+      pathUI();
+    } });
     const description = await candidate.describe();
-    if (description.control_abi !== 2 || !description.program_schemas?.includes("lightvm.program/3")) {
-      throw new Error("This firmware does not support the editor's Control ABI 2 programs. Update it before uploading.");
-    }
-    const config = JSON.parse(new TextDecoder().decode((await candidate.manage("config_get")).data));
-    const binding = config.targets?.A?.device, output = config.devices?.find(device => device.id === binding);
-    target = description; outputReady = Boolean(output?.config?.count);
-    client = candidate;
-    $("device-summary").textContent = transport.label;
-    $("device-dot").className = "status-dot connected"; $("device-details").hidden = false;
-    $("board").textContent = description.board;
-    $("module-limit").textContent = `${description.module_limit.toLocaleString()} bytes`;
-    $("output-binding").textContent = outputReady ? `${output.config.count} pixels · slot A` : "Slot A is not configured";
-    if (!outputReady) notice("The device is connected, but slot A has no configured light strip. Configure its pin and pixel count with the existing LightVM configuration tools before uploading.");
-    log(`Connected to ${description.board} via USB Serial.`, "success"); changed();
+    if (description.control_abi !== 2 || !description.program_schemas?.includes("lightvm.program/3")) throw new Error("Update this firmware to use Control ABI 2 programs.");
+    paths.attach(key, candidate, description); client = candidate; target = description;
+    await refreshDevice(candidate); await refreshNetwork(candidate); await refreshProcedures(candidate); await refreshParameters(candidate);
+    log(`Connected to ${description.board} via ${key.toUpperCase()}.`, "success"); pathUI(); changed();
   } catch (error) { if (candidate) await candidate.close(); else await transport.close(); throw error; }
+}
+$("connect").onclick = () => action(() => connectPath("usb", new SerialTransport()));
+$("connect-http").onclick = () => action(() => connectPath("http", new HttpTransport($("http-address").value)));
+$("command-path").onchange = () => action(async () => {
+  paths.select($("command-path").value); client = paths.active.client; target = paths.active.description;
+  await refreshDevice(); await refreshNetwork(); await refreshProcedures(); await refreshParameters(); pathUI();
 });
-$("disconnect").onclick = () => action(async () => { await client.close(); log("Device disconnected. Autonomous playback continues."); });
+$("disconnect").onclick = () => action(async () => { const connection = client; await connection.close(); log("Path disconnected. Autonomous playback continues."); });
 $("upload").onclick = () => action(async () => {
   const compiled = artifact, connection = client, limit = target.module_limit;
   if (!compiled || compiled.revision !== revision || !connection || !outputReady) throw new Error("Wait for the current code checks and a configured device before uploading.");
@@ -207,7 +255,7 @@ $("upload").onclick = () => action(async () => {
   try {
     await connection.upload(compiled.wasm, limit, progress => { $("upload-progress").value = progress; });
     const reply = await connection.command(COMMAND.PLAY);
-    log(`Animation running on ${reply.value} pixels.`, "success");
+    log(`Animation running on ${reply.value} pixels.`, "success"); await refreshParameters(connection);
     if (source() !== compiled.source) notice("The uploaded animation is running. Your newer editor changes have not been uploaded yet.");
   } finally { $("upload").textContent = "Upload & run →"; $("upload-progress").hidden = true; }
 });
@@ -246,5 +294,116 @@ $("example").onchange = async () => {
 };
 $("clear-log").onclick = () => $("activity").replaceChildren();
 $("retry-compiler").onclick = startCompiler;
-window.addEventListener("beforeunload", () => { worker?.terminate(); void client?.close(); });
+window.addEventListener("beforeunload", () => { worker?.terminate(); for (const { client } of paths.paths.values()) void client.close(); });
+
+function wifiRow(network = {}) {
+  const row = document.createElement("div"); row.className = "wifi-network";
+  const ssidLabel = document.createElement("label"), ssid = document.createElement("input"); ssidLabel.textContent = "SSID"; ssid.value = network.ssid || ""; ssid.autocomplete = "off"; ssidLabel.append(ssid);
+  const passwordLabel = document.createElement("label"), password = document.createElement("input"); passwordLabel.textContent = "Password"; password.type = "password"; password.placeholder = network.ssid ? "Keep saved password" : "Enter password"; passwordLabel.append(password);
+  for (const input of [ssid, password]) {
+    input.autocomplete = "off"; input.spellcheck = false;
+    input.setAttribute("autocapitalize", "off"); input.setAttribute("autocorrect", "off");
+    input.setAttribute("data-1p-ignore", "true"); input.setAttribute("data-lpignore", "true");
+    input.setAttribute("data-bwignore", "true"); input.setAttribute("data-form-type", "other");
+  }
+  const hiddenLabel = document.createElement("label"), hidden = document.createElement("input"); hidden.type = "checkbox"; hidden.checked = Boolean(network.hidden); hiddenLabel.append(hidden, " Hidden SSID");
+  const openLabel = document.createElement("label"), open = document.createElement("input"); open.type = "checkbox"; openLabel.append(open, " Use an open network"); open.onchange = () => { password.disabled = open.checked; if (open.checked) password.value = ""; };
+  const controls = document.createElement("div"); controls.className = "button-pair";
+  for (const [label, move] of [["Move up", -1], ["Move down", 1], ["Remove", 0]]) {
+    const button = document.createElement("button"); button.className = "quiet"; button.textContent = label;
+    button.onclick = () => { if (!move) row.remove(); else if (move < 0 && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling); else if (move > 0 && row.nextElementSibling) row.parentNode.insertBefore(row.nextElementSibling, row); };
+    controls.append(button);
+  }
+  row.append(ssidLabel, passwordLabel, hiddenLabel, openLabel, controls);
+  row.read = () => ({ ssid: ssid.value, hidden: hidden.checked, ...(open.checked ? { password: "" } : password.value ? { password: password.value } : {}) });
+  $("wifi-networks").append(row);
+}
+async function refreshNetwork(connection = client) {
+  if (!connection || !(target?.wifi_supported || target?.http_supported)) { $("network-state").textContent = "Networking is excluded from this firmware profile."; return; }
+  const config = await connection.json("network_get"), state = await connection.json("network_status");
+  if (connection !== client) return;
+  $("wifi-enabled").checked = config.wifi.enabled; $("wifi-country").value = config.wifi.country;
+  $("http-enabled").checked = config.http.enabled; $("http-port").value = config.http.port;
+  $("wifi-networks").replaceChildren(); config.wifi.networks.forEach(wifiRow);
+  updateNetworkStatus(state);
+}
+function updateNetworkStatus(state) {
+  const text = `${state.state}${state.ssid ? ` · ${state.ssid}` : ""}${state.ip ? ` · ${state.ip}` : ""}${state.error ? ` · ${state.error}` : ""}${state.retry_ms ? ` · retry in ${Math.ceil(state.retry_ms / 1000)}s` : ""}`;
+  if ($("network-state").textContent !== text) $("network-state").textContent = text;
+  const address = $("http-address");
+  if (state.ip && !paths.paths.has("http") && document.activeElement !== address && (!address.value || address.value === suggestedHttpAddress)) {
+    const suggestion = `http://${state.ip}:${state.http_port}`;
+    if (address.value !== suggestion) address.value = suggestion;
+    suggestedHttpAddress = suggestion;
+  }
+}
+async function refreshProcedures(connection = client) {
+  if (!connection) return;
+  const procedures = await connection.json("procedure_list"); if (connection !== client) return;
+  for (const id of ["procedure-select", "startup-procedure"]) {
+    const select = $(id), selected = select.value; select.replaceChildren();
+    if (id === "startup-procedure") { const option = document.createElement("option"); option.value = ""; option.textContent = "Stay idle on reboot"; select.append(option); }
+    for (const item of procedures) { const option = document.createElement("option"); option.value = item.name; option.textContent = `${item.name} · ${item.size} bytes`; select.append(option); }
+    if (procedures.some(item => item.name === selected)) select.value = selected;
+  }
+  const config = await connection.json("config_get"); if (connection === client) $("startup-procedure").value = config.startup?.procedure || "";
+}
+async function refreshParameters(connection = client) {
+  if (!connection) return;
+  let state;
+  try { state = await connection.json("program_parameters_get"); }
+  catch (error) { if (connection.closed) throw error; if (connection === client) { parameterState = null; $("parameters").replaceChildren(); $("parameter-state").textContent = "Load a control program to edit its parameters."; } buttons(); return; }
+  if (connection !== client) return;
+  parameterState = state; $("parameters").replaceChildren();
+  $("parameter-state").textContent = `${state.faulted ? "Faulted" : state.paused ? "Paused" : "Running"} · slot ${state.slot}`;
+  for (const parameter of state.manifest.parameters) {
+    const label = document.createElement("label"), input = document.createElement("input"); label.textContent = parameter.name;
+    if (parameter.type === "bool") { input.type = "checkbox"; input.checked = state.values[parameter.name]; }
+    else if (parameter.type === "rgb8") { input.type = "color"; input.value = `#${state.values[parameter.name].toString(16).padStart(6, "0")}`; }
+    else { input.type = parameter.type === "int" ? "text" : "number"; if (parameter.type === "int") input.inputMode = "numeric"; input.step = "any"; input.value = state.values[parameter.name]; if (parameter.minimum !== undefined) input.min = parameter.minimum; if (parameter.maximum !== undefined) input.max = parameter.maximum; }
+    input.dataset.name = parameter.name; input.dataset.type = parameter.type; label.append(input); $("parameters").append(label);
+  }
+  buttons();
+}
+$("wifi-add").onclick = () => { if ($("wifi-networks").children.length < 8) wifiRow(); };
+$("network-refresh").onclick = () => action(() => refreshNetwork());
+$("network-save").onclick = () => action(async () => {
+  const connection = client;
+  const config = { schema: "lightvm.network/1", wifi: { enabled: $("wifi-enabled").checked, country: $("wifi-country").value.toUpperCase(), networks: Array.from($("wifi-networks").children, row => row.read()) }, http: { enabled: $("http-enabled").checked, port: Number($("http-port").value) } };
+  try { await connection.configureNetwork(config); log("Network settings saved. Reconnect HTTP after the network changes.", "success"); }
+  finally { for (const input of $("wifi-networks").querySelectorAll("input[type=password]")) input.value = ""; }
+});
+$("config-refresh").onclick = () => action(() => refreshDevice());
+for (const [id, options] of [["config-validate", { validate: true }], ["config-apply", {}], ["config-save", { save: true }]]) $(id).onclick = () => action(async () => { const connection = client; await connection.configure(JSON.parse($("config-json").value), options); if (!options.validate) await refreshDevice(connection); log(options.validate ? "Configuration is valid." : "Output configuration applied; playback stopped.", "success"); });
+$("startup-save").onclick = () => action(async () => { const connection = client, config = await connection.json("config_get"), name = $("startup-procedure").value; config.startup = name ? { procedure: name, target: "A" } : null; await connection.configure(config, { save: true }); await refreshDevice(connection); log("Startup selection saved; playback stopped.", "success"); });
+$("procedures-refresh").onclick = () => action(() => refreshProcedures());
+$("procedure-save").onclick = () => action(async () => { const connection = client, compiled = artifact; if (!compiled || compiled.revision !== revision) throw new Error("Wait for current compilation."); const name = $("procedure-name").value; if (!/^[A-Za-z0-9_.-]{1,32}$/.test(name)) throw new Error("Use 1–32 letters, digits, underscores, dots or hyphens for the procedure name."); await connection.saveProcedure(name, compiled.wasm); await refreshProcedures(connection); log(`Saved ${name}.`, "success"); });
+$("procedure-activate").onclick = () => action(async () => { const connection = client; await connection.manage("procedure_activate", { name: $("procedure-select").value, slot: "A" }); await refreshParameters(connection); log("Stored procedure activated.", "success"); });
+$("procedure-download").onclick = () => action(async () => { const name = $("procedure-select").value, reply = await client.manage("procedure_get", { name }); download(reply.data, `${name}.wasm`, "application/wasm"); });
+$("procedure-delete").onclick = () => action(async () => { const connection = client; await connection.deleteProcedure($("procedure-select").value); await refreshProcedures(connection); log("Procedure deleted.", "success"); });
+$("parameters-refresh").onclick = () => action(() => refreshParameters());
+$("parameters-apply").onclick = () => action(async () => { const connection = client, state = parameterState, values = Object.create(null); for (const input of $("parameters").querySelectorAll("input")) {
+    if (input.dataset.type === "int" && !/^-?\d+$/.test(input.value)) throw new Error("Enter a whole signed integer.");
+    if (input.dataset.type === "float" && (!input.value || !Number.isFinite(Number(input.value)))) throw new Error("Enter a finite number.");
+    const value = input.dataset.type === "bool" ? input.checked : input.dataset.type === "rgb8" ? parseInt(input.value.slice(1), 16) : input.dataset.type === "int" ? BigInt(input.value) : Number(input.value);
+    if (String(value) !== String(state.values[input.dataset.name])) values[input.dataset.name] = value;
+  } try { await connection.setParameters(values, state); } finally { if (!connection.closed) await refreshParameters(connection); } });
+for (const verb of ["pause", "resume"]) $(`program-${verb}`).onclick = () => action(async () => { const connection = client; await connection.manage(`program_${verb}`, { expected_generation: parameterState.generation }); await refreshParameters(connection); });
+setInterval(async () => {
+  if (busy || polling || document.hidden || !paths.paths.size) return;
+  polling = true;
+  try {
+    for (const [key, { client: connection, description }] of paths.paths) {
+      const current = await connection.describe();
+      if (busy) break;
+      if (paths.paths.get(key)?.client !== connection) continue;
+      if (current.boot_id !== description.boot_id) { await connection.close(); continue; }
+      if (connection === client && (target?.wifi_supported || target?.http_supported)) {
+        const state = await connection.json("network_status");
+        if (busy) break;
+        if (connection === client && paths.paths.get(key)?.client === connection) updateNetworkStatus(state);
+      }
+    }
+  } catch (error) { if (!busy) notice(error.message); } finally { polling = false; }
+}, 5000);
 browserHelp(); startCompiler(); changed();

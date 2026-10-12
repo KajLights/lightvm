@@ -1,5 +1,22 @@
 cmake_minimum_required(VERSION 3.18)
 
+option(LIGHTVM_WIFI "Include native Wi-Fi" OFF)
+option(LIGHTVM_HTTP "Include HTTP management" OFF)
+if(LIGHTVM_HTTP AND NOT LIGHTVM_WIFI)
+    message(FATAL_ERROR "Embedded HTTP requires LIGHTVM_WIFI=ON")
+endif()
+# IDF discovers component requirements in a separate early-expansion process.
+# Propagate the build switches to that process before it resolves dependencies.
+if(LIGHTVM_WIFI)
+    set(ENV{LIGHTVM_PORT_WIFI} "1")
+else()
+    set(ENV{LIGHTVM_PORT_WIFI} "0")
+endif()
+if(LIGHTVM_HTTP)
+    set(ENV{LIGHTVM_PORT_HTTP} "1")
+else()
+    set(ENV{LIGHTVM_PORT_HTTP} "0")
+endif()
 get_filename_component(LIGHTVM_ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 set(LIGHTVM_BOARD "" CACHE STRING "XIAO board: xiao_esp32s3 or xiao_esp32c6")
 set_property(CACHE LIGHTVM_BOARD PROPERTY STRINGS xiao_esp32s3 xiao_esp32c6)

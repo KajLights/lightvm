@@ -12,10 +12,10 @@ An effect should query its bound pixel resource count (or legacy
 assumptions; an oversized or unsupported module is rejected with a load/upload
 error. Real-time frame throughput must be measured on each target.
 
-The implemented ports are the POSIX host simulator, original RP2040 Pico and a
+The implemented ports are the POSIX host simulator, original RP2040 Pico, Pico W and a
 shared ESP-IDF port for XIAO ESP32-S3 and ESP32-C6. The XIAO firmwares are
-cross-build verified; hardware validation remains pending. Networking, Matter
-and OTA are subsequent native adapters.
+cross-build verified; hardware validation remains pending. Optional Wi-Fi/HTTP adapters coexist with USB; Matter and OTA remain subsequent
+native adapters. See [networking](networking.md).
 
 Multi-board support is a maintained requirement from the initial prototype.
 Compatible identical WASM bytes and API semantics must work across host, Pico,
@@ -79,7 +79,12 @@ stops playback with diagnostics; initialization failure leaves active hardware e
 Allocation budget accounting, including headers, remains in `vm_allocator.c`.
 The port can select an appropriate allocator or memory pool without changing the
 engine. SDK allocations, C/RTOS stacks and static buffers are outside that budget.
-Neither networking memory nor PSRAM behavior is validated by the existing ports.
+Networking dynamic memory and PSRAM behavior still require hardware measurement.
+
+`platform_identity()` supplies a stable device ID and a fresh boot nonce on every
+port, including USB-only profiles. The IDs scope editor connections; they are not
+authentication tokens. New native ports must implement this hook alongside their
+other native services.
 
 ## Entry points and transport adapters
 
@@ -87,14 +92,17 @@ The platform owns initialization, blocking waits, native queues, watchdogs and
 shutdown. For byte-stream transports:
 
 ```c
+static App app;
 static Session session;
 /* Initialize native services first. */
-session_init(&session, send_message, transport_context);
+app_init(&app, send_message, transport_context);
+session_init(&session, &app, 1, send_message, transport_context);
 /* In the sole engine owner's loop: */
-session_tick(&session);
+app_tick(&app);
 session_feed(&session, received_bytes, received_size);
 /* On shutdown, before releasing transport/output resources: */
 session_destroy(&session);
+app_destroy(&app);
 ```
 
 `send_message` receives a logical reply and the original transport context. A
@@ -102,7 +110,7 @@ serial/pipe adapter uses `write_frame` and handles native flushing. Decoder erro
 and application replies use the same context. The host and Pico entry points show
 the complete working loops.
 
-A message-based transport can deliver validated commands through `app_command`
+A message-based transport can deliver validated commands through `app_dispatch`
 and encode replies through `SendMessage`; it need not wrap them in serial framing.
 With multiple transports, native code must retain the request's source and route
 replies to it. The adapter owns transport authentication, ordering, buffering and
@@ -274,3 +282,16 @@ frames against the host and checking unknown imports, upload/heap limits, timeou
 recovery and allocation release. Then measure frame/output timing and memory with
 its native services active. The test backend and 175-pixel host profile exercise
 these boundaries without claiming ESP32 hardware support.
+
+
+## Multiple command paths
+
+Sessions borrow one App and own independent decoders and reply destinations.
+`app_dispatch` scopes each command's sender and connection identity while the
+engine owner executes it. IDs can overlap across paths. Session destruction
+releases its staging ownership; it does not destroy the runtime. Direct message
+adapters use `app_dispatch`, not concurrent calls into `app_command` or the VM.
+Network callbacks enqueue requests. The native owner drains ingress and the
+portable HTTP service captures bounded replies; native senders handle backpressure
+without running the engine. Network configuration and the radio recovery state
+machine live outside the guest ABI and hardware configuration lifecycle.

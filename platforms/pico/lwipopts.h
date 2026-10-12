@@ -1,0 +1,31 @@
+#ifndef LIGHTVM_LWIPOPTS_H
+#define LIGHTVM_LWIPOPTS_H
+#define NO_SYS 1
+#define LWIP_SOCKET 0
+#define LWIP_NETCONN 0
+#define LWIP_TCP LIGHTVM_HTTP
+#define LWIP_UDP 1
+#define LWIP_DHCP 1
+#define LWIP_DNS 0
+#define LWIP_IPV4 1
+#define LWIP_IPV6 0
+#define LWIP_ICMP 1
+#define LWIP_ARP 1
+#define LWIP_NETIF_HOSTNAME 1
+#define LWIP_NETIF_STATUS_CALLBACK 1
+#define LWIP_NETIF_LINK_CALLBACK 1
+#define MEM_ALIGNMENT 4
+#define MEM_SIZE (8 * 1024)
+#define MEMP_NUM_TCP_PCB 5
+#define MEMP_NUM_TCP_PCB_LISTEN 1
+#define MEMP_NUM_TCP_SEG 24
+#define MEMP_NUM_UDP_PCB 4
+#define PBUF_POOL_SIZE 8
+#define TCP_MSS 1460
+#define TCP_WND (2 * TCP_MSS)
+#define TCP_SND_BUF (2 * TCP_MSS)
+#define TCP_SND_QUEUELEN 8
+#define LWIP_STATS 0
+#define LWIP_CHKSUM_ALGORITHM 3
+#define LWIP_TIMEVAL_PRIVATE 0
+#endif

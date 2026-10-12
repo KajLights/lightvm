@@ -2,6 +2,9 @@
 #include "config.h"
 #include "port.h"
 #include "pico/stdlib.h"
+#include "pico/unique_id.h"
+#include "pico/rand.h"
+#include <stdio.h>
 #include "hardware/pio.h"
 #include "hardware/flash.h"
 #include "hardware/sync.h"
@@ -12,6 +15,11 @@ static const PlatformInfo info={"pico",LIGHTVM_BOARD_NAME,"ws2812",-1,0};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return time_us_64(); }
 void pico_port_init(void) {}
+void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) {
+    char unique[2*PICO_UNIQUE_BOARD_ID_SIZE_BYTES+1]; pico_get_unique_board_id_string(unique,sizeof(unique));
+    snprintf(device,capacity,"pico-%s",unique);
+    snprintf(boot,boot_capacity,"%08lx%08lx",(unsigned long)get_rand_32(),(unsigned long)get_rand_32());
+}
 #define PIN(n) {"GP" #n,n}
 static const BoardPin pins[]={PIN(0),PIN(1),PIN(2),PIN(3),PIN(4),PIN(5),PIN(6),PIN(7),PIN(8),PIN(9),PIN(10),PIN(11),PIN(12),PIN(13),PIN(14),PIN(15),PIN(16),PIN(17),PIN(18),PIN(19),PIN(20),PIN(21),PIN(22),PIN(26),PIN(27),PIN(28)};
 const BoardPin *platform_pins(size_t *count) { *count=sizeof(pins)/sizeof(pins[0]); return pins; }

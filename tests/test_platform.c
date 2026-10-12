@@ -65,6 +65,7 @@ static void storage_faults(void) {
     Store s; CHECK(store_mount(&s));
     CHECK(store_put(&s,"effect","old wasm",8));
     CHECK(store_put(&s,STORE_CONFIG,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG)));
+    CHECK(store_put(&s,STORE_NETWORK,"old network",11));
     memcpy(baseline,flash,sizeof(flash));
     unsigned interrupted=0;
     for (int point=0;point<90;++point) {
@@ -75,6 +76,7 @@ static void storage_faults(void) {
         CHECK(entry && store_read(&recovered,entry,0,bytes,8));
         CHECK(!memcmp(bytes,"old wasm",8) || !memcmp(bytes,"new wasm",8));
         CHECK(store_find(&recovered,STORE_CONFIG) && recovered.config_revision==1);
+        CHECK(store_find(&recovered,STORE_NETWORK) && recovered.network_revision==1);
         if (!ok) ++interrupted;
     }
     CHECK(interrupted>60);
@@ -242,12 +244,34 @@ static const uint8_t slot_wasm[] = {
     0x3a,0x34,0x7d,0x5d,0x7d,
 };
 
+void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) { snprintf(device,capacity,"test-device"); snprintf(boot,boot_capacity,"test-boot"); }
+
 int main(void) {
     storage_faults();
+    static App app;
     static Session session;
     Capture reply = {.marker = 0x12345678u};
-    session_init(&session, capture, &reply);
+    app_init(&app,capture,&reply);
+    session_init(&session,&app,1,capture,&reply);
     CHECK(shows == 0);
+    // Equal request IDs on independent, fragmented decoders retain reply ownership.
+    Session other; Capture other_reply={.marker=0x12345678u}; session_init(&other,&app,2,capture,&other_reply);
+    uint8_t begin[8]; write_u32(begin,8); write_u32(begin+4,0);
+    uint8_t partial[HEADER_SIZE+8]={'W','A','S','M',1,CMD_BEGIN,42,0};
+    write_u32(partial+8,8); memcpy(partial+16,begin,8);
+    uint32_t crc=crc32_update(0xffffffffu,partial+4,8); crc=crc32_update(crc,partial+16,8)^0xffffffffu; write_u32(partial+12,crc);
+    session_feed(&session,partial,7); CHECK(!app.upload_owner);
+    command(&other,CMD_STATUS,NULL,0); CHECK(other_reply.code==STATUS_OK && other_reply.id==42 && !app.upload_owner);
+    session_feed(&session,partial+7,sizeof(partial)-7); CHECK(reply.code==STATUS_OK && app.upload_owner==1);
+    command(&other,CMD_STATUS,NULL,0); CHECK(other_reply.code==STATUS_OK && other_reply.id==42);
+    command(&other,CMD_OBJECT_CANCEL,NULL,0); CHECK(other_reply.code==STATUS_BUSY && app.upload_owner==1);
+    command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_BUSY);
+    session_destroy(&session); CHECK(!app.vm.uploading && !app.upload_owner);
+    session_init(&session,&app,1,capture,&reply);
+    command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_OK && app.upload_owner==2);
+    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app.vm.uploading); clock_now=0;
+    command(&session,CMD_RESET,NULL,0);
+
     char config[400], metadata[120];
     int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}],\"targets\":{\"A\":{\"device\":\"lights\"}}}",PIXEL_COUNT);
     int metadata_size=snprintf(metadata,sizeof(metadata),"{\"kind\":\"config\",\"size\":%d,\"crc32\":%lu}",config_size,(unsigned long)crc32_bytes((const uint8_t *)config,(size_t)config_size));
@@ -276,13 +300,13 @@ int main(void) {
     command(&session, CMD_PLAY, NULL, 0);
     CHECK(reply.code == STATUS_OK);
     unsigned playback_shows = shows;
-    session_tick(&session);
+    app_tick(&app);
     CHECK(shows == playback_shows + 1);
     clock_now = FRAME_INTERVAL_US - 1;
-    session_tick(&session);
+    app_tick(&app);
     CHECK(shows == playback_shows + 1);
     clock_now = FRAME_INTERVAL_US;
-    session_tick(&session);
+    app_tick(&app);
     CHECK(shows == playback_shows + 2);
     command(&session, CMD_STOP, NULL, 0);
     CHECK(displayed[0] == 0);
@@ -313,10 +337,10 @@ int main(void) {
     // Control steps allocate only during preparation. The output buffer is
     // charged alongside interpreter/history/staging storage in the same budget.
     upload(&session,&reply,control_wasm,sizeof(control_wasm));
-    CHECK(reply.code==STATUS_OK && session.app.vm.control.enabled);
+    CHECK(reply.code==STATUS_OK && app.vm.control.enabled);
     reply.snapshot_size=0; write_u32(delta,1);
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_OK);
-    CHECK(session.app.vm.control.output_charge==PIXEL_BYTES);
+    CHECK(app.vm.control.output_charge==PIXEL_BYTES);
     unsigned control_allocations=allocations;
     deny_allocation=true;
     for (unsigned i=0;i<100;++i) {
@@ -325,25 +349,25 @@ int main(void) {
     }
     CHECK(allocations==control_allocations);
     command(&session,CMD_PLAY,NULL,0); CHECK(reply.code==STATUS_OK);
-    uint64_t before_time=session.app.vm.control.program_us;
+    uint64_t before_time=app.vm.control.program_us;
     clock_now+=1500123u;
-    session_tick(&session);
-    CHECK(session.app.vm.control.program_us-before_time==1500123u);
+    app_tick(&app);
+    CHECK(app.vm.control.program_us-before_time==1500123u);
     CHECK(displayed[0]==0 && displayed[1]==5 && displayed[2]==220);
-    uint32_t before_frame=session.app.vm.control.output_frame;
+    uint32_t before_frame=app.vm.control.output_frame;
     deny_show=true; reply.snapshot_size=0; write_u32(delta,7);
     command(&session,CMD_FRAME,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_RUN && session.app.vm.control.faulted && !session.app.vm.playing);
-    CHECK(session.app.vm.control.output_frame==before_frame);
-    CHECK(displayed[2]==220 && session.app.pixels.rgb[2]==220);
-    CHECK(session.app.vm.control.committed[2]==7); // successful batch survives driver failure
+    CHECK(reply.code==STATUS_RUN && app.vm.control.faulted && !app.vm.playing);
+    CHECK(app.vm.control.output_frame==before_frame);
+    CHECK(displayed[2]==220 && app.pixels.rgb[2]==220);
+    CHECK(app.vm.control.committed[2]==7); // successful batch survives driver failure
     deny_show=false; deny_allocation=false;
     command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==0);
     // Allocation failure during control preparation leaves management usable.
     upload(&session,&reply,control_wasm,sizeof(control_wasm)); CHECK(reply.code==STATUS_OK);
     deny_allocation=true; reply.snapshot_size=0;
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_RUN);
-    CHECK(session.app.vm.control.output_charge==0);
+    CHECK(app.vm.control.output_charge==0);
     deny_allocation=false;
     // Admission also rejects an output reservation when the aggregate budget
     // is already occupied; it does not raise the limit or lose that accounting.
@@ -354,7 +378,7 @@ int main(void) {
     CHECK(reply.code==STATUS_RUN && vm_heap_used()==admitted);
     CHECK(strstr(reply.message,"aggregate heap budget"));
     vm_heap_uncharge(occupied);
-    session_destroy(&session);
+    session_destroy(&session); app_destroy(&app);
     CHECK(vm_heap_used() == 0);
 
     // Two independently owned buffers/instances exercise the future slot boundary.
@@ -416,13 +440,13 @@ int main(void) {
     vm_destroy(&two); CHECK(vm_heap_used()==0 && shows==offscreen_shows);
 
     // Initialization failure changes the active revision and leaves no driver.
-    clock_now=0; session_init(&session,capture,&reply);
-    memcpy(session.app.staging,config,(size_t)config_size);
-    char *pin=strstr((char *)session.app.staging,"GP16"); CHECK(pin); pin[3]='7';
-    session.app.expected=(uint32_t)config_size; session.app.object_kind=1; session.app.staged=true;
+    clock_now=0; app_init(&app,capture,&reply); session_init(&session,&app,1,capture,&reply);
+    memcpy(app.staging,config,(size_t)config_size);
+    char *pin=strstr((char *)app.staging,"GP16"); CHECK(pin); pin[3]='7';
+    app.expected=(uint32_t)config_size; app.object_kind=1; app.staged=true; app.upload_owner=1;
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));
-    CHECK(reply.code==STATUS_CONFIG && session.app.revision==1 && !session.app.pixels.driver && !session.app.vm.target);
+    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app.pixels.driver && !app.vm.target);
     CHECK(strstr(reply.message,"initialization failed"));
-    session_destroy(&session);
+    session_destroy(&session); app_destroy(&app);
     return 0;
 }

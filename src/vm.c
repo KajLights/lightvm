@@ -59,7 +59,7 @@ static M3Result console_bytes(VmInstance *a, const uint8_t *p, size_t size) {
     }
     return m3_Yield();
 }
-m3ApiRawFunction(console_write) {
+m3ApiRawFunction(lightvm_console_write) {
     (void)_mem;
     m3ApiGetArg(uint32_t,offset);
     m3ApiGetArg(uint32_t,size);
@@ -152,7 +152,7 @@ M3Result vm_load(VmInstance *a) {
         if (!result) result=m3_CompileModule(a->module);
         return result;
     }
-    result=link_optional(a,"console","write","v(ii)",console_write);
+    result=link_optional(a,"console","write","v(ii)",lightvm_console_write);
     if (!result) result=link_optional(a,"wasi_snapshot_preview1","fd_write","i(iiii)",wasi_fd_write);
     if (!result) result=link_optional(a,"wasi_snapshot_preview1","proc_exit","v(i)",wasi_proc_exit);
     if (!result) result=link_optional(a,"led","pixel_count","i()",led_pixel_count);

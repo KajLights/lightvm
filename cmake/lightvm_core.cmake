@@ -8,7 +8,8 @@ function(lightvm_add_core)
     add_library(lightvm_config INTERFACE)
     target_include_directories(lightvm_config INTERFACE "${LIGHTVM_ROOT}/src")
     target_compile_definitions(lightvm_config INTERFACE
-        LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}")
+        LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
+        LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>)
 
     set(WASM3_SOURCE_DIR "${WASM3_SOURCE_DIR}" CACHE PATH "Optional existing wasm3 v0.5.0 checkout")
     if(NOT WASM3_SOURCE_DIR)
@@ -62,7 +63,10 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
         "${LIGHTVM_ROOT}/src/control.c"
         "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/devices.c"
-        "${LIGHTVM_ROOT}/src/store.c")
+        "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/network.c")
+    if(LIGHTVM_HTTP)
+        target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c")
+    endif()
     target_compile_features(lightvm_core PUBLIC c_std_11)
     target_compile_options(lightvm_core PRIVATE -Wall -Wextra -Werror)
     target_link_libraries(lightvm_core PUBLIC lightvm_config wasm3 m)

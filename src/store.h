@@ -2,8 +2,9 @@
 #define LIGHTVM_STORE_H
 #include "config.h"
 #include "platform.h"
-#define STORE_ENTRY_LIMIT (PROCEDURE_LIMIT + 1u)
+#define STORE_ENTRY_LIMIT (PROCEDURE_LIMIT + 2u)
 #define STORE_CONFIG "$config"
+#define STORE_NETWORK "$network"
 #define STORE_BANK_BYTES (STORAGE_BYTES / 2u)
 #define STORE_DATA_OFFSET 4096u
 typedef struct {
@@ -13,7 +14,7 @@ typedef struct {
 typedef struct {
     int bank;
     bool available;
-    uint32_t generation, config_revision, count;
+    uint32_t generation, config_revision, network_revision, count;
     StoreEntry entries[STORE_ENTRY_LIMIT];
 } Store;
 bool store_mount(Store *store);

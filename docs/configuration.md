@@ -51,6 +51,9 @@ supports RAM configuration and transient WASM uploads, and reports persistence
 unavailable. Each invocation creates a new host process; persisted state survives
 that restart, while unsaved state does not.
 
+Wi-Fi and HTTP use separate [network settings](networking.md), revisions and
+snapshot objects. They can be provisioned without configuring any light output.
+
 ## JSON configuration v1
 
 See [the Pico example](../examples/pico-startup.json). `schema` and `devices` are

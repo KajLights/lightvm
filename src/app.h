@@ -3,8 +3,13 @@
 #include "protocol.h"
 #include "vm.h"
 #include "store.h"
+#include "network.h"
 
 typedef struct {
+    Network network;
+    bool network_pending;
+    uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
+    char device_id[65], boot_id[33], network_error[160];
     VmInstance vm;
     PixelBuffer pixels;
     Store store;
@@ -26,4 +31,7 @@ void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);
 void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
+void app_dispatch(App *, uint64_t source, SendMessage, void *, uint8_t, uint16_t, const uint8_t *, size_t);
+void app_disconnect(App *, uint64_t source);
+void app_reply_delivered(App *, uint64_t source);
 #endif

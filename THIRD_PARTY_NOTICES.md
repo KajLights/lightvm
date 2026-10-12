@@ -80,8 +80,8 @@ Its Espressif copyright and Apache-2.0 identifier are retained. LightVM changes
 the timings to integer 800 kHz symbols and a 300 us reset at 20 MHz, and uses
 the encoder through the shared synchronous native output contract.
 
-The ESP32 project compiles only its required SDK component closure. Radio stacks,
-vendor radio libraries and PSRAM are not part of this first port. Preserve the
+The ESP32 project compiles only its required SDK component closure. Radio stacks and vendor radio libraries are included only in optional networking
+profiles; PSRAM remains excluded. Preserve the
 selected SDK copyright headers and permissive license texts supplied here with
 the application and bootloader. Additional SDK features/dependencies require
 their own notice review when introduced; these notices do not cover every
@@ -90,6 +90,35 @@ optional component in an ESP-IDF source checkout.
 The native Pico SDK, USB and PIO integration lives in `platforms/pico/`. The
 shared engine has no Pico SDK dependency. Future platform ports must preserve
 the notices for their selected native SDKs and linked services.
+
+
+## Optional Wi-Fi and HTTP dependencies
+
+Pico W networking uses the Pico SDK 1.5.1 pins: CYW43 driver
+`8ef38a6d32c54f850bff8f189bdca19ded33792a` and lwIP
+`239918ccc173cb2c2a62f41a40fd893f57faf1d6`. The driver and its bundled CYW43439
+firmware patches are used under the RP2040-specific alternative grant in
+[LICENSE.RP](licenses/cyw43-driver-rp2040.txt), copyright 2019–2022 George Robotics
+Pty Ltd, together with SDK BSD headers. This alternative permits this Pico W
+build; it is restricted to Raspberry Pi semiconductor devices. No CYW43 driver
+source or blob is linked into the host or ESP32 firmware. lwIP's BSD terms and
+Swedish Institute of Computer Science copyright are preserved in
+[its license](licenses/lwip-pico-sdk-1.5.1.txt).
+
+ESP32 networking adds the pinned ESP-IDF Wi-Fi binaries, copyright 2015–2016
+Espressif Systems, distributed in object form under
+[Apache-2.0](licenses/esp32-wifi-libraries.txt), plus ESP-IDF's HTTP server and
+native network/event/NVS services under the SDK's retained Apache headers.
+ESP-IDF's lwIP license is retained [separately](licenses/lwip-esp-idf-5.5.3.txt).
+The HTTP parser's MIT terms and Joyent/Node contributors' copyright are retained
+[in its notice](licenses/http-parser-esp-idf.txt). Selected networking source
+headers are preserved [here](licenses/networking-additional-notices.txt).
+
+These optional dependencies are excluded from USB-only native SDK dependency
+closures. Their notices are copied alongside build artifacts with the existing
+license bundle. Upstream sources: [CYW43 driver](https://github.com/georgerobotics/cyw43-driver/tree/8ef38a6d32c54f850bff8f189bdca19ded33792a),
+[lwIP for Pico SDK](https://github.com/lwip-tcpip/lwip/tree/239918ccc173cb2c2a62f41a40fd893f57faf1d6),
+[ESP-IDF Wi-Fi libraries](https://github.com/espressif/esp-idf/tree/v5.5.3/components/esp_wifi/lib).
 
 ## Redistribution
 

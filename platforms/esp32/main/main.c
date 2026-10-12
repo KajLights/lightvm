@@ -1,5 +1,8 @@
 #include "session.h"
 #include "port.h"
+#if LIGHTVM_WIFI
+#include "network_port.h"
+#endif
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -40,19 +43,31 @@ static void output_message(void *context, uint8_t type, uint16_t id,
         transport->failed = true;
 }
 void app_main(void) {
+    static App app;
     static Session session;
     UsbTransport transport = {0};
     usb_serial_jtag_driver_config_t usb = {.tx_buffer_size = 2048, .rx_buffer_size = 2048};
     ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb));
     esp32_port_init();
-    session_init(&session, output_message, &transport);
+    app_init(&app, output_message, &transport);
+    session_init(&session, &app, 1, output_message, &transport);
+#if LIGHTVM_WIFI
+    esp32_network_init(&app);
+#endif
+    bool connected=usb_serial_jtag_is_connected();
     for (;;) {
-        session_tick(&session);
+#if LIGHTVM_WIFI
+        esp32_network_poll();
+#endif
+        bool current=usb_serial_jtag_is_connected();
+        if (connected && !current) { session_destroy(&session); session_init(&session,&app,1,output_message,&transport); }
+        connected=current;
+        app_tick(&app);
         uint8_t input[256];
         int size = usb_serial_jtag_read_bytes(input, sizeof(input), 0);
         if (size > 0) {
             transport.failed = false;
-            session_feed(&session, input, (size_t)size);
+            session_feed(&session, input, (size_t)size); app_reply_delivered(&app,1);
         }
         // Yield even under continuous traffic so idle/watchdog tasks run.
         vTaskDelay(pdMS_TO_TICKS(1));

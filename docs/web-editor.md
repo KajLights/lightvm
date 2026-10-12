@@ -1,4 +1,4 @@
-# Static Python editor prototype
+# Static Python editor
 
 The editor checks and compiles the existing restricted Python language locally in
 a Pyodide worker. WABT assembles the generated WebAssembly text. Only the compiled
@@ -49,8 +49,8 @@ closes the connection; reconnect before another upload.
 An accepted BEGIN replaces the resident program. An interrupted or rejected
 upload can therefore leave the device idle; the previous resident animation is
 not automatically restored. Uploading does not save a program or change startup
-configuration. Persistence, hardware configuration editing, live parameter
-controls and animation preview are outside this prototype.
+configuration. Use the management panels below for persistence, hardware configuration and live
+parameters. Animation preview remains outside this editor.
 
 Pico connections assert DTR at 115200 baud. ESP32 connections deassert DTR/RTS
 immediately after opening. Web Serial cannot set those signals before opening,
@@ -61,6 +61,46 @@ pending.
 Web Serial requires HTTPS or a trusted loopback origin, and is unavailable in
 Safari/Firefox. Unsupported browsers can still edit and download compiled programs.
 Opening `index.html` directly through `file://` is unsupported.
+
+
+## HTTP and management panels
+
+[Build and provision networking](networking.md) once through USB. Enter the device's
+HTTP origin and click **Connect HTTP**. USB and HTTP can remain connected; the
+**Command path** selector chooses the path for subsequent operations. Each
+operation stays on its selected path, and failures never replay it through another
+connection. Device and boot identity must match before attaching the second path.
+Closing a path leaves autonomous playback running.
+
+Background polling updates connection/network status in place. It preserves form
+focus, text selection and unsaved settings, and does not replace the command-path
+selector or disable controls. A manually entered HTTP address is retained.
+
+The four management panels provide:
+
+- Wi-Fi enablement, country, an ordered SSID list, HTTP settings and connection
+  status. Existing blank passwords are retained; selecting an open network clears
+  its password. Credentials are cleared from the form after saving and never
+  written to browser storage.
+- Output JSON validation, RAM apply, persistent apply/save and startup selection.
+  Applying output configuration stops playback; network changes preserve it.
+- Named compiled WASM save, list, download, deletion and activation on A. Saving
+  does not activate or change startup. Python source remains in browser drafts and
+  downloads.
+- Manifest-derived bool, int, float and RGB8 controls, plus pause/resume. Parameter
+  changes use the displayed generation/revision and refresh after a conflict.
+
+Capabilities determine which controls are enabled. Network controls require a
+network-enabled firmware; storage controls require available device storage.
+**Upload & run** continues to replace a transient resident program independently
+of library saves.
+
+HTTP works without Web Serial. Modern Chrome/Edge can request local-network access
+from an HTTPS editor; grant that permission when requested. The client annotates
+local requests, supports CORS and shows reachability/permission errors. Browser
+support varies: use the localhost editor when HTTPS-to-HTTP access is blocked.
+See [Chrome's local-network access guidance](https://developer.chrome.com/blog/local-network-access).
+No browser security flags or automatic path failover are required.
 
 ## Host elsewhere
 

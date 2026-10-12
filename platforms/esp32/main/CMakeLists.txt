@@ -1,6 +1,13 @@
-idf_component_register(SRCS "main.c" "platform.c" "ws2812_encoder.c"
-    INCLUDE_DIRS "."
-    REQUIRES esp_driver_gpio esp_driver_rmt esp_driver_usb_serial_jtag esp_timer esp_partition)
+set(port_sources main.c platform.c ws2812_encoder.c)
+set(port_requires esp_driver_gpio esp_driver_rmt esp_driver_usb_serial_jtag esp_timer esp_partition)
+if("$ENV{LIGHTVM_PORT_WIFI}" STREQUAL "1")
+    list(APPEND port_sources network_port.c)
+    list(APPEND port_requires esp_wifi esp_netif esp_event nvs_flash esp_hw_support)
+endif()
+if("$ENV{LIGHTVM_PORT_HTTP}" STREQUAL "1")
+    list(APPEND port_requires esp_http_server)
+endif()
+idf_component_register(SRCS ${port_sources} INCLUDE_DIRS "." REQUIRES ${port_requires})
 include("${LIGHTVM_ROOT}/cmake/lightvm_core.cmake")
 lightvm_add_core()
 target_link_libraries(${COMPONENT_LIB} PUBLIC lightvm_core)

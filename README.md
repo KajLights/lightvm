@@ -35,6 +35,7 @@ would require an offset/length convention; console output is the smaller API.
 |---|---|
 | POSIX host (macOS/Linux) | Implemented: pipes, monotonic clock, logical RGB snapshots and integration tests |
 | Original RP2040 Pico | Implemented: USB CDC and WS2812 PIO output; previous hardware checks are recorded below |
+| RP2040 Pico W | Implemented: USB, optional Wi-Fi/HTTP and WS2812 PIO; radio hardware validation pending |
 | Seeed XIAO ESP32-S3 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 | Seeed XIAO ESP32-C6 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 
@@ -45,7 +46,7 @@ would require an offset/length convention; console output is the smaller API.
 | `src/session.h` | Shared session lifecycle and byte decoding; driven by a native event loop |
 | `platforms/host/` | POSIX entry point, pipes, clock and host memory allocation |
 | `platforms/pico/` | Pico entry point, SDK bootstrap, USB, PIO and reserved flash storage |
-| `platforms/esp32/` | ESP-IDF project, two XIAO profiles, USB Serial/JTAG, RMT output and one FreeRTOS engine owner |
+| `platforms/esp32/` | ESP-IDF project, two XIAO profiles, USB Serial/JTAG, RMT output and optional Wi-Fi/HTTP and one FreeRTOS engine owner |
 | `cmake/lightvm_core.cmake` | Reusable engine build for ports with their own SDK project/entry point |
 
 The command handler has a transport-independent `SendMessage` callback.
@@ -55,8 +56,8 @@ is currently one resident `VmInstance` and one owned RGB target. The execution
 pointer and aggregate allocator accounting remain serialized; concurrent engine
 execution is unsupported.
 
-Storage has native adapters on host, Pico and ESP32. Wi-Fi, MQTT, Matter,
-provisioning and firmware OTA remain planned native services. Firmware OTA replaces the native
+Storage has native adapters on host, Pico and ESP32. Optional [Wi-Fi and HTTP management](docs/networking.md) coexist with USB. MQTT,
+Matter and firmware OTA remain planned native services. Firmware OTA replaces the native
 engine and services; an animation upload replaces a RAM-resident WASM program.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).
 
@@ -122,9 +123,10 @@ Python 3.9+; the device contains no Python interpreter. Scenes and waits follow 
 
 The [static browser editor](docs/web-editor.md) uses the same compiler in Pyodide,
 shows inline diagnostics as you type, and uploads/runs animations over the current
-USB CDC connection using Web Serial. Start it with `python3 tools/serve_editor.py`
+USB CDC or HTTP connection. USB and HTTP can stay connected together. Start it with `python3 tools/serve_editor.py`
 and open `http://localhost:8000` in desktop Chrome or Edge. It includes all six
-Python examples and source/WASM downloads; no compilation server is required.
+Python examples and source/WASM downloads, network provisioning, saved procedures, configuration
+and live parameter controls; no compilation server is required.
 
 The example configuration drives 100 RGB WS2812B pixels on **GP16**
 (physical Pico pin 21), GRB wire order at 800 kHz, with brightness limited to

@@ -1,0 +1,207 @@
+#include "network_port.h"
+#include "esp_wifi.h"
+#include "esp_netif.h"
+#include "esp_event.h"
+#include "esp_random.h"
+#include "esp_mac.h"
+#include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+#include <stdio.h>
+#include <string.h>
+#if LIGHTVM_HTTP
+#include "http.h"
+#include "esp_http_server.h"
+#include <stdatomic.h>
+#endif
+static App *engine;
+static bool initialized,wifi_created,scanning,scan_done,scan_failed;
+static esp_event_handler_instance_t wifi_events,ip_events;
+static esp_netif_t *station;
+static QueueHandle_t events;
+static bool observed[NETWORK_LIMIT];
+static int failure;
+static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
+    (void)ctx; int value=0;
+    if (base==WIFI_EVENT && id==WIFI_EVENT_SCAN_DONE) value=1;
+    else if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t *d=data; value=d->reason==WIFI_REASON_ASSOC_LEAVE?0:-(int)d->reason;
+    } else if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) value=2;
+    if (value) xQueueSend(events,&value,0);
+}
+static bool configure(void *ctx,const NetworkConfig *c) {
+    (void)ctx;
+    if (!c->wifi_enabled && !initialized) return true;
+    if (!initialized) {
+        // LightVM's snapshot is the sole credential store. NVS is for PHY calibration.
+        if (nvs_flash_init()!=ESP_OK || esp_netif_init()!=ESP_OK) return false;
+        esp_err_t loop=esp_event_loop_create_default(); if (loop!=ESP_OK && loop!=ESP_ERR_INVALID_STATE) return false;
+        if (!events) events=xQueueCreate(16,sizeof(int));
+        if (!events) return false;
+        if (!station) station=esp_netif_create_default_wifi_sta();
+        if (!station) return false;
+        wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT(); init.nvs_enable=0;
+        if (!wifi_created) { if (esp_wifi_init(&init)!=ESP_OK) return false; wifi_created=true; }
+        if (esp_wifi_set_storage(WIFI_STORAGE_RAM)!=ESP_OK || esp_wifi_set_mode(WIFI_MODE_STA)!=ESP_OK) return false;
+        if (!wifi_events && esp_event_handler_instance_register(WIFI_EVENT,ESP_EVENT_ANY_ID,event,NULL,&wifi_events)!=ESP_OK) return false;
+        if (!ip_events && esp_event_handler_instance_register(IP_EVENT,IP_EVENT_STA_GOT_IP,event,NULL,&ip_events)!=ESP_OK) return false;
+        initialized=true;
+    }
+    esp_wifi_stop(); xQueueReset(events); scan_done=false; scanning=false; failure=0;
+    if (!c->wifi_enabled) return true;
+    if (esp_wifi_set_country_code(!strcmp(c->country,"XX")?"01":c->country,true)!=ESP_OK) return false;
+    return esp_wifi_start()==ESP_OK;
+}
+static bool scan(void *ctx) {
+    (void)ctx; failure=0; scan_done=false; scan_failed=false; memset(observed,0,sizeof(observed));
+    wifi_scan_config_t config={.show_hidden=true};
+    scanning=esp_wifi_scan_start(&config,false)==ESP_OK; return scanning;
+}
+static int scan_poll(void *ctx,const char *ssid,bool *visible) {
+    (void)ctx;
+    if (!scan_done) return 0;
+    if (scan_failed) return -1;
+    if (ssid && visible) { *visible=false; for (unsigned i=0;i<engine->network.config.count;i++) if (!strcmp(ssid,engine->network.config.networks[i].ssid)) *visible=observed[i]; }
+    return 1;
+}
+static bool connect(void *ctx,const WifiNetwork *network) {
+    (void)ctx; failure=0;
+    wifi_config_t config={0}; memcpy(config.sta.ssid,network->ssid,strlen(network->ssid)); memcpy(config.sta.password,network->password,strlen(network->password));
+    config.sta.threshold.authmode=network->password[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
+    return esp_wifi_set_config(WIFI_IF_STA,&config)==ESP_OK && esp_wifi_connect()==ESP_OK;
+}
+static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capacity) {
+    (void)ctx; wifi_ap_record_t ap; esp_netif_ip_info_t info;
+    if (initialized && esp_wifi_sta_get_ap_info(&ap)==ESP_OK && esp_netif_get_ip_info(station,&info)==ESP_OK && info.ip.addr) {
+        snprintf(ip,capacity,IPSTR,IP2STR(&info.ip)); return 1;
+    }
+    if (failure) { snprintf(error,error_capacity,"Wi-Fi disconnect reason %d",-failure); return -1; }
+    return 0;
+}
+static void disconnect(void *ctx) { (void)ctx; if (initialized) { if (scanning) esp_wifi_scan_stop(); esp_wifi_disconnect(); } scanning=false; }
+static uint32_t random_value(void *ctx) { (void)ctx; return esp_random(); }
+#if LIGHTVM_HTTP
+static Http http;
+static httpd_handle_t handle;
+static QueueHandle_t ingress,transmit;
+typedef struct { httpd_req_t *request; atomic_bool occupied,failed,done; bool closing; } Client;
+static Client clients[6];
+static atomic_bool stopping;
+typedef struct { Client *client; HttpRequest request; } Incoming;
+typedef struct { Client *client; size_t size; uint8_t bytes[512]; } Outgoing;
+static void sender(void *ctx) {
+    (void)ctx; Outgoing job;
+    for (;;) {
+        if (!xQueueReceive(transmit,&job,portMAX_DELAY)) continue;
+        Client *c=job.client;
+        if (!job.size) {
+            int fd=httpd_req_to_sockfd(c->request); httpd_handle_t server=c->request->handle;
+            httpd_req_async_handler_complete(c->request); httpd_sess_trigger_close(server,fd);
+            atomic_store(&c->done,true); continue;
+        }
+        if (atomic_load(&c->failed)) continue;
+        size_t sent=0;
+        while (sent<job.size) {
+            int n=httpd_socket_send(c->request->handle,httpd_req_to_sockfd(c->request),(const char *)job.bytes+sent,job.size-sent,0);
+            if (n<=0) { atomic_store(&c->failed,true); break; } sent+=(size_t)n;
+        }
+    }
+}
+static int output(void *ctx,const uint8_t *bytes,size_t size) {
+    Client *c=ctx; if (atomic_load(&c->failed)) return -1;
+    Outgoing job={.client=c,.size=size}; memcpy(job.bytes,bytes,size);
+    return xQueueSend(transmit,&job,0)==pdTRUE?(int)size:0;
+}
+static bool close_client(void *ctx) {
+    Client *c=ctx;
+    if (!c->closing) { Outgoing job={.client=c}; if (xQueueSend(transmit,&job,0)!=pdTRUE) return false; c->closing=true; }
+    if (!atomic_load(&c->done)) return false;
+    atomic_store(&c->occupied,false); return true;
+}
+static esp_err_t request(httpd_req_t *r) {
+    if (atomic_load(&stopping)) { httpd_resp_set_status(r,"503 Service Unavailable"); return httpd_resp_send(r,NULL,0); }
+    Client *c=NULL;
+    for (unsigned i=0;i<6;i++) { bool empty=false; if (atomic_compare_exchange_strong(&clients[i].occupied,&empty,true)) { c=&clients[i]; break; } }
+    if (!c) { httpd_resp_set_status(r,"503 Service Unavailable"); return httpd_resp_send(r,NULL,0); }
+    atomic_store(&c->failed,false); atomic_store(&c->done,false); c->closing=false;
+    Incoming incoming={.client=c}; HttpRequest *q=&incoming.request;
+    snprintf(q->method,sizeof(q->method),"%s",r->method==HTTP_POST?"POST":r->method==HTTP_DELETE?"DELETE":"OPTIONS");
+    if (strlen(r->uri)>=sizeof(q->path)) q->error=400; else strcpy(q->path,r->uri);
+    if (r->content_len>sizeof(q->body)) q->error=413;
+    if (r->method==HTTP_POST && !strcmp(q->path,"/api/v1/command")) {
+        char type[64];
+        if (httpd_req_get_hdr_value_str(r,"Content-Type",type,sizeof(type))!=ESP_OK || strcmp(type,"application/octet-stream")) q->error=415;
+        if (httpd_req_get_hdr_value_str(r,"X-LightVM-Session",q->token,sizeof(q->token))!=ESP_OK) q->error=400;
+    }
+    if (!q->error) while (q->size<r->content_len) {
+        int n=httpd_req_recv(r,(char *)q->body+q->size,r->content_len-q->size);
+        if (n<=0) { q->error=400; break; } q->size+=(size_t)n;
+    }
+    if (httpd_req_async_handler_begin(r,&c->request)!=ESP_OK) { atomic_store(&c->occupied,false); return ESP_FAIL; }
+    q->io=(HttpIO){c,output,close_client};
+    if (xQueueSend(ingress,&incoming,0)!=pdTRUE) {
+        httpd_resp_set_status(c->request,"503 Service Unavailable"); httpd_resp_send(c->request,NULL,0);
+        httpd_req_async_handler_complete(c->request); atomic_store(&c->occupied,false);
+    }
+    return ESP_OK;
+}
+static bool start_http(uint16_t port) {
+    httpd_config_t config=HTTPD_DEFAULT_CONFIG(); config.server_port=port; config.uri_match_fn=httpd_uri_match_wildcard;
+    config.max_open_sockets=6; config.recv_wait_timeout=2; config.send_wait_timeout=2; config.stack_size=6144;
+    if (httpd_start(&handle,&config)!=ESP_OK) return false;
+    const httpd_method_t methods[]={HTTP_POST,HTTP_DELETE,HTTP_OPTIONS};
+    for (unsigned i=0;i<3;i++) { httpd_uri_t route={.uri="/api/v1/*",.method=methods[i],.handler=request}; if (httpd_register_uri_handler(handle,&route)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; } }
+    return true;
+}
+#endif
+void esp32_network_init(App *app) {
+    engine=app;
+    app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect,link,disconnect,random_value};
+    NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
+#if LIGHTVM_HTTP
+    http_init(&http,app); ingress=xQueueCreate(HTTP_QUEUE,sizeof(Incoming)); transmit=xQueueCreate(4,sizeof(Outgoing));
+    if (!ingress || !transmit || xTaskCreate(sender,"http-output",4096,NULL,5,NULL)!=pdPASS) { strcpy(app->network_error,"HTTP task allocation failed"); }
+#endif
+}
+void esp32_network_poll(void) {
+    if (events) {
+        int value;
+        while (xQueueReceive(events,&value,0)==pdTRUE) {
+            if (value==1) {
+                scan_done=true; scanning=false; uint16_t count=0; scan_failed=esp_wifi_scan_get_ap_num(&count)!=ESP_OK;
+                for (unsigned k=0;k<count && !scan_failed;k++) {
+                    wifi_ap_record_t record; scan_failed=esp_wifi_scan_get_ap_record(&record)!=ESP_OK;
+                    if (!scan_failed) for (unsigned i=0;i<engine->network.config.count;i++) if (!strcmp((const char *)record.ssid,engine->network.config.networks[i].ssid)) observed[i]=true;
+                }
+                esp_wifi_clear_ap_list();
+            }
+            else if (value<0) failure=value; else failure=0;
+        }
+    }
+#if LIGHTVM_HTTP
+    static NetworkState previous=NET_DISABLED; static uint16_t listening_port;
+    if (previous==NET_CONNECTED && engine->network.state!=NET_CONNECTED) http_disconnect_sessions(&http);
+    previous=engine->network.state;
+    bool enabled=engine->network.config.http_enabled;
+    if (handle && !engine->network_pending && (!enabled || listening_port!=engine->network.config.port)) {
+        if (!atomic_exchange(&stopping,true)) { http_disconnect_sessions(&http); xQueueReset(ingress); }
+        bool busy=false;
+        for (unsigned i=0;i<6;i++) if (atomic_load(&clients[i].occupied)) {
+            atomic_store(&clients[i].failed,true); http_cancel_io(&http,&clients[i]);
+            if (!close_client(&clients[i])) busy=true;
+        }
+        if (busy) return;
+        httpd_stop(handle); handle=NULL; atomic_store(&stopping,false);
+    }
+    if (!handle && !engine->network_pending && enabled && ingress && transmit) { if (start_http(engine->network.config.port)) listening_port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
+    if (handle) {
+        Incoming incoming;
+        // Ingress is the four-command queue. Transfer only when the shared
+        // engine can execute it, so the two queues do not double capacity.
+        if (!http.sending && !http.count && xQueueReceive(ingress,&incoming,0)==pdTRUE) http_submit(&http,&incoming.request);
+        http_tick(&http,platform_time_us());
+        for (unsigned i=0;i<6;i++) if (clients[i].closing && atomic_load(&clients[i].done) && (!http.sending || http.active.io.context!=&clients[i])) atomic_store(&clients[i].occupied,false);
+    }
+#endif
+}

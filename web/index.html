@@ -44,10 +44,45 @@ def draw(ctx):
         <div id="diagnostics" class="diagnostics" role="status" aria-live="polite"><p class="muted">The compiler is loading. You can start editing now.</p></div>
       </section>
       <aside class="sidebar">
-        <section class="card device-card"><div class="card-heading"><span class="step">01</span><h2>Your device</h2><span id="device-dot" class="status-dot"></span></div><p id="device-summary" class="muted">Connect a LightVM board over USB.</p><div class="connection-label">USB Serial · current firmware</div><p class="helper">For Pico and ESP32 firmware. Use desktop Chrome or Edge.</p><button id="connect" class="secondary full">Connect device <span aria-hidden="true">↗</span></button><button id="disconnect" class="quiet full" hidden>Disconnect</button><div id="device-details" hidden><dl><div><dt>Board</dt><dd id="board">—</dd></div><div><dt>Module limit</dt><dd id="module-limit">—</dd></div><div><dt>Output</dt><dd id="output-binding">—</dd></div></dl></div></section>
+        <section class="card device-card"><div class="card-heading"><span class="step">01</span><h2>Your device</h2><span id="device-dot" class="status-dot"></span></div><p id="device-summary" class="muted">Connect over USB or your local network.</p><label for="command-path">Command path</label><select id="command-path" class="full"><option value="">No path connected</option></select><p id="path-health" class="helper">USB: disconnected · HTTP: disconnected</p><label for="http-address">Device HTTP address</label><input id="http-address" type="url" placeholder="http://192.168.1.20" autocomplete="off"><button id="connect-http" class="secondary full">Connect HTTP</button><p class="helper">For Pico and ESP32 firmware. Use desktop Chrome or Edge.</p><button id="connect" class="secondary full">Connect USB <span aria-hidden="true">↗</span></button><button id="disconnect" class="quiet full" hidden>Disconnect</button><div id="device-details" hidden><dl><div><dt>Board</dt><dd id="board">—</dd></div><div><dt>Module limit</dt><dd id="module-limit">—</dd></div><div><dt>Output</dt><dd id="output-binding">—</dd></div></dl></div></section>
         <section class="card"><div class="card-heading"><span class="step">02</span><h2>Send your animation</h2></div><p class="muted">Compilation happens in your browser. Your source stays here.</p><div class="artifact"><span>Compiled program</span><strong id="artifact-size">Checking…</strong></div><p id="artifact-detail" class="helper">Ready when the code checks pass.</p><button id="upload" class="primary full" disabled>Upload &amp; run <span aria-hidden="true">→</span></button><progress id="upload-progress" max="1" value="0" hidden aria-label="Program upload progress"></progress><div class="button-pair"><button id="download" class="secondary" disabled>Download .wasm</button><button id="stop" class="quiet" disabled>Stop lights</button></div><p class="helper deployment-note">Upload replaces the running program. It plays until stopped or rebooted; startup storage is a separate step.</p></section>
         <section class="card activity-card"><div class="card-heading"><h2>Activity</h2><button id="clear-log" class="quiet small">Clear</button></div><ol id="activity" aria-live="polite"><li><span class="log-dot"></span><span>Workspace opened.</span></li></ol></section>
       </aside>
+    </div>
+
+    <div class="management-grid" id="management">
+      <section class="card"><div class="card-heading"><h2>Wi-Fi &amp; HTTP</h2><button id="network-refresh" class="quiet">Refresh</button></div>
+        <p id="network-state" class="helper">Connect over USB to provision Wi-Fi. HTTP access is open to clients on your LAN.</p>
+        <fieldset id="network-fields" disabled>
+          <label><input id="wifi-enabled" type="checkbox"> Enable Wi-Fi</label>
+          <label for="wifi-country">Radio country (XX = worldwide)</label><input id="wifi-country" value="XX" maxlength="2" autocomplete="off">
+          <div id="wifi-networks"></div><button id="wifi-add" class="quiet">Add network</button>
+          <label><input id="http-enabled" type="checkbox"> Enable HTTP commands</label>
+          <label for="http-port">HTTP port</label><input id="http-port" type="number" min="1" max="65535" value="80">
+          <button id="network-save" class="secondary full">Save &amp; reconnect network</button>
+        </fieldset><p class="helper">Networks are tried from top to bottom. Leave an existing password empty to retain it. Network changes keep the animation running.</p>
+      </section>
+      <section class="card"><div class="card-heading"><h2>Output &amp; startup</h2><button id="config-refresh" class="quiet">Refresh</button></div>
+        <fieldset id="config-fields" disabled>
+          <label for="config-json">Device configuration</label><textarea id="config-json" class="config-code" spellcheck="false" aria-label="Device configuration JSON"></textarea>
+          <div class="button-pair"><button id="config-validate" class="quiet">Validate</button><button id="config-apply" class="secondary">Apply in RAM</button></div>
+          <button id="config-save" class="secondary full">Apply &amp; save for reboot</button>
+          <label for="startup-procedure">Startup procedure</label><select id="startup-procedure"><option value="">Stay idle on reboot</option></select>
+          <button id="startup-save" class="quiet full">Save startup selection</button>
+        </fieldset><p class="helper">Applying output configuration stops playback. Saved configuration is loaded after reboot.</p>
+      </section>
+      <section class="card"><div class="card-heading"><h2>Stored WASM procedures</h2><button id="procedures-refresh" class="quiet">Refresh</button></div>
+        <fieldset id="procedure-fields" disabled>
+          <label for="procedure-name">Save compiled animation as</label><input id="procedure-name" placeholder="rainbow" maxlength="32" autocomplete="off">
+          <button id="procedure-save" class="secondary full">Save compiled WASM</button>
+          <label for="procedure-select">Stored procedure</label><select id="procedure-select"></select>
+          <div class="button-pair"><button id="procedure-activate" class="secondary">Activate on A</button><button id="procedure-download" class="quiet">Download</button></div>
+          <button id="procedure-delete" class="quiet full">Delete selected procedure</button>
+        </fieldset><p class="helper">Saving adds to the library. Activation starts it; startup selection controls what runs after reboot. Python source stays in this browser.</p>
+      </section>
+      <section class="card"><div class="card-heading"><h2>Live parameters</h2><button id="parameters-refresh" class="quiet">Refresh</button></div>
+        <p id="parameter-state" class="helper">Load a control program to edit its parameters.</p><fieldset id="parameter-fields" disabled><div id="parameters"></div><button id="parameters-apply" class="secondary full">Apply parameter values</button><div class="button-pair"><button id="program-pause" class="quiet">Pause</button><button id="program-resume" class="quiet">Resume</button></div></fieldset>
+      </section>
     </div>
     <p id="notice" class="notice" role="alert" hidden></p>
     <footer class="page-footer"><span>LightVM editor prototype</span><span>Pyodide · WABT · CodeMirror</span><button id="retry-compiler" class="quiet" hidden>Retry compiler</button></footer>

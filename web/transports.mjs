@@ -45,3 +45,46 @@ export class SerialTransport {
     })();
   }
 }
+
+export class HttpTransport {
+  constructor(url, { timeout = 5000, fetch: request = globalThis.fetch } = {}) {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") throw new Error("Enter a device HTTP origin, e.g. http://192.168.1.20");
+    this.addressSpace = parsed.hostname === "localhost" || parsed.hostname.startsWith("127.") || parsed.hostname === "[::1]" ? "loopback" : "local";
+    this.url = parsed.origin; this.timeout = timeout; this.request = request.bind(globalThis);
+    this.onData = () => {}; this.onDisconnect = () => {}; this.closing = false;
+    this.label = `${parsed.host} · HTTP`; this.controllers = new Set();
+  }
+  async exchange(path, { method = "POST", body } = {}) {
+    const controller = new AbortController(); this.controllers.add(controller);
+    const timer = setTimeout(() => controller.abort(), this.timeout);
+    try {
+      const response = await this.request(this.url + path, { method, body, signal: controller.signal,
+        headers: { "Content-Type": "application/octet-stream", ...(this.session ? { "X-LightVM-Session": this.session } : {}) },
+        credentials: "omit", redirect: "error", cache: "no-store", targetAddressSpace: this.addressSpace });
+      if (!response.ok) throw new Error(`Device HTTP error ${response.status}. Reconnect and refresh state before retrying.`);
+      return await response.arrayBuffer();
+    } catch (error) {
+      if (error.name === "TypeError") throw new Error("Cannot reach the device. Check its address, Wi-Fi and browser local-network permission.");
+      throw error;
+    } finally { clearTimeout(timer); this.controllers.delete(controller); }
+  }
+  async open() {
+    const bytes = await this.exchange("/api/v1/sessions"); this.identity = JSON.parse(new TextDecoder().decode(bytes));
+    if (!/^[0-9a-f]{32}$/.test(this.identity.session_id)) throw new Error("Invalid HTTP session response.");
+    this.session = this.identity.session_id; return this;
+  }
+  async write(bytes) {
+    if (this.closing) throw new Error("HTTP connection closed.");
+    const response = new Uint8Array(await this.exchange("/api/v1/command", { body: bytes }));
+    if (!this.closing) this.onData(response);
+  }
+  close() {
+    if (this.closePromise) return this.closePromise;
+    this.closing = true; for (const controller of this.controllers) controller.abort();
+    return this.closePromise = (async () => {
+      if (this.session) await this.exchange(`/api/v1/sessions/${this.session}`, { method: "DELETE" }).catch(() => {});
+      this.session = null;
+    })();
+  }
+}

@@ -1,6 +1,13 @@
 #ifndef LIGHTVM_CONFIG_H
 #define LIGHTVM_CONFIG_H
 
+#ifndef LIGHTVM_WIFI
+#define LIGHTVM_WIFI 0
+#endif
+#ifndef LIGHTVM_HTTP
+#define LIGHTVM_HTTP 0
+#endif
+
 // A port supplies a board/resource profile; defaults are the portable baseline.
 #ifdef LIGHTVM_BOARD_CONFIG
 #include LIGHTVM_BOARD_CONFIG
