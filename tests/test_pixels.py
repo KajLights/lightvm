@@ -17,6 +17,7 @@ class PixelTests(unittest.TestCase):
         self.transport = ProcessTransport(Path(os.environ.get("LIGHTVM_RECEIVER", ROOT / "build/host/lightvm")))
         self.output = bytearray()
         self.client = Client(self.transport, output=self.output.extend)
+        self.count = int(self.client.status_fields()["pixels"])
 
     def tearDown(self):
         self.transport.close()
@@ -49,10 +50,11 @@ class PixelTests(unittest.TestCase):
               else i32.const 43691 i32.const 255 i32.const 255 call $hsv end
             end))''')
         reply = self.step()
-        self.assertEqual((reply.code, reply.value), (0, 100))
+        self.assertEqual((reply.code, reply.value), (0, self.count))
         self.assertEqual(self.client.pixel_snapshot[:9], bytes([255, 0, 0, 0, 255, 0, 0, 0, 255]))
-        self.assertEqual(len(self.client.pixel_snapshot), 300)
-        self.assertEqual(self.client.pixel_snapshot[-3:], bytes([255, 0, 0]))
+        self.assertEqual(len(self.client.pixel_snapshot), self.count * 3)
+        primary_colors = (bytes([255, 0, 0]), bytes([0, 255, 0]), bytes([0, 0, 255]))
+        self.assertEqual(self.client.pixel_snapshot[-3:], primary_colors[(self.count - 1) % 3])
 
     def test_rgb_per_pixel_and_native_count(self):
         self.upload('''(module
@@ -63,10 +65,10 @@ class PixelTests(unittest.TestCase):
             local.get $index
             i32.const 255 local.get $index i32.sub
             i32.const 17 call $rgb))''')
-        self.assertEqual(self.client.command(RUN).value, 100)
+        self.assertEqual(self.client.command(RUN).value, self.count)
         self.assertEqual(self.step().code, 0)
         self.assertEqual(self.client.pixel_snapshot[:3], bytes([0, 255, 17]))
-        self.assertEqual(self.client.pixel_snapshot[-3:], bytes([99, 156, 17]))
+        self.assertEqual(self.client.pixel_snapshot[-3:], bytes([self.count - 1, 256 - self.count, 17]))
 
     def test_before_render_runs_once_and_retains_phase(self):
         self.upload('''(module
@@ -77,15 +79,15 @@ class PixelTests(unittest.TestCase):
           (func (export "render") (param i32)
             i32.const 0 i32.const 0 global.get $level call $hsv))''')
         self.assertEqual(self.step(16).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([16, 16, 16]) * 100)
+        self.assertEqual(self.client.pixel_snapshot, bytes([16, 16, 16]) * self.count)
         self.assertEqual(self.step(4).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([20, 20, 20]) * 100)
+        self.assertEqual(self.client.pixel_snapshot, bytes([20, 20, 20]) * self.count)
 
     def test_rainbow_sample_scrolls_without_linear_memory(self):
         self.upload((ROOT / "samples/rainbow.wat").read_text())
         self.assertEqual(self.step().code, 0)
         first = bytes(self.client.pixel_snapshot)
-        self.assertGreater(len(set(tuple(first[i:i+3]) for i in range(0, 300, 3))), 50)
+        self.assertGreater(len(set(tuple(first[i:i+3]) for i in range(0, self.count * 3, 3))), 50)
         self.assertEqual(self.step(33).code, 0)
         self.assertNotEqual(first, self.client.pixel_snapshot)
         fields = dict(item.split("=", 1) for item in self.client.command(STATUS).message.split())
@@ -113,9 +115,9 @@ class PixelTests(unittest.TestCase):
             local.get $index i32.eqz i32.or
             if i32.const 255 i32.const 0 i32.const 0 call $rgb end))''')
         self.assertEqual(self.step(0).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) * 100)
+        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) * self.count)
         self.assertEqual(self.step(1).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) + bytes(297))
+        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) + bytes((self.count - 1) * 3))
 
     def test_render_signature_and_missing_export(self):
         for text in ['(module (func (export "run")))',
@@ -144,7 +146,7 @@ class PixelTests(unittest.TestCase):
             i32.const 255 i32.const 0 i32.const 0 call $rgb))''')
         self.assertEqual(self.step().code, 0)
         self.assertEqual(self.output, b"frame\n")
-        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) * 100)
+        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) * self.count)
 
     def test_play_renders_during_idle_input_and_stop_clears_mode(self):
         self.upload((ROOT / "samples/rainbow.wat").read_text())
@@ -177,13 +179,13 @@ class PixelTests(unittest.TestCase):
         self.assertIn("use FRAME", reply.message)
         self.assertEqual(self.output, b"")
         self.assertEqual(self.step().code, 0)
-        self.assertEqual(self.output, b"log" * 100)
+        self.assertEqual(self.output, b"log" * self.count)
 
     def test_native_demo_works_without_a_module(self):
         self.assertEqual(self.client.command(NATIVE_DEMO).code, 0)
         self.assertIn("mode=native", self.client.command(STATUS).message)
         self.assertEqual(self.step().code, 0)
-        self.assertEqual(len(self.client.pixel_snapshot), 300)
+        self.assertEqual(len(self.client.pixel_snapshot), self.count * 3)
         self.assertEqual(self.client.command(STOP).code, 0)
 
     def test_control_payloads_and_frame_delta_bounds(self):

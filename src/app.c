@@ -126,7 +126,7 @@ static M3Result link_optional(App *a, const char *space, const char *name,
 static M3Result load(App *a) {
     a->environment=m3_NewEnvironment();
     if (!a->environment) return m3Err_mallocFailed;
-    a->runtime=m3_NewRuntime(a->environment,8192,a);
+    a->runtime=m3_NewRuntime(a->environment,VM_STACK_SIZE,a);
     if (!a->runtime) return m3Err_mallocFailed;
     M3Result result=m3_ParseModule(a->environment,&a->module,a->bytes,(uint32_t)a->expected);
     if (result) return result;
@@ -268,7 +268,7 @@ static void play(App *a, uint16_t id) {
     }
     a->playing=true; a->frame_count=0;
     a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
-    reply(a,id,STATUS_OK,PIXEL_COUNT,"animation started at 60 fps on GP16");
+    reply(a,id,STATUS_OK,PIXEL_COUNT,"animation started");
 }
 static void frame_step(App *a, uint16_t id, uint32_t delta_ms) {
     bool native=a->native_demo;
@@ -303,11 +303,15 @@ void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, siz
     switch (type) {
     case CMD_STATUS: {
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"STATUS takes no payload"); break; }
+        const PlatformInfo *info=platform_info();
         char message[FRAME_LIMIT-8];
-        snprintf(message,sizeof(message),"ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=65536 pin=%u pixels=%u brightness=%u mode=%s frames=%lu render_us=%lu show_us=%lu animation_error=%s",
+        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=%u pin=%ld pixels=%u brightness=%lu frame_interval_us=%u mode=%s frames=%lu render_us=%lu show_us=%lu animation_error=%.99s",
+                 LIGHTVM_ANIMATION_API_VERSION,LIGHTVM_PROTOCOL_VERSION,
+                 info->platform,info->board,info->output,
                  a->ready,a->uploading,(unsigned long)a->received,MODULE_LIMIT,
                  (unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,
-                 PIXEL_PIN,PIXEL_COUNT,PIXEL_BRIGHTNESS,
+                 LINEAR_MEMORY_LIMIT,(long)info->pixel_pin,PIXEL_COUNT,
+                 (unsigned long)info->brightness,FRAME_INTERVAL_US,
                  a->native_demo ? "native" : a->playing ? "wasm" : "idle",
                  (unsigned long)a->frame_count,(unsigned long)a->render_us,
                  (unsigned long)a->show_us,a->animation_error[0] ? a->animation_error : "-");
@@ -315,7 +319,9 @@ void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, siz
     }
     case CMD_BEGIN: {
         if (size!=8 || read_u32(p)<8 || read_u32(p)>MODULE_LIMIT) {
-            reply(a,id,STATUS_UPLOAD,0,"module size must be 8..32768 bytes"); break;
+            char message[80];
+            snprintf(message,sizeof(message),"module size must be 8..%u bytes",MODULE_LIMIT);
+            reply(a,id,STATUS_UPLOAD,0,message); break;
         }
         app_destroy(a); a->received=0; a->expected=read_u32(p);
         a->expected_crc=read_u32(p+4); a->uploading=true;
@@ -367,7 +373,7 @@ void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, siz
     case CMD_NATIVE_DEMO:
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"NATIVE_DEMO takes no payload"); break; }
         app_start_native_demo(a);
-        reply(a,id,STATUS_OK,PIXEL_COUNT,"native rainbow started at 60 fps on GP16"); break;
+        reply(a,id,STATUS_OK,PIXEL_COUNT,"native rainbow started"); break;
     default: reply(a,id,STATUS_PROTOCOL,0,"unknown command"); break;
     }
 }

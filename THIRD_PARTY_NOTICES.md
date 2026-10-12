@@ -10,7 +10,7 @@ native receiver, RP2040 Pico build and pinned Python tools.
 | wasm3 | v0.5.0 | MIT | Embedded interpreter | [License](licenses/wasm3-v0.5.0.txt) |
 | Pico SDK | 1.5.1 | BSD-3-Clause; selected files MIT | Pico firmware | [BSD license](licenses/pico-sdk-1.5.1.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | TinyUSB | SDK submodule `86c416d4c0fb38432460b3e11b08b9de76941bf5` | MIT | USB device driver | [License](licenses/tinyusb.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
-| Pico examples WS2812 PIO | 1545dfd9a186 | BSD-3-Clause | Adapted PIO program | [License](licenses/pico-examples.txt), copyright notice in [source](src/ws2812.pio) |
+| Pico examples WS2812 PIO | 1545dfd9a186 | BSD-3-Clause | Adapted PIO program | [License](licenses/pico-examples.txt), copyright notice in [source](platforms/pico/ws2812.pio) |
 | pySerial | 3.5 | BSD-3-Clause | Desktop serial client | [License](licenses/pyserial-3.5.txt) |
 | Wasmtime Python | 25.0.0 | Apache-2.0 WITH LLVM-exception | Desktop WAT compilation and tests | [License and exception](licenses/wasmtime-py-25.0.0.txt) |
 | Newlib | 4.3.0, Arm GNU Toolchain 13.2.Rel1 | Per-source permissive licenses for the linked ARM C/math routines | Firmware C and math libraries | [Upstream license collection](licenses/newlib-4.3.0.txt) |
@@ -44,6 +44,10 @@ CMake adds a loop-yield check to a build-local copy of wasm3's `m3_exec.h` and
 redirects its allocator calls through LightVM's tracked allocator. The upstream
 source checkout is unchanged; its MIT notice remains in the copied source and
 in the interpreter notice above.
+
+The native Pico SDK, USB and PIO integration lives in `platforms/pico/`. The
+shared engine has no Pico SDK dependency. Future platform ports must preserve
+the notices for their selected native SDKs and linked services.
 
 ## Redistribution
 

@@ -1,0 +1,7 @@
+if(NOT PICO_SDK_PATH)
+    set(PICO_SDK_PATH "$ENV{PICO_SDK_PATH}")
+endif()
+if(NOT EXISTS "${PICO_SDK_PATH}/pico_sdk_init.cmake")
+    message(FATAL_ERROR "Set PICO_SDK_PATH to a Pico SDK checkout with its TinyUSB submodule")
+endif()
+include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")

@@ -1,0 +1,4 @@
+#ifndef LIGHTVM_HOST_BOARD_CONFIG_H
+#define LIGHTVM_HOST_BOARD_CONFIG_H
+#define LIGHTVM_BOARD_NAME "simulator"
+#endif

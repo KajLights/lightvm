@@ -1,15 +1,8 @@
 #include "pixels.h"
+#include "platform.h"
 #include <string.h>
-#ifdef DEMO_PICO
-#include "pico/stdlib.h"
-#include "hardware/pio.h"
-#include "ws2812.pio.h"
-static PIO pixel_pio = pio0;
-static uint pixel_sm;
-static bool initialized;
-#endif
 
-// One packed RGB buffer. The driver packs GRB words as it feeds the PIO FIFO.
+// Logical RGB stays identical across ports; physical output belongs to the port.
 static uint8_t rgb[PIXEL_BYTES];
 
 void pixels_clear(void) {
@@ -18,13 +11,7 @@ void pixels_clear(void) {
 
 void pixels_init(void) {
     pixels_clear();
-#ifdef DEMO_PICO
-    pixel_sm = pio_claim_unused_sm(pixel_pio, true);
-    uint offset = pio_add_program(pixel_pio, &ws2812_program);
-    ws2812_program_init(pixel_pio, pixel_sm, offset, PIXEL_PIN, 800000, false);
-    initialized = true;
     pixels_show();
-#endif
 }
 
 const uint8_t *pixels_rgb(void) {
@@ -67,20 +54,5 @@ void pixels_rainbow(uint32_t phase) {
 }
 
 void pixels_show(void) {
-#ifdef DEMO_PICO
-    if (!initialized)
-        return;
-    for (uint32_t index = 0; index < PIXEL_COUNT; ++index) {
-        const uint8_t *pixel = rgb + index * 3;
-        uint32_t red = (pixel[0] * PIXEL_BRIGHTNESS + 127u) / 255u;
-        uint32_t green = (pixel[1] * PIXEL_BRIGHTNESS + 127u) / 255u;
-        uint32_t blue = (pixel[2] * PIXEL_BRIGHTNESS + 127u) / 255u;
-        pio_sm_put_blocking(pixel_pio, pixel_sm, (green << 24) | (red << 16) | (blue << 8));
-    }
-    // Empty FIFO still leaves the last 24-bit word in the shift register.
-    // Allow its 30 us transmission plus a conservative 300 us reset interval.
-    while (!pio_sm_is_tx_fifo_empty(pixel_pio, pixel_sm))
-        tight_loop_contents();
-    sleep_us(330);
-#endif
+    platform_show_rgb(rgb, PIXEL_COUNT);
 }

@@ -120,7 +120,24 @@ class ReceiverTests(unittest.TestCase):
         self.assertIn("heap=0 ", self.client.command(STATUS).message)
 
     def test_module_size_limit(self):
-        self.assertEqual(self.client.command(BEGIN, struct.pack("<II", 32769, 0)).code, 2)
+        limit = int(self.client.status_fields()["module_limit"])
+        self.assertEqual(self.client.command(BEGIN, struct.pack("<II", limit + 1, 0)).code, 2)
+
+    def test_platform_metadata_and_client_upload_limit(self):
+        fields = self.client.status_fields()
+        self.assertEqual(fields["api"], "1")
+        self.assertEqual(fields["protocol"], "1")
+        self.assertEqual(fields["platform"], "host")
+        self.assertEqual(fields["output"], "memory")
+        self.assertEqual(fields["pin"], "-1")
+        self.assertEqual(fields["brightness"], "255")
+        self.assertTrue(fields["board"])
+        self.assertGreater(int(fields["frame_interval_us"]), 0)
+        self.upload_wat('(module (func (export "run") (result i32) i32.const 23))')
+        limit = int(fields["module_limit"])
+        with self.assertRaisesRegex(ValueError, str(limit)):
+            self.client.upload(bytes(limit + 1))
+        self.assertEqual(self.client.command(RUN).value, 23)
 
     def test_linear_memory_limit(self):
         data = bytes(wasmtime.wat2wasm('(module (memory 2) (func (export "run")))'))

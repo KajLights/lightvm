@@ -2,12 +2,10 @@
 #define DEMO_APP_H
 #include "protocol.h"
 #include "wasm3.h"
+#include "config.h"
+#include "platform.h"
 #include <stdbool.h>
 
-#define MODULE_LIMIT (32u*1024u)
-#define OUTPUT_LIMIT (16u*1024u)
-#define RUN_TIMEOUT_US 500000u
-#define FRAME_INTERVAL_US 16667u
 typedef struct {
     uint8_t bytes[MODULE_LIMIT];
     size_t received, expected, output_size;
@@ -27,7 +25,6 @@ typedef struct {
     SendMessage send;
     void *transport;
 } App;
-uint64_t platform_time_us(void);
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);

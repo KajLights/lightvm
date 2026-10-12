@@ -4,10 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "config.h"
 
-#define PIXEL_PIN 16u
-#define PIXEL_COUNT 100u
-#define PIXEL_BRIGHTNESS 32u
 #define PIXEL_BYTES (PIXEL_COUNT * 3u)
 
 void pixels_init(void);

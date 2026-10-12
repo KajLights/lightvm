@@ -39,7 +39,7 @@ def frame(kind, request_id, payload=b""):
 
 
 class ProcessTransport:
-    """The host executable runs the same handler and interpreter as the Pico."""
+    """The host port runs the shared handler and interpreter with native pipes."""
     def __init__(self, executable):
         self.process = subprocess.Popen([str(executable)], stdin=subprocess.PIPE,
                                         stdout=subprocess.PIPE, bufsize=0)
@@ -142,9 +142,21 @@ class Client:
             raise ProtocolError(f"receiver status {reply.code}: {reply.message}")
         return reply
 
+    def status_fields(self):
+        reply = self.require_ok(self.command(STATUS))
+        # animation_error may contain spaces; capability/limit tokens do not.
+        return dict(item.split("=", 1) for item in reply.message.split() if "=" in item)
+
     def upload(self, bytecode):
-        if not 8 <= len(bytecode) <= MODULE_LIMIT:
-            raise ValueError(f"module must be 8..{MODULE_LIMIT} bytes")
+        fields = self.status_fields()
+        try:
+            limit = int(fields.get("module_limit", MODULE_LIMIT))
+        except ValueError as error:
+            raise ProtocolError("receiver reported an invalid module limit") from error
+        if limit < 8:
+            raise ProtocolError("receiver reported an invalid module limit")
+        if not 8 <= len(bytecode) <= limit:
+            raise ValueError(f"module must be 8..{limit} bytes for this receiver")
         self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode))))
         for offset in range(0, len(bytecode), FRAME_LIMIT - 4):
             chunk = bytecode[offset:offset + FRAME_LIMIT - 4]

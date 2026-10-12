@@ -1,77 +1,47 @@
 cmake_minimum_required(VERSION 3.18)
-option(LIGHTVM_PICO "Build USB CDC firmware for an RP2040 Pico" OFF)
-if(LIGHTVM_PICO)
-    if(NOT PICO_SDK_PATH)
-        set(PICO_SDK_PATH "$ENV{PICO_SDK_PATH}")
+option(LIGHTVM_PICO "Compatibility alias for LIGHTVM_PLATFORM=pico" OFF)
+set(LIGHTVM_PLATFORM "" CACHE STRING "Native port: host or pico")
+if(NOT LIGHTVM_PLATFORM)
+    if(LIGHTVM_PICO)
+        set(LIGHTVM_PLATFORM pico)
+    else()
+        set(LIGHTVM_PLATFORM host)
     endif()
-    if(NOT EXISTS "${PICO_SDK_PATH}/pico_sdk_init.cmake")
-        message(FATAL_ERROR "Set PICO_SDK_PATH to a Pico SDK checkout with its TinyUSB submodule")
-    endif()
-    include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
+elseif(LIGHTVM_PICO AND NOT LIGHTVM_PLATFORM STREQUAL "pico")
+    message(FATAL_ERROR "LIGHTVM_PICO conflicts with LIGHTVM_PLATFORM=${LIGHTVM_PLATFORM}")
+endif()
+set_property(CACHE LIGHTVM_PLATFORM PROPERTY STRINGS host pico)
+set(LIGHTVM_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/${LIGHTVM_PLATFORM}"
+    CACHE PATH "Native port directory (may be outside the source tree)")
+set(LIGHTVM_BOARD_CONFIG "${LIGHTVM_PLATFORM_DIR}/board_config.h"
+    CACHE FILEPATH "Board wiring and engine resource profile")
+if(NOT EXISTS "${LIGHTVM_PLATFORM_DIR}/CMakeLists.txt" OR
+   NOT EXISTS "${LIGHTVM_BOARD_CONFIG}")
+    message(FATAL_ERROR "Port '${LIGHTVM_PLATFORM}' is not implemented or its board profile is missing")
+endif()
+# SDK/toolchain imports belong to the port and run before compiler detection.
+if(EXISTS "${LIGHTVM_PLATFORM_DIR}/pre_project.cmake")
+    include("${LIGHTVM_PLATFORM_DIR}/pre_project.cmake")
 endif()
 project(lightvm C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-if(LIGHTVM_PICO)
-    pico_sdk_init()
-endif()
-
-set(WASM3_SOURCE_DIR "" CACHE PATH "Optional existing wasm3 v0.5.0 checkout")
-if(NOT WASM3_SOURCE_DIR)
-    include(FetchContent)
-    FetchContent_Declare(wasm3
-        URL https://codeload.github.com/wasm3/wasm3/tar.gz/refs/tags/v0.5.0
-        URL_HASH SHA256=b778dd72ee2251f4fe9e2666ee3fe1c26f06f517c3ffce572416db067546536c)
-    FetchContent_GetProperties(wasm3)
-    if(NOT wasm3_POPULATED)
-        FetchContent_Populate(wasm3)
-    endif()
-    set(WASM3_SOURCE_DIR "${wasm3_SOURCE_DIR}")
-endif()
-
-# Keep the dependency untouched. Add a cooperative timeout check to each loop
-# iteration; v0.5.0 otherwise only calls its weak m3_Yield hook on function calls.
-set(M3_DIR "${CMAKE_CURRENT_BINARY_DIR}/wasm3-source")
-file(MAKE_DIRECTORY "${M3_DIR}")
-file(COPY "${WASM3_SOURCE_DIR}/source/" DESTINATION "${M3_DIR}")
-file(READ "${M3_DIR}/m3_exec.h" M3_EXEC)
-set(LOOP_ORIGINAL "        r = nextOpImpl ();")
-string(FIND "${M3_EXEC}" "${LOOP_ORIGINAL}" LOOP_OFFSET)
-if(LOOP_OFFSET EQUAL -1)
-    message(FATAL_ERROR "Expected wasm3 v0.5.0 loop implementation was not found")
-endif()
-string(REPLACE "${LOOP_ORIGINAL}"
-    "        r = m3_Yield ();\n        if (r) return r;\n${LOOP_ORIGINAL}"
-    M3_EXEC "${M3_EXEC}")
-file(WRITE "${M3_DIR}/m3_exec.h" "${M3_EXEC}")
-
-set(M3_FILES m3_bind.c m3_code.c m3_compile.c m3_core.c m3_emit.c
-    m3_env.c m3_exec.c m3_function.c m3_info.c m3_module.c m3_parse.c)
-list(TRANSFORM M3_FILES PREPEND "${M3_DIR}/")
-add_library(wasm3 STATIC ${M3_FILES})
-target_include_directories(wasm3 PUBLIC "${M3_DIR}")
-target_compile_definitions(wasm3 PRIVATE
-    d_m3MaxLinearMemoryPages=1 d_m3MaxFunctionStackHeight=128
-    d_m3CodePageAlignSize=1024 d_m3LogOutput=0)
-# All interpreter allocations pass through m3_core.c. Account and cap them,
-# including allocation headers, without changing the application's allocator.
-set_source_files_properties("${M3_DIR}/m3_core.c" PROPERTIES
-    COMPILE_DEFINITIONS "calloc=demo_calloc;realloc=demo_realloc;free=demo_free")
-
-add_executable(lightvm src/main.c src/app.c src/protocol.c src/vm_allocator.c src/pixels.c)
-target_include_directories(lightvm PRIVATE src)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/lightvm_core.cmake")
+lightvm_add_core()
+add_executable(lightvm)
 target_compile_options(lightvm PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(lightvm PRIVATE wasm3 m)
-if(LIGHTVM_PICO)
-    target_compile_definitions(lightvm PRIVATE DEMO_PICO=1 PICO_STACK_SIZE=8192)
-    target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb hardware_pio)
-    pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/src/ws2812.pio")
-    # SDK 1.5.1's ROM-v1 double shim is licensed for Pico devices only.
-    # Use the compiler runtime so firmware avoids that restricted component.
-    pico_set_double_implementation(lightvm compiler)
-    pico_enable_stdio_usb(lightvm 1)
-    pico_enable_stdio_uart(lightvm 0)
-    pico_add_extra_outputs(lightvm)
+target_link_libraries(lightvm PRIVATE lightvm_core)
+# Include in the executable's directory: Pico SDK output helpers attach
+# post-build commands and require that CMake directory scope.
+include("${LIGHTVM_PLATFORM_DIR}/CMakeLists.txt")
+if(LIGHTVM_PLATFORM STREQUAL "host")
+    include(CTest)
+    if(BUILD_TESTING)
+        add_executable(test_platform tests/test_platform.c)
+        target_compile_options(test_platform PRIVATE -Wall -Wextra -Werror)
+        target_link_libraries(test_platform PRIVATE lightvm_core)
+        add_test(NAME platform_contract COMMAND test_platform)
+    endif()
 endif()
 
 # Keep redistribution notices beside the generated executables/firmware.
