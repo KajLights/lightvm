@@ -27,7 +27,7 @@ def artifact(source):
 
 
 def with_manifest(wat, manifest=None):
-    m = manifest or {'schema': 'lightvm.program/2', 'abi': 1, 'pixels': {'format': 'rgb8', 'retention': 'fresh'}, 'parameters': []}
+    m = manifest or {'schema': 'lightvm.program/3', 'abi': 2, 'pixels': {'format': 'rgb8'}, 'parameters': []}
     name = b'lightvm.program'
     section = uleb(len(name)) + name + json.dumps(m).encode()
     return bytes(wasmtime.wat2wasm(wat)) + b'\0' + uleb(len(section)) + section
@@ -40,7 +40,7 @@ class Replay:
         exec(compile(source, '<trusted-reference>', 'exec'), namespace)
         self.parameters = {v.name: v for v in namespace.values() if isinstance(v, Parameter)}
         self.handlers = {v.lightvm_trigger: v for v in namespace.values() if callable(v) and hasattr(v, 'lightvm_trigger')}
-        self.pixels = Pixels(self.handlers[1].lightvm_retention)
+        self.pixels = Pixels()
         self.pixels.bind(count)
         self.time = 0
         self.pixels.begin()
@@ -64,26 +64,40 @@ class CompilerTests(unittest.TestCase):
         self.assertEqual([e.name for e in module.exports], ['control_step'])
         self.assertTrue(all(isinstance(i.type, wasmtime.FuncType) for i in module.imports))
         self.assertLess(len(result.wasm), 4096)
-        self.assertFalse(compile_source(source, target={'module_limit': 100, 'control_abi': 1}).success)
+        self.assertFalse(compile_source(source, target={'module_limit': 100, 'control_abi': 2}).success)
         self.assertFalse(compile_source(source, target={'module_limit': 32768}).success)
-        self.assertFalse(compile_source(source, target={'module_limit': 32768, 'control_abi': 1}).success)
-        self.assertTrue(compile_source(source, target={'module_limit': 32768, 'control_abi': 1,
-                                                     'program_schemas':['lightvm.program/2']}).success)
+        self.assertFalse(compile_source(source, target={'module_limit': 32768, 'control_abi': 1,
+                                                     'program_schemas':['lightvm.program/3']}).success)
+        self.assertFalse(compile_source(source, target={'module_limit': 32768, 'control_abi': 2}).success)
+        self.assertTrue(compile_source(source, target={'module_limit': 32768, 'control_abi': 2,
+                                                     'program_schemas':['lightvm.program/3']}).success)
 
-    def test_injected_pixels_and_retention_have_no_deployment_binding(self):
-        for retention in ('fresh', 'retained'):
-            source = PREFIX + f'@on_frame(retention="{retention}")\ndef draw(ctx):\n ctx.pixels.fill(rgb(1,2,3))\n'
-            result = artifact(source)
-            self.assertEqual(result.manifest, {'schema':'lightvm.program/2','abi':1,
-                'pixels':{'format':'rgb8','retention':retention},'parameters':[]})
-            self.assertEqual(Replay(source, 7).step(0), bytes([1,2,3])*7)
+    def test_injected_pixels_have_no_deployment_or_retention_options(self):
+        source = PREFIX + '@on_frame\ndef draw(ctx):\n ctx.pixels.fill(rgb(1,2,3))\n'
+        result = artifact(source)
+        self.assertEqual(result.manifest, {'schema':'lightvm.program/3','abi':2,
+            'pixels':{'format':'rgb8'},'parameters':[]})
+        self.assertEqual(Replay(source, 7).step(0), bytes([1,2,3])*7)
+        module = wasmtime.Module(wasmtime.Engine(), result.wasm)
+        self.assertTrue(all(i.module == 'lightvm.control.v2' for i in module.imports))
+        self.assertFalse({'erase', 'present', 'clear'} & {i.name for i in module.imports})
         source = 'from lightvm import pixels, on_frame\np=pixels("A")\n@on_frame\ndef draw(ctx): pass\n'
         result = compile_source(source)
         self.assertFalse(result.success)
         self.assertIn('deployment', result.diagnostics[0].message)
-        for decorator in ('@on_frame(retention="invalid")', '@on_start(retention="fresh")',
-                          '@on_frame(slot="A")', '@on_frame(retention="fresh", retention="retained")'):
-            self.assertFalse(compile_source(PREFIX + decorator + '\ndef draw(ctx): pass\n').success)
+        for decorator in ('@on_frame(retention="fresh")', '@on_frame(retention="retained")',
+                          '@on_start(retention="fresh")', '@on_frame(slot="A")'):
+            result = compile_source(PREFIX + decorator + '\ndef draw(ctx): pass\n', 'removed.py')
+            self.assertFalse(result.success)
+            self.assertIn('retention options were removed', result.diagnostics[0].message)
+            self.assertGreater(result.diagnostics[0].line, 0)
+        for operation in ('erase(0)', 'clear()', 'present(0)'):
+            result = compile_source(PREFIX + '@on_frame\ndef draw(ctx):\n ctx.pixels.' + operation + '\n')
+            self.assertFalse(result.success)
+            self.assertIn('fill(colour)', result.diagnostics[0].message)
+        pixels = Pixels()
+        for name in ('erase', 'clear', 'present', 'retention', 'presence'):
+            self.assertFalse(hasattr(pixels, name))
 
     def test_rejects_unsupported_or_ambiguous_python_with_locations(self):
         bad = [
@@ -271,7 +285,7 @@ def draw(ctx):
         descriptor = self.client.describe()
         self.assertEqual(descriptor['slots'], ['A'])
         self.assertEqual(descriptor['slot_binding'], 'deployment')
-        self.assertIn('lightvm.program/2', descriptor['program_schemas'])
+        self.assertIn('lightvm.program/3', descriptor['program_schemas'])
         with self.assertRaisesRegex(RuntimeError, 'slot A only'):
             self.client.activate('rainbow-slot', slot='B')
         self.assertEqual(self.client.program_parameters(), state)
@@ -289,35 +303,47 @@ def draw(ctx):
         self.assertNotEqual(self.client.command(FRAME, struct.pack('<I',1000)).code, 0)
         self.assertEqual(self.client.snapshot()[1], first)
 
-    def test_presence_clear_erase_readback_and_retention(self):
-        for retention in ('fresh', 'retained'):
-            source = PREFIX + f'''phase = 0
-@on_frame(retention="{retention}")
+    def test_frame_reset_rgb_readback_fill_and_no_presence_snapshots(self):
+        source = PREFIX + '''phase = 0
+@on_start
+def start(ctx):
+ ctx.pixels.fill(rgb(90, 80, 70))
+@on_frame
 def draw(ctx):
- p = ctx.pixels
  global phase
+ p = ctx.pixels
  if phase == 0:
   p.fill(rgb(10, 20, 30))
  else:
-  p[0] = rgb(0, 0, 0)
-  p.erase(1)
-  p[2] = p[3]
-  if p.present(0): p[4] = rgb(1, 0, 0)
+  p[0] = p[1]
+  p[1] = rgb(7, 8, 9)
+  p[2] = p[1]
+  p[3] = rgb(0, 0, 0)
  phase += 1
 '''
-            self.upload(source)
-            self.step()
-            before = self.client.snapshot()
-            self.assertEqual(before[0]['presence'], '1f')
-            second = self.step()
-            self.assertEqual(second[:6], bytes(6))
-            self.assertEqual(second[6:12], bytes([10,20,30])*2 if retention == 'retained' else bytes(6))
-            metadata, snapshot = self.client.snapshot()
-            self.assertEqual(snapshot, second)
-            self.assertEqual(metadata['presence'], '1d' if retention == 'retained' else '15')
-            source = PREFIX + '@on_frame\ndef draw(ctx):\n p = ctx.pixels\n p.clear()\n'
-            self.upload(source); self.step()
-            self.assertEqual(self.client.snapshot()[0]['presence'], '1f')
+        self.upload(source)
+        self.assertEqual(self.step(), bytes([10,20,30])*self.count)
+        self.assertEqual(self.step(), bytes(3) + bytes([7,8,9])*2 + bytes(6))
+        metadata, snapshot = self.client.snapshot()
+        self.assertEqual(set(metadata), {'state'})
+        self.assertEqual(snapshot, self.client.pixel_snapshot)
+        self.assertEqual(metadata['state']['buffer_bytes'], self.count * 9)
+        descriptor = self.client.describe()
+        self.assertNotIn('retention_modes', descriptor)
+        self.assertEqual(descriptor['frame_policy'], 'black_before_step')
+        self.assertFalse(descriptor['alpha'])
+        self.assertEqual(descriptor['control_abi'], 2)
+        self.assertEqual(descriptor['program_schemas'], ['lightvm.program/3'])
+
+    def test_wipe_redraws_progress_with_live_colour(self):
+        self.upload((ROOT / 'samples/python/wipe.py').read_text())
+        old = bytes([0,80,255])
+        self.assertEqual(self.step(), old + bytes(9) + old)
+        self.assertEqual(self.step(100), old*2 + bytes(3) + old*2)
+        self.client.set_parameters({'color':rgb(10,20,30)})
+        new = bytes([10,20,30])
+        self.assertEqual(self.step(), new*2 + bytes(3) + new*2)
+        self.assertEqual(self.step(100), new*5)
 
     def test_live_parameters_atomic_validation_generations_and_defaults(self):
         source = PREFIX + '''r = parameter("r", 1, minimum=0, maximum=255)
@@ -359,9 +385,10 @@ def start(ctx):
  global starts
  starts += 1
  p.fill(rgb(10, 20, 30))
-@on_frame(retention="retained")
+@on_frame
 def draw(ctx):
  p = ctx.pixels
+ p.fill(rgb(10,20,30))
  p[0] = rgb(starts, int(ctx.time * 10.0), 0)
 '''
         self.upload(source)
@@ -416,7 +443,7 @@ def draw(ctx):
         base = '(func (export "control_step") (param i32 i64 i64) (result i32) i32.const 0)'
         for wat in ('(module (memory 1) '+base+')', '(module (table 1 funcref) '+base+')',
                     '(module (import "other" "x" (func)) '+base+')',
-                    '(module (import "lightvm.control.v1" "count" (func (result i32))) '+base+')',
+                    '(module (import "lightvm.control.v2" "count" (func (result i32))) '+base+')',
                     '(module (func (export "control_step") (param i32) (result i32) i32.const 0))'):
             with self.subTest(wat=wat):
                 try:
@@ -427,16 +454,25 @@ def draw(ctx):
                     pass
                 self.client.require_ok(self.client.command(RESET))
         for bad in (
-            {'schema':'lightvm.program/2','abi':1,'pixels':{'format':'rgbw','retention':'fresh'},'parameters':[]},
-            {'schema':'lightvm.program/2','abi':1,'pixels':{'format':'rgb8','retention':'fresh'},'binding':'A','parameters':[]},
-            {'schema':'lightvm.program/2','abi':1,'parameters':[]},
-            {'schema':'lightvm.program/1','abi':1,'binding':'B','retention':'fresh','parameters':[]}):
+            {'schema':'lightvm.program/3','abi':2,'pixels':{'format':'rgbw'},'parameters':[]},
+            {'schema':'lightvm.program/3','abi':2,'pixels':{'format':'rgb8','retention':'fresh'},'parameters':[]},
+            {'schema':'lightvm.program/3','abi':2,'pixels':{'format':'rgb8','retention':'retained'},'parameters':[]},
+            {'schema':'lightvm.program/3','abi':2,'pixels':{'format':'rgb8'},'binding':'A','parameters':[]},
+            {'schema':'lightvm.program/3','abi':2,'parameters':[]},
+            {'schema':'lightvm.program/3','abi':1,'pixels':{'format':'rgb8'},'parameters':[]},
+            {'schema':'lightvm.program/2','abi':1,'pixels':{'format':'rgb8','retention':'fresh'},'parameters':[]},
+            {'schema':'lightvm.program/1','abi':1,'binding':'A','retention':'retained','parameters':[]}):
             with self.subTest(manifest=bad), self.assertRaises(RuntimeError):
                 self.client.upload(with_manifest('(module '+base+')', bad))
-        # Previously stored schema-1 artifacts continue through the adapter.
-        old = {'schema':'lightvm.program/1','abi':1,'binding':'A','retention':'fresh','parameters':[]}
-        self.client.upload(with_manifest('(module '+base+')', old))
-        self.assertEqual(self.step(), bytes(self.count*3))
+        for imported in ('erase', 'present', 'clear'):
+            with self.subTest(imported=imported), self.assertRaises(RuntimeError):
+                self.client.upload(with_manifest('(module (import "lightvm.control.v2" "'+imported+'" (func)) '+base+')'))
+        for namespace in ('lightvm.control.v1', 'lightvm.control.v9'):
+            with self.subTest(namespace=namespace), self.assertRaises(RuntimeError):
+                self.client.upload(with_manifest('(module (import "'+namespace+'" "resource" (func (param i32) (result i32))) '+base+')'))
+            # Missing metadata must not permit a retired control namespace either.
+            with self.subTest(unmarked=namespace), self.assertRaises(RuntimeError):
+                self.client.upload(bytes(wasmtime.wat2wasm('(module (import "'+namespace+'" "resource" (func (param i32) (result i32))))')))
         duplicate = with_manifest('(module '+base+')')
         # Append its custom section a second time.
         plain = bytes(wasmtime.wat2wasm('(module '+base+')'))
@@ -444,7 +480,7 @@ def draw(ctx):
 
     def test_control_calls_outside_step_and_nonzero_step_result_fail(self):
         wasm = with_manifest('''(module
-          (import "lightvm.control.v1" "resource" (func $r (param i32) (result i32)))
+          (import "lightvm.control.v2" "resource" (func $r (param i32) (result i32)))
           (func (export "run") i32.const 0 call $r drop)
           (func (export "control_step") (param i32 i64 i64) (result i32) i32.const 1))''')
         self.client.upload(wasm)

@@ -248,7 +248,7 @@ static void show_frame(VmInstance *a, uint64_t started, bool contribution) {
     uint64_t show_started=platform_time_us();
     bool success;
     if (contribution) {
-        // The initial single-slot presenter composites absent pixels over black.
+        // The single-slot presenter submits the complete RGB frame.
         // Each instance keeps an independent committed contribution for a mixer.
         if (!a->output) { a->show_us=0; ++a->frame_count; return; }
         success=a->output->driver && a->output->type && a->output->rgb &&

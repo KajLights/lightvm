@@ -64,12 +64,12 @@ without a transition program; an A/B build can switch between single-animation
 sources without general layer management. Combining them permits layered scene
 sources only within the declared joint limits.
 
-Composition depends on indexed colour buffers and the shared scheduling,
-publication and ownership machinery. Select retained paint, lower-input filters
-and optional maximum/interpolation modes explicitly. Resolve limits for layers
-per scene, total resident colour/transition instances, colour/presence/staging
-bytes and the aggregate frame budget. Feature selection must not imply arbitrary
-layer capacity or an alpha-enabled colour format.
+Composition depends on indexed frame buffers and the shared scheduling,
+publication and ownership machinery. Alpha representation and blending remain
+separate design work; profile options must follow that contract when it exists.
+Resolve limits for layers per scene, total resident colour/transition instances,
+frame/alpha/staging bytes and the aggregate frame budget. Feature selection must
+not imply arbitrary layer capacity or an implemented alpha colour format.
 
 Excluding a feature must remove its registration entries, native implementation,
 dedicated buffers and dependencies that no remaining feature needs. A runtime
@@ -253,7 +253,7 @@ can follow the file-based workflow; neither is required initially.
 - Exercise single-animation, composition-only, A/B-only and combined profiles
   as those capabilities arrive. Omitted features reserve no dedicated buffers;
   advertised layer/mode/instance limits match runtime admission.
-- Account for all layer colour/presence, staging, filter inputs and scene frames
+- Account for all layer colour/alpha, staging, filter inputs and scene frames
   in combined RAM and frame budgets; the minimal A/B `10N` storage figure must
   not be reported as the cost of layered scenes.
 - Rebuild from the same resolved profile and pinned inputs with identical feature

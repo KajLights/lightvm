@@ -3,7 +3,7 @@
 LightVM is intended to run portable lighting programs on multiple board families.
 Its unit of portability is the WASM module plus its versioned guest contract.
 The implemented contracts are legacy animation API v1 and the independent
-[control ABI 1 animation profile](control-api.md). The broader proposed control
+[control ABI 2 animation profile](control-api.md). The broader proposed control
 API extends portability to event-driven device programs.
 Each native firmware rebuilds the same engine/interpreter and supplies the local
 hardware and services. Resource budgets and physical capabilities can differ.
@@ -27,7 +27,7 @@ evidence separately from build success.
 
 | Layer | Owns |
 |---|---|
-| Guest `.wasm` | Effect state and bounded control steps or legacy callbacks; logical colour/presence requests |
+| Guest `.wasm` | Effect state and bounded control steps or legacy callbacks; logical RGB writes and own-step readback |
 | `lightvm_core` / `src/` | Loader, wasm3 bindings, RGB/HSV conversion and buffer, scheduler, module lifecycle, limits, logical commands, byte framing |
 | Native port / `platforms/<port>/` | Executable or SDK entry point, clock, allocation implementation, physical LED output, transports/event loop, SDK/toolchain setup |
 | Board/resource header | Pixel capacity and engine budgets; board identity |
@@ -125,7 +125,7 @@ in RAM; named procedure saves are independent from activation. Applying hardware
 configuration destroys the instance, while RESET retains hardware and storage.
 
 Control animation source receives its assigned contribution as `ctx.pixels`.
-Manifest schema 2 describes format/retention and parameters, without a slot or
+Manifest schema 3 describes RGB8 format and parameters, without a slot or
 hardware name. Native deployment selects a slot (currently A). `control_step`
 commits only that instance's reserved buffers; the scheduler's presenter owns
 physical output. Multiple offscreen instances therefore have independent state
@@ -147,24 +147,22 @@ waveforms have independent schedules. A suspended task permits other work to
 run and publishes its successful batch before waiting; a failing step cannot
 roll back earlier commits or general guest state.
 
-New resources declare snapshot/readback semantics, buffer retention, publication,
-units, ownership and lifecycle. Addressable RGB/RGBW buffers mix through a
-bounded [ordered scene compositor](../documents/feature-proposal-animation-composition.md)
-with explicit colour/presence, fresh or retained contributions and stable
-lower-input filters. Each layer owns its state; the final composite is not its
-animation history. Completed scenes can feed the separate A/B mix channel when
-both capabilities are supported, with no alpha-channel requirements. Native
-brightness applies once after the final composition. Ordinary actuators initially
-have an exclusive writer. The legacy adapter keeps
-API v1's black-at-frame-start and callback/delta rules. Control contexts, event
-records and task continuation layouts remain proposed; no GPIO/ADC/PWM/servo
-support is implied by the current driver registry.
+New resources declare snapshot/readback semantics, publication, units, ownership
+and lifecycle. Addressable RGB frame steps start black; effects redraw their
+current output from animation state. Alpha transparency and
+[scene composition](../documents/feature-proposal-animation-composition.md)
+will be designed separately. Completed scenes may later feed an A/B mixer,
+subject to jointly advertised limits. Native brightness applies once after final
+mixing. Ordinary actuators initially have an exclusive writer. The legacy adapter
+keeps API v1's black-at-frame-start and callback/delta rules. General control
+contexts, event records and task continuation layouts remain proposed; no
+GPIO/ADC/PWM/servo support is implied by the current driver registry.
 
 The [device proposal](../documents/feature-proposal-device-support.md) describes
 definitions, native driver servicing and resource planning. Aggregate admission
 must include event queues, tasks, subscriptions, timers, jobs, continuation state
 and pixel buffers in addition to interpreter and native port storage. Layered
-profiles also budget every colour instance, presence/staging/readback storage,
+profiles also budget every colour instance, frame/staging/readback storage,
 completed scenes and preparation peaks; neither two layer slots nor an A/B buffer
 budget establishes capacity for their combination.
 

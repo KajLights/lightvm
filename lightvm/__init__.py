@@ -66,24 +66,19 @@ def parameter(name, default, *, minimum=None, maximum=None, kind=None):
 
 class Pixels:
     """A deployment-owned canvas for trusted reference replay, injected in Context."""
-    def __init__(self, retention="fresh"):
-        if retention not in ("fresh", "retained"):
-            raise ValueError("pixels require fresh or retained contributions")
-        self.retention = retention
+    def __init__(self):
         self.count = 0
-        self.committed, self.presence = [], []
-        self.working, self.working_presence = [], []
+        self.committed, self.working = [], []
 
     def bind(self, count):
         self.count = count
-        self.committed, self.presence = [0] * count, [False] * count
+        self.committed = [0] * count
 
     def begin(self):
-        self.working = self.committed.copy() if self.retention == "retained" else [0] * self.count
-        self.working_presence = self.presence.copy() if self.retention == "retained" else [False] * self.count
+        self.working = [0] * self.count
 
     def commit(self):
-        self.committed, self.presence = self.working.copy(), self.working_presence.copy()
+        self.committed = self.working.copy()
 
     def _index(self, index):
         if type(index) is not int or not 0 <= index < self.count:
@@ -93,26 +88,15 @@ class Pixels:
         self._index(index)
         if type(color) is not int or not 0 <= color <= 0xffffff:
             raise ValueError("invalid packed RGB8")
-        self.working[index], self.working_presence[index] = color, True
+        self.working[index] = color
 
     def __getitem__(self, index):
         self._index(index)
         return self.working[index]
 
-    def present(self, index):
-        self._index(index)
-        return self.working_presence[index]
-
     def fill(self, color):
         for i in range(self.count):
             self[i] = color
-
-    def clear(self):
-        self.fill(0)
-
-    def erase(self, index):
-        self._index(index)
-        self.working[index], self.working_presence[index] = 0, False
 
 
 def on_start(function):
@@ -120,11 +104,6 @@ def on_start(function):
     return function
 
 
-def on_frame(function=None, *, retention="fresh"):
-    if retention not in ("fresh", "retained"):
-        raise ValueError("invalid contribution retention")
-    def decorate(handler):
-        handler.lightvm_trigger = 1
-        handler.lightvm_retention = retention
-        return handler
-    return decorate(function) if function is not None else decorate
+def on_frame(function):
+    function.lightvm_trigger = 1
+    return function

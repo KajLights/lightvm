@@ -47,8 +47,7 @@ INTRINSICS = {"int", "float", "bool", "min", "max", "abs", "len", "range"}
 IMPORTS = {
     "resource": ("i32", ["i32"]), "count": ("i64", ["i32"]),
     "write": (None, ["i32", "i64", "i32"]), "fill": (None, ["i32", "i32"]),
-    "erase": (None, ["i32", "i64"]), "read": ("i32", ["i32", "i64"]),
-    "present": ("i32", ["i32", "i64"]), "rgb": ("i32", ["i64"] * 3),
+    "read": ("i32", ["i32", "i64"]), "rgb": ("i32", ["i64"] * 3),
     "hsv": ("i32", ["f64"] * 3), "param_int": ("i64", ["i32"]),
     "param_float": ("f64", ["i32"]), "param_bool": ("i32", ["i32"]),
     "param_color": ("i32", ["i32"]),
@@ -94,7 +93,7 @@ class Compiler:
         symtable.symtable(source, "<source>", "exec")
         self.aliases, self.functions, self.signatures = {}, {}, {}
         self.globals, self.parameters, self.palettes = {}, {}, {}
-        self.handlers, self.calls, self.retention = {}, {}, "fresh"
+        self.handlers, self.calls = {}, {}
         self.serial = 0
 
     def fail(self, node, message):
@@ -211,13 +210,9 @@ class Compiler:
             if f.args.defaults or f.args.kw_defaults or f.args.vararg or f.args.kwarg or f.args.kwonlyargs or f.args.posonlyargs or len(f.decorator_list) > 1:
                 self.fail(f, "functions have fixed positional arguments")
             decorator = f.decorator_list[0] if f.decorator_list else None
-            trigger = self.aliases.get(getattr(decorator.func if isinstance(decorator, ast.Call) else decorator, "id", ""))
+            trigger = self.aliases.get(getattr(decorator, "id", ""))
             if isinstance(decorator, ast.Call):
-                if trigger != "on_frame" or decorator.args or len(decorator.keywords) != 1 or decorator.keywords[0].arg != "retention":
-                    self.fail(decorator, 'use @on_frame or @on_frame(retention="retained")')
-                self.retention = self.literal(decorator.keywords[0].value)
-                if self.retention not in ("fresh", "retained"):
-                    self.fail(decorator, "retention must be fresh or retained")
+                self.fail(decorator, "handlers use bare @on_start or @on_frame; retention options were removed")
             if f.decorator_list and trigger not in ("on_start", "on_frame"):
                 self.fail(f, "only @on_start and @on_frame are supported")
             if trigger:
@@ -345,11 +340,10 @@ class Compiler:
             if n.keywords: self.fail(n, "runtime calls use positional arguments")
             if isinstance(n.func, ast.Attribute) and self.is_pixels(n.func.value):
                 method = n.func.attr
-                kinds = {"fill": ["RGB"], "clear": [], "erase": ["int"], "present": ["int"]}
-                if method not in kinds or len(n.args) != len(kinds[method]): self.fail(n, "invalid pixel operation")
+                kinds = {"fill": ["RGB"]}
+                if method not in kinds or len(n.args) != len(kinds[method]): self.fail(n, "pixels support indexed RGB writes/readback and fill(colour)")
                 args = [self.cast(self.expr(a), t, a) for a, t in zip(n.args, kinds[method])]
-                if method == "clear": method, args = "fill", ['(i32.const 0)']
-                return Expression("bool" if method == "present" else "void", f'(call ${method} {self.expr(n.func.value).code} {" ".join(args)})')
+                return Expression("void", f'(call ${method} {self.expr(n.func.value).code} {" ".join(args)})')
             name = getattr(n.func, "id", "")
             if name in self.locals:
                 self.fail(n, "scalar values are not callable")
@@ -513,7 +507,7 @@ class Compiler:
             if name in stack: self.fail(self.functions[name], "recursive functions are unsupported")
             for child in self.calls[name]: visit(child, stack | {name})
         for name in self.functions: visit(name, set())
-        imports = [f'(import "lightvm.control.v1" "{n}" (func ${n} {" ".join(f"(param {t})" for t in args)} {f"(result {ret})" if ret else ""}))' for n, (ret, args) in IMPORTS.items()]
+        imports = [f'(import "lightvm.control.v2" "{n}" (func ${n} {" ".join(f"(param {t})" for t in args)} {f"(result {ret})" if ret else ""}))' for n, (ret, args) in IMPORTS.items()]
         globals_code = [f'(global $g_{n} (mut {TYPES[t]}) {self.const(t, v)})' for n, (t, v) in self.globals.items()]
         palettes = [f'(func $palette_{name} (param $index i64) (result i32) ' + ' '.join(f'(if (i64.eq (local.get $index) (i64.const {i})) (then (return (i32.const {color}))))' for i, color in enumerate(colors)) + ' unreachable)' for name, colors in self.palettes.items()]
         start = f'(call $fn_{self.handlers["on_start"]} (local.get $time) (local.get $delta))' if "on_start" in self.handlers else ''
@@ -523,7 +517,7 @@ class Compiler:
             (else (if (i32.ne (local.get $trigger) (i32.const 1)) (then unreachable))
               (call $fn_{self.handlers['on_frame']} (local.get $time) (local.get $delta)))) (i32.const 0))'''
         wat = '(module\n' + '\n'.join(imports + ['(global $handle (mut i32) (i32.const 0))', HELPERS] + globals_code + palettes + functions + [step]) + '\n)'
-        manifest = {"schema": "lightvm.program/2", "abi": 1, "pixels": {"format": "rgb8", "retention": self.retention}, "parameters": [p for _, p in self.parameters.values()]}
+        manifest = {"schema": "lightvm.program/3", "abi": 2, "pixels": {"format": "rgb8"}, "parameters": [p for _, p in self.parameters.values()]}
         return wat, manifest
 
 
@@ -538,8 +532,8 @@ def compile_source(source, filename="<string>", target=None):
         wasm += b'\0' + uleb(len(section)) + section
         if target is not None:
             if len(wasm) > target.get("module_limit", 32768): raise CompileError(ast.Module(), "artifact exceeds target module limit")
-            if target.get("control_abi") != 1: raise CompileError(ast.Module(), "target does not advertise control ABI 1")
-            if manifest["schema"] not in target.get("program_schemas", []): raise CompileError(ast.Module(), "target does not advertise program schema 2")
+            if target.get("control_abi") != 2: raise CompileError(ast.Module(), "target does not advertise control ABI 2")
+            if manifest["schema"] not in target.get("program_schemas", []): raise CompileError(ast.Module(), "target does not advertise program schema 3")
         return Compilation(wasm, manifest, wat=wat)
     except (CompileError, SyntaxError) as error:
         n = error.node if isinstance(error, CompileError) else error
@@ -561,7 +555,7 @@ def main():
     args.output.write_bytes(result.wasm)
     args.output.with_suffix('.json').write_text(json.dumps(result.manifest, indent=2) + '\n')
     if args.wat: args.output.with_suffix('.wat').write_text(result.wat)
-    print(f'{args.output}: {len(result.wasm)} bytes; control ABI 1; no linear memory')
+    print(f'{args.output}: {len(result.wasm)} bytes; control ABI 2; no linear memory')
     return 0
 
 

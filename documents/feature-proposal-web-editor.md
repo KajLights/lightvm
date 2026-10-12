@@ -57,9 +57,9 @@ Runtime configuration and compiled-procedure persistence are now implemented ove
 USB on host, Pico and ESP32. [Configuration management](../docs/configuration.md)
 specifies staging, revisions, quotas and idle recovery. Editable source/project
 storage and the HTTP mappings below remain proposed.
-The [control ABI 1 Python frontend](../docs/control-api.md) is now available as a
+The [control ABI 2 Python frontend](../docs/control-api.md) is now available as a
 desktop compiler and SDK with live parameters and passive snapshots. It supports
-one fresh/retained RGB8 contribution and six original examples. Browser authoring,
+one RGB8 frame redrawn from black each step and six original examples. Browser authoring,
 compiler workers, project/source storage and preview UI remain future editor work.
 
 ## Reusable scenes and backgrounds
@@ -74,7 +74,7 @@ Offer an ordered scene view with per-layer controls, contribution/completion
 policy, hold/resume, reorder and remove actions. Basic composition overwrites
 covered pixels; removing a foreground contribution reveals the current lower
 scene. Retention and optional merge modes follow the composition capability.
-The scene preview shows the final result, with optional layer/presence inspection
+The scene preview shows the final result, with optional layer/alpha inspection when designed and supported
 for debugging. Report readiness, the failing layer and total resource use.
 
 When A/B is also available, each source can be a scene. Compose its layers before
@@ -121,9 +121,9 @@ calls `beforeRender(delta_ms: i32) -> void`. Programs import `led.pixel_count`,
 `led.rgb` and `led.hsv`. Physical wiring, wire order and brightness belong to the
 native output backend. Unsupported imports are rejected. These callbacks remain
 a compatibility contract, not the foundation of the proposed control ABI.
-General triggers, suspended tasks and retained pixel control are not implemented
-by API v1. Addressable RGB/RGBW output has no alpha-channel requirement; A/B
-transitions use a separate mix channel.
+General triggers, suspended tasks and alpha composition are not implemented
+by animation API v1. The current control ABI 2 also produces RGB-only frames;
+alpha layers and A/B transitions remain separate future work.
 
 The default engine profile limits uploads to 32 KiB, interpreter heap use to
 128 KiB and WASM linear memory to one 64 KiB page. Its cooperative execution
@@ -232,12 +232,11 @@ must diagnose unsupported suspension and excessive bounds rather than turning
 wait into a blocking sleep. Exact step/context encodings remain control-ABI
 implementation decisions.
 
-Composition bindings expose explicit colour/presence writes, black clear,
-contribution erase, retention and declared own/lower-input readback. A frame
-draw/filter step cannot suspend; slower simulation updates can publish state for
-fresh drawing or retain a complete contribution. These rules are shared across
-frontends, with optional helpers for stars, retained paint and filters. Ordinary
-RGB/RGBW colour values need no alpha component.
+Alpha composition bindings need a separate design before adding editor controls.
+The current compiler exposes indexed RGB writes/readback and fill, with black at
+the start of each frame. Animation state lives independently of frame storage.
+Any future frame/filter binding must define alpha, readback and publication
+consistently across frontends, and frame drawing must remain bounded.
 
 Preserve explicit retrigger policies, event ordering, cancellation and lifecycle
 behaviour. A frame callback is one trigger, not a compulsory entry point for
@@ -294,10 +293,10 @@ representation, including continuation state. Blockly supplies editing and code
 generation facilities; LightVM defines execution semantics. A blocks project
 records whether repeated triggers queue, restart, ignore an active script or
 admit multiple instances. Those choices cannot remain implicit editor behaviour.
-Composition blocks can paint a foreground, erase its contribution or sample its
-declared lower input. A scene arrangement binds independent effect artifacts;
-it must not silently turn them into competing full-strip writers. Explain black
-paint versus revealing the background through examples.
+Future composition blocks will follow the separate alpha contract. A scene
+arrangement binds independent effect artifacts; it must not silently turn them
+into competing physical-output writers. Alpha defaults and opaque/transparent
+black need clear examples after those semantics have been designed.
 
 Preserve the block workspace as the project's authoritative source. Generated
 text can be shown to help users learn, but editing that text should create a text
@@ -371,7 +370,7 @@ payload limit.
 | Save for startup | `POST /api/v1/programs/{id}/persist` | Optional explicit persistence operation |
 | Scene definition | `GET/PUT /api/v1/scenes/{id}` | Optional ordered layer/artifact configuration with expected revision and explicit preparation/activation guarantees |
 | Scene/layer action | `POST /api/v1/scenes/{id}/actions` | Optional prepare/activate, hold/resume or remove actions with layer identity/generation, retry rules and A/B lock checks |
-| Scene snapshot | `GET /api/v1/scenes/{id}/frame` | Optional completed scene or contribution/presence inspection with frame ID and validity |
+| Scene snapshot | `GET /api/v1/scenes/{id}/frame` | Optional completed scene or colour/alpha inspection when supported with frame ID and validity |
 
 These routes are a proposed contract, not existing endpoints. Unsupported
 operations return a stable capability error. Polling remains available when event
@@ -387,7 +386,7 @@ actions/event schemas, input quality, output ownership, supported retrigger
 policies and event/task/job limits. A compiled driver and a configured instance
 are separate facts.
 Composition discovery includes scene/layer management version, formats,
-retention/readback/merge modes, per-scene layers, total resident instances and
+alpha format/readback/blending rules, per-scene layers, total resident instances and
 aggregate buffer/frame limits. A/B capability alone does not imply layered
 sources; combined playback is admitted against actual resources.
 
@@ -542,9 +541,8 @@ colour composition as the device. Use the target capabilities, resource bounds
 and pixel topology. Simulated buttons, analogue samples, messages and job
 outcomes form a timestamped replay trace. Distinguish commanded actuator state
 from measured feedback and logical colour from physical brightness.
-For scenes, replay fresh and retained presence, black paint versus erase,
-stable lower-input filtering, independent layer clocks and one completed final
-publication. A/B preview first composes each scene and then applies transition
+For future scenes, replay alpha blending, opaque and transparent black,
+independent layer clocks and one completed final publication. A/B preview first composes each scene and then applies transition
 coverage, including exact endpoints and preserved destination layer state.
 
 Legacy animation preview retains API v1 callback/delta/colour rules. A later
@@ -563,7 +561,7 @@ and resource use on each board with its native services active.
 |---|---|---|
 | 1 | Descriptor, TypeScript USB SDK, browser preview and one text frontend | Connect to the Pico, compile/preview/upload an effect, report errors, and continue playback after disconnect; expose legacy replacement and explicit persistent procedure/configuration saving |
 | 2 | Project import/export, staged activation where supported, controller state and parameters | Preserve editable source, adjust controls during playback, reject stale updates, and verify declared replacement guarantees under failed uploads and activation |
-| 3 | Remaining language frontends, device/lighting blocks and scene editing where supported | Bindings share the control ABI, triggers/tasks and parameter schema; verify waits, repeated events, actuator ownership, reusable backgrounds, layer presence/retention/readback and A/B scene composition; publish compatibility limits |
+| 3 | Remaining language frontends, device/lighting blocks and scene editing where supported | Bindings share the control ABI, triggers/tasks and parameter schema; verify waits, repeated events, actuator ownership, reusable backgrounds, the separately designed alpha/readback contract and A/B scene composition; publish compatibility limits |
 | 4 | Network-capable native port and embedded HTTP API server | Demonstrate the public editor connecting directly to the device, discovery/device launch page, pairing and concurrent USB/HTTP request routing on supported browsers and hardware |
 | 5 | Optional persistence, BLE and Matter integration | Verify reboot recovery and interrupted saves where supported; validate BLE transfers and consistent Matter/controller state |
 
@@ -584,7 +582,7 @@ its implementation and failure behaviour are verified.
   compatibility boundaries.
 - Choose shared compiler representation and source mapping conventions.
 - Fix the shared control step/context contract, typed parameter/event encodings,
-  continuation bounds, pixel formats, composition presence/erase/readback and
+  continuation bounds, pixel formats, separately designed alpha composition/readback and
   separate A/B mix semantics.
 - Define scene packaging, layer identities and aggregate preparation/admission
   alongside single-artifact uploads; align controls with runtime delivery.

@@ -7,8 +7,8 @@ runtime for programmable lighting across microcontrollers and native hosts, unde
 The goal is one portable, language-neutral control API and the same `.wasm`
 programs across supported boards, within each board's resource limits. The
 implemented guest contracts are legacy animation API v1 and the independent
-[control ABI 1 animation profile](docs/control-api.md), with a restricted Python
-compiler, typed live parameters and retained/fresh RGB8 contributions. The shared C engine and
+[control ABI 2 animation profile](docs/control-api.md), with a restricted Python
+compiler, typed live parameters and RGB8 frames redrawn each step. The shared C engine and
 wasm3 interpreter are rebuilt for each processor; native ports supply the clock,
 LED output, memory allocation, transports and startup policy. Adding a board
 should not require board-specific imports or pin assumptions in an effect.
@@ -67,8 +67,8 @@ schedule bounded handlers and resumable tasks; addressable RGB pixels, digital/a
 PWM and servos share timing, publication and ownership conventions. Input
 sampling, guest execution and native waveforms have independent cadences.
 The first single-program control profile implements start/frame handlers,
-deployment-injected `ctx.pixels`, program time, typed parameters, explicit pixel
-presence and successful-step publication. Device events, resumable tasks and composition remain proposed;
+deployment-injected `ctx.pixels`, program time, typed parameters, black RGB at
+the start of each step and successful-step publication. Device events, resumable tasks and composition remain proposed;
 they are not supplied by the legacy API v1 adapter.
 
 Planned language bindings target that common contract. Pixelblaze source
@@ -80,10 +80,10 @@ preserve existing API v1 module behaviour as the new contract is introduced. The
 the common model. The
 [animation composition proposal](documents/feature-proposal-animation-composition.md)
 adds bounded ordered scenes with reusable backgrounds and foregrounds, such as
-Rainbow beneath Twinkle. Overwrite uses explicit pixel presence, with fresh or
-retained contributions and declared readback for filters. A/B can mix completed
-scene frames through its separate U8 mix channel when both capabilities are
-supported. There are no alpha-channel requirements.
+Rainbow beneath Twinkle. The earlier presence/retention design has been withdrawn;
+proper alpha transparency and composition will be designed and implemented
+separately. A/B transitions also remain proposed; production currently renders
+one RGB source in slot A.
 
 The [build profiles proposal](documents/feature-proposal-build-profiles.md)
 describes selecting drivers, HTTP, MQTT, OTA and resource/storage settings for
@@ -116,7 +116,7 @@ Animations receive their assigned contribution as `ctx.pixels`; source and
 manifest contain no destination name. Deployment selects the slot; this first
 runtime exposes only A. Configure its output first using the workflow below.
 The [control guide](docs/control-api.md) documents source syntax, compiler limits, ABI, pause/resume, passive snapshots and
-the distinction between painted black and erased presence. The compiler requires
+frame reset and own-step RGB readback. The compiler requires
 Python 3.9+; the device contains no Python interpreter. Scenes and waits follow later.
 
 The example configuration drives 100 RGB WS2812B pixels on **GP16**

@@ -87,7 +87,7 @@ checked when selecting a procedure. A stored module can therefore fail to load
 or play; the error does not remove it from the library.
 
 `procedure_activate` loads a fresh instance and either plays its existing API v1
-callbacks, starts a manifested [control ABI 1 program](control-api.md), or calls a
+callbacks, starts a manifested [control ABI 2 program](control-api.md), or calls a
 zero-argument export returning void or i32. Its optional `slot` field defaults
 to A; unsupported slots fail before replacement. New control programs receive
 `ctx.pixels` from deployment and carry no destination binding. Control manifests
@@ -107,8 +107,8 @@ owns packed RGB and its native driver. Control imports operate on the instance's
 reserved working contribution and captured count. The optional native output
 pointer is separate from the assigned canvas; control steps never call its driver.
 The aggregate VM heap stays bounded, and one engine owner serializes all work. Tests instantiate
-two independent offscreen canvases/VMs with identical schema-2 WASM to verify
-ownership; production exposes only A. B, a separate U8 mix channel, composition and guest device-handle imports
+two independent offscreen canvases/VMs with identical ABI-2/schema-3 WASM to verify
+ownership; production exposes only A. Alpha composition, B, a separate transition mix channel and guest device-handle imports
 remain proposed in the [control model](../documents/feature-proposal-control-api.md)
 and [A/B proposal](../documents/feature-proposal-ab-transitions.md), with ordered
 scene/layer semantics in the

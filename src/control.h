@@ -4,10 +4,10 @@
 #include "json.h"
 #include <stdbool.h>
 #include <stdint.h>
-#define CONTROL_ABI_VERSION 1u
+#define CONTROL_ABI_VERSION 2u
 #define CONTROL_PARAMETER_LIMIT 8u
 #define CONTROL_MANIFEST_LIMIT 8192u
-#define CONTROL_NAMESPACE "lightvm.control.v1"
+#define CONTROL_NAMESPACE "lightvm.control.v2"
 typedef enum { PARAM_BOOL, PARAM_INT, PARAM_FLOAT, PARAM_RGB } ParameterKind;
 typedef union { int64_t integer; double real; } ParameterValue;
 typedef struct {
@@ -17,14 +17,14 @@ typedef struct {
     bool has_minimum, has_maximum;
 } ControlParameter;
 typedef struct {
-    bool enabled, retained, initialized, in_step, faulted, contribution_valid, output_valid;
+    bool enabled, initialized, in_step, faulted, contribution_valid, output_valid;
     uint32_t parameter_count, parameter_revision, contribution_frame, output_frame, count;
     ControlParameter parameters[CONTROL_PARAMETER_LIMIT];
     uint32_t manifest_offset, manifest_size;
     uint64_t program_us;
     IM3Function step;
-    uint8_t *allocation, *committed, *working, *presence, *working_presence;
-    size_t buffer_bytes, presence_bytes, output_charge;
+    uint8_t *allocation, *committed, *working;
+    size_t buffer_bytes, output_charge;
 } Control;
 struct VmInstance;
 M3Result control_probe(const uint8_t *bytes,size_t size,Control *control);

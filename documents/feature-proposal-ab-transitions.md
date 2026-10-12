@@ -13,7 +13,7 @@ scene when [animation composition](feature-proposal-animation-composition.md)
 is supported. Scene composition runs before the transition mix.
 
 The implemented single-program API now injects `ctx.pixels` from deployment;
-animations and schema-2 manifests contain no A/B destination name. Guest steps
+animations and schema-3 manifests contain no A/B destination name. Guest steps
 produce owned contributions without physical output calls. Tests exercise two
 independent offscreen instances of identical bytecode. Production advertises
 only slot A; B, transition programs and the mixer below remain proposed.
@@ -25,9 +25,10 @@ per pixel, expressing destination coverage. This makes transitions programmable
 while keeping their storage and execution costs bounded. A simple uniform
 crossfade is the first example of the same mechanism used for a spatial reveal.
 
-Addressable RGB/RGBW colour buffers have no alpha-channel requirement. The mix
-channel is separate from the source colours and the RGBW white emitter. Future
-colour formats must preserve or explicitly version this initial blend.
+The proposed transition mix is separate from source RGB/RGBW values. Proper
+per-layer alpha composition remains a separate design; its output may later feed
+the A/B mixer under explicit joint capabilities and resource admission. Future
+colour formats must preserve or explicitly version this initial transition blend.
 Pixelblaze compatibility belongs above the independent control API, alongside
 the legacy animation API v1 adapter.
 
@@ -298,13 +299,11 @@ Allocate output storage and task/event/job capacity before playback. Preserve
 API v1 behaviour in its adapter: each legacy colour frame starts black,
 `beforeRender` runs once, and `render` runs in index order. Its `led.rgb` and
 `led.hsv` resolve to the executing slot's buffer. New control programs use
-explicitly retained or scratch pixel buffers and indexed updates; each admitted
-format and publication buffer is budgeted. The composite must never become
-either slot's animation history.
-Legacy black pixels remain covered in a full-frame source; presence for a sparse
-foreground is explicit and must not be inferred from RGB values. Own-layer
-history, stable lower-scene input and final A/B output are distinct readback
-resources under the composition contract.
+RGB frames reset to black before each step and indexed updates; every admitted
+frame/publication buffer is budgeted. The final composite must never become
+either slot's simulation state. The withdrawn presence/retention contract is
+not part of this mixer. Alpha scene inputs will follow the separately designed
+composition contract; ordinary RGB black is not a transparency sentinel.
 
 Only submit a frame after its required source/mix steps succeed. Successful
 task suspensions publish batches according to the common control model, while
@@ -341,7 +340,7 @@ This is 1,000 bytes for 100 pixels and 40,960 bytes for
 These are frame-storage calculations, not total device memory requirements.
 
 With layered sources, A and B above hold completed scene frames. Additional
-layer colour/presence, lower-input and staging storage, and every layer's
+layer colour/alpha, readback and staging storage, and every layer's
 interpreter/state must be counted separately. The `10N` total does not cover
 arbitrary layered scenes. Use the composition proposal's accounting and
 advertised per-scene and aggregate resident-instance limits.
@@ -436,7 +435,7 @@ Transport callbacks enqueue work for the sole engine owner.
 Discovery advertises the mixer/profile versions, slot count, mix format,
 supported controls, transition scripts, snapshots, preparation guarantees and
 resource limits. Composition-capable builds also advertise scene/layer operations,
-retention/readback modes and combined admission limits. Slot preparation binds a
+alpha formats/readback rules and combined admission limits. Slot preparation binds a
 scene definition and its artifacts; layer updates identify scene/layer generations.
 Scene and contribution snapshots are optional advertised extensions to the table
 above. The editor shows unsupported operations before deployment.
@@ -473,8 +472,8 @@ take work and its registrations without unloading reusable colour artifacts.
 
 Extend the web-editor project format with source definitions for A/B, their colour
 artifacts, a transition artifact, parameter schemas and default take settings.
-When composition is supported, preserve each scene's layer order, presence and
-retention modes, readback bindings and per-layer parameters. Each artifact keeps
+When the separate alpha composition contract is supported, preserve each
+scene's layer order, alpha formats, readback bindings and per-layer parameters. Each artifact keeps
 its own language and ABI requirements, allowing colour and transition programs
 to use different frontends. Compile and deploy a transition independently of
 the colour programs. A blocks frontend can expose a transition template with

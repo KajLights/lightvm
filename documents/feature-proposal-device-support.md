@@ -44,7 +44,7 @@ basic types, rather than separate drivers for every component.
 | Device type | Examples and lessons | Required configuration | Defaults and optional configuration |
 |---|---|---|---|
 | WS2812B pixels | Existing strips and rings; colour, loops and position | Output pin and pixel count | GRB order, output brightness limit, primary animation output |
-| Pixel buffer | Retained indexed RGB colours mapped to addressable output | Size and output binding | RGB/RGBW format, topology, clear and publication policy |
+| Pixel buffer | Indexed RGB frames mapped to addressable output | Size and output binding | Format, topology and successful-step publication |
 | Digital input | Button, toggle switch or digital sensor; conditions and state changes | Input pin | Pull, active level and debounce interval; a button preset supplies suitable defaults |
 | Digital output | LED or active buzzer; booleans and timed sequences | Output pin | Active level and logical safe value, initially off |
 | Analogue input | Potentiometer or LDR divider; thresholds and mapping | ADC-capable pin | Sampling interval, smoothing and configured input endpoints |
@@ -60,11 +60,11 @@ Distinguish active buzzers from passive piezos, positional servos from continuou
 rotation servos, and true analogue output from PWM in the editor. Pixel buffers
 are logical resources; WS2812B and RGBW output are physical capabilities.
 Explicit RGBW control is optional with its own driver and buffer budget.
-There are no alpha-channel requirements. Ordered scene layers use explicit pixel
-presence and overwrite; A/B scene changes use a separate mix channel. Scenes and
-layers are logical runtime resources, not additional physical strips or pin
-allocations. Their capability and memory limits are discovered separately from
-the WS2812B driver.
+Proper alpha transparency and scene composition remain a separate design and
+implementation increment. A/B changes mix completed source frames; per-layer
+alpha is a distinct concern. Scenes and layers are logical runtime resources,
+not additional physical strips or pin allocations. Their future capability and
+memory limits will be discovered separately from the WS2812B driver.
 
 After the starter release, add one named I2C temperature/humidity driver and a
 small monochrome display. These exercise bus sharing, measurement units and
@@ -238,7 +238,7 @@ aggregate pixel bytes, driver state, input events, tasks, subscriptions,
 timers, jobs, continuation storage and native driver buffers.
 Allocate or reserve device storage when applying configuration, never during a
 guest callback. Account for it separately from the existing wasm3 heap budget.
-Reserve scene/layer storage during scene preparation, including colour, presence,
+Reserve scene/layer storage during scene preparation, including colour/alpha,
 staging/readback and completed composites; include every participating program
 in aggregate admission. Hardware configuration alone does not allocate an
 unbounded number of virtual buffers or establish that layered A/B playback fits.
@@ -286,8 +286,8 @@ Successful status is zero; defined negative status codes identify failures.
 | PWM output | Set duty, enable/disable, inspect achieved timing | Normalized duty with fixed or explicitly variable period |
 | Tone output | Play, stop, inspect/cancel job | Native frequency generation, duration and terminal outcome |
 | Positional servo | Set calibrated target, release | Angle in declared units; command state is distinct from feedback |
-| Addressable pixels | Inspect, get, set, fill, clear, request publication | Explicit indexed RGB buffer access, retention and colour conversion |
-| Animation composition | Prepare scene/layers, paint, erase contribution, inspect own/lower input, publish | Bounded ordered overwrite with explicit presence, retention and readback under the composition contract |
+| Addressable pixels | Inspect, get, set, fill, successful-step publication | Indexed RGB access and colour conversion; every frame starts black |
+| Animation composition | Future scene/layer operations | Proper alpha and blending require a separate design before implementation |
 | RGBW output | Write explicit emitter channels | Optional independent white-channel control |
 
 Use booleans for logical state and a common normalized encoding for fractions.
@@ -305,16 +305,13 @@ them. Job failure and native commit failure are subsequent outcomes, distinct
 from accepting a staged request.
 
 Reads use a stable snapshot for one guest step. Output publication occurs after
-a successful step or explicit batch, including before a task suspends. Retained
-pixel buffers and scalar outputs keep committed contents until changed or stopped;
-scratch buffers have a declared reset policy. The last assignment by one writer
-wins within its batch. A layer owns its colour/presence contribution, and the
-scene compositor owns the combined logical frame. Clear paints covered black;
-erase releases a layer contribution to reveal the current lower input. Retained
-colour history, fresh foreground builds and stable lower-input filters follow
-the [composition contract](feature-proposal-animation-composition.md).
-The controller publishes one completed lighting frame; A/B mixes completed scene
-sources through its separate mix channel when both capabilities are supported.
+a successful step or explicit batch, including before a task suspends. Scalar
+outputs keep committed values until changed or stopped. RGB frames begin black
+and redraw from independent animation state. The last assignment by one writer
+wins within its batch. The future alpha compositor will own the combined scene
+and one completed lighting publication; layer, alpha and background readback
+semantics must be designed separately. A/B mixes completed source frames when
+both capabilities and their combined budgets are supported.
 Actuator ownership governs competing non-pixel writers. Property assignment must
 not implicitly restart a job; explicit actions have documented replacement/retry
 behaviour.
@@ -469,7 +466,7 @@ networking and Matter active on the ESP32 ports.
 |---|---|---|
 | 1 | Definition format, generator, bounded registry, digital input/output, lifecycle/timer events and bounded handlers | Existing rainbow remains compatible; a button/LED program runs with zero pixels; repeated edges retain order; invalid handles/configuration are diagnosed; adding the second type needs no scheduler/loader switch |
 | 2 | Shared hardware discovery/configuration, USB support and editor integration | Required fields generate forms and bindings; bad pins/resource conflicts fail before apply; stale revisions are rejected; simulated and physical button/LED projects agree |
-| 3 | Resumable waits, retained pixel buffers, analogue/PWM/tone/servo capabilities and native jobs | Red/wait/black publishes before suspension while other work runs; sample validity/age, retrigger/cancellation, ownership, timer conflicts and native expiry are verified |
+| 3 | Resumable waits, RGB frame programs, analogue/PWM/tone/servo capabilities and native jobs | Red/wait/black publishes before suspension while other work runs; sample validity/age, retrigger/cancellation, ownership, timer conflicts and native expiry are verified |
 | 4 | ESP32 native implementations | Identical compatible WASM works on Pico, S3 and C6 with board configuration changes only; resource use and interaction timing are measured under native service load |
 | 5 | One I2C sensor and optional display | Shared bus ownership, address conflicts, bounded servicing, disconnected hardware and missing preview support behave predictably |
 
@@ -482,11 +479,11 @@ Acceptance tests should cover missing fields/devices/imports, signature mismatch
 stale handles, instance/buffer exhaustion, initialization failure, duplicate pin
 aliases and PWM conflicts across types. Exercise stable input snapshots, debounce,
 event overflow/order, retrigger policies, task suspension/cancellation, signed
-results, retained buffers, bounded deadlines, failed steps/frames, partial native
+results, RGB frame reset/readback, bounded deadlines, failed steps/frames, partial native
 commits, note expiry, pause/stop/unload and browser disconnect. Compare logical outputs and
 scripted input sequences in the host before hardware checks on each board.
 Composition-capable profiles must also verify independent layer ownership,
-intentional black versus erased presence, lower-input readback, single lighting
+the separately designed alpha semantics, readback, single lighting
 publication and rejection of excessive scene/A/B combinations. General device
 support remains usable on profiles that omit animation composition.
 
