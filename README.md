@@ -56,6 +56,11 @@ platform adapters. They are planned features. Firmware OTA replaces the native
 engine and services; an animation upload replaces a RAM-resident WASM program.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).
 
+The [build profiles proposal](documents/feature-proposal-build-profiles.md)
+describes selecting drivers, HTTP, MQTT, OTA and resource/storage settings for
+each board instance. Instances of the same board model can use different feature
+sets according to user needs and available capacity.
+
 Multi-board portability is a maintained requirement: identical compatible WASM
 must run on host, Pico, XIAO S3 and XIAO C6 with native board configuration changes
 only. CI builds every firmware and tests both host profiles on pushes and PRs.

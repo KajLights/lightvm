@@ -43,6 +43,12 @@ constants such as Pico's `PIXEL_PIN` and `PIXEL_BRIGHTNESS` are consumed by its 
 Current wasm3 builds enforce one 64 KiB linear-memory page and a function stack
 height of 128; these interpreter limits are common to the present ports.
 
+The proposed [build profiles](../documents/feature-proposal-build-profiles.md)
+separate each instance's selected drivers, services, storage layout and budgets
+from its board's physical capabilities. HTTP, MQTT and OTA should be optional
+build components, with dependencies and capacity validated for the selected
+profile. This selection mechanism is not yet implemented.
+
 ## Native service contract
 
 Every port implements [platform.h](../src/platform.h):

@@ -156,10 +156,13 @@ builds and firmware updates; uploading a guest program does not install drivers.
 
 ## Hardware configuration and resource validation
 
-Board profiles define pin identities and aliases, available functions, reserved
-pins, peripheral resources and memory budgets. Hardware configuration selects
-instances. Programs select logical names and required capabilities. Keep these
-three layers separate so the same compiled program can run on different boards.
+Board definitions describe pin identities and aliases, available functions,
+reserved pins, peripheral resources and memory capacity.
+[Build profiles](feature-proposal-build-profiles.md) select drivers and budgets
+for each board instance's firmware. Hardware configuration selects named
+peripheral instances using those included drivers. Programs select logical names
+and required capabilities. Keep these layers separate so the same compiled
+program can run on different boards with compatible firmware profiles.
 
 An illustrative Pico configuration is:
 

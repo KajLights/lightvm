@@ -19,6 +19,11 @@ run a small embedded HTTP API server for discovery, program transfer and control
 Bluetooth can become another management transport; Matter should integrate
 ordinary lighting controls through shared controller state.
 
+[Build profiles](feature-proposal-build-profiles.md) select the drivers and
+services included in each board instance's firmware. HTTP, MQTT and OTA are
+optional even on boards capable of supporting them. The editor should offer
+features according to the connected instance's advertised profile and limits.
+
 ## User experience
 
 A user opens the public HTTPS editor site, chooses a language and starts from an
