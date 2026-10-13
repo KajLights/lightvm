@@ -78,6 +78,8 @@ export class FrameDecoder {
 }
 
 export class LightVMClient {
+  /** @param {any} transport
+   *  @param {{ timeout?: number, onOutput?: (text: string) => void, onDisconnect?: (error: Error) => void }} [options] */
   constructor(transport, { timeout = 5000, onOutput = () => {}, onDisconnect = () => {} } = {}) {
     this.transport = transport; this.timeout = timeout; this.onOutput = onOutput;
     this.onDisconnect = onDisconnect; this.requestId = 0; this.pending = null;
@@ -151,6 +153,7 @@ export class LightVMClient {
 
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionApi = description.connection_api; return description; }
 
+  /** @param {Uint8Array} wasm @param {number} limit @param {(progress: number) => void} [onProgress] */
   async upload(wasm, limit, onProgress = () => {}) {
     if (!Number.isInteger(limit) || limit < 8 || wasm.length < 8 || wasm.length > limit) {
       throw new Error(`Program must fit the device's ${limit}-byte module limit.`);
@@ -186,8 +189,10 @@ export class LightVMClient {
     await this.command(COMMAND.OBJECT_FINISH);
   }
 
-  async configure(config, { save = false, validate = false } = {}) {
-    const state = await this.describe();
+  /** @param {any} config
+   *  @param {{ save?: boolean, validate?: boolean, revisions?: { active_revision: number, saved_revision: number } | null }} [options] */
+  async configure(config, { save = false, validate = false, revisions = null } = {}) {
+    const state = revisions || await this.describe();
     await this.uploadObject("config", encoder.encode(JSON.stringify(config)));
     await this.manage("config_validate");
     if (validate) { await this.command(COMMAND.OBJECT_CANCEL); return; }
@@ -197,8 +202,9 @@ export class LightVMClient {
     }
   }
 
-  async configureNetwork(config) {
-    const state = await this.describe();
+  /** @param {any} config @param {number | null} [revision] */
+  async configureNetwork(config, revision = null) {
+    const state = revision === null ? await this.describe() : { network_revision: revision };
     await this.uploadObject("network", encoder.encode(JSON.stringify(config)));
     await this.manage("network_validate");
     return this.manage("network_commit", { expected_revision: state.network_revision });

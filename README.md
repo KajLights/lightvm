@@ -121,15 +121,19 @@ The [control guide](docs/control-api.md) documents source syntax, compiler limit
 frame reset and own-step RGB readback. The compiler requires
 Python 3.9+; the device contains no Python interpreter. Scenes and waits follow later.
 
-The [static browser editor](docs/web-editor.md) uses the same compiler in Pyodide,
-shows inline diagnostics as you type, and uploads/runs animations over the current
-USB CDC or HTTP connection. USB and HTTP can stay connected together. Start it with `python3 tools/serve_editor.py`
-and open `http://localhost:8000` in desktop Chrome or Edge. It includes all six
-Python examples and source/WASM downloads, network provisioning, saved procedures, configuration
-and live parameter controls; no compilation server is required.
+The [static device workspace](docs/web-editor.md) is built with React, TypeScript,
+Redux Toolkit and Vite. Start with a device connection, then use separate
+**Develop** and **Configure** views. Development compiles the existing Python
+subset in a Pyodide worker, shows inline diagnostics and uploads WASM over USB
+CDC or HTTP. Configuration handles output, startup and networking. The workspace
+also manages stored programs and live parameters. Firmware installation has a
+reserved entry point for future work. USB and HTTP can stay connected together.
+Install npm dependencies, then run the local editor server and open it in desktop
+Chrome or Edge. Compilation stays in the browser.
+
 The [GitHub Pages workflow](.github/workflows/pages.yml) automatically publishes
 the editor at **https://kajlights.github.io/lightvm/** from public `main` pushes
-once [Pages is enabled](docs/web-editor.md#github-pages).
+once [Pages is enabled](docs/web-editor.md#build-and-publish).
 
 The example configuration drives 100 RGB WS2812B pixels on **GP16**
 (physical Pico pin 21), GRB wire order at 800 kHz, with brightness limited to
