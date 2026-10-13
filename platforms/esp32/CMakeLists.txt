@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.18)
 
 option(LIGHTVM_WIFI "Include native Wi-Fi" OFF)
 option(LIGHTVM_HTTP "Include HTTP management" OFF)
+option(LIGHTVM_BOOT_SEQUENCE "Include persistent power-cycle sequence detection" OFF)
 if(LIGHTVM_HTTP AND NOT LIGHTVM_WIFI)
     message(FATAL_ERROR "Embedded HTTP requires LIGHTVM_WIFI=ON")
 endif()
@@ -41,6 +42,24 @@ set(LIGHTVM_BOARD_CONFIG "${CMAKE_CURRENT_LIST_DIR}/boards/${LIGHTVM_BOARD}.h"
 set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig" CACHE FILEPATH "Build-local ESP-IDF configuration")
 # ESP-IDF automatically loads sdkconfig.defaults.<target> alongside this file.
 set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
+# The CMake feature switch owns this partition selection. Defaults handle fresh
+# builds; update the build-local sdkconfig as well when toggling an existing build.
+if(LIGHTVM_BOOT_SEQUENCE)
+    set(LIGHTVM_PARTITION_FILENAME "partitions_boot_sequence.csv")
+else()
+    set(LIGHTVM_PARTITION_FILENAME "partitions.csv")
+endif()
+set(LIGHTVM_PARTITION_DEFAULTS "${CMAKE_BINARY_DIR}/sdkconfig.boot_sequence.defaults")
+file(WRITE "${LIGHTVM_PARTITION_DEFAULTS}" "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"${LIGHTVM_PARTITION_FILENAME}\"\n")
+list(APPEND SDKCONFIG_DEFAULTS "${LIGHTVM_PARTITION_DEFAULTS}")
+if(EXISTS "${SDKCONFIG}")
+    file(READ "${SDKCONFIG}" LIGHTVM_SDKCONFIG_TEXT)
+    string(REGEX REPLACE "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"[^\"]*\""
+        "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"${LIGHTVM_PARTITION_FILENAME}\"" LIGHTVM_UPDATED_SDKCONFIG "${LIGHTVM_SDKCONFIG_TEXT}")
+    if(NOT LIGHTVM_UPDATED_SDKCONFIG STREQUAL LIGHTVM_SDKCONFIG_TEXT)
+        file(WRITE "${SDKCONFIG}" "${LIGHTVM_UPDATED_SDKCONFIG}")
+    endif()
+endif()
 if(NOT EXISTS "$ENV{IDF_PATH}/tools/cmake/project.cmake")
     message(FATAL_ERROR "Activate ESP-IDF v5.5.3 with its export.sh first")
 endif()

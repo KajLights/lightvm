@@ -105,6 +105,13 @@ session_destroy(&session);
 app_destroy(&app);
 ```
 
+Optional [boot-sequence detection](boot-sequence.md) initializes before saved
+startup configuration and is serviced first in `app_tick`. Native policy can query
+`app_boot_sequence_triggered(&app)`; it is false in builds without
+`LIGHTVM_BOOT_SEQUENCE`. Detection alone does not alter startup policy. Enabled
+ports implement the independent `platform_boot_storage_*` block hooks using two
+4096-byte erase sectors and 256-byte program units, with durable synchronization.
+
 `send_message` receives a logical reply and the original transport context. A
 serial/pipe adapter uses `write_frame` and handles native flushing. Decoder errors
 and application replies use the same context. The host and Pico entry points show

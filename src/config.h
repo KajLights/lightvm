@@ -7,6 +7,14 @@
 #ifndef LIGHTVM_HTTP
 #define LIGHTVM_HTTP 0
 #endif
+#ifndef LIGHTVM_BOOT_SEQUENCE
+#define LIGHTVM_BOOT_SEQUENCE 0
+#endif
+// The detector remains useful by itself; AP recovery needs all three services.
+#define LIGHTVM_POWER_RECOVERY (LIGHTVM_BOOT_SEQUENCE && LIGHTVM_WIFI && LIGHTVM_HTTP)
+#if LIGHTVM_BOOT_SEQUENCE
+#define BOOT_SEQUENCE_STORAGE_BYTES 8192u
+#endif
 
 // A port supplies a board/resource profile; defaults are the portable baseline.
 #ifdef LIGHTVM_BOARD_CONFIG

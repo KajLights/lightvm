@@ -39,7 +39,12 @@ save AP settings; station and AP drafts are retained when switching modes.
 Passwords remain only in the form and are cleared after attempted saves.
 The device serves the full API, while editor/compiler assets remain separate;
 load Develop while online before relying on compilation without internet.
-See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode).
+During power-cycle recovery, the panel shows saved network settings while the
+open recovery AP stays active. **Save network for next boot** preserves the
+current connection; restart after the detector has cleared its counter to apply
+those values. Recovery keeps the startup program idle until manually activated.
+See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode)
+and [power-cycle recovery](boot-sequence.md#recovery-access-point).
 
 ## Device and development flow
 

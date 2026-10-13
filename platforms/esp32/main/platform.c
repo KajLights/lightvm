@@ -88,6 +88,26 @@ bool platform_storage_erase(uint32_t offset,size_t size) {
     return bounds(offset,size) && offset%4096==0 && size%4096==0 && esp_partition_erase_range(partition,offset,size)==ESP_OK;
 }
 bool platform_storage_sync(void) { return partition!=NULL; }
+#if LIGHTVM_BOOT_SEQUENCE
+static const esp_partition_t *boot_partition;
+bool platform_boot_storage_available(void) {
+    boot_partition=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_ANY,"lightvm_boot");
+    return boot_partition && boot_partition->size==BOOT_SEQUENCE_STORAGE_BYTES && boot_partition->erase_size==4096;
+}
+static bool boot_bounds(uint32_t offset,size_t size) {
+    return boot_partition && offset<=BOOT_SEQUENCE_STORAGE_BYTES && size<=BOOT_SEQUENCE_STORAGE_BYTES-offset;
+}
+bool platform_boot_storage_read(uint32_t offset,void *bytes,size_t size) {
+    return boot_bounds(offset,size) && esp_partition_read(boot_partition,offset,bytes,size)==ESP_OK;
+}
+bool platform_boot_storage_write(uint32_t offset,const void *bytes,size_t size) {
+    return boot_bounds(offset,size) && offset%256==0 && size%256==0 && esp_partition_write(boot_partition,offset,bytes,size)==ESP_OK;
+}
+bool platform_boot_storage_erase(uint32_t offset,size_t size) {
+    return boot_bounds(offset,size) && offset%4096==0 && size%4096==0 && esp_partition_erase_range(boot_partition,offset,size)==ESP_OK;
+}
+bool platform_boot_storage_sync(void) { return boot_partition!=NULL; }
+#endif
 void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
 void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }

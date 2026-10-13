@@ -95,4 +95,13 @@ describe('configuration drafts', () => {
     expect(screen.queryByLabelText('Wi-Fi mode')).toBeNull();
     expect(screen.queryByLabelText('Access point SSID')).toBeNull();
   });
+  it('shows saved settings and the next-boot save action during recovery', () => {
+    const store = readyStore();
+    store.dispatch(deviceActions.networkStatus({ state: 'ap_active', mode: 'ap', recovery: true, ssid: 'lightvm-123456', ip: '192.168.4.1', http_port: 80, revision: 1 }));
+    render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi & HTTP' }));
+    expect(screen.getByRole('status')).toHaveTextContent('saved network settings');
+    expect(screen.getByRole('button', { name: 'Save network for next boot' })).toBeEnabled();
+    expect(screen.getByLabelText('Wi-Fi mode')).toHaveValue('station');
+  });
 });

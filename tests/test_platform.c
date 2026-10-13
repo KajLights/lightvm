@@ -60,6 +60,15 @@ bool platform_storage_erase(uint32_t offset,size_t size) {
     memset(flash+offset,255,size); return true;
 }
 bool platform_storage_sync(void) { return !fail(); }
+#if LIGHTVM_BOOT_SEQUENCE
+// This contract fixture has no boot metadata; the dedicated journal test owns
+// fault injection for that independent region.
+bool platform_boot_storage_available(void) { return false; }
+bool platform_boot_storage_read(uint32_t o,void *b,size_t n) { (void)o; (void)b; (void)n; CHECK(false); return false; }
+bool platform_boot_storage_write(uint32_t o,const void *b,size_t n) { (void)o; (void)b; (void)n; CHECK(false); return false; }
+bool platform_boot_storage_erase(uint32_t o,size_t n) { (void)o; (void)n; CHECK(false); return false; }
+bool platform_boot_storage_sync(void) { CHECK(false); return false; }
+#endif
 static void storage_faults(void) {
     storage_available=true; memset(flash,255,sizeof(flash));
     Store s; CHECK(store_mount(&s));
@@ -281,7 +290,23 @@ static void network_transactions(void) {
     session_destroy(&session); app_destroy(&app); app_init(&app,capture,&reply);
     CHECK(app.network.saved_valid && !app.network.config.wifi_enabled && !strcmp(app.network.config.ap_password,"ap-secret"));
     network_bootstrap(&app.network,true); CHECK(!app.network.initial_setup && !app.network.config.wifi_enabled);
-    app_destroy(&app);
+    // Recovery saves update durable settings without reconfiguring the live AP.
+    app.network.recovery=true; app.network.driver.configure=radio_configure; app.network.driver.link=radio_link;
+    setup=app.network.config; network_apply(&app.network,&setup);
+    network_tick(&app.network,0); network_tick(&app.network,1); CHECK(app.network.state==NET_AP_ACTIVE);
+    session_init(&session,&app,1,capture,&reply);
+    memcpy(app.staging,candidate,strlen(candidate)); app.expected=(uint32_t)strlen(candidate);
+    app.staged=true; app.object_kind=3; app.upload_owner=1;
+    commit="{\"op\":\"network_commit\",\"expected_revision\":2}";
+    applied=radio_configurations;
+    fail_after=0; command(&session,CMD_MANAGE,(const uint8_t *)commit,strlen(commit)); fail_after=-1;
+    CHECK(reply.code==STATUS_STORAGE && app.network.recovery && app.network.state==NET_AP_ACTIVE && !app.network_pending);
+    command(&session,CMD_MANAGE,(const uint8_t *)commit,strlen(commit));
+    CHECK(reply.code==STATUS_OK && strstr(reply.message,"next boot") && !app.network_pending && app.network.recovery);
+    clock_now+=1000000; app_tick(&app);
+    CHECK(app.network.state==NET_AP_ACTIVE && network_http_port(&app.network)==80 && radio_configurations==applied);
+    CHECK(app.network.config.port==8080 && !strcmp(app.network.config.ap_password,"ap-secret"));
+    session_destroy(&session); app_destroy(&app);
 }
 
 int main(void) {
@@ -290,6 +315,7 @@ int main(void) {
     static Session session;
     Capture reply = {.marker = 0x12345678u};
     app_init(&app,capture,&reply);
+    CHECK(!app_boot_sequence_triggered(&app));
     session_init(&session,&app,1,capture,&reply);
     CHECK(shows == 0);
     // Equal request IDs on independent, fragmented decoders retain reply ownership.

@@ -1,5 +1,6 @@
 #ifndef LIGHTVM_PLATFORM_H
 #define LIGHTVM_PLATFORM_H
+#include "config.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -37,6 +38,15 @@ bool platform_storage_read(uint32_t offset, void *bytes, size_t size);
 bool platform_storage_write(uint32_t offset, const void *bytes, size_t size);
 bool platform_storage_erase(uint32_t offset, size_t size);
 bool platform_storage_sync(void);
+
+#if LIGHTVM_BOOT_SEQUENCE
+// Independent 8 KiB boot journal; same erase/program/durability contract.
+bool platform_boot_storage_available(void);
+bool platform_boot_storage_read(uint32_t offset, void *bytes, size_t size);
+bool platform_boot_storage_write(uint32_t offset, const void *bytes, size_t size);
+bool platform_boot_storage_erase(uint32_t offset, size_t size);
+bool platform_boot_storage_sync(void);
+#endif
 
 // Compatible, aligned C allocation semantics. All wasm3 allocations use these
 // hooks through the shared budget accounting. A port may choose a memory pool.

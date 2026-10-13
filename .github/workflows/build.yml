@@ -15,6 +15,7 @@ jobs:
       matrix:
         profile: [host, host-175]
         transport: [usb, http]
+        boot_sequence: ['OFF', 'ON']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +34,7 @@ jobs:
           if [[ '${{ matrix.profile }}' == host-175 ]]; then
             board_args=(-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h")
           fi
-          cmake -S . -B build/${{ matrix.profile }}-${{ matrix.transport }} -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=${{ matrix.transport == 'http' && 'ON' || 'OFF' }} -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
+          cmake -S . -B build/${{ matrix.profile }}-${{ matrix.transport }} -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=${{ matrix.transport == 'http' && 'ON' || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
           cmake --build build/${{ matrix.profile }}-${{ matrix.transport }} --parallel 2
           size build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm > build/${{ matrix.profile }}-${{ matrix.transport }}/size.txt
       - name: Contract and integration tests
@@ -45,6 +46,13 @@ jobs:
           node --test tests/test_editor.mjs
           npm run build
           npm test
+      - name: Power recovery policy and HTTP integration
+        if: matrix.profile == 'host' && matrix.transport == 'http' && matrix.boot_sequence == 'ON'
+        run: |
+          cmake -S . -B build/power-recovery-host -DLIGHTVM_PLATFORM=host -DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON -DLIGHTVM_BOOT_SEQUENCE=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/power-recovery-host --parallel 2
+          ctest --test-dir build/power-recovery-host --output-on-failure
+          LIGHTVM_RECOVERY_RECEIVER="$PWD/build/power-recovery-host/lightvm" python -m unittest discover -s tests -p 'test_power_recovery.py' -v
       - name: Portable smoke checks
         shell: bash
         run: |
@@ -53,7 +61,7 @@ jobs:
           python tools/smoke_device.py --process build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm --board "$board" --reference build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
       - uses: actions/upload-artifact@v4
         with:
-          name: lightvm-${{ matrix.profile }}-${{ matrix.transport }}
+          name: lightvm-${{ matrix.profile }}-${{ matrix.transport }}-boot-${{ matrix.boot_sequence }}
           path: |
             build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
             build/${{ matrix.profile }}-${{ matrix.transport }}/size.txt
@@ -66,6 +74,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        name: [pico, pico-w-usb, pico-w-wifi, pico-w-http]
+        boot_sequence: ['OFF', 'ON']
         include:
           - {name: pico, board: pico, wifi: 'OFF', http: 'OFF'}
           - {name: pico-w-usb, board: pico_w, wifi: 'OFF', http: 'OFF'}
@@ -84,12 +94,12 @@ jobs:
           echo "$PWD/build/deps/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin" >> "$GITHUB_PATH"
       - name: Build firmware
         run: |
-          cmake -S . -B build/${{ matrix.name }} -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=${{ matrix.board }} -DLIGHTVM_WIFI=${{ matrix.wifi }} -DLIGHTVM_HTTP=${{ matrix.http }} -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build/${{ matrix.name }} -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=${{ matrix.board }} -DLIGHTVM_WIFI=${{ matrix.wifi }} -DLIGHTVM_HTTP=${{ matrix.http }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
           cmake --build build/${{ matrix.name }} --parallel 2
           arm-none-eabi-size build/${{ matrix.name }}/lightvm.elf > build/${{ matrix.name }}/size.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: lightvm-${{ matrix.name }}
+          name: lightvm-${{ matrix.name }}-boot-${{ matrix.boot_sequence }}
           path: |
             build/${{ matrix.name }}/lightvm.uf2
             build/${{ matrix.name }}/lightvm.elf
@@ -109,6 +119,7 @@ jobs:
       matrix:
         board: [xiao_esp32s3, xiao_esp32c6]
         transport: [usb, wifi, http]
+        boot_sequence: ['OFF', 'ON']
     defaults:
       run:
         shell: bash
@@ -117,11 +128,11 @@ jobs:
       - name: Build firmware and record size
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ matrix.transport == 'http' && 'ON' || 'OFF' }} build
+          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ matrix.transport == 'http' && 'ON' || 'OFF' }} -D LIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} build
           idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" size > build/${{ matrix.board }}-${{ matrix.transport }}/size.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: lightvm-${{ matrix.board }}-${{ matrix.transport }}
+          name: lightvm-${{ matrix.board }}-${{ matrix.transport }}-boot-${{ matrix.boot_sequence }}
           path: |
             build/${{ matrix.board }}-${{ matrix.transport }}/lightvm.bin
             build/${{ matrix.board }}-${{ matrix.transport }}/lightvm.elf

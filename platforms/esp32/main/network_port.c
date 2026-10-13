@@ -187,7 +187,7 @@ failed:
     stop_discovery(); return false;
 }
 static void poll_discovery(uint64_t now,uint16_t port) {
-    bool enabled=handle && network_online(&engine->network) && engine->network.config.http_enabled;
+    bool enabled=handle && network_online(&engine->network) && network_http_enabled(&engine->network);
     struct in_addr address={0}; inet_pton(AF_INET,engine->network.ip,&address);
     if (discovery.active && (!enabled || memcmp(&address.s_addr,discovery.devices[0].ip,4) || port!=discovery.devices[0].port)) stop_discovery();
     static uint64_t retry;
@@ -331,11 +331,12 @@ void esp32_network_poll(void) {
     static NetworkState previous=NET_DISABLED; static uint16_t listening_port;
     if ((previous==NET_CONNECTED || previous==NET_AP_ACTIVE) && !network_online(&engine->network)) http_disconnect_sessions(&http);
     previous=engine->network.state;
-    bool enabled=engine->network.config.http_enabled && network_online(&engine->network);
-    if (handle && !engine->network_pending && (!enabled || listening_port!=engine->network.config.port)) {
+    bool enabled=network_http_enabled(&engine->network) && network_online(&engine->network);
+    uint16_t requested_port=network_http_port(&engine->network);
+    if (handle && !engine->network_pending && (!enabled || listening_port!=requested_port)) {
         if (!stop_http()) return;
     }
-    if (!handle && !engine->network_pending && enabled && ingress && transmit) { if (start_http(engine->network.config.port)) listening_port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
+    if (!handle && !engine->network_pending && enabled && ingress && transmit) { if (start_http(requested_port)) listening_port=requested_port; else strcpy(engine->network_error,"HTTP listener could not start"); }
     poll_discovery(platform_time_us(),listening_port);
     if (handle) {
         Incoming incoming;

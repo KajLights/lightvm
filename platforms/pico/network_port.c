@@ -175,7 +175,7 @@ static err_t accept_client(void *ctx,struct tcp_pcb *pcb,err_t error) {
     Client *c=NULL; for (unsigned i=0;i<4;i++) if (!clients[i].pcb) { c=&clients[i]; break; }
     if (!c) { tcp_abort(pcb); return ERR_ABRT; }
     memset(c,0,sizeof(*c)); c->pcb=pcb; c->deadline=platform_time_us()+2000000u; c->request.io=(HttpIO){c,output,close_client};
-    c->request.discovery_only=pcb->local_port==80 && engine->network.config.port!=80;
+    c->request.discovery_only=pcb->local_port==80 && network_http_port(&engine->network)!=80;
     tcp_arg(pcb,c); tcp_recv(pcb,receive); tcp_err(pcb,failed); return ERR_OK;
 }
 static void stop_http(void) {
@@ -219,10 +219,11 @@ void pico_network_poll(void) {
     static NetworkState previous=NET_DISABLED; static uint16_t port;
     if ((previous==NET_CONNECTED || previous==NET_AP_ACTIVE) && !network_online(&engine->network)) stop_http();
     previous=engine->network.state;
-    bool enabled=network_online(&engine->network) && engine->network.config.http_enabled;
+    bool enabled=network_online(&engine->network) && network_http_enabled(&engine->network);
+    uint16_t requested_port=network_http_port(&engine->network);
     if (!engine->network_pending) {
-        if (listener && (!enabled || port!=engine->network.config.port)) stop_http();
-        if (!listener && enabled) { if (start_http(engine->network.config.port)) port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
+        if (listener && (!enabled || port!=requested_port)) stop_http();
+        if (!listener && enabled) { if (start_http(requested_port)) port=requested_port; else strcpy(engine->network_error,"HTTP listener could not start"); }
     }
     uint64_t now=platform_time_us();
     static uint64_t discovery_retry;

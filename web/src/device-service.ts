@@ -216,12 +216,13 @@ export class DeviceService {
   configureNetwork(config: NetworkConfig, revision: number) {
     return this.run('Saving network settings', async client => {
       const connection = this.require(client);
+      const recovery = Boolean(this.store.getState().device.networkStatus?.recovery);
       const reply = await connection.configureNetwork(config, revision);
       const safeConfig = structuredClone(config);
       for (const network of safeConfig.wifi.networks) delete network.password;
       if (safeConfig.wifi.ap) delete safeConfig.wifi.ap.password;
       this.store.dispatch(deviceActions.network({ config: safeConfig, revision: reply.value >>> 0 }));
-      this.log('Network settings saved. Reconnect HTTP after the network changes.', 'success');
+      this.log(recovery ? 'Network settings saved for next boot. Recovery AP remains active.' : 'Network settings saved. Reconnect HTTP after the network changes.', 'success');
       if (connection.closed) {
         this.store.dispatch(activityActions.notice('Network settings saved. Reconnect to continue.'));
       } else {

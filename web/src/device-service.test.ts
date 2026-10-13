@@ -39,4 +39,16 @@ describe('network commit', () => {
     expect(store.getState().device.networkConfig?.wifi.ap).toEqual({ ssid: 'lights' });
     expect(JSON.stringify(store.getState())).not.toContain('ap-secret');
   });
+  it('keeps the current path and explains that recovery saves apply next boot', async () => {
+    const store = createAppStore(), service = new DeviceService(store);
+    const client = { closed: false, configureNetwork: vi.fn().mockResolvedValue({ value: 4 }) } as unknown as LightVMClient;
+    service.paths.attach('http', client, { device_id: 'board', boot_id: 'boot' } as Description);
+    store.dispatch(deviceActions.networkStatus({ state: 'ap_active', recovery: true, http_port: 80, revision: 3 }));
+    vi.spyOn(service, 'readNetwork').mockResolvedValue();
+    const config: NetworkConfig = { schema: 'lightvm.network/1', wifi: { enabled: false, country: 'XX', networks: [] }, http: { enabled: false, port: 8080 } };
+    expect(await service.configureNetwork(config, 3)).toBe(true);
+    expect(service.client).toBe(client);
+    expect(JSON.stringify(store.getState().activity)).toContain('Recovery AP remains active');
+    expect(JSON.stringify(store.getState().activity)).not.toContain('Reconnect HTTP');
+  });
 });

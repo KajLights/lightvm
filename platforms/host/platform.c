@@ -30,23 +30,68 @@ bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     (void)rgb; return driver && count==((PixelConfig *)driver)->count;
 }
 static int storage_fd=-1;
+#if LIGHTVM_BOOT_SEQUENCE
+static int boot_storage_fd=-1;
+#endif
 static uint32_t storage_identity;
 void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) {
     char hostname[128]="localhost"; gethostname(hostname,sizeof(hostname)-1);
     snprintf(device,capacity,"host-%08lx-%08lx",(unsigned long)crc32_bytes((const uint8_t *)hostname,strlen(hostname)),(unsigned long)(storage_fd>=0?storage_identity:(uint32_t)getpid()));
     snprintf(boot,boot_capacity,"%lx-%llx",(unsigned long)getpid(),(unsigned long long)platform_time_us());
 }
-static bool io_bytes(bool write,uint32_t offset,void *bytes,size_t size) {
-    if (storage_fd<0 || offset>STORAGE_BYTES || size>STORAGE_BYTES-offset) return false;
+static bool file_bytes(int fd,uint32_t capacity,bool write,uint32_t offset,void *bytes,size_t size) {
+    if (fd<0 || offset>capacity || size>capacity-offset) return false;
     uint8_t *p=bytes;
     while (size) {
-        ssize_t n=write ? pwrite(storage_fd,p,size,offset) : pread(storage_fd,p,size,offset);
+        ssize_t n=write ? pwrite(fd,p,size,offset) : pread(fd,p,size,offset);
         if (n<0 && errno==EINTR) continue;
         if (n<=0) return false;
         p+=n; offset+=(uint32_t)n; size-=(size_t)n;
     }
     return true;
 }
+static bool io_bytes(bool write,uint32_t offset,void *bytes,size_t size) {
+    return file_bytes(storage_fd,STORAGE_BYTES,write,offset,bytes,size);
+}
+#if LIGHTVM_BOOT_SEQUENCE
+static void boot_storage_open(const char *path) {
+    static const char suffix[]=".boot-sequence";
+    size_t length=strlen(path);
+    char *name=malloc(length+sizeof(suffix));
+    if (!name) return;
+    memcpy(name,path,length); memcpy(name+length,suffix,sizeof(suffix));
+    int fd=open(name,O_RDWR|O_CREAT,0600); free(name);
+    if (fd<0) return;
+    struct stat st;
+    struct flock lock={.l_type=F_WRLCK,.l_whence=SEEK_SET};
+    if (fcntl(fd,F_SETLK,&lock) || fstat(fd,&st)) { close(fd); return; }
+    if (st.st_size==0) {
+        uint8_t erased[4096]; memset(erased,255,sizeof(erased));
+        for (uint32_t offset=0;offset<BOOT_SEQUENCE_STORAGE_BYTES;offset+=sizeof(erased)) {
+            if (!file_bytes(fd,BOOT_SEQUENCE_STORAGE_BYTES,true,offset,erased,sizeof(erased))) { close(fd); return; }
+        }
+        if (fsync(fd)) { close(fd); return; }
+    } else if (st.st_size!=BOOT_SEQUENCE_STORAGE_BYTES) { close(fd); return; }
+    boot_storage_fd=fd;
+}
+bool platform_boot_storage_available(void) { return boot_storage_fd>=0; }
+bool platform_boot_storage_read(uint32_t offset,void *bytes,size_t size) {
+    return file_bytes(boot_storage_fd,BOOT_SEQUENCE_STORAGE_BYTES,false,offset,bytes,size);
+}
+bool platform_boot_storage_write(uint32_t offset,const void *bytes,size_t size) {
+    return offset%256==0 && size%256==0 && file_bytes(boot_storage_fd,BOOT_SEQUENCE_STORAGE_BYTES,true,offset,(void *)bytes,size);
+}
+bool platform_boot_storage_erase(uint32_t offset,size_t size) {
+    if (offset%4096 || size%4096 || offset>BOOT_SEQUENCE_STORAGE_BYTES || size>BOOT_SEQUENCE_STORAGE_BYTES-offset) return false;
+    uint8_t erased[4096]; memset(erased,255,sizeof(erased));
+    while (size) {
+        if (!platform_boot_storage_write(offset,erased,sizeof(erased))) return false;
+        offset+=sizeof(erased); size-=sizeof(erased);
+    }
+    return true;
+}
+bool platform_boot_storage_sync(void) { return boot_storage_fd>=0 && fsync(boot_storage_fd)==0; }
+#endif
 bool host_storage_open(const char *path) {
     storage_identity=crc32_bytes((const uint8_t *)path,strlen(path));
     storage_fd=open(path,O_RDWR|O_CREAT,0600);
@@ -60,9 +105,19 @@ bool host_storage_open(const char *path) {
             if (!io_bytes(true,offset,erased,sizeof(erased))) { host_storage_close(); return false; }
         if (fsync(storage_fd)) { host_storage_close(); return false; }
     } else if (st.st_size!=STORAGE_BYTES) { host_storage_close(); return false; }
+#if LIGHTVM_BOOT_SEQUENCE
+    boot_storage_open(path);
+#endif
     return true;
 }
-void host_storage_close(void) { if (storage_fd>=0) close(storage_fd); storage_fd=-1; }
+void host_storage_close(void) {
+    if (storage_fd>=0) close(storage_fd);
+    storage_fd=-1;
+#if LIGHTVM_BOOT_SEQUENCE
+    if (boot_storage_fd>=0) close(boot_storage_fd);
+    boot_storage_fd=-1;
+#endif
+}
 bool platform_storage_available(void) { return storage_fd>=0; }
 bool platform_storage_read(uint32_t offset,void *bytes,size_t size) { return io_bytes(false,offset,bytes,size); }
 bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {

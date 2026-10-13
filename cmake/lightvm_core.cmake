@@ -10,6 +10,7 @@ function(lightvm_add_core)
     target_compile_definitions(lightvm_config INTERFACE
         LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
         LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>)
+    target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
     set(WASM3_SOURCE_DIR "${WASM3_SOURCE_DIR}" CACHE PATH "Optional existing wasm3 v0.5.0 checkout")
     if(NOT WASM3_SOURCE_DIR)
@@ -66,6 +67,9 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/network.c")
     if(LIGHTVM_HTTP)
         target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c" "${LIGHTVM_ROOT}/src/discovery.c")
+    endif()
+    if(LIGHTVM_BOOT_SEQUENCE)
+        target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/boot_sequence.c")
     endif()
     target_compile_features(lightvm_core PUBLIC c_std_11)
     target_compile_options(lightvm_core PRIVATE -Wall -Wextra -Werror)

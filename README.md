@@ -59,6 +59,11 @@ execution is unsupported.
 Storage has native adapters on host, Pico and ESP32. Optional [Wi-Fi and HTTP management](docs/networking.md), including `lightvm.local` device discovery and AP mode for initial setup or standalone use, coexist with USB. MQTT,
 Matter and firmware OTA remain planned native services. Firmware OTA replaces the native
 engine and services; an animation upload replaces a RAM-resident WASM program.
+Optional [power-cycle sequence detection](docs/boot-sequence.md) counts power-ons
+"1, 2, 3". With Wi-Fi and HTTP enabled, the third short boot opens a temporary
+recovery AP and keeps the startup program idle, preserving saved settings. Enable
+the detector with `LIGHTVM_BOOT_SEQUENCE=ON`; it defaults to `OFF`. Detector-only
+builds leave startup unchanged.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).
 
 The [control API and execution model proposal](documents/feature-proposal-control-api.md)

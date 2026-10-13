@@ -3,8 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"%d: %s\n",__LINE__,#x); exit(1); } } while (0)
-typedef struct { unsigned scans,connections,configurations; int link; bool reject_next,reject_config; char tried[64][33]; } Radio;
-static bool configure(void *ctx,const NetworkConfig *config) { (void)config; Radio *r=ctx; r->configurations++; return !r->reject_config; }
+typedef struct { unsigned scans,connections,configurations; int link; bool reject_next,reject_config; char tried[64][33]; NetworkConfig applied; } Radio;
+static bool configure(void *ctx,const NetworkConfig *config) { Radio *r=ctx; r->applied=*config; r->configurations++; return !r->reject_config; }
 static bool scan(void *ctx) { ((Radio *)ctx)->scans++; return true; }
 static int scan_poll(void *ctx,const char *ssid,bool *visible) { (void)ctx; if (visible) *visible=strcmp(ssid,"missing")!=0; return 1; }
 static bool connect(void *ctx,const WifiNetwork *n) { Radio *r=ctx; strcpy(r->tried[r->connections++],n->ssid); r->link=0; if (r->reject_next) { r->reject_next=false; return false; } return true; }
@@ -91,5 +91,18 @@ int main(void) {
     config.wifi_enabled=false; ap_radio.reject_config=true;
     network_apply(&n,&config); network_tick(&n,0); CHECK(n.state==NET_BACKOFF);
     ap_radio.reject_config=false; network_tick(&n,n.retry_at); CHECK(n.state==NET_DISABLED && !n.error[0]);
+    // Recovery overrides an unusable saved profile without replacing its values.
+    config.mode=NET_MODE_STATION; config.http_enabled=false; config.port=8080; strcpy(config.country,"ZZ");
+    Radio recovery={.link=1}; network_init(&n); n.recovery=true; n.saved_valid=true; n.config=config;
+    network_bootstrap(&n,true); CHECK(!n.initial_setup && !memcmp(&n.config,&config,sizeof(config)));
+    n.driver=(NetworkDriver){&recovery,configure,scan,scan_poll,connect,link,disconnect,random_value};
+    network_apply(&n,&config);
+    CHECK(recovery.applied.wifi_enabled && recovery.applied.http_enabled && recovery.applied.mode==NET_MODE_AP && recovery.applied.port==80);
+    CHECK(!recovery.applied.ap_ssid[0] && !recovery.applied.ap_password[0] && !strcmp(recovery.applied.country,"XX"));
+    CHECK(!memcmp(&n.config,&config,sizeof(config)) && network_mode(&n)==NET_MODE_AP && network_http_enabled(&n) && network_http_port(&n)==80);
+    network_tick(&n,0); network_tick(&n,1); CHECK(n.state==NET_AP_ACTIVE && !recovery.scans);
+    recovery.link=-1; network_tick(&n,2); CHECK(n.state==NET_BACKOFF && n.recovery);
+    network_tick(&n,n.retry_at); CHECK(n.state==NET_AP_STARTING && recovery.configurations==2 && recovery.applied.port==80);
+    CHECK(!memcmp(&n.config,&config,sizeof(config)));
     return 0;
 }

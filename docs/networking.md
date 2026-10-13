@@ -65,7 +65,8 @@ This setup configuration exists only in RAM. `network_get` returns it and
 `network_status` reports `initial_setup:true`. Save network settings to choose
 station mode, permanent AP mode or disabled networking. A failed save keeps the
 setup AP available; a successful save applies after the reply grace period.
-A valid saved configuration always takes precedence, including disabled Wi-Fi.
+A valid saved configuration takes precedence over initial setup, including
+disabled Wi-Fi. Explicit power-cycle recovery overrides it for the current boot.
 Station connection failures keep retrying the saved list and never open an AP.
 Wi-Fi-only builds can use saved AP mode through USB but do not start a setup AP.
 USB-only builds and the host simulator do not start an AP.
@@ -113,8 +114,9 @@ localhost following [the editor instructions](web-editor.md#run-locally).
 Visit Develop while online if source compilation will be needed: its external
 compiler/editor assets must already be loaded, and offline caching is not
 guaranteed. Stored programs and precompiled WASM can be managed through the API
-without those compiler assets. Recovery buttons and automatic AP fallback after
-station failures are deferred.
+without those compiler assets. The optional [power-cycle recovery policy](boot-sequence.md#recovery-access-point)
+forces a temporary open AP after three short boots while retaining saved settings.
+Recovery buttons and automatic AP fallback after station failures are deferred.
 
 ## Configure station Wi-Fi through USB
 
@@ -234,7 +236,7 @@ connection is retained even if a preferred SSID reappears. Failed driver
 initialization is retried with the same bounded backoff. No reboot or fallback access point
 is used for recovery. USB and animation scheduling continue.
 
-`network_status` reports `state`, `mode`, `initial_setup`, `ssid`, `ip`, `error`,
+`network_status` reports `state`, `mode`, `initial_setup`, `recovery`, `ssid`, `ip`, `error`,
 `retry_ms`, `revision` and `http_port`. Discovery distinguishes compiled
 `wifi_supported`, `wifi_ap_supported` and `http_supported` capabilities from
 configured service availability.

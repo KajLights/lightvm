@@ -7,6 +7,9 @@ export interface Description {
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;
+  boot_sequence_supported?: boolean;
+  recovery_supported?: boolean;
+  boot_sequence?: { count: number; triggered: boolean; error: string };
 }
 export interface HardwareConfig {
   schema: 'lightvm.config/1';
@@ -19,7 +22,7 @@ export interface NetworkConfig {
   wifi: { enabled: boolean; country: string; mode?: 'station' | 'ap'; ap?: { ssid?: string; password?: string }; networks: { ssid: string; hidden?: boolean; password?: string }[] };
   http: { enabled: boolean; port: number };
 }
-export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
+export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
 export interface Procedure { name: string; size: number; crc32: number }
 export interface Parameter { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { abi: number; parameters: Parameter[] }

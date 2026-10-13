@@ -141,6 +141,7 @@ function Network() {
   return <section className="card network-card"><div className="card-heading"><div><p className="eyebrow">CONNECTIVITY</p><h2>Wi-Fi &amp; HTTP</h2></div><button id="network-refresh" className="quiet small" disabled={!device.selectedPath || busy} onClick={() => void devices.run('Refreshing network', async client => devices.readNetwork(devices.require(client)))}>Refresh</button></div>
     <p id="network-state" className="helper">{status ? [status.state, status.ssid, status.ip, status.error, status.retry_ms ? 'retry in ' + Math.ceil(status.retry_ms / 1000) + 's' : ''].filter(Boolean).join(' · ') : 'Connect to inspect network status.'}</p>
     {status?.initial_setup && <p className="helper">Initial setup access point. Save network settings to choose how this device connects after reboot.</p>}
+    {status?.recovery && <p className="helper" role="status">Recovery access point. These are your saved network settings. Changes apply after restart; this AP stays available for the current boot.</p>}
     {stale && <div className="stale-banner" role="alert">Network settings changed while you were editing. <button className="quiet small" onClick={reload}>Load device values</button></div>}
     <fieldset id="network-fields" disabled={!device.selectedPath || busy || !device.description?.storage_available || !config}>
       {device.description?.wifi_supported && <><label className="checkbox-label"><input id="wifi-enabled" type="checkbox" checked={Boolean(config?.wifi.enabled)} onChange={event => modify(draft => { draft.wifi.enabled = event.target.checked; })} /> Enable Wi-Fi</label>
@@ -162,7 +163,7 @@ function Network() {
           <div className="button-pair"><button className="quiet" disabled={rows[0].id === row.id} onClick={() => move(row.id, -1)}>Move up</button><button className="quiet" disabled={rows.at(-1)?.id === row.id} onClick={() => move(row.id, 1)}>Move down</button><button className="quiet" onClick={() => { setRows(current => current.filter(item => item.id !== row.id)); setDirty(true); }}>Remove</button></div>
         </div>)}</div><button id="wifi-add" className="quiet" disabled={rows.length >= 8} onClick={() => { setRows(current => [...current, { id: nextId, ssid: '', password: '', hidden: false, open: false }]); setNextId(nextId + 1); setDirty(true); }}>Add network</button></div></>}
       {device.description?.http_supported && <><div className="divider" /><label className="checkbox-label"><input id="http-enabled" type="checkbox" checked={Boolean(config?.http.enabled)} onChange={event => modify(draft => { draft.http.enabled = event.target.checked; })} /> Enable HTTP commands</label><label htmlFor="http-port">HTTP port</label><input id="http-port" type="number" min={1} max={65535} value={config?.http.port || 80} onChange={event => modify(draft => { draft.http.port = Number(event.target.value); })} /></>}
-      <button id="network-save" className="primary full" disabled={stale} onClick={() => void save()}>Save &amp; reconnect network</button>
+      <button id="network-save" className="primary full" disabled={stale} onClick={() => void save()}>{status?.recovery ? 'Save network for next boot' : 'Save & reconnect network'}</button>
     </fieldset><p className="helper">Network changes keep the animation running. The HTTP connection may need reconnecting.</p>
   </section>;
 }

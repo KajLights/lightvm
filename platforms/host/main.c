@@ -15,9 +15,11 @@ typedef struct { App *app; bool override, listening; const char *address; unsign
 static bool configure_network(void *context,const NetworkConfig *config) {
     HostNetwork *host=context;
     if (host->override) return true;
-    if (host->listening && (!config->http_enabled || host->port!=config->port)) { host_http_stop(); host->listening=false; }
-    if (!host->listening && config->http_enabled) {
-        host->listening=host_http_start(host->app,host->address,config->port); host->port=config->port;
+    (void)config;
+    bool enabled=network_http_enabled(&host->app->network); unsigned port=network_http_port(&host->app->network);
+    if (host->listening && (!enabled || host->port!=port)) { host_http_stop(); host->listening=false; }
+    if (!host->listening && enabled) {
+        host->listening=host_http_start(host->app,host->address,port); host->port=port;
         if (!host->listening) strcpy(host->app->network_error,"HTTP listener could not start");
         return host->listening;
     }
@@ -56,7 +58,7 @@ int main(int argc, char **argv) {
     session_init(&session, &app, 1, output_message, stdout);
 #if LIGHTVM_HTTP
     HostNetwork network={.app=&app,.override=listen_address!=NULL,.address="127.0.0.1",.port=port};
-    if (!listen_address && app.network.config.http_enabled) { listen_address="127.0.0.1"; port=app.network.config.port; }
+    if (!listen_address && network_http_enabled(&app.network)) { listen_address="127.0.0.1"; port=network_http_port(&app.network); }
     network.listening=listen_address && host_http_start(&app,listen_address,port); network.port=port;
     if (listen_address && !network.listening) { fprintf(stderr,"Cannot listen for HTTP\n"); app_destroy(&app); host_storage_close(); return 1; }
     app.network.driver.context=&network; app.network.driver.configure=configure_network;

@@ -36,7 +36,7 @@ typedef struct {
     NetworkState state;
     unsigned candidate, failures;
     int connected_index;
-    bool visible[NETWORK_LIMIT], quick_retry, ready, saved_valid, initial_setup;
+    bool visible[NETWORK_LIMIT], quick_retry, ready, saved_valid, initial_setup, recovery;
     uint64_t deadline, retry_at;
     char ip[48], error[96], ap_ssid[33];
 } Network;
@@ -45,6 +45,10 @@ size_t network_json(const NetworkConfig *, bool secrets, char *, size_t);
 void network_init(Network *);
 void network_bootstrap(Network *, bool setup_enabled);
 bool network_online(const Network *);
+// Saved/editable settings stay in config; recovery overrides only native runtime.
+NetworkMode network_mode(const Network *);
+bool network_http_enabled(const Network *);
+uint16_t network_http_port(const Network *);
 void network_apply(Network *, const NetworkConfig *);
 void network_tick(Network *, uint64_t now);
 const char *network_state_name(NetworkState);

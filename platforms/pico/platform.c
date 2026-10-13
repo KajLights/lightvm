@@ -79,6 +79,34 @@ bool platform_storage_erase(uint32_t offset,size_t size) {
     uint32_t irq=save_and_disable_interrupts(); flash_range_erase(STORE_OFFSET+offset,size); restore_interrupts(irq); return true;
 }
 bool platform_storage_sync(void) { return true; }
+#if LIGHTVM_BOOT_SEQUENCE
+#define BOOT_STORE_OFFSET (STORE_OFFSET-BOOT_SEQUENCE_STORAGE_BYTES)
+_Static_assert(PICO_FLASH_SIZE_BYTES>=STORAGE_BYTES+BOOT_SEQUENCE_STORAGE_BYTES,"flash too small for boot journal");
+static bool boot_bounds(uint32_t offset,size_t size) {
+    return offset<=BOOT_SEQUENCE_STORAGE_BYTES && size<=BOOT_SEQUENCE_STORAGE_BYTES-offset;
+}
+bool platform_boot_storage_available(void) { return true; }
+bool platform_boot_storage_read(uint32_t offset,void *bytes,size_t size) {
+    if (!boot_bounds(offset,size)) return false;
+    memcpy(bytes,(const void *)(XIP_BASE+BOOT_STORE_OFFSET+offset),size); return true;
+}
+bool platform_boot_storage_write(uint32_t offset,const void *bytes,size_t size) {
+    if (!boot_bounds(offset,size) || offset%FLASH_PAGE_SIZE || size%FLASH_PAGE_SIZE) return false;
+    uint8_t page[FLASH_PAGE_SIZE]; const uint8_t *p=bytes;
+    while (size) {
+        memcpy(page,p,sizeof(page)); uint32_t irq=save_and_disable_interrupts();
+        flash_range_program(BOOT_STORE_OFFSET+offset,page,sizeof(page)); restore_interrupts(irq);
+        offset+=sizeof(page); p+=sizeof(page); size-=sizeof(page);
+    }
+    return true;
+}
+bool platform_boot_storage_erase(uint32_t offset,size_t size) {
+    if (!boot_bounds(offset,size) || offset%FLASH_SECTOR_SIZE || size%FLASH_SECTOR_SIZE) return false;
+    uint32_t irq=save_and_disable_interrupts();
+    flash_range_erase(BOOT_STORE_OFFSET+offset,size); restore_interrupts(irq); return true;
+}
+bool platform_boot_storage_sync(void) { return true; }
+#endif
 void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
 void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }

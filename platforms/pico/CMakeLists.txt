@@ -20,6 +20,10 @@ pico_add_extra_outputs(lightvm)
 # Reserve the final 512 KiB; fail the link rather than permit firmware overlap.
 configure_file("${CMAKE_CURRENT_LIST_DIR}/storage.ld" "${CMAKE_CURRENT_BINARY_DIR}/storage.ld" COPYONLY)
 target_link_options(lightvm PRIVATE "LINKER:-T,${CMAKE_CURRENT_BINARY_DIR}/storage.ld")
+if(LIGHTVM_BOOT_SEQUENCE)
+    configure_file("${CMAKE_CURRENT_LIST_DIR}/storage_boot_sequence.ld" "${CMAKE_CURRENT_BINARY_DIR}/storage_boot_sequence.ld" COPYONLY)
+    target_link_options(lightvm PRIVATE "LINKER:-T,${CMAKE_CURRENT_BINARY_DIR}/storage_boot_sequence.ld")
+endif()
 
 if(LIGHTVM_WIFI)
     target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/network_port.c"

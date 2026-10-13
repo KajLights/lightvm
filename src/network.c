@@ -96,22 +96,33 @@ size_t network_json(const NetworkConfig *c,bool secrets,char *out,size_t capacit
 const char *network_state_name(NetworkState s) { static const char *const names[]={"disabled","scanning","connecting","connected","backoff","ap_starting","ap_active"}; return names[s]; }
 void network_init(Network *n) { memset(n,0,sizeof(*n)); strcpy(n->config.country,"XX"); n->config.port=80; n->connected_index=-1; }
 void network_bootstrap(Network *n,bool setup_enabled) {
-    if (!setup_enabled || n->saved_valid) return;
+    if (!setup_enabled || n->saved_valid || n->recovery) return;
     memset(&n->config,0,sizeof(n->config)); strcpy(n->config.country,"XX"); n->config.port=80;
     n->config.wifi_enabled=true; n->config.http_enabled=true; n->config.mode=NET_MODE_AP;
     n->initial_setup=true;
 }
 bool network_online(const Network *n) { return n->state==NET_CONNECTED || n->state==NET_AP_ACTIVE; }
+NetworkMode network_mode(const Network *n) { return n->recovery?NET_MODE_AP:n->config.mode; }
+bool network_http_enabled(const Network *n) { return n->recovery || n->config.http_enabled; }
+uint16_t network_http_port(const Network *n) { return n->recovery?80:n->config.port; }
+static bool configure_radio(Network *n) {
+    if (!n->driver.configure) return true;
+    if (!n->recovery) return n->driver.configure(n->driver.context,&n->config);
+    NetworkConfig runtime=n->config;
+    runtime.wifi_enabled=true; runtime.http_enabled=true; runtime.mode=NET_MODE_AP; runtime.port=80;
+    strcpy(runtime.country,"XX"); memset(runtime.ap_ssid,0,sizeof(runtime.ap_ssid)); memset(runtime.ap_password,0,sizeof(runtime.ap_password));
+    return n->driver.configure(n->driver.context,&runtime);
+}
 void network_apply(Network *n,const NetworkConfig *c) {
     if (n->driver.disconnect) n->driver.disconnect(n->driver.context);
     n->config=*c; n->candidate=0; n->failures=0; n->quick_retry=false; n->connected_index=-1; n->ip[0]=0; n->error[0]=0; n->ap_ssid[0]=0;
     n->state=NET_DISABLED;
-    n->ready=!n->driver.configure || n->driver.configure(n->driver.context,c);
+    n->ready=configure_radio(n);
     if (!n->ready) strcpy(n->error,"radio initialization failed");
     n->deadline=0; n->retry_at=0;
     if (!n->ready) n->state=NET_BACKOFF; // A deferred native teardown must retry even when disabling Wi-Fi.
-    else if (c->wifi_enabled && n->driver.configure && n->driver.link && (c->mode==NET_MODE_AP || n->driver.scan)) n->state=NET_BACKOFF;
-    else if (c->wifi_enabled) strcpy(n->error,"Wi-Fi is unavailable in this build");
+    else if ((n->recovery || c->wifi_enabled) && n->driver.configure && n->driver.link && (network_mode(n)==NET_MODE_AP || n->driver.scan)) n->state=NET_BACKOFF;
+    else if (n->recovery || c->wifi_enabled) strcpy(n->error,"Wi-Fi is unavailable in this build");
 }
 static void backoff(Network *n,uint64_t now) {
     if (n->driver.disconnect) n->driver.disconnect(n->driver.context);
@@ -119,7 +130,7 @@ static void backoff(Network *n,uint64_t now) {
     uint32_t seconds=5u<<shift; if (seconds>60) seconds=60;
     uint32_t r=n->driver.random?n->driver.random(n->driver.context):50;
     n->retry_at=now+(uint64_t)seconds*10000u*(80u+r%41u); n->failures++; n->state=NET_BACKOFF; n->quick_retry=false;
-    if (n->config.mode==NET_MODE_AP) { n->ready=false; n->ip[0]=0; }
+    if (network_mode(n)==NET_MODE_AP) { n->ready=false; n->ip[0]=0; }
 }
 static void next(Network *n,uint64_t now) {
     if (n->driver.disconnect) n->driver.disconnect(n->driver.context);
@@ -139,14 +150,14 @@ void network_tick(Network *n,uint64_t now) {
     case NET_BACKOFF:
         if (now<n->retry_at) break;
         if (!n->ready) {
-            n->ready=n->driver.configure && n->driver.configure(ctx,&n->config);
+            n->ready=configure_radio(n);
             if (!n->ready) { strcpy(n->error,"radio initialization failed"); backoff(n,now); break; }
         }
-        if (!n->config.wifi_enabled) { n->state=NET_DISABLED; n->error[0]=0; break; }
-        if (!n->driver.link || (n->config.mode==NET_MODE_STATION && !n->driver.scan)) {
+        if (!n->recovery && !n->config.wifi_enabled) { n->state=NET_DISABLED; n->error[0]=0; break; }
+        if (!n->driver.link || (network_mode(n)==NET_MODE_STATION && !n->driver.scan)) {
             n->state=NET_DISABLED; strcpy(n->error,"Wi-Fi is unavailable in this build"); break;
         }
-        if (n->config.mode==NET_MODE_AP) { n->state=NET_AP_STARTING; n->deadline=now+15000000u; break; }
+        if (network_mode(n)==NET_MODE_AP) { n->state=NET_AP_STARTING; n->deadline=now+15000000u; break; }
         memset(n->visible,0,sizeof(n->visible)); n->candidate=0;
         if (!n->driver.scan(ctx)) { strcpy(n->error,"scan could not start"); backoff(n,now); break; }
         n->state=NET_SCANNING; n->deadline=now+10000000u; break;

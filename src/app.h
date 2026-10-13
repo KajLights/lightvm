@@ -4,8 +4,14 @@
 #include "vm.h"
 #include "store.h"
 #include "network.h"
+#if LIGHTVM_BOOT_SEQUENCE
+#include "boot_sequence.h"
+#endif
 
 typedef struct {
+#if LIGHTVM_BOOT_SEQUENCE
+    BootSequence boot_sequence;
+#endif
     Network network;
     // Keep the active interface/settings intact until the commit reply has left.
     NetworkConfig pending_network;
@@ -32,6 +38,8 @@ typedef struct {
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);
+// Detection only: latched for this boot, false when the feature is excluded.
+bool app_boot_sequence_triggered(const App *app);
 void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 void app_dispatch(App *, uint64_t source, SendMessage, void *, uint8_t, uint16_t, const uint8_t *, size_t);
 void app_disconnect(App *, uint64_t source);
