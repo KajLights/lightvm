@@ -3,8 +3,8 @@
 #include <string.h>
 #include <stdlib.h>
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"%d: %s\n",__LINE__,#x); exit(1); } } while (0)
-typedef struct { unsigned scans,connections; int link; bool reject_next; char tried[64][33]; } Radio;
-static bool configure(void *ctx,const NetworkConfig *config) { (void)ctx; (void)config; return true; }
+typedef struct { unsigned scans,connections,configurations; int link; bool reject_next,reject_config; char tried[64][33]; } Radio;
+static bool configure(void *ctx,const NetworkConfig *config) { (void)config; Radio *r=ctx; r->configurations++; return !r->reject_config; }
 static bool scan(void *ctx) { ((Radio *)ctx)->scans++; return true; }
 static int scan_poll(void *ctx,const char *ssid,bool *visible) { (void)ctx; if (visible) *visible=strcmp(ssid,"missing")!=0; return 1; }
 static bool connect(void *ctx,const WifiNetwork *n) { Radio *r=ctx; strcpy(r->tried[r->connections++],n->ssid); r->link=0; if (r->reject_next) { r->reject_next=false; return false; } return true; }
@@ -15,6 +15,7 @@ int main(void) {
     const char *json="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"networks\":[{\"ssid\":\"missing\",\"password\":\"\"},{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"secret123\"},{\"ssid\":\"hidden\",\"password\":\"\",\"hidden\":true}]},\"http\":{\"enabled\":true}}";
     NetworkConfig config,copy; char error[160],bytes[2048];
     CHECK(network_parse(json,strlen(json),NULL,&config,error,sizeof(error)));
+    CHECK(config.mode==NET_MODE_STATION && !config.ap_password[0]);
     CHECK(!strcmp(config.networks[1].ssid,"caf\xc3\xa9\xf0\x9f\x8c\x88"));
     size_t size=network_json(&config,true,bytes,sizeof(bytes)); CHECK(size && network_parse(bytes,size,NULL,&copy,error,sizeof(error)));
     CHECK(!memcmp(&config,&copy,sizeof(config)));
@@ -52,5 +53,43 @@ int main(void) {
     rejected.link=-1; rejected.reject_next=true; network_tick(&n,3);
     CHECK(n.state==NET_BACKOFF && n.retry_at==3 && !n.quick_retry && rejected.connections==2);
     network_tick(&n,4); CHECK(n.state==NET_SCANNING && rejected.scans==2);
+    // AP configuration can retain both station networks and AP credentials.
+    const char *ap="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"mode\":\"ap\",\"ap\":{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"ap-secret\"}},\"http\":{\"enabled\":true}}";
+    CHECK(network_parse(ap,strlen(ap),&config,&copy,error,sizeof(error)) && copy.count==config.count && copy.mode==NET_MODE_AP);
+    CHECK(!strcmp(copy.networks[1].password,"secret123") && !strcmp(copy.ap_password,"ap-secret"));
+    config=copy;
+    size=network_json(&config,true,bytes,sizeof(bytes)); CHECK(network_parse(bytes,size,NULL,&copy,error,sizeof(error)) && !memcmp(&config,&copy,sizeof(config)));
+    size=network_json(&config,false,bytes,sizeof(bytes)); CHECK(!strstr(bytes,"secret") && network_parse(bytes,size,&config,&copy,error,sizeof(error)) && !strcmp(copy.ap_password,"ap-secret"));
+    const char *station="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"mode\":\"station\"},\"http\":{}}";
+    CHECK(network_parse(station,strlen(station),&config,&copy,error,sizeof(error)) && copy.count==3 && !strcmp(copy.ap_password,"ap-secret"));
+    const char *default_ssid="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{}},\"http\":{}}";
+    CHECK(network_parse(default_ssid,strlen(default_ssid),&config,&copy,error,sizeof(error)) && !copy.ap_ssid[0] && !strcmp(copy.ap_password,"ap-secret"));
+    const char *open="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"mode\":\"ap\",\"ap\":{\"ssid\":\"\",\"password\":\"\"}},\"http\":{}}";
+    CHECK(network_parse(open,strlen(open),&config,&copy,error,sizeof(error)) && !copy.ap_password[0] && !copy.ap_ssid[0]);
+    const char *bad[]={
+        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"both\"},\"http\":{}}",
+        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"short\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"1234567\\n\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"1234567890123456789012345678901234567890123456789012345678901234\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"ssid\":\"12345678901234567890123456789012345\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":null},\"http\":{}}"
+    };
+    for (unsigned i=0;i<sizeof(bad)/sizeof(bad[0]);i++) CHECK(!network_parse(bad[i],strlen(bad[i]),NULL,&copy,error,sizeof(error)));
+    // Bootstrap is unsaved and only enabled by embedded HTTP ports.
+    network_init(&n); network_bootstrap(&n,false); CHECK(!n.config.wifi_enabled && !n.initial_setup);
+    network_bootstrap(&n,true); CHECK(n.initial_setup && n.config.mode==NET_MODE_AP && n.config.http_enabled && n.config.port==80 && !n.config.ap_password[0]);
+    network_init(&n); n.saved_valid=true; network_bootstrap(&n,true); CHECK(!n.initial_setup && !n.config.wifi_enabled);
+    Radio ap_radio={.reject_config=true}; network_init(&n);
+    n.driver=(NetworkDriver){&ap_radio,configure,scan,scan_poll,connect,link,disconnect,random_value};
+    network_apply(&n,&config); network_tick(&n,0); CHECK(n.state==NET_BACKOFF && ap_radio.configurations==2 && !ap_radio.scans);
+    ap_radio.reject_config=false; network_tick(&n,n.retry_at); CHECK(n.state==NET_AP_STARTING && !ap_radio.connections);
+    ap_radio.link=1; network_tick(&n,n.retry_at+1); CHECK(n.state==NET_AP_ACTIVE && network_online(&n));
+    network_tick(&n,n.retry_at+2); CHECK(n.state==NET_AP_ACTIVE && !ap_radio.scans);
+    ap_radio.link=-1; network_tick(&n,n.retry_at+3); CHECK(n.state==NET_BACKOFF && !n.ready && !n.ip[0]);
+    network_tick(&n,n.retry_at); CHECK(n.state==NET_AP_STARTING);
+    ap_radio.link=0; network_tick(&n,n.deadline); CHECK(n.state==NET_BACKOFF && strstr(n.error,"timed out"));
+    config.wifi_enabled=false; ap_radio.reject_config=true;
+    network_apply(&n,&config); network_tick(&n,0); CHECK(n.state==NET_BACKOFF);
+    ap_radio.reject_config=false; network_tick(&n,n.retry_at); CHECK(n.state==NET_DISABLED && !n.error[0]);
     return 0;
 }

@@ -32,6 +32,15 @@ back to the affected line. The six examples and the canonical compiler sources
 are packaged with the static build. Python source is parsed and never run by the
 compiler. Only the compiled WASM is sent to a device.
 
+For initial setup or standalone use, Wi-Fi firmware can host an access point
+at **http://192.168.4.1**. Open the hosted editor before joining that network or
+serve this local build. Select **Host an access point** in **Wi-Fi & HTTP** to
+save AP settings; station and AP drafts are retained when switching modes.
+Passwords remain only in the form and are cleared after attempted saves.
+The device serves the full API, while editor/compiler assets remain separate;
+load Develop while online before relying on compilation without internet.
+See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode).
+
 ## Device and development flow
 
 **Devices** tries the lightvm.local HTTP discovery endpoint. Pick a nearby board,

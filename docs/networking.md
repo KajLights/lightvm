@@ -13,7 +13,8 @@ the DNS suffix, if any, depends on the router.
 
 HTTP has **no authentication or encryption**. It is intended for your trusted LAN.
 The server exposes commands and discovery metadata, not the editor's static files.
-Firmware OTA, MQTT, HTTPS, source storage and a recovery access point are not included.
+Firmware OTA, MQTT, HTTPS and source storage are not included. AP mode serves
+the same full API; the editor remains hosted separately.
 
 ## Build
 
@@ -51,7 +52,71 @@ headroom after VM, stack and pixel-driver ceilings. This is a reservation check;
 radio timing, actual native allocations and stack peaks still require hardware
 measurement. USB-only profiles retain their original ceilings.
 
-## Provision once through USB
+## Initial setup and standalone AP mode
+
+On Pico W, XIAO ESP32-S3 and XIAO ESP32-C6 builds with both `LIGHTVM_WIFI=ON`
+and `LIGHTVM_HTTP=ON`, a device without a valid saved network configuration
+starts an **open** access point named `lightvm-xxxxxx`, using the same stable
+station-MAC suffix as its hostname. Join it and connect the editor or CLI to
+`http://192.168.4.1`. The radio uses channel 1 and DHCP assigns up to four addresses
+from `192.168.4.2` through `192.168.4.5` on a `/24` subnet.
+
+This setup configuration exists only in RAM. `network_get` returns it and
+`network_status` reports `initial_setup:true`. Save network settings to choose
+station mode, permanent AP mode or disabled networking. A failed save keeps the
+setup AP available; a successful save applies after the reply grace period.
+A valid saved configuration always takes precedence, including disabled Wi-Fi.
+Station connection failures keep retrying the saved list and never open an AP.
+Wi-Fi-only builds can use saved AP mode through USB but do not start a setup AP.
+USB-only builds and the host simulator do not start an AP.
+
+The editor's **Wi-Fi & HTTP** panel offers **Join Wi-Fi networks** and **Host an
+access point** on firmware advertising `wifi_ap_supported:true`. Only one mode
+runs at a time; switching retains both station and AP credentials. An omitted
+mode selects `station` for compatibility with existing configurations.
+
+For standalone operation, save a configuration such as
+[`examples/network-ap.json`](../examples/network-ap.json):
+
+```json
+{
+  "schema": "lightvm.network/1",
+  "wifi": {
+    "enabled": true,
+    "mode": "ap",
+    "country": "XX",
+    "networks": [],
+    "ap": {"ssid": "", "password": "replace-this-password"}
+  },
+  "http": {"enabled": true, "port": 80}
+}
+```
+
+Within `wifi.ap`, an empty or omitted SSID selects `lightvm-xxxxxx`; custom SSIDs contain 1–32
+UTF-8 bytes. New AP settings default to open. AP passwords are empty for open or
+8–63 printable ASCII characters for WPA2-Personal. Omit `ap.password` to retain
+it, including when changing SSID; set it to `""` to explicitly open the AP.
+Omitting the whole AP object retains its settings. When updating existing
+settings, an omitted network list retains the station networks; an explicit
+empty list removes them. Passwords are omitted from all network readbacks.
+Saved AP mode respects the HTTP enable switch and port. Its status uses
+`ap_starting` / `ap_active`, with `mode:"ap"` and the actual SSID, IP and port.
+
+The API, USB management and animation engine remain available together.
+Discovery advertises on the AP interface, including `lightvm.local`; use the
+fixed IP when `.local` resolution is unavailable. A custom HTTP port retains
+the discovery-only listener on port 80, as in station mode.
+
+AP mode provides local device access without internet routing or a captive
+portal. Open the hosted editor before joining the AP, or build and serve it on
+localhost following [the editor instructions](web-editor.md#run-locally).
+Visit Develop while online if source compilation will be needed: its external
+compiler/editor assets must already be loaded, and offline caching is not
+guaranteed. Stored programs and precompiled WASM can be managed through the API
+without those compiler assets. Recovery buttons and automatic AP fallback after
+station failures are deferred.
+
+## Configure station Wi-Fi through USB
 
 The editor's **Wi-Fi & HTTP** panel can add, reorder and remove networks. Enable
 Wi-Fi and HTTP, then **Save & reconnect network**. The existing serial CLI also
@@ -120,7 +185,8 @@ and up to seven peers. Incomplete records are hidden, graceful shutdown removes
 peers immediately, and silent departures expire within 30 seconds. A full cache
 sets `truncated:true` instead of allocating or evicting live devices.
 
-Discovery starts only when Wi-Fi is connected and the command listener is ready.
+Discovery starts when the station is connected or the AP is active and the
+command listener is ready.
 Radio loss, disablement and reconfiguration clear the cache; IP/port changes
 restart announcements. If commands use another port, a discovery-only listener
 remains on port 80. It exposes `/api/v1/devices`, not command sessions. Both
@@ -165,12 +231,13 @@ After exhausting the list, retries rescan after 5, 10, 20, 40 and then 60 second
 with ±20% jitter. Successful connection resets the delay. Losing a connection
 retries that SSID once before returning to the ordered scan cycle. A healthy
 connection is retained even if a preferred SSID reappears. Failed driver
-initialization is retried with the same bounded backoff. No reboot or access point
+initialization is retried with the same bounded backoff. No reboot or fallback access point
 is used for recovery. USB and animation scheduling continue.
 
-`network_status` reports `state`, `ssid`, `ip`, `error`, `retry_ms`, `revision`
-and `http_port`. Discovery distinguishes compiled `wifi_supported` and
-`http_supported` capabilities from configured service availability.
+`network_status` reports `state`, `mode`, `initial_setup`, `ssid`, `ip`, `error`,
+`retry_ms`, `revision` and `http_port`. Discovery distinguishes compiled
+`wifi_supported`, `wifi_ap_supported` and `http_supported` capabilities from
+configured service availability.
 
 ## HTTP wire contract
 
@@ -345,3 +412,16 @@ Pico W, selects its IP, connects over HTTP and displays the 200-pixel slot A
 binding without page errors. The check closes its session without changing the
 program or configuration. Multi-board physical discovery, AP-loss recovery and
 sustained resource measurements remain separate acceptance work.
+
+## AP validation on hardware
+
+For each Wi-Fi board, check a fresh or invalid configuration boots to the open
+setup AP, obtains DHCP leases, and answers discovery and all existing command
+endpoints. Exercise configuration, library uploads/activation and parameters
+while animation playback and USB management continue. Verify a failed save
+leaves setup accessible, a successful save replies before switching interfaces,
+and saved open/WPA2 AP settings survive reboot. Repeat AP/station transitions,
+including custom HTTP ports and explicitly disabled networking. AP startup and
+radio loss should retry without interrupting the VM; a missing station network
+must not trigger an AP. These checks require physical boards and complement the
+portable policy, DHCP packet, storage, HTTP and editor tests.

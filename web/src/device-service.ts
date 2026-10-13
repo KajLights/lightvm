@@ -154,6 +154,7 @@ export class DeviceService {
     // Passwords never enter Redux state or DevTools.
     const config = parseJSON(new TextDecoder().decode(reply.data)) as NetworkConfig;
     for (const network of config.wifi.networks) delete network.password;
+    if (config.wifi.ap) delete config.wifi.ap.password;
     this.store.dispatch(deviceActions.network({ config, revision: reply.value >>> 0 }));
     this.store.dispatch(deviceActions.networkStatus(status));
   }
@@ -218,6 +219,7 @@ export class DeviceService {
       const reply = await connection.configureNetwork(config, revision);
       const safeConfig = structuredClone(config);
       for (const network of safeConfig.wifi.networks) delete network.password;
+      if (safeConfig.wifi.ap) delete safeConfig.wifi.ap.password;
       this.store.dispatch(deviceActions.network({ config: safeConfig, revision: reply.value >>> 0 }));
       this.log('Network settings saved. Reconnect HTTP after the network changes.', 'success');
       if (connection.closed) {

@@ -119,7 +119,7 @@ void app_init(App *a, SendMessage send, void *transport) {
         if (!data || !store_read(&a->store,saved_network,0,data,saved_network->size) ||
             !network_parse(data,saved_network->size,NULL,&candidate,a->network_error,sizeof(a->network_error))) {
             if (!a->network_error[0]) strcpy(a->network_error,"network storage read failed");
-        } else a->network.config=candidate;
+        } else { a->network.config=candidate; a->network.saved_valid=true; }
         platform_free(data);
     }
     a->booting=false;
@@ -129,7 +129,9 @@ void app_tick(App *a) {
     uint64_t now=platform_time_us();
     if (a->upload_owner && now>=a->upload_deadline) app_disconnect(a,a->upload_owner);
     if (a->network_pending && now>=a->network_due) {
-        a->network_pending=false; NetworkConfig config=a->network.config; network_apply(&a->network,&config);
+        a->network_pending=false; a->network.initial_setup=false;
+        network_apply(&a->network,&a->pending_network);
+        memset(&a->pending_network,0,sizeof(a->pending_network));
     }
     if (!a->network_pending) network_tick(&a->network,now);
     vm_tick(&a->vm);
@@ -145,6 +147,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"device_id\":"); quoted(&w,a->device_id);
     literal(&w,",\"boot_id\":"); quoted(&w,a->boot_id);
     literal(&w,",\"wifi_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
+    literal(&w,",\"wifi_ap_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"http_supported\":"); literal(&w,LIGHTVM_HTTP?"true":"false");
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
     literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
@@ -217,14 +220,16 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
     if (!strcmp(args.op,"session_close")) { app_disconnect(a,a->source); reply(a,id,STATUS_OK,0,"session closed; playback retained"); return; }
     if (!strcmp(args.op,"describe")) { describe(a,id); return; }
     if (!strcmp(args.op,"network_get")) {
-        char data[4096]; size_t count=network_json(&a->network.config,false,data,sizeof(data));
+        char data[4096]; size_t count=network_json(a->network_pending?&a->pending_network:&a->network.config,false,data,sizeof(data));
         Writer w={.app=a,.id=id}; bytes(&w,data,count); flush(&w);
         reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,"network configuration; passwords omitted"); return;
     }
     if (!strcmp(args.op,"network_status")) {
         Network *n=&a->network; Writer w={.app=a,.id=id};
         literal(&w,"{\"state\":"); quoted(&w,a->network_pending?"reconfiguring":network_state_name(n->state));
-        literal(&w,",\"ssid\":"); quoted(&w,n->state==NET_CONNECTED && n->connected_index>=0?n->config.networks[n->connected_index].ssid:"");
+        literal(&w,",\"mode\":"); quoted(&w,n->config.mode==NET_MODE_AP?"ap":"station");
+        literal(&w,",\"initial_setup\":"); literal(&w,n->initial_setup?"true":"false");
+        literal(&w,",\"ssid\":"); quoted(&w,n->state==NET_AP_ACTIVE?n->ap_ssid:n->state==NET_CONNECTED && n->connected_index>=0?n->config.networks[n->connected_index].ssid:"");
         literal(&w,",\"ip\":"); quoted(&w,n->ip);
         literal(&w,",\"error\":"); quoted(&w,a->network_error[0]?a->network_error:n->error);
         literal(&w,",\"retry_ms\":"); uint64_t now=platform_time_us(); number(&w,n->state==NET_BACKOFF && n->retry_at>now?(uint32_t)((n->retry_at-now)/1000u):0);
@@ -245,7 +250,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         bool ok=count && store_put(&a->store,STORE_NETWORK,data,(uint32_t)count); resume_clock(a);
         memset(data,0,sizeof(data));
         if (!ok) { error_reply(a,id,STATUS_STORAGE,"save_failed","network save failed; active settings retained"); return; }
-        a->network.config=config; a->network_pending=true; a->network_due=platform_time_us()+1000000u; a->network_reply_source=a->source; a->network_error[0]=0;
+        a->pending_network=config; a->network.saved_valid=true; a->network_pending=true; a->network_due=platform_time_us()+1000000u; a->network_reply_source=a->source; a->network_error[0]=0;
         a->staged=false; a->upload_owner=0;
         reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,"network saved; reconnect after settings apply"); return;
     }

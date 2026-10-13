@@ -5,6 +5,7 @@
 #include "esp_random.h"
 #include "esp_mac.h"
 #include "nvs_flash.h"
+#include "dhcpserver/dhcpserver.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -20,14 +21,16 @@
 #include <stdatomic.h>
 #endif
 static App *engine;
-static bool initialized,wifi_created,scanning,scan_done,scan_failed;
+static bool initialized,wifi_created,scanning,scan_done,scan_failed,ap_started;
+static NetworkMode mode;
 static esp_event_handler_instance_t wifi_events,ip_events;
-static esp_netif_t *station;
+static esp_netif_t *station,*access_point;
 static QueueHandle_t events;
 static bool observed[NETWORK_LIMIT];
 static int failure;
 #if LIGHTVM_HTTP
 static void stop_discovery(void);
+static bool stop_http(void);
 #endif
 static char hostname[sizeof("lightvm-ffffff")];
 static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
@@ -36,12 +39,14 @@ static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
     else if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {
         wifi_event_sta_disconnected_t *d=data; value=d->reason==WIFI_REASON_ASSOC_LEAVE?0:-(int)d->reason;
     } else if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) value=2;
+    else if (base==WIFI_EVENT && id==WIFI_EVENT_AP_START) value=3;
+    else if (base==WIFI_EVENT && id==WIFI_EVENT_AP_STOP) value=4;
     if (value) xQueueSend(events,&value,0);
 }
 static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
 #if LIGHTVM_HTTP
-    stop_discovery();
+    if (!stop_http()) return false;
 #endif
     if (!c->wifi_enabled && !initialized) return true;
     if (!initialized) {
@@ -58,14 +63,38 @@ static bool configure(void *ctx,const NetworkConfig *c) {
         if (esp_netif_set_hostname(station,hostname)!=ESP_OK) return false;
         wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT(); init.nvs_enable=0;
         if (!wifi_created) { if (esp_wifi_init(&init)!=ESP_OK) return false; wifi_created=true; }
-        if (esp_wifi_set_storage(WIFI_STORAGE_RAM)!=ESP_OK || esp_wifi_set_mode(WIFI_MODE_STA)!=ESP_OK) return false;
+        if (esp_wifi_set_storage(WIFI_STORAGE_RAM)!=ESP_OK) return false;
         if (!wifi_events && esp_event_handler_instance_register(WIFI_EVENT,ESP_EVENT_ANY_ID,event,NULL,&wifi_events)!=ESP_OK) return false;
         if (!ip_events && esp_event_handler_instance_register(IP_EVENT,IP_EVENT_STA_GOT_IP,event,NULL,&ip_events)!=ESP_OK) return false;
         initialized=true;
     }
-    esp_wifi_stop(); xQueueReset(events); scan_done=false; scanning=false; failure=0;
+    esp_wifi_stop(); xQueueReset(events); scan_done=false; scanning=false; failure=0; ap_started=false;
+    if (access_point) esp_netif_dhcps_stop(access_point);
     if (!c->wifi_enabled) return true;
+    mode=c->mode;
+    if (esp_wifi_set_mode(mode==NET_MODE_AP?WIFI_MODE_AP:WIFI_MODE_STA)!=ESP_OK) return false;
     if (esp_wifi_set_country_code(!strcmp(c->country,"XX")?"01":c->country,true)!=ESP_OK) return false;
+    if (mode==NET_MODE_AP) {
+        if (!access_point) access_point=esp_netif_create_default_wifi_ap();
+        if (!access_point) return false;
+        esp_netif_dhcps_stop(access_point);
+        esp_netif_ip_info_t ip={0};
+        IP4_ADDR(&ip.ip,192,168,4,1); IP4_ADDR(&ip.gw,192,168,4,1); IP4_ADDR(&ip.netmask,255,255,255,0);
+        if (esp_netif_set_ip_info(access_point,&ip)!=ESP_OK || esp_netif_set_hostname(access_point,hostname)!=ESP_OK) return false;
+        dhcps_lease_t leases={.enable=true}; IP4_ADDR(&leases.start_ip,192,168,4,2); IP4_ADDR(&leases.end_ip,192,168,4,5);
+        if (esp_netif_dhcps_option(access_point,ESP_NETIF_OP_SET,ESP_NETIF_REQUESTED_IP_ADDRESS,&leases,sizeof(leases))!=ESP_OK) return false;
+        snprintf(engine->network.ap_ssid,sizeof(engine->network.ap_ssid),"%s",c->ap_ssid[0]?c->ap_ssid:hostname);
+        wifi_config_t config={0};
+        memcpy(config.ap.ssid,engine->network.ap_ssid,strlen(engine->network.ap_ssid)); config.ap.ssid_len=strlen(engine->network.ap_ssid);
+        memcpy(config.ap.password,c->ap_password,strlen(c->ap_password));
+        config.ap.channel=1; config.ap.max_connection=4;
+        config.ap.authmode=c->ap_password[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
+        config.ap.pmf_cfg.required=false;
+        if (esp_wifi_set_config(WIFI_IF_AP,&config)!=ESP_OK) return false;
+        // Stopping DHCP for reconfiguration leaves it explicitly STOPPED.
+        // Re-arm it before AP_START, which brings the netif up asynchronously.
+        if (esp_netif_dhcps_start(access_point)!=ESP_OK) return false;
+    }
     return esp_wifi_start()==ESP_OK;
 }
 static bool scan(void *ctx) {
@@ -88,13 +117,35 @@ static bool connect_network(void *ctx,const WifiNetwork *network) {
 }
 static int link_state(void *ctx,char *ip,size_t capacity,char *error,size_t error_capacity) {
     (void)ctx; wifi_ap_record_t ap; esp_netif_ip_info_t info;
+    if (mode==NET_MODE_AP) {
+        esp_netif_dhcp_status_t dhcp;
+        if (initialized && ap_started && esp_netif_is_netif_up(access_point) &&
+            esp_netif_dhcps_get_status(access_point,&dhcp)==ESP_OK && dhcp==ESP_NETIF_DHCP_STARTED &&
+            esp_netif_get_ip_info(access_point,&info)==ESP_OK && info.ip.addr) {
+            snprintf(ip,capacity,IPSTR,IP2STR(&info.ip)); return 1;
+        }
+        return 0;
+    }
     if (initialized && esp_wifi_sta_get_ap_info(&ap)==ESP_OK && esp_netif_get_ip_info(station,&info)==ESP_OK && info.ip.addr) {
         snprintf(ip,capacity,IPSTR,IP2STR(&info.ip)); return 1;
     }
     if (failure) { snprintf(error,error_capacity,"Wi-Fi disconnect reason %d",-failure); return -1; }
     return 0;
 }
-static void disconnect(void *ctx) { (void)ctx; if (initialized) { if (scanning) esp_wifi_scan_stop(); esp_wifi_disconnect(); } scanning=false; }
+static void disconnect(void *ctx) {
+    (void)ctx;
+    if (initialized) {
+        if (scanning) esp_wifi_scan_stop();
+        if (mode==NET_MODE_AP) {
+#if LIGHTVM_HTTP
+            stop_discovery();
+#endif
+            esp_wifi_stop(); ap_started=false; if (access_point) esp_netif_dhcps_stop(access_point);
+        }
+        else esp_wifi_disconnect();
+    }
+    scanning=false;
+}
 static uint32_t random_value(void *ctx) { (void)ctx; return esp_random(); }
 #if LIGHTVM_HTTP
 static Http http;
@@ -136,7 +187,7 @@ failed:
     stop_discovery(); return false;
 }
 static void poll_discovery(uint64_t now,uint16_t port) {
-    bool enabled=handle && engine->network.state==NET_CONNECTED && engine->network.config.http_enabled;
+    bool enabled=handle && network_online(&engine->network) && engine->network.config.http_enabled;
     struct in_addr address={0}; inet_pton(AF_INET,engine->network.ip,&address);
     if (discovery.active && (!enabled || memcmp(&address.s_addr,discovery.devices[0].ip,4) || port!=discovery.devices[0].port)) stop_discovery();
     static uint64_t retry;
@@ -234,16 +285,30 @@ static bool start_http(uint16_t port) {
     }
     return true;
 }
+static bool stop_http(void) {
+    stop_discovery();
+    if (!handle) return true;
+    if (!atomic_exchange(&stopping,true)) { http_disconnect_sessions(&http); xQueueReset(ingress); }
+    bool busy=false;
+    for (unsigned i=0;i<6;i++) if (atomic_load(&clients[i].occupied)) {
+        atomic_store(&clients[i].failed,true); http_cancel_io(&http,&clients[i]);
+        if (!close_client(&clients[i])) busy=true;
+    }
+    if (busy) return false;
+    if (bootstrap_handle) { httpd_stop(bootstrap_handle); bootstrap_handle=NULL; }
+    httpd_stop(handle); handle=NULL; atomic_store(&stopping,false); return true;
+}
 #endif
 void esp32_network_init(App *app) {
     engine=app;
     app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect_network,link_state,disconnect,random_value};
-    NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 #if LIGHTVM_HTTP
     http_init(&http,app); ingress=xQueueCreate(HTTP_QUEUE,sizeof(Incoming)); transmit=xQueueCreate(4,sizeof(Outgoing));
     http.discovery=&discovery;
     if (!ingress || !transmit || xTaskCreate(sender,"http-output",4096,NULL,5,NULL)!=pdPASS) { strcpy(app->network_error,"HTTP task allocation failed"); }
 #endif
+    network_bootstrap(&app->network,LIGHTVM_HTTP);
+    NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 }
 void esp32_network_poll(void) {
     if (events) {
@@ -257,25 +322,18 @@ void esp32_network_poll(void) {
                 }
                 esp_wifi_clear_ap_list();
             }
+            else if (value==3) ap_started=true;
+            else if (value==4) ap_started=false;
             else if (value<0) failure=value; else failure=0;
         }
     }
 #if LIGHTVM_HTTP
     static NetworkState previous=NET_DISABLED; static uint16_t listening_port;
-    if (previous==NET_CONNECTED && engine->network.state!=NET_CONNECTED) http_disconnect_sessions(&http);
+    if ((previous==NET_CONNECTED || previous==NET_AP_ACTIVE) && !network_online(&engine->network)) http_disconnect_sessions(&http);
     previous=engine->network.state;
-    bool enabled=engine->network.config.http_enabled;
+    bool enabled=engine->network.config.http_enabled && network_online(&engine->network);
     if (handle && !engine->network_pending && (!enabled || listening_port!=engine->network.config.port)) {
-        stop_discovery();
-        if (!atomic_exchange(&stopping,true)) { http_disconnect_sessions(&http); xQueueReset(ingress); }
-        bool busy=false;
-        for (unsigned i=0;i<6;i++) if (atomic_load(&clients[i].occupied)) {
-            atomic_store(&clients[i].failed,true); http_cancel_io(&http,&clients[i]);
-            if (!close_client(&clients[i])) busy=true;
-        }
-        if (busy) return;
-        if (bootstrap_handle) { httpd_stop(bootstrap_handle); bootstrap_handle=NULL; }
-        httpd_stop(handle); handle=NULL; atomic_store(&stopping,false);
+        if (!stop_http()) return;
     }
     if (!handle && !engine->network_pending && enabled && ingress && transmit) { if (start_http(engine->network.config.port)) listening_port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
     poll_discovery(platform_time_us(),listening_port);

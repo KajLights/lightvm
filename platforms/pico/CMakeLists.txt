@@ -22,7 +22,8 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/storage.ld" "${CMAKE_CURRENT_BINARY_DI
 target_link_options(lightvm PRIVATE "LINKER:-T,${CMAKE_CURRENT_BINARY_DIR}/storage.ld")
 
 if(LIGHTVM_WIFI)
-    target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/network_port.c")
+    target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/network_port.c"
+        "${CMAKE_CURRENT_LIST_DIR}/dhcp_port.c" "${CMAKE_SOURCE_DIR}/src/dhcp.c")
     target_include_directories(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
     target_compile_definitions(lightvm PRIVATE CYW43_SPI_PIO_PREFERRED_PIO=1)
     target_link_libraries(lightvm PRIVATE pico_cyw43_arch_lwip_poll pico_unique_id pico_rand)

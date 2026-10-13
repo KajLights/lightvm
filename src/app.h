@@ -7,6 +7,8 @@
 
 typedef struct {
     Network network;
+    // Keep the active interface/settings intact until the commit reply has left.
+    NetworkConfig pending_network;
     bool network_pending;
     uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
     char device_id[65], boot_id[33], network_error[160];

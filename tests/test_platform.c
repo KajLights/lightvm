@@ -246,6 +246,44 @@ static const uint8_t slot_wasm[] = {
 
 void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) { snprintf(device,capacity,"test-device"); snprintf(boot,boot_capacity,"test-boot"); }
 
+static unsigned radio_configurations;
+static bool radio_configure(void *context,const NetworkConfig *config) { (void)context; (void)config; radio_configurations++; return true; }
+static int radio_link(void *context,char *ip,size_t capacity,char *error,size_t error_capacity) {
+    (void)context; (void)error; (void)error_capacity; snprintf(ip,capacity,"192.168.4.1"); return 1;
+}
+static void network_transactions(void) {
+    static App app; Session session; Capture reply={.marker=0x12345678u};
+    memset(flash,255,sizeof(flash)); storage_available=true; fail_after=-1; clock_now=0;
+    app_init(&app,capture,&reply); CHECK(!app.network.saved_valid);
+    CHECK(store_put(&app.store,STORE_NETWORK,"invalid",7));
+    app_destroy(&app); app_init(&app,capture,&reply);
+    CHECK(!app.network.saved_valid && app.network_error[0]);
+    network_bootstrap(&app.network,true);
+    CHECK(app.network.initial_setup && !app.network.config.ap_password[0]);
+    app.network.driver.configure=radio_configure; app.network.driver.link=radio_link;
+    NetworkConfig setup=app.network.config; network_apply(&app.network,&setup);
+    network_tick(&app.network,0); network_tick(&app.network,1); CHECK(app.network.state==NET_AP_ACTIVE);
+    session_init(&session,&app,1,capture,&reply);
+    const char *candidate="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":false,\"mode\":\"ap\",\"ap\":{\"ssid\":\"saved\",\"password\":\"ap-secret\"}},\"http\":{\"enabled\":false,\"port\":8080}}";
+    memcpy(app.staging,candidate,strlen(candidate)); app.expected=(uint32_t)strlen(candidate);
+    app.staged=true; app.object_kind=3; app.upload_owner=1;
+    const char *commit="{\"op\":\"network_commit\",\"expected_revision\":1}";
+    fail_after=0; command(&session,CMD_MANAGE,(const uint8_t *)commit,strlen(commit)); fail_after=-1;
+    CHECK(reply.code==STATUS_STORAGE && app.network.initial_setup && !app.network_pending && app.network.state==NET_AP_ACTIVE);
+    command(&session,CMD_MANAGE,(const uint8_t *)commit,strlen(commit));
+    CHECK(reply.code==STATUS_OK && app.network_pending && app.network.initial_setup && app.network.config.port==80 && app.network.config.wifi_enabled);
+    unsigned applied=radio_configurations;
+    app_reply_delivered(&app,1); uint64_t due=app.network_due;
+    clock_now=due-1; app_tick(&app); CHECK(app.network_pending && radio_configurations==applied && app.network.state==NET_AP_ACTIVE);
+    clock_now=due; app_tick(&app);
+    CHECK(!app.network_pending && !app.network.initial_setup && app.network.saved_valid && app.network.state==NET_DISABLED && radio_configurations==applied+1);
+    CHECK(app.network.config.port==8080 && !strcmp(app.network.config.ap_password,"ap-secret"));
+    session_destroy(&session); app_destroy(&app); app_init(&app,capture,&reply);
+    CHECK(app.network.saved_valid && !app.network.config.wifi_enabled && !strcmp(app.network.config.ap_password,"ap-secret"));
+    network_bootstrap(&app.network,true); CHECK(!app.network.initial_setup && !app.network.config.wifi_enabled);
+    app_destroy(&app);
+}
+
 int main(void) {
     storage_faults();
     static App app;
@@ -448,5 +486,6 @@ int main(void) {
     CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app.pixels.driver && !app.vm.target);
     CHECK(strstr(reply.message,"initialization failed"));
     session_destroy(&session); app_destroy(&app);
+    network_transactions();
     return 0;
 }

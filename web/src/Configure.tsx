@@ -101,12 +101,15 @@ function Network() {
   const { devices } = useRuntime(), device = useAppSelector(state => state.device), busy = useAppSelector(state => Boolean(state.activity.operation)), dispatch = useAppDispatch();
   const [config, setConfig] = useState<NetworkConfig | null>(() => device.networkConfig ? structuredClone(device.networkConfig) : null);
   const [rows, setRows] = useState<NetworkRow[]>(() => rowsFrom(device.networkConfig));
+  const [apPassword, setApPassword] = useState('');
+  const [apOpen, setApOpen] = useState(false);
   const [base, setBase] = useState(() => ({ revision: device.networkRevision, boot_id: device.description?.boot_id }));
   const [dirty, setDirty] = useState(false);
   const [nextId, setNextId] = useState(8);
   useEffect(() => {
     if (!device.networkConfig || dirty) return;
     setConfig(structuredClone(device.networkConfig)); setRows(rowsFrom(device.networkConfig));
+    setApPassword(''); setApOpen(false);
     setBase({ revision: device.networkRevision, boot_id: device.description?.boot_id });
   }, [device.networkConfig, device.networkRevision, device.description?.boot_id, dirty]);
   if (!device.description?.wifi_supported && !device.description?.http_supported) return null;
@@ -120,23 +123,36 @@ function Network() {
   function reload() {
     if (!device.networkConfig) return;
     setDirty(false); setConfig(structuredClone(device.networkConfig)); setRows(rowsFrom(device.networkConfig));
+    setApPassword(''); setApOpen(false);
     setBase({ revision: device.networkRevision, boot_id: device.description?.boot_id }); dispatch(activityActions.notice(''));
   }
   async function save() {
     if (!config) return;
     const next = structuredClone(config);
     next.wifi.networks = rows.map(row => ({ ssid: row.ssid, hidden: row.hidden, ...(row.open ? { password: '' } : row.password ? { password: row.password } : {}) }));
+    if (device.description?.wifi_ap_supported) {
+      next.wifi.ap = { ...next.wifi.ap, ...(apOpen ? { password: '' } : apPassword ? { password: apPassword } : {}) };
+    }
     try {
       const success = await devices.configureNetwork(next, base.revision);
       if (success) setDirty(false);
-    } finally { setRows(current => current.map(row => ({ ...row, password: '' }))); }
+    } finally { setRows(current => current.map(row => ({ ...row, password: '' }))); setApPassword(''); }
   }
   return <section className="card network-card"><div className="card-heading"><div><p className="eyebrow">CONNECTIVITY</p><h2>Wi-Fi &amp; HTTP</h2></div><button id="network-refresh" className="quiet small" disabled={!device.selectedPath || busy} onClick={() => void devices.run('Refreshing network', async client => devices.readNetwork(devices.require(client)))}>Refresh</button></div>
     <p id="network-state" className="helper">{status ? [status.state, status.ssid, status.ip, status.error, status.retry_ms ? 'retry in ' + Math.ceil(status.retry_ms / 1000) + 's' : ''].filter(Boolean).join(' · ') : 'Connect to inspect network status.'}</p>
+    {status?.initial_setup && <p className="helper">Initial setup access point. Save network settings to choose how this device connects after reboot.</p>}
     {stale && <div className="stale-banner" role="alert">Network settings changed while you were editing. <button className="quiet small" onClick={reload}>Load device values</button></div>}
     <fieldset id="network-fields" disabled={!device.selectedPath || busy || !device.description?.storage_available || !config}>
       {device.description?.wifi_supported && <><label className="checkbox-label"><input id="wifi-enabled" type="checkbox" checked={Boolean(config?.wifi.enabled)} onChange={event => modify(draft => { draft.wifi.enabled = event.target.checked; })} /> Enable Wi-Fi</label>
         <label htmlFor="wifi-country">Radio country (XX = worldwide)</label><input id="wifi-country" value={config?.wifi.country || 'XX'} maxLength={2} autoComplete="off" onChange={event => modify(draft => { draft.wifi.country = event.target.value.toUpperCase(); })} />
+        {device.description?.wifi_ap_supported && <><label htmlFor="wifi-mode">Wi-Fi mode</label><select id="wifi-mode" value={config?.wifi.mode || 'station'} onChange={event => modify(draft => { draft.wifi.mode = event.target.value as 'station' | 'ap'; })}><option value="station">Join Wi-Fi networks</option><option value="ap">Host an access point</option></select></>}
+        {config?.wifi.mode === 'ap' && device.description?.wifi_ap_supported && <div className="wifi-network">
+          <label htmlFor="ap-ssid">Access point SSID</label><input id="ap-ssid" value={config.wifi.ap?.ssid || ''} placeholder="Use device name (lightvm-xxxxxx)" autoComplete="off" spellCheck={false} onChange={event => modify(draft => { draft.wifi.ap = { ...draft.wifi.ap, ssid: event.target.value }; })} />
+          <label htmlFor="ap-password">Access point password</label><input id="ap-password" type="password" value={apPassword} disabled={apOpen} placeholder="Keep saved password" autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" onChange={event => { setApPassword(event.target.value); setDirty(true); }} />
+          <label className="checkbox-label"><input id="ap-open" type="checkbox" checked={apOpen} onChange={event => { setApOpen(event.target.checked); if (event.target.checked) setApPassword(''); setDirty(true); }} /> Use an open access point</label>
+          <p className="helper">Leave the password empty to keep it. New access points are open by default. Connect at http://192.168.4.1 using the HTTP port below.</p>
+        </div>}
+        <div hidden={config?.wifi.mode === 'ap'}>
         <h3>Networks</h3><p className="muted">Networks are tried from top to bottom. Leave an existing password empty to retain it.</p>
         <div id="wifi-networks">{rows.map(row => <div className="wifi-network" key={row.id}>
           <label>SSID<input value={row.ssid} autoComplete="off" spellCheck={false} onChange={event => changeRow(row.id, { ssid: event.target.value })} /></label>
@@ -144,7 +160,7 @@ function Network() {
           <label className="checkbox-label"><input type="checkbox" checked={row.hidden} onChange={event => changeRow(row.id, { hidden: event.target.checked })} /> Hidden SSID</label>
           <label className="checkbox-label"><input type="checkbox" checked={row.open} onChange={event => changeRow(row.id, { open: event.target.checked, password: event.target.checked ? '' : row.password })} /> Use an open network</label>
           <div className="button-pair"><button className="quiet" disabled={rows[0].id === row.id} onClick={() => move(row.id, -1)}>Move up</button><button className="quiet" disabled={rows.at(-1)?.id === row.id} onClick={() => move(row.id, 1)}>Move down</button><button className="quiet" onClick={() => { setRows(current => current.filter(item => item.id !== row.id)); setDirty(true); }}>Remove</button></div>
-        </div>)}</div><button id="wifi-add" className="quiet" disabled={rows.length >= 8} onClick={() => { setRows(current => [...current, { id: nextId, ssid: '', password: '', hidden: false, open: false }]); setNextId(nextId + 1); setDirty(true); }}>Add network</button></>}
+        </div>)}</div><button id="wifi-add" className="quiet" disabled={rows.length >= 8} onClick={() => { setRows(current => [...current, { id: nextId, ssid: '', password: '', hidden: false, open: false }]); setNextId(nextId + 1); setDirty(true); }}>Add network</button></div></>}
       {device.description?.http_supported && <><div className="divider" /><label className="checkbox-label"><input id="http-enabled" type="checkbox" checked={Boolean(config?.http.enabled)} onChange={event => modify(draft => { draft.http.enabled = event.target.checked; })} /> Enable HTTP commands</label><label htmlFor="http-port">HTTP port</label><input id="http-port" type="number" min={1} max={65535} value={config?.http.port || 80} onChange={event => modify(draft => { draft.http.port = Number(event.target.value); })} /></>}
       <button id="network-save" className="primary full" disabled={stale} onClick={() => void save()}>Save &amp; reconnect network</button>
     </fieldset><p className="helper">Network changes keep the animation running. The HTTP connection may need reconnecting.</p>

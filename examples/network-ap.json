@@ -1,0 +1,11 @@
+{
+  "schema": "lightvm.network/1",
+  "wifi": {
+    "enabled": true,
+    "mode": "ap",
+    "country": "XX",
+    "networks": [],
+    "ap": { "ssid": "", "password": "replace-this-password" }
+  },
+  "http": { "enabled": true, "port": 80 }
+}

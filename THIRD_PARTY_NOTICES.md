@@ -105,6 +105,11 @@ source or blob is linked into the host or ESP32 firmware. lwIP's BSD terms and
 Swedish Institute of Computer Science copyright are preserved in
 [its license](licenses/lwip-pico-sdk-1.5.1.txt).
 
+The bounded Pico AP DHCP server adapts MicroPython DHCP lease and reply logic
+from Raspberry Pi pico-examples, copyright 2018–2019 Damien P. George, under
+[MIT](licenses/dhcp-server.txt). Packet validation and the portable testable core
+are maintained in this repository. It is excluded from USB-only firmware.
+
 ESP32 networking adds the pinned ESP-IDF Wi-Fi binaries, copyright 2015–2016
 Espressif Systems, distributed in object form under
 [Apache-2.0](licenses/esp32-wifi-libraries.txt), plus ESP-IDF's HTTP server and

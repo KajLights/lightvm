@@ -165,6 +165,29 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(len(self.http.procedures()), 8)
         self.assertEqual(self.http.describe()['network_revision'], 2)
 
+    def test_ap_settings_are_redacted_retained_and_durable(self):
+        # The host has no radio; save a disabled AP profile through the same API.
+        config = self.network()
+        config['wifi'].update(mode='ap', ap={'ssid': 'light café🌈', 'password': 'ap-secret'})
+        self.http.configure_network(config)
+        self.wait_network()
+        visible = self.http.network_config()
+        self.assertEqual(visible['wifi']['ap'], {'ssid': 'light café🌈'})
+        self.assertNotIn('ap-secret', json.dumps(visible))
+        self.http.configure_network(visible)
+        self.wait_network()
+        # Inspect native storage through the mounted store's normal reboot path.
+        self.stop()
+        self.start()
+        self.assertEqual(self.http.network_config(), visible)
+        self.assertIn(b'ap-secret', self.storage.read_bytes())
+        visible['wifi']['ap']['password'] = ''
+        self.http.configure_network(visible)
+        self.wait_network()
+        self.assertNotIn('password', self.http.network_config()['wifi']['ap'])
+        self.assertEqual(self.http.network_status()['mode'], 'ap')
+        self.assertFalse(self.http.network_status()['initial_setup'])
+
     def test_existing_directory_migrates_without_losing_procedures(self):
         self.http.save_procedure('old', bytes.fromhex('0061736d01000000'))
         self.stop()

@@ -2,6 +2,7 @@
 #include "pico/cyw43_arch.h"
 #include "pico/unique_id.h"
 #include "pico/rand.h"
+#include "dhcp_port.h"
 #include "lwip/tcp.h"
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +15,9 @@ _Static_assert(VM_HEAP_LIMIT==64u*1024u, "Pico W network builds require the 64 K
 _Static_assert(PIXEL_CAPACITY<=1024u, "Pico W RAM gate reserves at most 1024 physical pixels");
 static App *engine;
 static bool initialized;
+static NetworkMode mode;
+static PicoDhcp dhcp;
+static struct netif *active_netif(void) { return &cyw43_state.netif[mode==NET_MODE_AP?CYW43_ITF_AP:CYW43_ITF_STA]; }
 static bool observed[NETWORK_LIMIT];
 static char hostname[sizeof("lightvm-ffffff")];
 #if LIGHTVM_HTTP
@@ -28,26 +32,30 @@ static int result(void *ctx,const cyw43_ev_scan_result_t *r) {
     }
     return 0;
 }
-static void enable_station(void) {
-    cyw43_arch_enable_sta_mode();
-    const uint8_t *mac=cyw43_state.netif[CYW43_ITF_STA].hwaddr;
-    snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
-    // lwIP retains this pointer; DHCP waits for the link before advertising it.
-    netif_set_hostname(&cyw43_state.netif[CYW43_ITF_STA],hostname);
-}
 static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
     uint32_t country=!strcmp(c->country,"XX")?CYW43_COUNTRY_WORLDWIDE:CYW43_COUNTRY(c->country[0],c->country[1],0);
-    if (initialized && c->wifi_enabled && cyw43_arch_get_country_code()==country) { enable_station(); return true; }
     if (initialized) {
 #if LIGHTVM_HTTP
         stop_http();
 #endif
-        cyw43_arch_deinit(); initialized=false;
+        pico_dhcp_stop(&dhcp); cyw43_arch_deinit(); initialized=false;
     }
     if (!c->wifi_enabled) return true;
     if (cyw43_arch_init_with_country(country)) return false;
-    initialized=true; enable_station(); return true;
+    initialized=true; mode=c->mode;
+    uint8_t mac[6];
+    if (cyw43_wifi_get_mac(&cyw43_state,CYW43_ITF_STA,mac)) return false;
+    snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
+    if (mode==NET_MODE_AP) {
+        snprintf(engine->network.ap_ssid,sizeof(engine->network.ap_ssid),"%s",c->ap_ssid[0]?c->ap_ssid:hostname);
+        cyw43_wifi_ap_set_channel(&cyw43_state,1);
+        cyw43_arch_enable_ap_mode(engine->network.ap_ssid,c->ap_password[0]?c->ap_password:NULL,c->ap_password[0]?CYW43_AUTH_WPA2_AES_PSK:CYW43_AUTH_OPEN);
+        ip4_addr_t ip,mask; IP4_ADDR(&ip,192,168,4,1); IP4_ADDR(&mask,255,255,255,0);
+        netif_set_addr(active_netif(),&ip,&mask,&ip);
+        if (!pico_dhcp_start(&dhcp,active_netif())) return false;
+    } else cyw43_arch_enable_sta_mode();
+    netif_set_hostname(active_netif(),hostname); return true;
 }
 static bool scan(void *ctx) {
     (void)ctx; memset(observed,0,sizeof(observed)); cyw43_wifi_scan_options_t options={0};
@@ -61,12 +69,21 @@ static int scan_poll(void *ctx,const char *ssid,bool *visible) {
 static bool connect(void *ctx,const WifiNetwork *n) { (void)ctx; return cyw43_arch_wifi_connect_async(n->ssid,n->password,n->password[0]?CYW43_AUTH_WPA2_AES_PSK:CYW43_AUTH_OPEN)==0; }
 static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capacity) {
     (void)ctx; if (!initialized) return -1;
-    int state=cyw43_tcpip_link_status(&cyw43_state,CYW43_ITF_STA);
-    if (state==CYW43_LINK_UP) { snprintf(ip,capacity,"%s",ip4addr_ntoa(netif_ip4_addr(&cyw43_state.netif[CYW43_ITF_STA]))); return 1; }
+    if (mode==NET_MODE_AP && !dhcp.pcb) return -1;
+    int state=cyw43_tcpip_link_status(&cyw43_state,mode==NET_MODE_AP?CYW43_ITF_AP:CYW43_ITF_STA);
+    if (state==CYW43_LINK_UP) { snprintf(ip,capacity,"%s",ip4addr_ntoa(netif_ip4_addr(active_netif()))); return 1; }
     if (state<0) { snprintf(error,error_capacity,"Wi-Fi link failure %d",state); return -1; }
     return 0;
 }
-static void disconnect(void *ctx) { (void)ctx; if (initialized) cyw43_wifi_leave(&cyw43_state,CYW43_ITF_STA); }
+static void disconnect(void *ctx) {
+    (void)ctx; if (!initialized) return;
+    if (mode==NET_MODE_AP) {
+#if LIGHTVM_HTTP
+        stop_http();
+#endif
+        pico_dhcp_stop(&dhcp); cyw43_arch_deinit(); initialized=false;
+    } else cyw43_wifi_leave(&cyw43_state,CYW43_ITF_STA);
+}
 static uint32_t random_value(void *ctx) { (void)ctx; return get_rand_32(); }
 #if LIGHTVM_HTTP
 static Http http;
@@ -79,7 +96,7 @@ static bool discovery_send(void *ctx,const uint8_t *bytes,size_t size,const uint
     struct pbuf *p=pbuf_alloc(PBUF_TRANSPORT,(u16_t)size,PBUF_RAM); if (!p) return false;
     ip_addr_t target; IP_ADDR4(&target,ip[0],ip[1],ip[2],ip[3]);
     err_t result=pbuf_take(p,bytes,(u16_t)size);
-    if (result==ERR_OK) result=udp_sendto_if(discovery_pcb,p,&target,port,&cyw43_state.netif[CYW43_ITF_STA]);
+    if (result==ERR_OK) result=udp_sendto_if(discovery_pcb,p,&target,port,active_netif());
     pbuf_free(p); return result==ERR_OK;
 }
 static void discovery_received(void *ctx,struct udp_pcb *pcb,struct pbuf *p,const ip_addr_t *address,u16_t port) {
@@ -93,18 +110,19 @@ static void discovery_received(void *ctx,struct udp_pcb *pcb,struct pbuf *p,cons
 static void stop_discovery(void) {
     discovery_stop(&discovery,platform_time_us());
     if (discovery_pcb) {
-        igmp_leavegroup_netif(&cyw43_state.netif[CYW43_ITF_STA],&discovery_group);
+        igmp_leavegroup_netif(active_netif(),&discovery_group);
         udp_remove(discovery_pcb); discovery_pcb=NULL;
     }
 }
 static bool start_discovery(uint16_t port) {
-    struct netif *netif=&cyw43_state.netif[CYW43_ITF_STA];
+    struct netif *netif=active_netif();
     discovery_pcb=udp_new_ip_type(IPADDR_TYPE_V4); if (!discovery_pcb) return false;
     IP4_ADDR(&discovery_group,224,0,0,251);
     if (udp_bind(discovery_pcb,IP_ANY_TYPE,DISCOVERY_PORT)!=ERR_OK || igmp_joingroup_netif(netif,&discovery_group)!=ERR_OK) {
         udp_remove(discovery_pcb); discovery_pcb=NULL; return false;
     }
     discovery_pcb->ttl=255; udp_set_multicast_ttl(discovery_pcb,255);
+    udp_bind_netif(discovery_pcb,netif);
     udp_recv(discovery_pcb,discovery_received,NULL);
     const ip4_addr_t *a=netif_ip4_addr(netif); uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
     discovery_start(&discovery,hostname,engine->device_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
@@ -192,15 +210,16 @@ void pico_network_init(App *app) {
     http_init(&http,app);
     http.discovery=&discovery;
 #endif
+    network_bootstrap(&app->network,LIGHTVM_HTTP);
     NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 }
 void pico_network_poll(void) {
     if (initialized) cyw43_arch_poll();
 #if LIGHTVM_HTTP
     static NetworkState previous=NET_DISABLED; static uint16_t port;
-    if (previous==NET_CONNECTED && engine->network.state!=NET_CONNECTED) stop_http();
+    if ((previous==NET_CONNECTED || previous==NET_AP_ACTIVE) && !network_online(&engine->network)) stop_http();
     previous=engine->network.state;
-    bool enabled=engine->network.state==NET_CONNECTED && engine->network.config.http_enabled;
+    bool enabled=network_online(&engine->network) && engine->network.config.http_enabled;
     if (!engine->network_pending) {
         if (listener && (!enabled || port!=engine->network.config.port)) stop_http();
         if (!listener && enabled) { if (start_http(engine->network.config.port)) port=engine->network.config.port; else strcpy(engine->network_error,"HTTP listener could not start"); }
@@ -208,7 +227,7 @@ void pico_network_poll(void) {
     uint64_t now=platform_time_us();
     static uint64_t discovery_retry;
     if (listener && enabled) {
-        const ip4_addr_t *a=netif_ip4_addr(&cyw43_state.netif[CYW43_ITF_STA]);
+        const ip4_addr_t *a=netif_ip4_addr(active_netif());
         uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
         if (discovery.active && memcmp(ip,discovery.devices[0].ip,4)) stop_discovery();
         if (!discovery.active && now>=discovery_retry) { start_discovery(port); discovery_retry=now+5000000u; }

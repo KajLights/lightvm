@@ -3,7 +3,7 @@ export interface Description {
   device_id: string; boot_id: string; board: string; control_abi: number;
   program_schemas: string[]; module_limit: number; config_limit: number;
   pixel_capacity: number; pins: string[]; slots: string[];
-  storage_available: boolean; wifi_supported: boolean; http_supported: boolean;
+  storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean;
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;
@@ -16,10 +16,10 @@ export interface HardwareConfig {
 }
 export interface NetworkConfig {
   schema: 'lightvm.network/1';
-  wifi: { enabled: boolean; country: string; networks: { ssid: string; hidden?: boolean; password?: string }[] };
+  wifi: { enabled: boolean; country: string; mode?: 'station' | 'ap'; ap?: { ssid?: string; password?: string }; networks: { ssid: string; hidden?: boolean; password?: string }[] };
   http: { enabled: boolean; port: number };
 }
-export interface NetworkStatus { state: string; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
+export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
 export interface Procedure { name: string; size: number; crc32: number }
 export interface Parameter { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { abi: number; parameters: Parameter[] }
