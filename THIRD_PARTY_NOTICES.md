@@ -15,11 +15,11 @@ native receiver, RP2040 Pico and XIAO ESP32 builds, and pinned Python tools.
 | Wasmtime Python | 25.0.0 | Apache-2.0 WITH LLVM-exception | Desktop WAT compilation and tests | [License and exception](licenses/wasmtime-py-25.0.0.txt) |
 | Newlib | 4.3.0, Arm GNU Toolchain 13.2.Rel1 | Per-source permissive licenses for the linked ARM C/math routines | Firmware C and math libraries | [Upstream license collection](licenses/newlib-4.3.0.txt) |
 | GCC runtime | Arm GNU Toolchain 13.2.Rel1 | GPL-3.0-or-later WITH GCC-exception-3.1 | Firmware compiler support routines | [GPL](licenses/gcc-gpl-3.0.txt), [runtime exception](licenses/gcc-runtime-exception.txt) |
-| ESP-IDF | v5.5.3 (`2c211b236707889e8400c4dc5644dd5c4ee071e0`) | Apache-2.0; selected MIT/BSD components below | S3/C6 SDK, USB Serial/JTAG and RMT | [Apache license](licenses/esp-idf-5.5.3.txt), [per-file copyright/attribution](licenses/esp-idf-additional-notices.txt) |
+| ESP-IDF | v5.5.3 (`2c211b236707889e8400c4dc5644dd5c4ee071e0`) | Apache-2.0; selected MIT/BSD components below | C3/S3/C6 SDK, USB Serial/JTAG and RMT | [Apache license](licenses/esp-idf-5.5.3.txt), [S3/C6 source notices](licenses/esp-idf-additional-notices.txt), [C3 source notices](licenses/esp-idf-c3-additional-notices.txt) |
 | FreeRTOS / Xtensa support | IDF-selected kernel 10.5.1 and SDK ports | MIT | ESP32 scheduling and native context support | [Preserved copyright/license headers](licenses/esp-idf-additional-notices.txt) |
 | TLSF | IDF submodule `2867f6883a12920b1969ff9624c0ab0e4185c2ce` | BSD-3-Clause | Native allocator and ROM allocator patches | [BSD conditions](licenses/tlsf-esp-idf-5.5.3.txt), [copyright headers](licenses/esp-idf-additional-notices.txt) |
 | Mbed TLS / micro-ecc | IDF-selected submodules | Apache-2.0 option / BSD-2-Clause | SDK/bootloader security components (unused features are discarded) | [Mbed TLS license](licenses/mbedtls-esp-idf-5.5.3.txt), [selected headers and micro-ecc license](licenses/esp-idf-additional-notices.txt) |
-| Espressif Newlib | 4.3.0, toolchain `esp-14.2.0_20251107` | Per-source permissive licenses | S3/C6 C/math routines | [License collection](licenses/newlib-esp-14.2.0_20251107.txt) |
+| Espressif Newlib | 4.3.0, toolchain `esp-14.2.0_20251107` | Per-source permissive licenses | C3/S3/C6 C/math routines | [License collection](licenses/newlib-esp-14.2.0_20251107.txt) |
 | Espressif GCC runtime | GCC 14.2.0, toolchain `esp-14.2.0_20251107` | GPL-3.0-or-later WITH GCC-exception-3.1 | Xtensa/RISC-V compiler support routines | [GPL](licenses/gcc-gpl-3.0.txt), [runtime exception](licenses/gcc-runtime-exception.txt) |
 
 The linked dependencies permit LightVM's own code to remain MIT-licensed when

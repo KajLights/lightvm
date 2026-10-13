@@ -36,6 +36,7 @@ would require an offset/length convention; console output is the smaller API.
 | POSIX host (macOS/Linux) | Implemented: pipes, monotonic clock, logical RGB snapshots and integration tests |
 | Original RP2040 Pico | Implemented: USB CDC and WS2812 PIO output; previous hardware checks are recorded below |
 | RP2040 Pico W | Implemented: USB, optional Wi-Fi/HTTP and WS2812 PIO; radio hardware validation pending |
+| Seeed XIAO ESP32-C3 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 | Seeed XIAO ESP32-S3 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 | Seeed XIAO ESP32-C6 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 
@@ -46,7 +47,7 @@ would require an offset/length convention; console output is the smaller API.
 | `src/session.h` | Shared session lifecycle and byte decoding; driven by a native event loop |
 | `platforms/host/` | POSIX entry point, pipes, clock and host memory allocation |
 | `platforms/pico/` | Pico entry point, SDK bootstrap, USB, PIO and reserved flash storage |
-| `platforms/esp32/` | ESP-IDF project, two XIAO profiles, USB Serial/JTAG, RMT output and optional Wi-Fi/HTTP and one FreeRTOS engine owner |
+| `platforms/esp32/` | ESP-IDF project, three XIAO profiles, USB Serial/JTAG, RMT output and optional Wi-Fi/HTTP and one FreeRTOS engine owner |
 | `cmake/lightvm_core.cmake` | Reusable engine build for ports with their own SDK project/entry point |
 
 The command handler has a transport-independent `SendMessage` callback.
@@ -97,7 +98,7 @@ each board instance. Instances of the same board model can use different feature
 sets according to user needs and available capacity.
 
 Multi-board portability is a maintained requirement: identical compatible WASM
-must run on host, Pico, XIAO S3 and XIAO C6 with native board configuration changes
+must run on host, Pico, XIAO C3, XIAO S3 and XIAO C6 with native board configuration changes
 only. CI builds every firmware and tests both host profiles on pushes and PRs.
 The portable smoke runner checks the same behavior over pipes or USB; successful
 cross-builds alone do not establish physical USB, output or timing correctness.
@@ -164,7 +165,7 @@ All animation effects, including rainbow, run from uploaded WASM procedures.
 
 The [configuration guide](docs/configuration.md) documents the schema, client,
 management operations, limits and snapshot recovery. Host storage uses
-`--storage PATH`; the Pico and both ESP32 ports have a reserved 512 KiB store.
+`--storage PATH`; the Pico and XIAO ESP32 ports have a reserved 512 KiB store.
 Configuration can also be tested in RAM without saving.
 
 ### Portable animation API v1
@@ -296,35 +297,40 @@ Use `--function _start` for a suitable WASI export. Only `fd_write` and
 This is not a complete WASI environment. A regular terminal cannot upload raw
 WASM using this framed protocol; use the sender instead.
 
-## XIAO ESP32-S3 and ESP32-C6 build and upload
+## XIAO ESP32-C3, ESP32-S3 and ESP32-C6 build and upload
 
-The preliminary profiles target the original XIAO ESP32-S3 and ESP32-C6, using
+The preliminary profiles target the original XIAO ESP32-C3, ESP32-S3 and ESP32-C6, using
 [ESP-IDF v5.5.3](https://github.com/espressif/esp-idf/releases/tag/v5.5.3).
-Both load saved configuration and optional startup WASM, and accept the existing
+All three load saved configuration and optional startup WASM, and accept the existing
 USB protocol and animation API. Flashing deliberately resets the board; subsequent WASM uploads
 are data transfers and do not require reflashing.
 
 | `LIGHTVM_BOARD` | SDK target | Example WS2812 data | Example pixels | Example brightness | Flash |
 |---|---|---|---:|---:|---:|
+| `xiao_esp32c3` | `esp32c3` | D1 / GPIO3 | 100 | 32/255 | 4 MiB |
 | `xiao_esp32s3` | `esp32s3` | D0 / GPIO1 | 100 | 32/255 | 8 MiB |
 | `xiao_esp32c6` | `esp32c6` | D0 / GPIO0 | 100 | 32/255 | 4 MiB |
 
-Mappings follow Seeed's [S3 guide](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
+Mappings follow Seeed's [C3 guide](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/),
+[S3 guide](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
 and [C6 guide](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/).
-Connect D0 to strip data input, use the strip's rated supply and common ground,
+Use D1 for the C3 example: its D0/GPIO2 is a boot strap pin. Connect the selected
+data pin to strip data input, use the strip's rated supply and common ground,
 and use a suitable 3.3 V-to-strip data level shifter. Power 100 pixels from a
-separate adequately rated supply, not the XIAO's 3V3 output. The onboard user LED
-is separate from this strip output.
+separate adequately rated supply, not the XIAO's 3V3 output. Onboard indicators
+are separate from this strip output.
 
 Install the SDK/toolchains once, then build from the repository root:
 
 ```sh
 git clone --branch v5.5.3 --depth 1 --recursive --shallow-submodules \
   https://github.com/espressif/esp-idf.git build/esp-idf
-build/esp-idf/install.sh esp32s3,esp32c6
+build/esp-idf/install.sh esp32c3,esp32s3,esp32c6
 . build/esp-idf/export.sh
 export IDF_COMPONENT_MANAGER=0
 
+idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c3" \
+  -D LIGHTVM_BOARD=xiao_esp32c3 build
 idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32s3" \
   -D LIGHTVM_BOARD=xiao_esp32s3 build
 idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c6" \
@@ -350,12 +356,13 @@ bounded waits so a disconnected host cannot block animation indefinitely.
 Flash the selected build, replacing `PORT` with its USB serial device:
 
 ```sh
+idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c3" -p PORT flash
 idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32s3" -p PORT flash
 idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c6" -p PORT flash
 ```
 
 If automatic flashing fails, hold BOOT while connecting USB, release it and retry.
-Close the IDF monitor before using the client. Use `--no-reset` for both XIAOs:
+Close the IDF monitor before using the client. Use `--no-reset` for each XIAO:
 it deasserts DTR/RTS before serial open and briefly drains stale/ROM boot bytes
 before issuing a request. Pico retains its default control behavior.
 
@@ -369,10 +376,14 @@ build/venv/bin/python tools/client.py --port PORT --no-reset --activate rainbow
 build/venv/bin/python tools/client.py --port PORT --no-reset --stop
 ```
 
+For the C3, use `examples/xiao-c3-startup.json` in place of
+`examples/xiao-startup.json`.
+
 STATUS reports `platform=esp32`, the selected board, `output=ws2812`, actual GPIO
 and shared resource limits. Closing serial retains the instance; resetting loads
 the saved startup procedure. ESP32 physical behavior remains unvalidated until
-the checks below pass. Wi-Fi, BLE, Thread/Zigbee, MQTT, Matter and OTA remain later work.
+the checks below pass. Wi-Fi/HTTP is optional; BLE, Thread/Zigbee, MQTT, Matter
+and OTA remain later work.
 
 Existing ESP32 build directories retain SDK configuration: switch to a fresh
 build directory when adopting the custom partition table, or explicitly select
@@ -528,7 +539,7 @@ initial verification predates the ESP32 implementation described above.
 ### Multi-board regression and hardware checks
 
 The [CI workflow](.github/workflows/build.yml) runs both host profiles' C/Python
-tests and portable smoke checks, then cross-builds Pico and both XIAOs. It keeps
+tests and portable smoke checks, then cross-builds Pico and all three XIAOs. It keeps
 firmware, build-size reports, ESP32 flash arguments/maps/configuration and license
 notices. Physical validation is a separate recorded step.
 
@@ -537,6 +548,7 @@ build/venv/bin/python tools/smoke_device.py --process build/host/lightvm --board
 build/venv/bin/python tools/smoke_device.py --process build/host-175/lightvm \
   --board test_175 --reference build/host-175/lightvm
 build/venv/bin/python tools/smoke_device.py --port PORT --board pico
+build/venv/bin/python tools/smoke_device.py --port PORT --board xiao_esp32c3
 build/venv/bin/python tools/smoke_device.py --port PORT --board xiao_esp32s3
 build/venv/bin/python tools/smoke_device.py --port PORT --board xiao_esp32c6
 ```
@@ -563,13 +575,36 @@ scaling; observing the strip checks the physical GRB backend. Then run the smoke
 Confirm STOP extinguishes the strip, PLAY resumes it and power cycling restores
 the saved startup WASM procedure. Record SDK/profile, pin/count, sustained frame cadence,
 render/output times and stable heap/peak. Run identical compatible WASM on Pico,
-S3 and C6 before recording physical multi-board proof.
+C3, S3 and C6 before recording physical multi-board proof.
 
-| Target | Latest build/check result (2026-10-12) | Hardware validation |
+### Compare board performance
+
+With the same 100-pixel strip attached to each board, run the benchmark after
+flashing. It applies a temporary configuration, uploads identical rainbow WASM,
+samples device-measured render and output times, and counts autonomous frames.
+The original active configuration is restored afterward, but the resident WASM
+is replaced and playback stops. Stored configuration and procedures are untouched.
+
+```sh
+build/venv/bin/python tools/benchmark_device.py --port PORT --board pico --output build/bench-pico.json
+build/venv/bin/python tools/benchmark_device.py --port PORT --board xiao_esp32c3 --output build/bench-c3.json
+build/venv/bin/python tools/benchmark_device.py --port PORT --board xiao_esp32s3 --output build/bench-s3.json
+build/venv/bin/python tools/benchmark_device.py --port PORT --board xiao_esp32c6 --output build/bench-c6.json
+```
+
+The C3 default is D1/GPIO3; the S3 and C6 defaults are D0. Pass `--pin` if wired
+differently, and keep `--pixels` equal on every board. Results include median and
+95th-percentile render/output microseconds, autonomous frames per second and peak
+interpreter heap. Compare the WASM hash in the JSON files to confirm the workload
+matches. Host output uses a memory buffer, so its `show_us` is not a physical-strip
+comparison.
+
+| Target | Latest recorded build/check result | Hardware validation |
 |---|---|---|
 | Host, 100 pixels | 39 Python tests, C contract test and portable smoke passed | Not applicable |
 | Host, 175 pixels | 39 Python tests, C contract test and portable smoke passed | Not applicable |
 | Original Pico | Cross-build passed | Earlier pre-refactor checks below; current build pending |
+| XIAO ESP32-C3 | 2026-10-13: ESP-IDF 5.5.3 USB build passed (295,104-byte app); Wi-Fi/HTTP with boot sequence passed (948,704-byte app) | Pending |
 | XIAO ESP32-S3 | ESP-IDF 5.5.3 cross-build passed; app image 255,216 bytes | Pending |
 | XIAO ESP32-C6 | ESP-IDF 5.5.3 cross-build passed; app image 208,800 bytes | Pending |
 

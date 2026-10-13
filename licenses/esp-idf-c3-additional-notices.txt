@@ -1,0 +1,254 @@
+ESP-IDF v5.5.3 additional C3 application and bootloader source notices.
+Compiled source paths absent from the existing S3/C6 and networking notice lists.
+Full Apache-2.0 text: esp-idf-5.5.3.txt.
+
+Sources: components/bootloader_support/bootloader_flash/src/bootloader_flash_config_esp32c3.c, components/esp_hw_support/port/esp32c3/rtc_sleep.c, components/esp_hw_support/port/esp32c3/rtc_time.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/bootloader_random_esp32c3.c, components/soc/esp32c3/dedic_gpio_periph.c, components/soc/esp32c3/gdma_periph.c, components/soc/esp32c3/timer_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32c3/bootloader_esp32c3.c, components/soc/esp32c3/i2c_periph.c, components/soc/esp32c3/interrupts.c, components/soc/esp32c3/ledc_periph.c, components/soc/esp32c3/uart_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32c3/bootloader_soc.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/bootloader_support/src/esp32c3/secure_boot_secure_features.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32c3/esp_efuse_fields.c
+
+/*
+ * SPDX-FileCopyrightText: 2017-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32c3/esp_efuse_rtc_calib.c, components/esp_hw_support/port/esp32c3/esp_memprot.c, components/heap/port/esp32c3/memory_layout.c, components/soc/esp32c3/spi_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32c3/esp_efuse_table.c
+
+/*
+ * SPDX-FileCopyrightText: 2017-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/efuse/esp32c3/esp_efuse_utility.c
+
+/*
+ * SPDX-FileCopyrightText: 2017-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_coex/esp32c3/esp_coex_adapter.c, components/esp_system/port/soc/esp32c3/cache_err_int.c, components/esp_system/port/soc/esp32c3/reset_reason.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/lowpower/port/esp32c3/sleep_cpu.c, components/esp_hw_support/port/esp32c3/esp_clk_tree.c, components/riscv/interrupt_intc.c, components/soc/esp32c3/wdt_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/adc2_init_cal.c
+
+/*
+ * SPDX-FileCopyrightText: 2016-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/chip_info.c
+
+/*
+ * SPDX-FileCopyrightText: 2013-2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/cpu_region_protect.c, components/hal/esp32c3/clk_tree_hal.c, components/soc/esp32c3/mpi_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/esp_cpu_intr.c
+
+/*
+ * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/io_mux.c, components/esp_hw_support/port/esp32c3/systimer.c, components/soc/esp32c3/twai_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/rtc_clk.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2026 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/rtc_clk_init.c, components/esp_hw_support/port/esp32c3/rtc_init.c, components/soc/esp32c3/gpio_periph.c, components/soc/esp32c3/i2s_periph.c, components/soc/esp32c3/sdm_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_hw_support/port/esp32c3/sar_periph_ctrl.c
+
+/*
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_mm/port/esp32c3/ext_mem_layout.c
+
+/*
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_phy/esp32c3/phy_init_data.c
+
+/*
+ * SPDX-FileCopyrightText: 2016-2024 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_system/port/soc/esp32c3/apb_backup_dma.c, components/esp_system/port/soc/esp32c3/clk.c, components/esp_wifi/esp32c3/esp_adapter.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/esp_system/port/soc/esp32c3/system_internal.c
+
+/*
+ * SPDX-FileCopyrightText: 2018-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/hal/esp32c3/efuse_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/hal/esp32c3/rtc_cntl_hal.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/hal/wdt_hal_iram.c, components/soc/esp32c3/rmt_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/soc/esp32c3/power_supply_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+Sources: components/soc/esp32c3/temperature_sensor_periph.c
+
+/*
+ * SPDX-FileCopyrightText: 2019-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */

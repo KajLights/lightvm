@@ -32,7 +32,7 @@ Build with all three options enabled:
 -DLIGHTVM_BOOT_SEQUENCE=ON -DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON
 ```
 
-On the third short boot, Pico W and both ESP32 ports enter a temporary **open**
+On the third short boot, Pico W and the XIAO ESP32 ports enter a temporary **open**
 `lightvm-xxxxxx` AP with the full API at `http://192.168.4.1:80`. This uses the
 existing AP/DHCP/discovery implementation, channel 1 and worldwide radio country
 `XX`. Recovery overrides saved disabled networking, station credentials, AP
@@ -107,7 +107,7 @@ snapshot saves never write or erase this journal.
 | Port | Enabled journal location |
 |---|---|
 | Pico / Pico W (2 MiB flash) | `0x17e000..0x17ffff`, directly before the existing `0x180000..0x1fffff` snapshot store; firmware overlap fails the link |
-| ESP32-S3 / ESP32-C6 | `lightvm_boot` partition at `0x190000`, size `0x2000`; the enabled partition table preserves every existing partition address |
+| ESP32-C3 / ESP32-S3 / ESP32-C6 | `lightvm_boot` partition at `0x190000`, size `0x2000`; the enabled partition table preserves every existing partition address |
 | Host | `<storage-path>.boot-sequence`, 8192 bytes, associated with `--storage`; no storage path means detection is unavailable |
 
 On ESP32, enabling the feature requires installing the generated partition table

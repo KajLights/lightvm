@@ -117,7 +117,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        board: [xiao_esp32s3, xiao_esp32c6]
+        board: [xiao_esp32c3, xiao_esp32s3, xiao_esp32c6]
         transport: [usb, wifi, http]
         boot_sequence: ['OFF', 'ON']
     defaults:

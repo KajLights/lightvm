@@ -19,11 +19,14 @@ python tools/client.py --port PORT --config examples/pico-startup.json --save
 python tools/client.py --port PORT --activate rainbow
 ```
 
-For either XIAO board use `--no-reset` and `examples/xiao-startup.json`.
+For an XIAO board use `--no-reset` and `examples/xiao-startup.json`; the C3 uses
+`examples/xiao-c3-startup.json` with D1/GPIO3 to avoid its D0 boot strap pin.
 `GP16` is a Pico pin name; `D0` is a XIAO board alias. Discovery lists every
 permitted pin, including XIAO `GPIO` aliases. These tables describe exposed pins
-and exclude USB, flash and board-reserved pins; they do not identify connected
-hardware. XIAO mappings follow the manufacturer's [S3 pin map](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
+and exclude USB and flash pins; they do not identify connected hardware. C3 D0,
+D8 and D9 are boot strap pins, so external circuits on them can affect startup.
+XIAO mappings follow the manufacturer's [C3 pin map](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/),
+[S3 pin map](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
 and [C6 pin map](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/).
 
 Configuration apply takes effect in RAM and stops/unloads the current instance.

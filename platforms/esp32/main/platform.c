@@ -24,8 +24,12 @@ void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capac
 #define PIN(d,g) {"D" #d,g},{"GPIO" #g,g}
 #if CONFIG_IDF_TARGET_ESP32S3
 static const BoardPin pins[]={PIN(0,1),PIN(1,2),PIN(2,3),PIN(3,4),PIN(4,5),PIN(5,6),PIN(6,43),PIN(7,44),PIN(8,7),PIN(9,8),PIN(10,9)};
-#else
+#elif CONFIG_IDF_TARGET_ESP32C3
+static const BoardPin pins[]={PIN(0,2),PIN(1,3),PIN(2,4),PIN(3,5),PIN(4,6),PIN(5,7),PIN(6,21),PIN(7,20),PIN(8,8),PIN(9,9),PIN(10,10)};
+#elif CONFIG_IDF_TARGET_ESP32C6
 static const BoardPin pins[]={PIN(0,0),PIN(1,1),PIN(2,2),PIN(3,21),PIN(4,22),PIN(5,23),PIN(6,16),PIN(7,17),PIN(8,19),PIN(9,20),PIN(10,18)};
+#else
+#error "Unsupported ESP32 target"
 #endif
 const BoardPin *platform_pins(size_t *count) { *count=sizeof(pins)/sizeof(pins[0]); return pins; }
 typedef struct {

@@ -277,7 +277,7 @@ identical ABI-2 WASM use counts 3 and 7, independent state/time/parameters, `6N`
 buffer storage, no physical output calls, and clean teardown. Unsupported slots
 fail before replacement. Stored startup/default restoration uses the host store.
 
-The same core cross-built for the original Pico, XIAO ESP32-S3 and XIAO ESP32-C6.
+The same core has XIAO ESP32-C3, XIAO ESP32-S3 and XIAO ESP32-C6 profiles alongside the original Pico.
 The six generated modules occupy approximately 1.8–2.4 KiB each without linear
 memory. The earlier connected Pico runs are recorded below; ESP32 hardware
 validation remains pending.

@@ -13,13 +13,13 @@ assumptions; an oversized or unsupported module is rejected with a load/upload
 error. Real-time frame throughput must be measured on each target.
 
 The implemented ports are the POSIX host simulator, original RP2040 Pico, Pico W and a
-shared ESP-IDF port for XIAO ESP32-S3 and ESP32-C6. The XIAO firmwares are
+shared ESP-IDF port for XIAO ESP32-C3, ESP32-S3 and ESP32-C6. The XIAO firmwares are
 cross-build verified; hardware validation remains pending. Optional Wi-Fi/HTTP adapters coexist with USB; Matter and OTA remain subsequent
 native adapters. See [networking](networking.md).
 
 Multi-board support is a maintained requirement from the initial prototype.
 Compatible identical WASM bytes and API semantics must work across host, Pico,
-S3 and C6; native wiring/resource profiles may differ. CI builds every firmware,
+C3, S3 and C6; native wiring/resource profiles may differ. CI builds every firmware,
 tests both host profiles and exercises a portable smoke runner. Record hardware
 evidence separately from build success.
 
@@ -215,8 +215,8 @@ upload. Profiles can change resource capacity without changing API semantics.
 
 ## ESP32 native port
 
-The separate `platforms/esp32/` SDK project selects `xiao_esp32s3` or
-`xiao_esp32c6` through `LIGHTVM_BOARD`. It derives and validates the SDK target,
+The separate `platforms/esp32/` SDK project selects `xiao_esp32c3`,
+`xiao_esp32s3` or `xiao_esp32c6` through `LIGHTVM_BOARD`. It derives and validates the SDK target,
 loads the corresponding portable header and keeps generated SDK configuration
 in each board's build directory. `LIGHTVM_BOARD_CONFIG` can replace the resource/
 wiring header. SDK/toolchain version 5.5.3 and wasm3 v0.5.0 are pinned; host/Pico

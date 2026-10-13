@@ -1,7 +1,7 @@
 # Concurrent USB and HTTP management
 
 Networking is optional firmware functionality. The original Pico remains USB-only.
-Pico W, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTTP. USB continues
+Pico W, XIAO ESP32-C3, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTTP. USB continues
 working when networking is disabled, unavailable or reconnecting. All paths share
 one runtime, library and configuration; commands execute between engine steps.
 
@@ -24,7 +24,7 @@ HTTP requires Wi-Fi; Wi-Fi without HTTP is supported. Use separate build directo
 ```sh
 idf.py -C platforms/esp32 -B "$PWD/build/network-c6" \
   -D LIGHTVM_BOARD=xiao_esp32c6 -D LIGHTVM_WIFI=ON -D LIGHTVM_HTTP=ON build
-# Substitute xiao_esp32s3 and a separate directory for S3.
+# Substitute xiao_esp32c3 or xiao_esp32s3 and a separate directory for each board.
 
 # Pico SDK 1.5.1, with its pinned radio and network submodules:
 git -C PATH_TO_PICO_SDK submodule update --init lib/tinyusb lib/cyw43-driver lib/lwip
@@ -54,7 +54,7 @@ measurement. USB-only profiles retain their original ceilings.
 
 ## Initial setup and standalone AP mode
 
-On Pico W, XIAO ESP32-S3 and XIAO ESP32-C6 builds with both `LIGHTVM_WIFI=ON`
+On Pico W and the XIAO ESP32-C3/S3/C6 builds with both `LIGHTVM_WIFI=ON`
 and `LIGHTVM_HTTP=ON`, a device without a valid saved network configuration
 starts an **open** access point named `lightvm-xxxxxx`, using the same stable
 station-MAC suffix as its hostname. Join it and connect the editor or CLI to
@@ -159,7 +159,7 @@ direct addresses remain available when multicast is blocked.
 
 ## Local device discovery
 
-Wi-Fi/HTTP firmware on Pico W and both ESP32 profiles advertises
+Wi-Fi/HTTP firmware on Pico W and all XIAO ESP32 profiles advertises
 `_lightvm._tcp.local` with its command port, stable device ID, board and API version.
 Each board also answers the shared `lightvm.local` IPv4 name. This bootstrap name
 may reach any LightVM board; each board retains its unique `lightvm-xxxxxx.local`
