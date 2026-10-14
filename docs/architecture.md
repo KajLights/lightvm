@@ -1,5 +1,11 @@
 # Multi-platform engine and native ports
 
+The [component runtime architecture request](../documents/architecture-request-component-runtime.md)
+sets out future requirements for concurrent effects, independent live updates,
+communications plugins, multicore execution and hardware offload. Its research
+scope includes native compilation and alternatives to WASM; the contracts below
+describe the current implementation and earlier proposals.
+
 LightVM is intended to run portable lighting programs on multiple board families.
 Its unit of portability is the WASM module plus its versioned guest contract.
 The implemented contracts are legacy animation API v1 and the independent
