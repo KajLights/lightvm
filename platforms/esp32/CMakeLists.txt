@@ -70,7 +70,7 @@ set(IDF_VERSION "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}"
 if(NOT IDF_VERSION VERSION_EQUAL "5.5.3")
     message(FATAL_ERROR "This port is pinned to ESP-IDF 5.5.3; found ${IDF_VERSION}")
 endif()
-# All dependencies come from the pinned SDK or the shared wasm3 helper. Avoid
+# All dependencies come from the pinned SDK. Avoid
 # managed-component lockfiles in the source tree and build only this component's
 # dependency closure rather than unused networking examples/services.
 set(ENV{IDF_COMPONENT_MANAGER} "0")

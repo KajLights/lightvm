@@ -32,6 +32,6 @@ export interface ParameterState {
 }
 export interface NearbyDevice { device_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { message: string; line: number; column: number; end_line?: number; end_column?: number }
-export interface Compilation { id: number; source: string; wasm: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[] }
+export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[] }
 export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config/1', devices: [], targets: {}, startup: null };
-export const DEFAULT_SOURCE = 'from lightvm import parameter, hsv, on_frame\n\nspeed = parameter("speed", 0.1, minimum=-10.0, maximum=10.0)\nscale = parameter("scale", 1.0, minimum=0.0, maximum=16.0)\nphase = 0.0\n\n@on_frame\ndef draw(ctx):\n    global phase\n    strip = ctx.pixels\n    phase = (phase + ctx.delta * speed.value) % 1.0\n    for i in range(strip.count):\n        strip[i] = hsv(phase + i * scale.value / strip.count, 1.0, 1.0)\n';
+export const DEFAULT_SOURCE = "\"\"\"The original moving hue gradient; simulation and rendering are separate.\"\"\"\nfrom lightvm import parameter, hsv, step, prepare, shade\nspeed = parameter(0.1, minimum=-10.0, maximum=10.0)\nscale = parameter(1.0, minimum=0.0, maximum=16.0)\nphase = 0.0\nstride = 0.0\n@step\ndef update():\n    global phase\n    phase = (phase + delta * speed) % 1.0\n@prepare\ndef frame():\n    global stride\n    stride = scale / count\n@shade\ndef pixel():\n    return hsv(phase + index * stride, 1.0, 1.0)\n";

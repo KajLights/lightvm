@@ -75,6 +75,18 @@ static bool config_apply(App *a, const HardwareConfig *config, const void *data,
     a->vm.output = a->vm.target;
     return true;
 }
+// Snapshot storage alternates banks. Preserve the running version before an
+// erase; rebind unchanged programs to the new snapshot after a successful write.
+static bool update_store(App *a,const char *name,const void *data,uint32_t size,bool remove) {
+    if(!vm_materialize(&a->vm))return false;
+    bool ok=remove ? store_delete(&a->store,name) : store_put(&a->store,name,data,size);
+    const StoreEntry *entry=store_find(&a->store,a->active_procedure);
+    if(entry && a->vm.ready && entry->size==a->vm.expected && entry->crc==a->active_crc) {
+        a->vm.storage_offset=(uint32_t)a->store.bank*STORE_BANK_BYTES+entry->offset;
+        a->vm.from_storage=true;a->vm.program.cache_size=0;
+    }
+    return ok;
+}
 static bool activate(App *a, const char *name, uint16_t id, const char *action, const char *export_name, const char *slot) {
     if (strcmp(slot,"A")) { error_reply(a,id,STATUS_CONFIG,"unsupported_slot","this runtime supports deployment slot A only"); return false; }
     const StoreEntry *entry = store_find(&a->store, name);
@@ -83,10 +95,16 @@ static bool activate(App *a, const char *name, uint16_t id, const char *action, 
     if (!strcmp(action,"play") && !a->vm.target) { error_reply(a,id,STATUS_CONFIG,"missing_target","target A has no configured output"); return false; }
     vm_destroy(&a->vm); a->vm.uploading=false; a->active_procedure[0]=0; a->active_crc=0;
     a->vm.expected=entry->size; a->vm.received=entry->size;
-    if (!store_read(&a->store,entry,0,a->vm.bytes,entry->size) || crc32_bytes(a->vm.bytes,entry->size)!=entry->crc) {
-        error_reply(a,id,STATUS_STORAGE,"read_failed","procedure read/checksum failed"); return false;
+    a->vm.from_storage=true;
+    a->vm.storage_offset=(uint32_t)a->store.bank*STORE_BANK_BYTES+entry->offset;
+    uint8_t chunk[256];uint32_t crc=0xffffffffu;
+    for(uint32_t at=0;at<entry->size;) {
+        size_t n=entry->size-at;if(n>sizeof(chunk))n=sizeof(chunk);
+        if(!vm_read(&a->vm,at,chunk,n)) { vm_destroy(&a->vm);error_reply(a,id,STATUS_STORAGE,"read_failed","procedure read failed");return false; }
+        crc=crc32_update(crc,chunk,n);at+=(uint32_t)n;
     }
-    M3Result error=vm_load(&a->vm);
+    if((crc^0xffffffffu)!=entry->crc) { vm_destroy(&a->vm);error_reply(a,id,STATUS_STORAGE,"read_failed","procedure checksum failed");return false; }
+    const char * error=vm_load(&a->vm);
     if (error) { vm_destroy(&a->vm); error_reply(a,id,STATUS_LOAD,"load_failed",error); return false; }
     a->vm.ready=true; memcpy(a->vm.slot,slot,strlen(slot)+1);
     memcpy(a->active_procedure,name,strlen(name)+1); a->active_crc=entry->crc;
@@ -171,6 +189,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"error\":"); quoted(&w,a->boot_sequence.error); literal(&w,"}");
 #endif
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
+    literal(&w,",\"bytecode_format\":\"LBC1/2\"");
     literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
     literal(&w,",\"board\":"); quoted(&w,info->board);
     literal(&w,",\"device_types\":[{\"type\":\"ws2812b\",\"max_instances\":1,\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}],\"pins\":[");
@@ -269,7 +288,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         if (!strcmp(args.op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return; }
         if (!args.has_revision || args.revision!=a->store.network_revision || a->network_pending) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }
         char data[4096]; size_t count=network_json(&config,true,data,sizeof(data));
-        bool ok=count && store_put(&a->store,STORE_NETWORK,data,(uint32_t)count); resume_clock(a);
+        bool ok=count && update_store(a,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
         memset(data,0,sizeof(data));
         if (!ok) { error_reply(a,id,STATUS_STORAGE,"save_failed","network save failed; active settings retained"); return; }
         a->network.saved_valid=true; a->network_error[0]=0;
@@ -320,7 +339,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         }
         HardwareConfig config; char error[160];
         if (!config_validate(a,a->config_json,a->config_size,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
-        bool ok=store_put(&a->store,STORE_CONFIG,a->config_json,a->config_size); resume_clock(a);
+        bool ok=update_store(a,STORE_CONFIG,a->config_json,a->config_size,false); resume_clock(a);
         if (!ok) error_reply(a,id,STATUS_STORAGE,"save_failed","storage unavailable, full or write failed");
         else reply(a,id,STATUS_OK,(int32_t)a->store.config_revision,"configuration saved");
         return;
@@ -330,12 +349,12 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         bool ok;
         if (!strcmp(args.op,"procedure_save")) {
             if (!a->staged || a->object_kind!=2 || a->upload_owner!=a->source || strcmp(args.name,a->object_name)) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","upload and finish this named procedure first"); return; }
-            ok=store_put(&a->store,args.name,a->staging,a->expected);
+            ok=update_store(a,args.name,a->staging,a->expected,false);
             if (ok) { a->staged=false; a->upload_owner=0; }
         } else {
             if (!store_find(&a->store,args.name)) { error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); return; }
             if (referenced(a,args.name)) { error_reply(a,id,STATUS_STORAGE,"referenced","procedure is referenced by active/saved configuration or runtime"); return; }
-            ok=store_delete(&a->store,args.name);
+            ok=update_store(a,args.name,NULL,0,true);
         }
         resume_clock(a);
         if (!ok) error_reply(a,id,STATUS_STORAGE,"save_failed","storage unavailable, full or write failed");
@@ -392,7 +411,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
             NetworkConfig config; char error[160];
             if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error))) { a->upload_owner=0; error_reply(a,id,STATUS_CONFIG,"invalid_network",error); return; }
         } else {
-            M3Result error=vm_validate(a->staging,a->expected);
+            const char * error=vm_validate(a->staging,a->expected);
             if (error) { error_reply(a,id,STATUS_LOAD,"invalid_module",error); return; }
         }
         a->staged=true; a->upload_deadline=platform_time_us()+30000000u; reply(a,id,STATUS_OK,(int32_t)a->expected,"object staged; not saved or activated"); return;

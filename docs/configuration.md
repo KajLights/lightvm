@@ -13,7 +13,7 @@ procedure before referring to it in saved configuration:
 
 ```sh
 python tools/client.py --port PORT --describe
-python tools/client.py --port PORT --store-procedure rainbow build/samples/rainbow.wasm
+python tools/client.py --port PORT --store-procedure rainbow build/samples/rainbow.lbc
 python tools/client.py --port PORT --validate-config examples/pico-startup.json
 python tools/client.py --port PORT --config examples/pico-startup.json --save
 python tools/client.py --port PORT --activate rainbow
@@ -41,8 +41,7 @@ Other useful commands:
 python tools/client.py --port PORT --get-config
 python tools/client.py --port PORT --get-config --saved
 python tools/client.py --port PORT --procedures
-python tools/client.py --port PORT --get-procedure rainbow --output rainbow.wasm
-python tools/client.py --port PORT --activate counter --action run --function run
+python tools/client.py --port PORT --get-procedure rainbow --output rainbow.lbc
 python tools/client.py --port PORT --delete-procedure unused
 python tools/client.py --port PORT --cancel-upload
 ```
@@ -50,7 +49,7 @@ python tools/client.py --port PORT --cancel-upload
 For host persistence, replace `--port PORT` with
 `--process build/host/lightvm --storage build/demo-store.bin`. The receiver locks
 the storage file against simultaneous writers. Without `--storage`, the host
-supports RAM configuration and transient WASM uploads, and reports persistence
+supports RAM configuration and transient bytecode uploads, and reports persistence
 unavailable. Each invocation creates a new host process; persisted state survives
 that restart, while unsaved state does not.
 
@@ -85,35 +84,32 @@ Clients should read configuration/discovery again after a revision conflict.
 
 ## Procedures and runtime ownership
 
-Named library procedures are complete WASM modules. Upload stages bytes without
-replacing the running instance or writing flash. Finish checks length, CRC and
-wasm3 parsing; it does not execute guest initialization or guarantee activation.
-Linking, compilation, supported imports, resources and export signatures are
-checked when selecting a procedure. A stored module can therefore fail to load
-or play; the error does not remove it from the library.
+Named procedures contain validated LBC1/2 bytecode. Upload stages bytes without
+replacing the running instance or writing flash. Finish checks length, CRC,
+instruction validity and the embedded control manifest; it does not execute the
+program. Initialization may still fail, leaving the runtime idle.
 
-`procedure_activate` loads a fresh instance and either plays its existing API v1
-callbacks, starts a manifested [control ABI 2 program](control-api.md), or calls a
-zero-argument export returning void or i32. Its optional `slot` field defaults
-to A; unsupported slots fail before replacement. New control programs receive
-`ctx.pixels` from deployment and carry no destination binding. Control manifests
-and parameter defaults are embedded in the WASM; live changes do not alter the saved module. The default
-export for `run` is `run`. Further legacy RUN calls retain that instance's state.
-Activation replacement is destructive and resets the prior guest state. Once
-replacement begins, a load or initialization failure leaves the runtime idle; storage and configuration remain available.
+`procedure_activate` loads a fresh instance and plays its
+[control profile](control-api.md). Its optional `slot` defaults to A; unsupported
+slots fail before replacement. `action=run` is retained as a command field but
+returns the control-program error, as it previously did for control programs.
+Manifest and parameter defaults live in the package; live changes are volatile.
+Activation replacement resets prior guest state. Storage/configuration remain
+available if loading or initialization fails.
 
 Replacing a stored name leaves an already loaded instance running its original
 bytes. Discovery reports its CRC separately from catalog metadata. Delete is
 blocked while active/saved startup configuration or the resident instance refers
 to that name. RESET unloads runtime state and cancels staging; it never erases
-configuration or procedures. Native-demo is an explicit diagnostic on configured A.
+configuration or procedures.
 
-`VmInstance` owns module bytes, wasm3 state, bindings and timing. `PixelBuffer`
-owns packed RGB and its native driver. Control imports operate on the instance's
-reserved working contribution and captured count. The optional native output
-pointer is separate from the assigned canvas; control steps never call its driver.
-The aggregate VM heap stays bounded, and one engine owner serializes all work. Tests instantiate
-two independent offscreen canvases/VMs with identical ABI-2/schema-3 WASM to verify
+`VmInstance` owns interpreter state, code source and timing. Stored programs
+read bytecode through the existing flash API; transient uploads use RAM. Before
+snapshot-bank rotation the running program is preserved, and unchanged programs
+are rebound to the new flash snapshot. `PixelBuffer` and the existing driver own
+native output. Bytecode writes only its reserved working contribution; the
+presenter submits complete frames. Tests instantiate independent offscreen
+canvases with identical bytecode to verify
 ownership; production exposes only A. Alpha composition, B, a separate transition mix channel and guest device-handle imports
 remain proposed in the [control model](../documents/feature-proposal-control-api.md)
 and [A/B proposal](../documents/feature-proposal-ab-transitions.md), with ordered
@@ -149,7 +145,7 @@ retain their meanings.
 | `config_apply` | `expected_revision` (active); apply staged config |
 | `config_save` | `expected_revision` (active), `expected_saved_revision` |
 | `procedure_list` | Array of `{name,size,crc32}` |
-| `procedure_get` | `name`; raw WASM bytes |
+| `procedure_get` | `name`; raw bytecode bytes |
 | `procedure_save` | `name`, `expected_revision` (catalog); persist staged module |
 | `procedure_delete` | `name`, `expected_revision` (catalog) |
 | `procedure_activate` | `name`, optional `action` (`play`/`run`, default play), optional `export` (default run) |

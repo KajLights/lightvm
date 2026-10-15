@@ -48,7 +48,7 @@ bool platform_boot_storage_erase(uint32_t offset, size_t size);
 bool platform_boot_storage_sync(void);
 #endif
 
-// Compatible, aligned C allocation semantics. All wasm3 allocations use these
+// Compatible, aligned C allocation semantics. All interpreter allocations use these
 // hooks through the shared budget accounting. A port may choose a memory pool.
 void *platform_calloc(size_t count, size_t size);
 void *platform_realloc(void *memory, size_t size);

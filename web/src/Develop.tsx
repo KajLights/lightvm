@@ -85,15 +85,15 @@ function SendProgram() {
   async function upload() {
     const compiled = compiler.artifact;
     if (!compiled || compiled.id !== devices.snapshot.editor.revision) return;
-    await devices.upload(compiled.wasm, compiled.source, compiled.id);
+    await devices.upload(compiled.bytecode, compiled.source, compiled.id);
   }
-  return <section className="card"><div className="card-heading"><h2>Send your animation</h2></div><p className="muted">Compilation happens in your browser. Only the WASM program is sent to the device.</p>
+  return <section className="card"><div className="card-heading"><h2>Send your animation</h2></div><p className="muted">Compilation happens in your browser. Only the bytecode program is sent to the device.</p>
     <div className="artifact"><span>Compiled program</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div><p id="artifact-detail" className="helper">{artifact ? 'ABI ' + artifact.manifest.abi + ' · RGB8 · ' + artifact.manifest.parameters.length + ' parameters' : 'Ready when the code checks pass.'}</p>
     {incompatible && <p className="helper">This device needs current Control ABI 2 firmware for Python programs.</p>}
     {!outputFor(device.config) && device.selectedPath && <p className="helper">Configure output on slot A before uploading. <Link to={'/devices/' + device.description?.device_id + '/configure'}>Open configuration</Link></p>}
     <button id="upload" className="primary full" disabled={Boolean(activity.operation) || !canUpload || incompatible} onClick={() => void upload()}>{activity.operation === 'Uploading animation' ? 'Uploading…' : 'Upload & run →'}</button>
     {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
-    <div className="button-pair"><button id="download" className="secondary" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.wasm), editor.filename.replace(/\.py$/i, '') + '.wasm', 'application/wasm'); }}>Download .wasm</button><button id="stop" className="quiet" disabled={Boolean(activity.operation) || !device.selectedPath} onClick={() => void devices.stopPlayback()}>Stop lights</button></div>
+    <div className="button-pair"><button id="download" className="secondary" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), editor.filename.replace(/\.py$/i, '') + '.lbc', 'application/octet-stream'); }}>Download .lbc</button><button id="stop" className="quiet" disabled={Boolean(activity.operation) || !device.selectedPath} onClick={() => void devices.stopPlayback()}>Stop lights</button></div>
     <p className="helper deployment-note">Upload replaces the running program. Saving a program to device storage is a separate step.</p>
     {editor.compiler === 'error' && <button id="retry-compiler" className="quiet" onClick={() => compiler.retry()}>Retry compiler</button>}
   </section>;
@@ -110,7 +110,7 @@ function Procedures() {
       if (!compiled || compiled.id !== devices.snapshot.editor.revision) throw new Error('Wait for the latest compilation.');
       if (!/^[A-Za-z0-9_.-]{1,32}$/.test(name)) throw new Error('Use 1–32 letters, digits, underscores, dots or hyphens for the procedure name.');
       const connection = devices.require(client);
-      await connection.saveProcedure(name, compiled.wasm); await devices.readProcedures(connection); devices.log('Saved ' + name + '.', 'success');
+      await connection.saveProcedure(name, compiled.bytecode); await devices.readProcedures(connection); devices.log('Saved ' + name + '.', 'success');
     });
   }
   async function activate() {
@@ -129,9 +129,9 @@ function Procedures() {
     <p className="muted">Save your compiled animation to device storage, or run one already saved there.</p>
     <fieldset id="procedure-fields" disabled={!available || busy}>
       <label htmlFor="procedure-name">Save compiled animation as</label><input id="procedure-name" value={name} onChange={event => setName(event.target.value)} placeholder="rainbow" maxLength={32} autoComplete="off" />
-      <button id="procedure-save" className="secondary full" disabled={!editor.artifact} onClick={() => void save()}>Save compiled WASM</button>
+      <button id="procedure-save" className="secondary full" disabled={!editor.artifact} onClick={() => void save()}>Save compiled bytecode</button>
       <label htmlFor="procedure-select">Stored program</label><select id="procedure-select" value={selected} onChange={event => setSelected(event.target.value)}>{!device.procedures.length && <option value="">No programs saved</option>}{device.procedures.map(item => <option key={item.name} value={item.name}>{item.name + ' · ' + item.size + ' bytes'}</option>)}</select>
-      <div className="button-pair"><button id="procedure-activate" className="secondary" disabled={!selected || !outputFor(device.config)} onClick={() => void activate()}>Activate on A</button><button id="procedure-download" className="quiet" disabled={!selected} onClick={() => void devices.run('Downloading program', async client => { const reply = await devices.require(client).manage('procedure_get', { name: selected }); download(new Uint8Array(reply.data), selected + '.wasm', 'application/wasm'); })}>Download</button></div>
+      <div className="button-pair"><button id="procedure-activate" className="secondary" disabled={!selected || !outputFor(device.config)} onClick={() => void activate()}>Activate on A</button><button id="procedure-download" className="quiet" disabled={!selected} onClick={() => void devices.run('Downloading program', async client => { const reply = await devices.require(client).manage('procedure_get', { name: selected }); download(new Uint8Array(reply.data), selected + '.lbc', 'application/octet-stream'); })}>Download</button></div>
       <button id="procedure-delete" className="quiet full" disabled={!selected} onClick={() => void remove()}>Delete selected program</button>
     </fieldset>
     <p className="helper">Saving adds to the library. Startup behaviour is set in Configure.</p>

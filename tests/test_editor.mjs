@@ -77,9 +77,9 @@ test("a timeout closes the connection instead of accepting a late upload reply",
 const root = fileURLToPath(new URL("../", import.meta.url));
 const receiver = process.env.LIGHTVM_RECEIVER || pathJoin(root, "build/host/lightvm");
 const python = pathJoin(root, "build/venv/bin/python");
-test("browser protocol uploads and plays a real animation on wasm3", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
+test("browser protocol uploads and plays a real animation on bytecode", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
   const directory = mkdtempSync(pathJoin(tmpdir(), "lightvm-editor-"));
-  const program = pathJoin(directory, "rainbow.wasm");
+  const program = pathJoin(directory, "rainbow.lbc");
   execFileSync(python, ["-m", "lightvm.compiler", "samples/python/rainbow.py", "-o", program], { cwd: root });
   const process = spawn(receiver, [], { stdio: ["pipe", "pipe", "pipe"] });
   const transport = {
@@ -106,7 +106,7 @@ test("browser protocol uploads and plays a real animation on wasm3", { skip: !ex
     await client.upload(readFileSync(program), description.module_limit, value => progress.push(value));
     assert.equal(progress.at(-1), 1);
     assert.equal((await client.command(COMMAND.PLAY)).value, 5);
-    assert.equal((await client.status()).mode, "wasm");
+    assert.equal((await client.status()).mode, "bytecode");
     const snapshot = await client.manage("program_snapshot");
     assert.equal(snapshot.pixels.length, 15);
     await client.command(COMMAND.STOP);

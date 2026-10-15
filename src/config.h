@@ -45,8 +45,8 @@
 #ifndef FRAME_INTERVAL_US
 #define FRAME_INTERVAL_US 16667u
 #endif
-// The interpreter and guest API currently support at most one WASM page.
-#define LINEAR_MEMORY_LIMIT 65536u
+// Retained capability field: bytecode has no guest linear memory.
+#define LINEAR_MEMORY_LIMIT 0u
 #define LIGHTVM_ANIMATION_API_VERSION 1u
 
 #if PIXEL_CAPACITY < 1 || PIXEL_CAPACITY > 65535

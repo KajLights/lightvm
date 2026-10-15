@@ -2,7 +2,7 @@
 
 The compiler recognizes these declarations statically. This module supplies a
 reference implementation for running trusted programs on a desktop; it is never
-embedded in WASM and compilation never executes user source.
+embedded on the device and compilation never executes user source.
 MIT License, copyright 2026 Kaj Wik Siebert.
 """
 from dataclasses import dataclass

@@ -1,215 +1,74 @@
-"""Real wasm3 rendering tests against the desktop native pixel buffer."""
+"""Replay adapted effects against the original independent f64 Python samples."""
 import os
-from pathlib import Path
 import struct
 import sys
-import time
 import unittest
-import wasmtime
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
-from client import Client, ProcessTransport, FRAME, PLAY, RESET, RUN, STATUS, STOP
-
+from bytecode_fixtures import ROOT, sample, program
+sys.path.insert(0,str(ROOT/'tools'))
+sys.path.insert(0,str(ROOT/'tests/reference_effects'))
+from replay import Replay
+from client import Client, ProcessTransport, FRAME
+from test_configuration import config
 
 class PixelTests(unittest.TestCase):
     def setUp(self):
-        self.transport = ProcessTransport(Path(os.environ.get("LIGHTVM_RECEIVER", ROOT / "build/host/lightvm")))
-        self.output = bytearray()
-        self.client = Client(self.transport, output=self.output.extend)
-        description = self.client.describe()
-        self.count = 175 if description["board"] == "test_175" else 100
-        self.client.configure({"schema": "lightvm.config/1", "devices": [
-            {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": self.count}}
-        ], "targets": {"A": {"device": "lights"}}})
+        self.transport=ProcessTransport(os.environ.get('LIGHTVM_RECEIVER',str(ROOT/'build/host/lightvm')))
+        self.client=Client(self.transport)
 
-    def tearDown(self):
-        self.transport.close()
+    def tearDown(self):self.transport.close()
 
-    def upload(self, text):
-        return self.client.upload(bytes(wasmtime.wat2wasm(text)))
+    def test_effects_match_original_at_varied_counts_and_deltas(self):
+        for count in (1,5,175):
+            self.client.configure(config(count))
+            for name in ('color','pattern','rainbow','chase','wipe','twinkle'):
+                with self.subTest(count=count,name=name):
+                    self.client.upload(sample(name))
+                    replay=Replay((ROOT/'tests/reference_effects'/(name+'.py')).read_text(),count)
+                    for delta in (0,16,33,500,1000,0,1000):
+                        self.client.require_ok(self.client.command(FRAME,struct.pack('<I',delta)))
+                        actual=bytes(self.client.pixel_snapshot)
+                        expected=replay.step(delta)
+                        self.assertEqual(len(actual),count*3)
+                        self.assertLessEqual(max(abs(a-b) for a,b in zip(actual,expected)),1 if name in ('rainbow','twinkle') else 0)
 
-    def step(self, delta=0):
-        return self.client.command(FRAME, struct.pack("<I", delta))
+    def test_rgb_order_and_live_palette_controls(self):
+        self.client.configure(config(7))
+        self.client.upload(sample('pattern'))
+        self.client.command(FRAME,bytes(4))
+        self.assertEqual(bytes(self.client.pixel_snapshot),bytes.fromhex('ff000000ff000000ff')*2+bytes.fromhex('ff0000'))
+        self.client.set_parameters({'fit':True})
+        self.client.command(FRAME,bytes(4))
+        self.assertEqual(bytes(self.client.pixel_snapshot),bytes.fromhex('ff0000')*3+bytes.fromhex('00ff00')*2+bytes.fromhex('0000ff')*2)
 
-    def wait_for_status(self, expected, timeout=2):
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            reply = self.client.command(STATUS)
-            if expected in reply.message:
-                return reply
-            time.sleep(0.01)
-        self.fail(f"did not reach {expected}: {reply.message}")
+    def test_original_rainbow_matches_saved_wasm_frames(self):
+        self.client.configure(config(5))
+        self.client.upload(program((ROOT/'samples/rainbow.py').read_text()))
+        # Captured from the original rainbow.wat module, using native HSV rules.
+        # These include its 20 hue units/ms rate and both brightness waves.
+        frames = (
+            (0, '280000aad400007e3200327eaa00d4'),
+            (16, '2d0100a9db00007733003183aa00cd'),
+            (17, '330300a7e200007034002f8aab00c7'),
+            (967, '0d4b0000aaaf2500a1590033f99d00'),
+            (1000, '00267078008bc70c0026330000e268'),
+            (1000, '94004b66470019ec0000383e3700bc'),
+            (277, '280000aad400007e3200327eaa00d4'),
+        )
+        for delta, expected in frames:
+            self.client.require_ok(self.client.command(FRAME,struct.pack('<I',delta)))
+            self.assertEqual(bytes(self.client.pixel_snapshot),bytes.fromhex(expected))
 
-    def test_hsv_primary_colors_and_wrap(self):
-        self.upload('''(module
-          (import "led" "hsv" (func $hsv (param i32 i32 i32)))
-          (func (export "render") (param $index i32)
-            local.get $index i32.const 3 i32.rem_u
-            i32.const 0 i32.eq
-            if i32.const 65536 i32.const 255 i32.const 255 call $hsv
-            else
-              local.get $index i32.const 3 i32.rem_u i32.const 1 i32.eq
-              if i32.const 21846 i32.const 255 i32.const 255 call $hsv
-              else i32.const 43691 i32.const 255 i32.const 255 call $hsv end
-            end))''')
-        reply = self.step()
-        self.assertEqual((reply.code, reply.value), (0, self.count))
-        self.assertEqual(self.client.pixel_snapshot[:9], bytes([255, 0, 0, 0, 255, 0, 0, 0, 255]))
-        self.assertEqual(len(self.client.pixel_snapshot), self.count * 3)
-        primary_colors = (bytes([255, 0, 0]), bytes([0, 255, 0]), bytes([0, 0, 255]))
-        self.assertEqual(self.client.pixel_snapshot[-3:], primary_colors[(self.count - 1) % 3])
-
-    def test_rgb_per_pixel_and_native_count(self):
-        self.upload('''(module
-          (import "led" "pixel_count" (func $count (result i32)))
-          (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-          (func (export "run") (result i32) call $count)
-          (func (export "render") (param $index i32)
-            local.get $index
-            i32.const 255 local.get $index i32.sub
-            i32.const 17 call $rgb))''')
-        self.assertEqual(self.client.command(RUN).value, self.count)
-        self.assertEqual(self.step().code, 0)
-        self.assertEqual(self.client.pixel_snapshot[:3], bytes([0, 255, 17]))
-        self.assertEqual(self.client.pixel_snapshot[-3:], bytes([self.count - 1, 256 - self.count, 17]))
-
-    def test_before_render_runs_once_and_retains_phase(self):
-        self.upload('''(module
-          (import "led" "hsv" (func $hsv (param i32 i32 i32)))
-          (global $level (mut i32) (i32.const 0))
-          (func (export "beforeRender") (param $delta i32)
-            global.get $level local.get $delta i32.add global.set $level)
-          (func (export "render") (param i32)
-            i32.const 0 i32.const 0 global.get $level call $hsv))''')
-        self.assertEqual(self.step(16).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([16, 16, 16]) * self.count)
-        self.assertEqual(self.step(4).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([20, 20, 20]) * self.count)
-
-    def test_rainbow_sample_scrolls_without_linear_memory(self):
-        self.upload((ROOT / "samples/rainbow.wat").read_text())
-        self.assertEqual(self.step().code, 0)
-        first = bytes(self.client.pixel_snapshot)
-        self.assertGreater(len(set(tuple(first[i:i+3]) for i in range(0, self.count * 3, 3))), 50)
-        self.assertEqual(self.step(33).code, 0)
-        self.assertNotEqual(first, self.client.pixel_snapshot)
-        fields = dict(item.split("=", 1) for item in self.client.command(STATUS).message.split())
-        self.assertLess(int(fields["heap"]), 65536)
-
-    def test_color_range_and_render_context_are_checked(self):
-        self.upload('''(module
-          (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-          (func (export "run") i32.const 1 i32.const 2 i32.const 3 call $rgb)
-          (func (export "render") (param i32)
-            i32.const -1 i32.const 0 i32.const 0 call $rgb))''')
-        self.assertEqual(self.client.command(RUN).code, 4)
-        self.assertEqual(self.step().code, 4)
-        self.assertEqual(self.client.pixel_snapshot, b"")
-        self.assertEqual(self.client.command(STATUS).code, 0)
-
-    def test_unwritten_pixels_are_black_each_frame(self):
-        self.upload('''(module
-          (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-          (global $phase (mut i32) (i32.const 0))
-          (func (export "beforeRender") (param $delta i32)
-            local.get $delta global.set $phase)
-          (func (export "render") (param $index i32)
-            global.get $phase i32.eqz
-            local.get $index i32.eqz i32.or
-            if i32.const 255 i32.const 0 i32.const 0 call $rgb end))''')
-        self.assertEqual(self.step(0).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) * self.count)
-        self.assertEqual(self.step(1).code, 0)
-        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) + bytes((self.count - 1) * 3))
-
-    def test_render_signature_and_missing_export(self):
-        for text in ['(module (func (export "run")))',
-                     '(module (func (export "render") (param f32)))',
-                     '(module (func (export "render") (param i32) (result i32) i32.const 0))']:
-            with self.subTest(text=text):
-                self.upload(text)
-                self.assertEqual(self.client.command(PLAY).code, 4)
-                self.assertEqual(self.step().code, 4)
-
-    def test_before_render_signature_is_checked_repeatedly(self):
-        self.upload('''(module
-          (func (export "beforeRender") (param f64))
-          (func (export "render") (param i32)))''')
-        self.assertEqual(self.client.command(PLAY).code, 4)
-        self.assertEqual(self.step().code, 4)
-
-    def test_frame_console_and_rgb_snapshot_are_distinct(self):
-        self.upload('''(module
-          (import "console" "write" (func $write (param i32 i32)))
-          (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-          (memory 1) (data (i32.const 0) "frame\\0a")
-          (func (export "beforeRender") (param i32)
-            i32.const 0 i32.const 6 call $write)
-          (func (export "render") (param i32)
-            i32.const 255 i32.const 0 i32.const 0 call $rgb))''')
-        self.assertEqual(self.step().code, 0)
-        self.assertEqual(self.output, b"frame\n")
-        self.assertEqual(self.client.pixel_snapshot, bytes([255, 0, 0]) * self.count)
-
-    def test_play_renders_during_idle_input_and_stop_clears_mode(self):
-        self.upload((ROOT / "samples/rainbow.wat").read_text())
-        self.assertEqual(self.client.command(PLAY).code, 0)
-        time.sleep(0.06)
-        reply = self.client.command(STATUS)
-        self.assertIn("mode=wasm", reply.message)
-        fields = dict(item.split("=", 1) for item in reply.message.split())
-        self.assertGreaterEqual(int(fields["frames"]), 2)
-        self.assertEqual(self.client.command(STOP).code, 0)
-        self.assertIn("mode=idle", self.client.command(STATUS).message)
-        self.assertEqual(self.client.command(RESET).code, 0)
-        self.assertIn("heap=0 ", self.client.command(STATUS).message)
-
-    def test_background_runaway_stops_and_receiver_remains_usable(self):
-        self.upload('(module (func (export "render") (param i32) (loop $again br $again)))')
-        self.assertEqual(self.client.command(PLAY).code, 0)
-        reply = self.wait_for_status("mode=idle")
-        self.assertIn("execution deadline exceeded", reply.message)
-        self.assertEqual(self.client.command(RESET).code, 0)
-
-    def test_background_console_does_not_corrupt_serial_replies(self):
-        self.upload('''(module
-          (import "console" "write" (func $write (param i32 i32)))
-          (memory 1) (data (i32.const 0) "log")
-          (func (export "render") (param i32)
-            i32.const 0 i32.const 3 call $write))''')
-        self.assertEqual(self.client.command(PLAY).code, 0)
-        reply = self.wait_for_status("mode=idle")
-        self.assertIn("use FRAME", reply.message)
-        self.assertEqual(self.output, b"")
-        self.assertEqual(self.step().code, 0)
-        self.assertEqual(self.output, b"log" * self.count)
-
-    def test_removed_command_10_is_rejected_without_changing_playback(self):
-        for payload in (b"", b"bad"):
-            reply = self.client.command(10, payload)
-            self.assertEqual(reply.code, 1)
-            self.assertEqual(reply.message, "unknown command")
-        self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.upload((ROOT / "samples/rainbow.wat").read_text())
-        self.client.require_ok(self.client.command(PLAY))
-        before = self.client.status_fields()
-        self.assertEqual(self.client.command(10).code, 1)
-        after = self.client.status_fields()
-        self.assertEqual(after["mode"], "wasm")
-        self.assertEqual(after["ready"], "1")
-        self.assertEqual(after["heap"], before["heap"])
-        self.assertGreaterEqual(int(after["frames"]), int(before["frames"]))
-        self.assertEqual(self.step(16).code, 0)
-        self.assertEqual(len(self.client.pixel_snapshot), self.count * 3)
-        self.assertEqual(self.client.command(STOP).code, 0)
-
-    def test_control_payloads_and_frame_delta_bounds(self):
-        for kind in (PLAY, STOP):
-            self.assertEqual(self.client.command(kind, b"bad").code, 1)
-        self.assertEqual(self.client.command(FRAME).code, 1)
-        self.assertEqual(self.step(1001).code, 1)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_rainbow_speed_is_independent_of_frame_intervals(self):
+        self.client.configure(config(175))
+        for code in (sample('rainbow'),program((ROOT/'samples/rainbow.py').read_text())):
+            snapshots=[]
+            # Each schedule advances exactly five seconds, at different rates
+            # and with irregular frames. Compare motion, not frame counts.
+            for schedule in ([1000]*5,[100]*50,[16,17,17]*100,[1,99,400,500]*5):
+                self.client.upload(code)
+                for delta in schedule:
+                    self.client.require_ok(self.client.command(FRAME,struct.pack('<I',delta)))
+                self.assertEqual(self.client.program_parameters()['program_us'],5000000)
+                snapshots.append(bytes(self.client.pixel_snapshot))
+            for actual in snapshots[1:]:
+                self.assertLessEqual(max(abs(a-b) for a,b in zip(actual,snapshots[0])),1)

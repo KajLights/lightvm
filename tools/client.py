@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upload and execute independent WASM modules over USB CDC, HTTP or a host pipe."""
+"""Upload and execute portable bytecode programs over USB CDC, HTTP or a host pipe."""
 import argparse
 import json
 from dataclasses import dataclass
@@ -419,7 +419,7 @@ def main():
     if args.output and not args.get_procedure:
         parser.error("--output requires --get-procedure")
     if args.store_procedure and args.module is None:
-        parser.error("--store-procedure requires a .wasm module")
+        parser.error("--store-procedure requires a .lbc program")
     management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
                   args.activate or args.cancel_upload or args.parameters or args.set_parameters is not None or
@@ -433,7 +433,7 @@ def main():
     if args.frame_ms is not None and not 0 <= args.frame_ms <= 1000:
         parser.error("--frame-ms must be 0..1000")
     if args.module is None and not (args.status or args.animate or args.stop or args.frame_ms is not None or management):
-        parser.error("provide a .wasm module or a status/animation command")
+        parser.error("provide a .lbc program or a status/animation command")
     connection = None
     client = None
     try:

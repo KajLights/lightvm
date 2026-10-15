@@ -3,35 +3,17 @@
 #include "vm.h"
 #include "vm_allocator.h"
 #include <inttypes.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-static const char invalid[]="invalid control resource, parameter or value";
-static const char *const import_names[]={"resource","count","write","fill","read","rgb","hsv","param_int","param_float","param_bool","param_color",NULL};
-typedef struct { const uint8_t *bytes; size_t pos,end; } Reader;
-static bool leb(Reader *r,uint32_t *value) {
-    uint32_t n=0;
-    for (unsigned shift=0;shift<35;shift+=7) {
-        if (r->pos==r->end) return false;
-        uint8_t b=r->bytes[r->pos++];
-        if (shift==28 && (b&0xf0)) return false;
-        n|=(uint32_t)(b&127)<<shift;
-        if (!(b&128)) { *value=n; return true; }
-    }
-    return false;
-}
-static bool string(Reader *r,char *out,size_t capacity) {
-    uint32_t size;
-    if (!leb(r,&size) || size>=capacity || size>r->end-r->pos || memchr(r->bytes+r->pos,0,size)) return false;
-    memcpy(out,r->bytes+r->pos,size); out[size]=0; r->pos+=size; return true;
-}
 static bool value(const Json *j,int token,ParameterKind kind,ParameterValue *out) {
     bool b;
     if (kind==PARAM_BOOL) { if (!json_bool(j,token,&b)) return false; out->integer=b; return true; }
-    if (kind==PARAM_FLOAT) return json_f64(j,token,&out->real);
+    if (kind==PARAM_FLOAT) return json_f64(j,token,&out->real) && out->real>=-FLT_MAX && out->real<=FLT_MAX;
     if (!json_i64(j,token,&out->integer)) return false;
-    return kind!=PARAM_RGB || (out->integer>=0 && out->integer<=0xffffff);
+    return kind==PARAM_RGB ? (out->integer>=0 && out->integer<=0xffffff) : (out->integer>=INT32_MIN && out->integer<=INT32_MAX);
 }
 static bool in_bounds(const ControlParameter *p,ParameterValue v) {
     if (p->kind==PARAM_FLOAT)
@@ -68,165 +50,38 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c) {
     }
     c->enabled=true; return true;
 }
-M3Result control_probe(const uint8_t *bytes,size_t size,Control *c) {
-    memset(c,0,sizeof(*c));
-    if (size<8 || memcmp(bytes,"\0asm\1\0\0\0",8)) return "invalid WASM header";
-    Reader r={bytes,8,size};
-    while (r.pos<r.end) {
-        uint8_t id=bytes[r.pos++]; uint32_t n;
-        if (!leb(&r,&n) || n>r.end-r.pos) return "invalid WASM section bounds";
-        Reader s={bytes,r.pos,r.pos+n}; r.pos+=n;
-        if (id==0) {
-            // Unknown custom sections are allowed, including long debug names.
-            uint32_t name_size;
-            if (!leb(&s,&name_size) || name_size>s.end-s.pos) return "invalid custom section";
-            bool ours=name_size==15 && !memcmp(bytes+s.pos,"lightvm.program",15);
-            s.pos+=name_size;
-            if (ours) {
-                if (c->enabled || !manifest(bytes+s.pos,s.end-s.pos,c)) return "invalid or duplicate LightVM manifest";
-                c->manifest_offset=(uint32_t)s.pos; c->manifest_size=(uint32_t)(s.end-s.pos);
-            }
-        }
+const char *control_probe(VmInstance *a) {
+    Control *c=&a->control;memset(c,0,sizeof(*c));
+    LbcProgram *p=&a->program;
+    if(!p->manifest_size || p->manifest_size>CONTROL_MANIFEST_LIMIT)return "bytecode requires a LightVM manifest";
+    uint8_t *json=demo_calloc(1,p->manifest_size);
+    if(!json)return "memory allocation failed";
+    bool ok=vm_read(a,p->manifest_offset,json,p->manifest_size) && manifest(json,p->manifest_size,c);
+    demo_free(json);
+    if(!ok)return "invalid LightVM manifest";
+    c->manifest_offset=p->manifest_offset;c->manifest_size=p->manifest_size;
+    uint32_t n=0;
+    for(unsigned r=0;r<p->nregs;r++)if(p->registers[r*8+1]==R_PARAM) {
+        if(n>=c->parameter_count)return "parameter manifest does not match bytecode";
+        ControlParameter *param=&c->parameters[n];
+        unsigned type=p->registers[r*8];
+        unsigned expected=param->kind==PARAM_BOOL?T_BOOL:param->kind==PARAM_FLOAT?T_FLOAT:param->kind==PARAM_RGB?T_COLOR:T_INT;
+        LbcValue v={.u=lbc_u32(p->registers+r*8+4)};
+        if(type!=expected || (type==T_FLOAT ? v.f!=(float)param->value.real : v.i!=(int32_t)param->value.integer))return "parameter type/default mismatch";
+        c->parameter_registers[n++]=(uint8_t)r;
     }
-    r.pos=8;
-    while (r.pos<r.end) {
-        uint8_t id=bytes[r.pos++]; uint32_t n;
-        if (!leb(&r,&n) || n>r.end-r.pos) return "invalid WASM section";
-        Reader s={bytes,r.pos,r.pos+n}; r.pos+=n;
-        if (c->enabled && ((id>=4 && id<=5) || id==8 || id==9 || id>=11)) return "control profile requires memoryless scalar WASM without start, tables or data";
-        if (id==2) {
-            uint32_t count;
-            if (!leb(&s,&count)) return "invalid import section";
-            for (uint32_t i=0;i<count;++i) {
-                char space[128],name[128]; uint32_t type;
-                if (!string(&s,space,sizeof(space)) || !string(&s,name,sizeof(name)) || s.pos==s.end) return "invalid import";
-                uint8_t kind=bytes[s.pos++];
-                if (!c->enabled) {
-                    if (!strncmp(space,"lightvm.control.",16)) return "control imports require a LightVM manifest";
-                    // wasm3 validates arbitrary legacy import encodings.
-                    break;
-                }
-                if (kind!=0 || !leb(&s,&type) || strcmp(space,CONTROL_NAMESPACE)) return "unsupported control import";
-                bool found=false;
-                for (unsigned k=0;import_names[k];++k) if (!strcmp(import_names[k],name)) found=true;
-                if (!found) return "unsupported control import";
-            }
-            if (c->enabled && s.pos!=s.end) return "invalid control import section";
-        }
-    }
-    return m3Err_none;
-}
-static VmInstance *owner(IM3ImportContext context) { return context->userdata; }
-static bool handle_valid(VmInstance *a,uint32_t handle) {
-    return a->control.in_step && a->control.allocation && handle==a->generation && a->control.count;
-}
-static bool index_valid(VmInstance *a,uint32_t handle,int64_t index) {
-    return handle_valid(a,handle) && index>=0 && (uint64_t)index<a->control.count;
-}
-static void paint(Control *c,uint32_t index,uint32_t color) {
-    c->working[index*3]=(uint8_t)(color>>16);
-    c->working[index*3+1]=(uint8_t)(color>>8);
-    c->working[index*3+2]=(uint8_t)color;
-}
-m3ApiRawFunction(resource) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t); m3ApiGetArg(uint32_t,index);
-    VmInstance *a=owner(_ctx);
-    if (index || !a->control.in_step || !a->control.allocation) return invalid;
-    m3ApiReturn(a->generation);
-}
-m3ApiRawFunction(count) {
-    (void)runtime; (void)_mem; m3ApiReturnType(int64_t); m3ApiGetArg(uint32_t,handle);
-    VmInstance *a=owner(_ctx); if (!handle_valid(a,handle)) return invalid;
-    m3ApiReturn((int64_t)a->control.count);
-}
-m3ApiRawFunction(write_pixel) {
-    (void)runtime; (void)_mem;
-    m3ApiGetArg(uint32_t,handle); m3ApiGetArg(int64_t,index); m3ApiGetArg(uint32_t,color);
-    VmInstance *a=owner(_ctx);
-    if (!index_valid(a,handle,index) || color>0xffffff) return invalid;
-    paint(&a->control,(uint32_t)index,color); return m3_Yield();
-}
-m3ApiRawFunction(fill) {
-    (void)runtime; (void)_mem; m3ApiGetArg(uint32_t,handle); m3ApiGetArg(uint32_t,color);
-    VmInstance *a=owner(_ctx); if (!handle_valid(a,handle) || color>0xffffff) return invalid;
-    for (uint32_t i=0;i<a->control.count;++i) paint(&a->control,i,color);
-    return m3_Yield();
-}
-m3ApiRawFunction(read_pixel) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t);
-    m3ApiGetArg(uint32_t,handle); m3ApiGetArg(int64_t,index);
-    VmInstance *a=owner(_ctx); if (!index_valid(a,handle,index)) return invalid;
-    uint8_t *p=a->control.working+(size_t)index*3;
-    m3ApiReturn(((uint32_t)p[0]<<16)|((uint32_t)p[1]<<8)|p[2]);
-}
-m3ApiRawFunction(rgb) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t);
-    m3ApiGetArg(int64_t,r); m3ApiGetArg(int64_t,g); m3ApiGetArg(int64_t,b);
-    if (r<0 || r>255 || g<0 || g>255 || b<0 || b>255 || !owner(_ctx)->control.in_step) return invalid;
-    m3ApiReturn(((uint32_t)r<<16)|((uint32_t)g<<8)|(uint32_t)b);
-}
-m3ApiRawFunction(hsv) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t);
-    m3ApiGetArg(double,h); m3ApiGetArg(double,s); m3ApiGetArg(double,v);
-    if (!isfinite(h) || !isfinite(s) || !isfinite(v) || s<0 || s>1 || v<0 || v>1 || !owner(_ctx)->control.in_step) return invalid;
-    uint8_t channels[3]; PixelBuffer p={.rgb=channels,.count=1};
-    uint32_t hue=(uint32_t)((h-floor(h))*65536.0+0.5)&65535u;
-    pixels_set_hsv(&p,0,hue,(uint32_t)(s*255.0+0.5),(uint32_t)(v*255.0+0.5));
-    m3ApiReturn(((uint32_t)channels[0]<<16)|((uint32_t)channels[1]<<8)|channels[2]);
-}
-static ControlParameter *parameter(VmInstance *a,uint32_t slot,ParameterKind kind) {
-    return a->control.in_step && slot<a->control.parameter_count && a->control.parameters[slot].kind==kind ? &a->control.parameters[slot] : NULL;
-}
-m3ApiRawFunction(param_int) {
-    (void)runtime; (void)_mem; m3ApiReturnType(int64_t); m3ApiGetArg(uint32_t,slot);
-    ControlParameter *p=parameter(owner(_ctx),slot,PARAM_INT); if (!p) return invalid;
-    m3ApiReturn(p->value.integer);
-}
-m3ApiRawFunction(param_float) {
-    (void)runtime; (void)_mem; m3ApiReturnType(double); m3ApiGetArg(uint32_t,slot);
-    ControlParameter *p=parameter(owner(_ctx),slot,PARAM_FLOAT); if (!p) return invalid;
-    m3ApiReturn(p->value.real);
-}
-m3ApiRawFunction(param_bool) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t); m3ApiGetArg(uint32_t,slot);
-    ControlParameter *p=parameter(owner(_ctx),slot,PARAM_BOOL); if (!p) return invalid;
-    m3ApiReturn((uint32_t)p->value.integer);
-}
-m3ApiRawFunction(param_color) {
-    (void)runtime; (void)_mem; m3ApiReturnType(uint32_t); m3ApiGetArg(uint32_t,slot);
-    ControlParameter *p=parameter(owner(_ctx),slot,PARAM_RGB); if (!p) return invalid;
-    m3ApiReturn((uint32_t)p->value.integer);
-}
-M3Result control_link(VmInstance *a) {
-    struct Binding { const char *name,*signature; M3RawCall function; } bindings[]={
-        {"resource","i(i)",resource},{"count","I(i)",count},
-        {"write","v(iIi)",write_pixel},{"fill","v(ii)",fill},
-        {"read","i(iI)",read_pixel},
-        {"rgb","i(III)",rgb},{"hsv","i(FFF)",hsv},
-        {"param_int","I(i)",param_int},{"param_float","F(i)",param_float},
-        {"param_bool","i(i)",param_bool},{"param_color","i(i)",param_color}
-    };
-    for (size_t i=0;i<sizeof(bindings)/sizeof(bindings[0]);++i) {
-        M3Result error=m3_LinkRawFunctionEx(a->module,CONTROL_NAMESPACE,bindings[i].name,bindings[i].signature,bindings[i].function,a);
-        if (error && error!=m3Err_functionLookupFailed) return error;
-    }
-    return m3Err_none;
+    return n==c->parameter_count ? NULL : "parameter manifest does not match bytecode";
 }
 void control_destroy(VmInstance *a) {
     demo_free(a->control.allocation);
     vm_heap_uncharge(a->control.output_charge);
     memset(&a->control,0,sizeof(a->control));
 }
-M3Result control_prepare(VmInstance *a) {
+const char * control_prepare(VmInstance *a) {
     Control *c=&a->control;
     if (c->faulted) return "control program faulted; reactivate to recover";
-    if (c->initialized) return m3Err_none;
+    if (c->initialized) return NULL;
     if (!a->ready || !a->target || !a->target->count || a->target->count>PIXEL_CAPACITY) return "assigned pixel contribution is unavailable";
-    M3Result error=m3_FindFunction(&c->step,a->runtime,"control_step");
-    if (error) return error;
-    if (m3_GetArgCount(c->step)!=3 || m3_GetArgType(c->step,0)!=c_m3Type_i32 ||
-        m3_GetArgType(c->step,1)!=c_m3Type_i64 || m3_GetArgType(c->step,2)!=c_m3Type_i64 ||
-        m3_GetRetCount(c->step)!=1 || m3_GetRetType(c->step,0)!=c_m3Type_i32) return "control_step must be (i32, i64, i64) -> i32";
     if (!c->allocation) {
         c->count=a->target->count;
         size_t rgb_bytes=(size_t)c->count*3;
@@ -234,14 +89,16 @@ M3Result control_prepare(VmInstance *a) {
         if (a->output && !vm_heap_charge(rgb_bytes)) return "control output exceeds aggregate heap budget";
         c->output_charge=a->output ? rgb_bytes : 0;
         c->allocation=demo_calloc(1,c->buffer_bytes);
-        if (!c->allocation) { vm_heap_uncharge(c->output_charge); c->output_charge=0; return m3Err_mallocFailed; }
+        if (!c->allocation) { vm_heap_uncharge(c->output_charge); c->output_charge=0; return "memory allocation failed"; }
         c->committed=c->allocation; c->working=c->committed+rgb_bytes;
     }
-    error=control_step(a,0,0);
+    a->view=(LbcBuffer){.data=c->working,.count=c->count,.generation=a->generation};
+    if(!lbc_init(&a->instance,&a->program,&a->view))return "bytecode instance initialization failed";
+    const char *error=control_step(a,0,0);
     if (!error) c->initialized=true;
     return error;
 }
-M3Result control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
+const char * control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
     Control *c=&a->control;
     if (!c->allocation || c->faulted || trigger>1) return "control contribution is not prepared or faulted";
     size_t n=(size_t)c->count*3;
@@ -250,18 +107,28 @@ M3Result control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
     memset(c->working,0,n);
     c->in_step=true;
     uint64_t started=platform_time_us();
-    M3Result error=m3_CallV(c->step,(int32_t)trigger,(int64_t)c->program_us,(int64_t)delta);
-    int32_t result=0;
-    if (!error) error=m3_GetResultsV(c->step,&result);
+    const char *error=NULL;
+    for(uint32_t n=0;n<c->parameter_count;n++) {
+        ControlParameter *p=&c->parameters[n];LbcValue v;
+        if(p->kind==PARAM_FLOAT)v.f=(float)p->value.real;else v.i=(int32_t)p->value.integer;
+        if(!lbc_parameter(&a->instance,c->parameter_registers[n],v.u))error="invalid bytecode parameter";
+    }
+    // Initial preparation renders declared state without advancing simulation.
+    if(!error && !(trigger ? lbc_begin(&a->instance,(float)(c->program_us/1000000.0),(float)(delta/1000000.0)) :
+                            lbc_render(&a->instance,0)))error="bytecode invocation failed";
+    int status=0;
+    while(!error && !(status=lbc_resume(&a->instance,64))) {
+        if(platform_time_us()-started>=RUN_TIMEOUT_US)error="execution deadline exceeded";
+    }
+    if(!error && status<0)error=a->instance.used>=2000000 ? "bytecode instruction limit exceeded" : "bytecode execution fault";
     c->in_step=false;
-    if (!error && result) error="control_step returned failure";
     if (error) { c->faulted=true; a->playing=false; return error; }
     memcpy(c->committed,c->working,n);
     c->contribution_valid=true; ++c->contribution_frame;
     a->render_us=(uint32_t)(platform_time_us()-started);
     // Rendering commits only this instance's contribution. The native scheduler
     // owns output publication; an offscreen slot never calls a physical driver.
-    return m3Err_none;
+    return NULL;
 }
 
 // Management is serviced by the same serialized engine owner as guest steps.
@@ -293,7 +160,13 @@ static void describe(ControlWriter *w,bool with_parameters) {
         a->slot,(unsigned long)a->generation,(unsigned long)c->parameter_revision,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
     text(w,b);
     if (with_parameters) {
-        text(w,",\"manifest\":"); bytes(w,a->bytes+c->manifest_offset,c->manifest_size);
+        text(w,",\"manifest\":");
+        uint8_t chunk[256];
+        for(uint32_t offset=0;offset<c->manifest_size;) {
+            size_t n=c->manifest_size-offset;if(n>sizeof(chunk))n=sizeof(chunk);
+            if(!vm_read(a,c->manifest_offset+offset,chunk,n))return;
+            bytes(w,chunk,n);offset+=(uint32_t)n;
+        }
         text(w,",\"values\":{");
         for (uint32_t i=0;i<c->parameter_count;++i) {
             ControlParameter *p=&c->parameters[i];

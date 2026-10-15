@@ -7,13 +7,13 @@ native receiver, RP2040 Pico and XIAO ESP32 builds, and pinned Python tools.
 
 | Component | Version | License | Use | Preserved notice |
 |---|---|---|---|---|
-| wasm3 | v0.5.0 | MIT | Embedded interpreter | [License](licenses/wasm3-v0.5.0.txt) |
+| wasm3 | v0.5.0 | MIT | Historical interpreter; no longer linked | [License](licenses/wasm3-v0.5.0.txt) |
 | Pico SDK | 1.5.1 | BSD-3-Clause; selected files MIT | Pico firmware | [BSD license](licenses/pico-sdk-1.5.1.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | TinyUSB | SDK submodule `86c416d4c0fb38432460b3e11b08b9de76941bf5` | MIT | USB device driver | [License](licenses/tinyusb.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | pico⚡flash PICOBOOT package | commit `230759cf32ab245decf1194f5b37b7d3c0088aed` | MIT | Browser WebUSB Pico flashing | [License](licenses/picoflash.txt), copyright 2025–2026 Piers Finlayson |
 | Pico examples WS2812 PIO | 1545dfd9a186 | BSD-3-Clause | Adapted PIO program | [License](licenses/pico-examples.txt), copyright notice in [source](platforms/pico/ws2812.pio) |
 | pySerial | 3.5 | BSD-3-Clause | Desktop serial client | [License](licenses/pyserial-3.5.txt) |
-| Wasmtime Python | 25.0.0 | Apache-2.0 WITH LLVM-exception | Desktop WAT compilation and tests | [License and exception](licenses/wasmtime-py-25.0.0.txt) |
+| Wasmtime Python | 25.0.0 | Apache-2.0 WITH LLVM-exception | Historical WAT tools; no longer required | [License and exception](licenses/wasmtime-py-25.0.0.txt) |
 | Newlib | 4.3.0, Arm GNU Toolchain 13.2.Rel1 | Per-source permissive licenses for the linked ARM C/math routines | Firmware C and math libraries | [Upstream license collection](licenses/newlib-4.3.0.txt) |
 | GCC runtime | Arm GNU Toolchain 13.2.Rel1 | GPL-3.0-or-later WITH GCC-exception-3.1 | Firmware compiler support routines | [GPL](licenses/gcc-gpl-3.0.txt), [runtime exception](licenses/gcc-runtime-exception.txt) |
 | ESP-IDF | v5.5.3 (`2c211b236707889e8400c4dc5644dd5c4ee071e0`) | Apache-2.0; selected MIT/BSD components below | C3/S3/C6 SDK, USB Serial/JTAG and RMT | [Apache license](licenses/esp-idf-5.5.3.txt), [S3/C6 source notices](licenses/esp-idf-additional-notices.txt), [C3 source notices](licenses/esp-idf-c3-additional-notices.txt) |
@@ -51,9 +51,9 @@ curves are implemented directly from their equations; the deterministic star
 mixer is original modular arithmetic. Twinkle intentionally uses procedural
 per-pixel lifetimes rather than picolights' stateful star slots.
 
-Python AST/symbol-table parsing uses the desktop standard library. The existing
-pinned Wasmtime package assembles WAT on the desktop under its retained license;
-neither Python nor Wasmtime code is embedded in generated guest modules. Native
+Python AST parsing uses the standard library. The current compiler emits custom
+bytecode directly; Wasmtime and wasm3 are no longer dependencies of the normal
+build. Their notices are retained for historical artifacts. Native
 RGB/HSV conversion reuses LightVM's own existing MIT-licensed implementation. This
 addition does not change the licenses of the firmware SDKs and build dependencies
 above.
@@ -66,12 +66,12 @@ for SDK 1.5.1 compatibility. The Raspberry Pi copyright and BSD license identifi
 are retained. Source: https://github.com/raspberrypi/pico-examples/blob/1545dfd9a1862961904856d46a4e05f35454d4be/pio/ws2812/ws2812.pio
 
 
-CMake adds a loop-yield check to a build-local copy of wasm3's `m3_exec.h` and
-redirects its allocator calls through LightVM's tracked allocator. The upstream
+Historical WASM builds added a loop-yield check to a build-local copy of wasm3's `m3_exec.h` and
+redirected its allocator calls through LightVM's tracked allocator. The upstream
 source checkout is unchanged; its MIT notice remains in the copied source and
 in the interpreter notice above.
 
-The shared native build disables strict-aliasing optimization for wasm3's
+Historical WASM builds disabled strict-aliasing optimization for wasm3's
 intentional type-punned code/stack representation. This changes compile options,
 not the dependency source.
 

@@ -1,2 +1,1 @@
 pyserial==3.5
-wasmtime==25.0.0

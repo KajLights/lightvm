@@ -1,5 +1,10 @@
 # Multi-platform engine and native ports
 
+> The implementation now uses the [portable bytecode control profile](control-api.md).
+> The WASM-specific loader, guest imports and memory limits described below are
+> historical. Native platform, storage, transport and driver contracts are retained.
+
+
 The [portable bytecode architecture decision](../documents/architecture-decision-portable-bytecode.md)
 selects the next runtime direction: multiple source-language frontends compile
 off-device to portable typed bytecode, interpreted directly from flash with

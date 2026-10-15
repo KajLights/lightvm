@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 import unittest
-import wasmtime
+from bytecode_fixtures import color, sample, padded_program
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -74,10 +74,7 @@ class BootSequenceTests(unittest.TestCase):
 
     def test_trigger_preserves_saved_startup_and_applies_recovery_policy(self):
         self.require_detector()
-        module = bytes(wasmtime.wat2wasm('''(module
-          (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-          (func (export "render") (param i32)
-            i32.const 1 i32.const 2 i32.const 3 call $rgb))'''))
+        module = color()
         self.client.save_procedure("startup", module)
         config = {"schema": "lightvm.config/1", "devices": [
             {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}}
@@ -92,7 +89,7 @@ class BootSequenceTests(unittest.TestCase):
             recovery = description.get("recovery_supported", False) and count >= 3
             self.assertEqual(description["active_procedure"], "" if recovery else "startup")
             self.assertEqual(description["boot_error"], "")
-            self.assertEqual(self.client.status_fields()["mode"], "idle" if recovery else "wasm")
+            self.assertEqual(self.client.status_fields()["mode"], "idle" if recovery else "bytecode")
             self.assertEqual(self.client.get_config(saved=True), config)
             self.assertEqual(self.client.get_procedure("startup"), module)
             self.assertEqual(self.storage.read_bytes(), snapshot)

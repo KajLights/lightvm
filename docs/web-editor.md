@@ -5,7 +5,7 @@ with Vite. **Devices** is the entry point. Connect to a LightVM board over HTTP 
 USB, then use the **Develop** and **Configure** views for that device. **Firmware**
 installs and updates XIAO ESP32-C3, S3 and C6 through Web Serial, and Pico and
 Pico W from BOOTSEL through WebUSB. The Pico UF2s are also available to download.
-The app can also open Develop without a device for editing and WASM compilation.
+The app can also open Develop without a device for editing and bytecode compilation.
 
 The app reuses the existing JavaScript protocol, transport and discovery modules.
 A persistent device service owns USB/HTTP sessions and pins each operation to its
@@ -25,13 +25,13 @@ loopback. Use the server's --port option to choose another port. npm run dev sta
 the Vite development server on loopback for frontend work. The Python server runs
 the Vite build before serving build/web; it has no compilation or device backend.
 
-The first visit to Develop loads the pinned Pyodide and WABT assets, and the
+The first visit to Develop loads the pinned Pyodide assets, and the
 CodeMirror editor uses a pinned CDN asset. Internet access is initially needed;
 offline operation is not guaranteed. Source is checked 220 ms after an edit. Only
 the current successful compilation can be uploaded or downloaded. Errors link
 back to the affected line. The six examples and the canonical compiler sources
 are packaged with the static build. Python source is parsed and never run by the
-compiler. Only the compiled WASM is sent to a device.
+compiler. Only the compiled bytecode is sent to a device.
 
 The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
 firmware bundle. The published editor builds matching Wi-Fi, HTTP and boot
@@ -92,7 +92,7 @@ command path. USB and HTTP can be attached to the same device and boot epoch.
 Switching paths does not replay commands through another connection. Disconnecting
 the browser leaves autonomous playback running. If the device reboots, reconnect
 and review its state. Web Serial requires HTTPS or localhost and desktop
-Chrome/Edge. Editing and WASM downloads still work in browsers without Web Serial.
+Chrome/Edge. Editing and bytecode downloads still work in browsers without Web Serial.
 
 In **Configure → Output & startup**, select the data pin, count, colour order and
 brightness limit, bind the output to slot A, and optionally select a stored startup
@@ -109,9 +109,9 @@ clears it. Network changes keep playback running and may require the HTTP path t
 reconnect. Background status polling does not replace focused fields or unsaved
 values.
 
-**Develop** contains the Python editor, upload/run, stored WASM programs and live
+**Develop** contains the Python editor, upload/run, stored bytecode programs and live
 parameters. The local draft is saved in browser storage and can be downloaded as
-.py. Compiled .wasm can also be downloaded. **Upload & run** requires slot A to
+.py. Compiled .lbc can also be downloaded. **Upload & run** requires slot A to
 be configured; it replaces the transient resident program and does not persist it.
 Stored programs can be saved, downloaded, activated and deleted when storage is
 available. The parameter panel uses the program's manifest and sends generation
