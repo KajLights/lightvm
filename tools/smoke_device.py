@@ -30,7 +30,7 @@ def smoke(client, board, reference):
     host_config={**config,'devices':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]}
     try:
         client.configure(config);reference.configure(host_config)
-        for source in sorted((ROOT/'samples').glob('*.py')):
+        for source in sorted((ROOT/'examples/animations').glob('*.py')):
             artifact=compile_source(source.read_text().replace("random.seed()", "random.seed(1)"),str(source),info)
             check(artifact.success,str(artifact.diagnostics))
             client.upload(artifact.bytecode);reference.upload(artifact.bytecode)
@@ -48,7 +48,7 @@ def smoke(client, board, reference):
                 state=client.program_parameters()
                 check(state['render_count']>1,'Wipe did not keep rendering')
         # Use Rainbow to test autonomous playback and pause/resume.
-        rainbow=compile_source((ROOT/'samples/rainbow.py').read_text(),target=info)
+        rainbow=compile_source((ROOT/'examples/animations/rainbow.py').read_text(),target=info)
         check(rainbow.success,str(rainbow.diagnostics));client.upload(rainbow.bytecode)
         client.require_ok(client.command(PLAY));time.sleep(.1)
         before=client.status_fields();time.sleep(.1);after=client.status_fields()

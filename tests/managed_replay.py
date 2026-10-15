@@ -79,7 +79,7 @@ class SettingNames(ast.NodeTransformer):
 class Example:
     def __init__(self, name, count, settings=None):
         settings = settings or {}
-        path = ROOT / 'samples' / f'{name}.py'
+        path = ROOT / 'examples/animations' / f'{name}.py'
         api = SimpleNamespace(profile=lambda _: None, init=lambda f: f, render=lambda f: f, rgb=rgb, hsv=hsv,
             setting=lambda default, _name=None, **bounds: settings.get(_name, default),
             pico_colorwheel=lambda hue: rgb(*pico_colorwheel(hue)), colorwheel=lambda hue: rgb(*rainbow_colorwheel(hue)),

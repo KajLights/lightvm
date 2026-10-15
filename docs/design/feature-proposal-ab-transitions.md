@@ -36,7 +36,7 @@ This develops the A/B and one-byte transition-channel design discussed on
 10 October 2026 in the archived picolights chat, **Review animation effects and**.
 It complements the [web editor](feature-proposal-web-editor.md),
 [device support](feature-proposal-device-support.md) and
-[native port architecture](../docs/architecture.md). All new interfaces below
+[native port architecture](../architecture.md). All new interfaces below
 are proposed; the current engine executes one animation at a time.
 
 ## User experience
@@ -81,7 +81,7 @@ additional lighting-console merge rules and larger scene graphs are extensions.
 
 Picolights already provides forward, backward, inward and outward wipes with
 duration and easing in
-[`transition.py`](../../picolights/picolights/effects/transition.py). Its transition
+[`transition.py`](../../../picolights/picolights/effects/transition.py). Its transition
 wraps the incoming animation's pixel object and selectively replaces pixels in
 the existing output. LightVM should retain those familiar shapes while giving
 both source animations their own live frames and state.

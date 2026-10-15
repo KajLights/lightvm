@@ -1,7 +1,7 @@
 # Persistent animation state, initialization and timing API
 
 > Historical proposal: its decorators, scheduler and cycle notifications were
-> superseded by the [init/render proof-of-concept API](../docs/animation-profile.md).
+> superseded by the [init/render proof-of-concept API](../animation-profile.md).
 > Current settings are frozen at initialization; live controls and listeners are deferred.
 
 
@@ -10,7 +10,7 @@ Status: **Accepted and implemented for the six supplied examples**
 Date: 15 October 2026
 
 Lifecycle correction: animations have no terminal state. The completion/hold
-semantics below are superseded by the [current animation profile](../docs/animation-profile.md):
+semantics below are superseded by the [current animation profile](../animation-profile.md):
 cycle notifications keep playback running, legacy `complete()` records a cycle,
 and Wipe clears and repeats. Live parameters remain editable across cycles.
 
@@ -22,7 +22,7 @@ This specifies concrete bindings for the existing
 [portable animation architecture](architecture-decision-portable-bytecode.md),
 especially native retained buffers, admitted arrays, init, logical ticks and
 render purity. It follows the [coverage review](review-picolights-animation-coverage.md).
-The code blocks specify the agreed source contract. The [implementation notes](../docs/animation-profile.md) record the binary bindings, limits, validation and measured memory costs.
+The code blocks specify the agreed source contract. The [implementation notes](../animation-profile.md) record the binary bindings, limits, validation and measured memory costs.
 
 ## VM and profile boundary
 
@@ -606,7 +606,7 @@ capabilities; ordinary registers cannot forge their addresses or rights.
 
 At minimum the backend needs checked element load/store, resource fill/copy,
 clock-stamp operations, RNG operations and cycle/complete signalling, plus init
-entry metadata. These may be opcodes or versioned native operations. The [implementation notes](../docs/animation-profile.md) freeze the opcode IDs,
+entry metadata. These may be opcodes or versioned native operations. The [implementation notes](../animation-profile.md) freeze the opcode IDs,
 header layout and library bindings without changing the accepted source semantics.
 
 Persistent simulation writes are ordered but **not transactional**. On a fault,

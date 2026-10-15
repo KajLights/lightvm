@@ -42,12 +42,12 @@ the SDK's ROM-assisted implementation.
 ## Python animation frontend and example provenance
 
 The compiler and native interpreter are LightVM implementations under the
-repository MIT license. The six current `samples/` effects are faithful
+repository MIT license. The six current `examples/animations/` effects are faithful
 ports of Kaj's supplied picolights algorithms, with the accepted lifecycle,
 timing and bounded Twinkle corrections documented in
 [the animation API](docs/animation-profile.md). The source reference is Kaj's
 picolights repository, commit `f6480b4845b2ba3af4fbf0ffb1f398d362dda772`.
-The six files in `samples/` are the only maintained sample implementations;
+The six files in `examples/animations/` are the only maintained sample implementations;
 the editor, tools and tests all use them directly.
 
 The GPL-marked `picolights/easing.py` is not included. Twinkle's sine-out curve

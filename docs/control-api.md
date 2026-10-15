@@ -7,8 +7,8 @@ removed. Stored LBC1/2 packages remain loadable; old source is not accepted by t
 public compiler. LBC1/3 packages must be recompiled.
 
 ```sh
-python -m lightvm.compiler samples/rainbow.py -o build/samples/rainbow.lbc
-python tools/client.py --port PORT --store-procedure rainbow build/samples/rainbow.lbc
+python -m lightvm.compiler examples/animations/rainbow.py -o build/examples/rainbow.lbc
+python tools/client.py --port PORT --store-procedure rainbow build/examples/rainbow.lbc
 python tools/client.py --port PORT --activate rainbow
 ```
 

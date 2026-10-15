@@ -1,9 +1,9 @@
-import rainbow from '../../samples/rainbow.py?raw';
-import twinkle from '../../samples/twinkle.py?raw';
-import color from '../../samples/color.py?raw';
-import pattern from '../../samples/pattern.py?raw';
-import wipe from '../../samples/wipe.py?raw';
-import chase from '../../samples/chase.py?raw';
+import rainbow from '../../examples/animations/rainbow.py?raw';
+import twinkle from '../../examples/animations/twinkle.py?raw';
+import color from '../../examples/animations/color.py?raw';
+import pattern from '../../examples/animations/pattern.py?raw';
+import wipe from '../../examples/animations/wipe.py?raw';
+import chase from '../../examples/animations/chase.py?raw';
 
 export const EXAMPLES = [
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,

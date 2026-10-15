@@ -15,9 +15,19 @@ The [animation profile](docs/animation-profile.md) defines persistent buffers,
 arrays and the `@init` / `@render` callbacks. Caller arguments supply context,
 time, delta and pixels; settings are frozen at initialization.
 The current compiler emits LBC1/4 packages. Together they implement a limited part of the
-[portable bytecode architecture decision](documents/architecture-decision-portable-bytecode.md).
+[portable bytecode architecture decision](docs/design/architecture-decision-portable-bytecode.md).
 Up to eight independent device slots run concurrently. Multiple languages,
 composition and a broader component system remain future work.
+
+## Repository layout
+
+- [`docs/`](docs/README.md): current guides and API references, with design
+  decisions, proposals and historical reviews in [`docs/design/`](docs/design/).
+- [`examples/animations/`](examples/animations/): the six canonical Python effects,
+  shared by the editor, tools and tests.
+- [`examples/config/`](examples/config/): board startup and network configuration
+  examples.
+- [`experiments/`](experiments/): historical implementations and measurement records.
 
 ## Build and exercise on the host
 
@@ -29,7 +39,7 @@ python3 -m venv build/venv
 build/venv/bin/pip install -r requirements.txt
 cmake -S . -B build/host -DCMAKE_BUILD_TYPE=Release
 cmake --build build/host --parallel
-build/venv/bin/python tools/build_samples.py
+build/venv/bin/python tools/build_examples.py
 build/venv/bin/python tools/smoke_device.py --process build/host/lightvm \
   --reference build/host/lightvm --board simulator
 ```
@@ -49,25 +59,25 @@ directory to exercise the 175-pixel, 16 KiB program-budget profile.
 The samples preserve color, pattern, chase, wipe, twinkle and rainbow. The source
 API initializes context once and renders each frame using the actual elapsed delta.
 
-Each effect has one source in `samples/`, shared by the editor, build tools and
-current animation tests. `samples/rainbow.py` is the picolights gradient with a
+Each effect has one source in `examples/animations/`, shared by the editor, build tools and
+current animation tests. `examples/animations/rainbow.py` is the picolights gradient with a
 60-second default cycle; its `duration` setting accepts startup arguments such
 as `{"duration": 3.3}`.
 
 ```sh
-build/venv/bin/python -m lightvm.compiler samples/rainbow.py \
-  -o build/samples/rainbow.lbc
+build/venv/bin/python -m lightvm.compiler examples/animations/rainbow.py \
+  -o build/examples/rainbow.lbc
 build/venv/bin/python tools/client.py --port PORT --status
 build/venv/bin/python tools/client.py --port PORT \
-  --store-procedure rainbow build/samples/rainbow.lbc
+  --store-procedure rainbow build/examples/rainbow.lbc
 build/venv/bin/python tools/client.py --port PORT \
-  --config examples/pico-startup.json --save
+  --config examples/config/pico-startup.json --save
 build/venv/bin/python tools/client.py --port PORT --activate rainbow
 ```
 
 Use the configuration matching the board and actual wiring. For XIAO ESP32-C3,
-use `examples/xiao-c3-startup.json` and add `--no-reset` to serial commands;
-S3/C6 use `examples/xiao-startup.json`. The device keeps its configured pin,
+use `examples/config/xiao-c3-startup.json` and add `--no-reset` to serial commands;
+S3/C6 use `examples/config/xiao-startup.json`. The device keeps its configured pin,
 count, order and brightness when changing programs. Reboot runs each device’s
 `startup.procedure` with its `startup.args`; omitted arguments use program defaults. `STATUS` reports `mode=bytecode` and `code_storage=flash`
 for both named and transient programs. Uploads share one 256-byte page buffer;

@@ -9,19 +9,19 @@ with no saved configuration starts idle and remains available over USB.
 
 ## Provisioning
 
-Build the independent samples with `python tools/build_samples.py`, then store a
+Build the independent samples with `python tools/build_examples.py`, then store a
 procedure before referring to it in saved configuration:
 
 ```sh
 python tools/client.py --port PORT --describe
-python tools/client.py --port PORT --store-procedure rainbow build/samples/rainbow.lbc
-python tools/client.py --port PORT --validate-config examples/pico-startup.json
-python tools/client.py --port PORT --config examples/pico-startup.json --save
+python tools/client.py --port PORT --store-procedure rainbow build/examples/rainbow.lbc
+python tools/client.py --port PORT --validate-config examples/config/pico-startup.json
+python tools/client.py --port PORT --config examples/config/pico-startup.json --save
 python tools/client.py --port PORT --activate rainbow
 ```
 
-For an XIAO board use `--no-reset` and `examples/xiao-startup.json`; the C3 uses
-`examples/xiao-c3-startup.json` with D1/GPIO3 to avoid its D0 boot strap pin.
+For an XIAO board use `--no-reset` and `examples/config/xiao-startup.json`; the C3 uses
+`examples/config/xiao-c3-startup.json` with D1/GPIO3 to avoid its D0 boot strap pin.
 `GP16` is a Pico pin name; `D0` is a XIAO board alias. Discovery lists every
 permitted pin, including XIAO `GPIO` aliases. These tables describe exposed pins
 and exclude USB and flash pins; they do not identify connected hardware. C3 D0,
@@ -62,7 +62,7 @@ snapshot objects. They can be provisioned without configuring any light output.
 
 ## JSON configuration v1
 
-See [the Pico example](../examples/pico-startup.json). The only root fields are
+See [the Pico example](../examples/config/pico-startup.json). The only root fields are
 required `schema` and `devices`. The devices array may be empty. Device IDs and
 physical pins must be unique. Root-level `targets` and `startup` are rejected,
 including empty or null forms. Previously saved configurations using those fields
@@ -146,10 +146,10 @@ reserved working contribution; the presenter retains each submitted frame until
 completion or cancellation. Each device owns an independent VM, contribution and
 output. The scheduler rotates service order; management checkpoints give each
 background v3 VM at most 64 instructions per pass. Alpha composition, a separate
-transition mix channel and guest device-handle imports remain proposed in the [control model](../documents/feature-proposal-control-api.md)
-and [A/B proposal](../documents/feature-proposal-ab-transitions.md), with ordered
+transition mix channel and guest device-handle imports remain proposed in the [control model](design/feature-proposal-control-api.md)
+and [A/B proposal](design/feature-proposal-ab-transitions.md), with ordered
 scene/layer semantics in the
-[animation composition proposal](../documents/feature-proposal-animation-composition.md).
+[animation composition proposal](design/feature-proposal-animation-composition.md).
 Scenes and layers are virtual runtime resources with their own admission limits;
 they do not imply additional physical strip configuration.
 
@@ -285,7 +285,7 @@ Use device IDs for upload, activation, status, frame, stop, pause/resume and
 snapshot operations:
 
 ```sh
-python tools/client.py --port PORT --device desk build/samples/chase.lbc --animate
+python tools/client.py --port PORT --device desk build/examples/chase.lbc --animate
 python tools/client.py --port PORT --device desk --parameters
 python tools/client.py --port PORT --device desk --pause
 ```

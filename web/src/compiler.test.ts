@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { supportsProgram } from './compiler';
 import { DEFAULT_SOURCE, type Description, type Manifest } from './types';
-import rainbow from '../../samples/rainbow.py?raw';
+import rainbow from '../../examples/animations/rainbow.py?raw';
 
 describe('animation compiler', () => {
   const animation = { control_abi: 4, program_abis: [4], bytecode_formats: ['LBC1/4'], program_schemas: ['lightvm.program/5'], program_profiles: ['animation/1'] } as Description;

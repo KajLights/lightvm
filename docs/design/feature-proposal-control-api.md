@@ -22,7 +22,7 @@ Pixelblaze compatibility belongs in an independently implemented frontend or
 adapter above this API. Pixelblaze callback names, numeric rules and available
 devices do not define or constrain the core contract.
 
-The first [control ABI 2 animation profile](../docs/control-api.md) now defines
+The first [control ABI 2 animation profile](../control-api.md) now defines
 start/frame steps, deployment-injected pixel contributions, program time, typed live parameters,
 RGB8 frames reset to black per step and successful-step publication. An original
 restricted Python compiler and six examples target it. Schema-3 artifacts have
@@ -364,11 +364,11 @@ Picolights is the direct project predecessor. Its Git history records:
 - `2203220`, 5 November 2023: a standalone `PicoAnimation` lifecycle.
 - `f4eca72`, 11 December 2025: candle rendering with explicit RGBW control.
 
-The relevant sources are [device configuration](../../picolights/picolights/devices/config.py),
-[properties](../../picolights/picolights/devices/controller.py),
-[animation lifecycle](../../picolights/picolights/effects/helpers.py),
-[transitions](../../picolights/picolights/effects/transition.py) and
-[RGBW candle output](../../picolights/picolights/effects/animations/candle.py).
+The relevant sources are [device configuration](../../../picolights/picolights/devices/config.py),
+[properties](../../../picolights/picolights/devices/controller.py),
+[animation lifecycle](../../../picolights/picolights/effects/helpers.py),
+[transitions](../../../picolights/picolights/effects/transition.py) and
+[RGBW candle output](../../../picolights/picolights/effects/animations/candle.py).
 The existing animation catalogue demonstrates repeated background painting,
 stateful effects and readback filters. The [composition note](feature-proposal-animation-composition.md)
 now defers their layered rendering to a separate alpha design.
@@ -382,7 +382,7 @@ use MIT licensing. Reused code needs its applicable copyright/license notices,
 source revision and modifications recorded in LightVM's third-party notices.
 CircuitPython runtime source needs per-file review.
 
-Picolights' [easing.py](../../picolights/picolights/easing.py) explicitly credits
+Picolights' [easing.py](../../../picolights/picolights/easing.py) explicitly credits
 semitable/easing-functions and declares [GPLv3](https://github.com/semitable/easing-functions/blob/master/LICENCE.md).
 It entered in `a41572e` on 18 April 2023 and is imported by animation helpers and
 transitions. For an MIT-only LightVM implementation, use independently implemented

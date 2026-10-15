@@ -16,7 +16,7 @@ from test_configuration import config
 PREFIX='from lightvm import profile,setting,rgb,init,render\nprofile("animation/1")\n'
 NAMES=('color','pattern','chase','wipe','rainbow','twinkle')
 def source(name):
-    path=ROOT/'samples'/f'{name}.py'
+    path=ROOT/'examples/animations'/f'{name}.py'
     return path.read_text().replace('random.seed()', 'random.seed(1)')
 
 class PortableCompilerTests(unittest.TestCase):

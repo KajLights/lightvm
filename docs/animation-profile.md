@@ -126,7 +126,7 @@ tracks elapsed time; snapshots are passive. The fixed-step statistics and cycle
 fields have been removed. FRAME keeps its existing wire range of 0..1000 ms;
 autonomous playback supplies its complete elapsed delta without clamping it.
 
-Tests compile the six Python examples in `samples/`, compare their output
+Tests compile the six Python examples in `examples/animations/`, compare their output
 against a Python caller harness, exercise seeded random ranges and checked arrays,
 and verify variable frame rates, frozen settings, fault publication and native
 continuation/ownership. Hardware measurements below describe the previous API;

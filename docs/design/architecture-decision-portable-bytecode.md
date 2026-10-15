@@ -13,7 +13,7 @@ native machine code on the device.
 
 This decision refines the [component runtime requirements](architecture-request-component-runtime.md).
 It selects the direction for new development; production still uses WASM with
-legacy API v1 or [control ABI 2](../docs/control-api.md). Existing modules retain
+legacy API v1 or [control ABI 2](../control-api.md). Existing modules retain
 their documented numeric, callback and publication behaviour. The custom package
 format, exact API signatures and migration mechanism remain to be specified.
 
@@ -193,7 +193,7 @@ Provide a versioned standard library usable from every frontend:
 | Geometry | Local index, stable global identity, normalised and physical coordinates, optional topology |
 | State and buffers | Bounded arrays, particle storage, explicit history, indexed drawing and transforms |
 | Parameters | Stable IDs, types, units, defaults, ranges and optional UI hints |
-| Inputs and events | Timestamped samples/events, validity, missing-input behaviour and bounded queues |
+| Inputs and events | Timestamped examples/animations/events, validity, missing-input behaviour and bounded queues |
 | Noise and randomness | Noise functions, owned state-update streams and stateless samples keyed by seed, pixel identity, tick and stream |
 
 Distinguish pure functions from stateful processors. Small helpers can compile

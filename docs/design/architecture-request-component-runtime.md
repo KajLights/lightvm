@@ -269,7 +269,7 @@ implementation and RTOS choice remain open.
 ## Related architecture and proposals
 
 - [Portable bytecode and animation contract](architecture-decision-portable-bytecode.md)
-- [Current engine and native ports](../docs/architecture.md)
+- [Current engine and native ports](../architecture.md)
 - [Control API and execution model](feature-proposal-control-api.md)
 - [Device support](feature-proposal-device-support.md)
 - [Animation composition](feature-proposal-animation-composition.md)

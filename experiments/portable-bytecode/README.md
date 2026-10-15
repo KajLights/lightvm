@@ -6,7 +6,7 @@ compatibility tests have been removed.
 
 The current experiment uses the normal LightVM firmware and compiler. Follow
 [the repository instructions](../../README.md); the only sample sources are the
-six Python files in [`samples/`](../../samples/). The editor, command-line tools
+six Python files in [`examples/animations/`](../../examples/animations/). The editor, command-line tools
 and current tests share those files.
 
 [REPORT.md](REPORT.md) and `results/` describe the earlier implementation and its

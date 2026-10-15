@@ -41,7 +41,7 @@ def measure(client, board, pin, pixels, samples, seconds):
         "devices": [{"id": "benchmark", "type": "ws2812b", "config": {
             "pin": pin, "count": pixels, "order": "GRB", "brightness_limit": 32}}],
     }
-    source = (ROOT / "samples/rainbow.py").read_text()
+    source = (ROOT / "examples/animations/rainbow.py").read_text()
     artifact = compile_source(source)
     if not artifact.success:
         raise ValueError(artifact.diagnostics)
@@ -81,7 +81,7 @@ def measure(client, board, pin, pixels, samples, seconds):
             "pin": pin,
             "pixels": pixels,
             "brightness_limit": 32,
-            "workload": "samples/rainbow.py",
+            "workload": "examples/animations/rainbow.py",
             "bytecode_sha256": hashlib.sha256(module).hexdigest(),
             "frame_interval_us": int(end["frame_interval_us"]),
             "samples": samples,

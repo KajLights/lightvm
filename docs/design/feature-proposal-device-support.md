@@ -11,7 +11,7 @@ a note or move a servo. Devices share the independently designed
 resources, typed properties and samples, actions/jobs, events and resumable
 tasks. Addressable RGB lighting is one capability within that model. This complements the
 [web editor](feature-proposal-web-editor.md) and
-[portable native ports](../docs/architecture.md). Optional
+[portable native ports](../architecture.md). Optional
 [animation composition](feature-proposal-animation-composition.md) gives several
 lighting programs owned contributions to one scene under the same model.
 
@@ -30,7 +30,7 @@ define the device or execution contracts.
 
 Runtime JSON configuration, explicit RAM apply/save, the `ws2812b` registration,
 instance-owned A buffers and named persistent WASM procedures are implemented on
-host, Pico and both ESP32 ports. See [configuration](../docs/configuration.md).
+host, Pico and both ESP32 ports. See [configuration](../configuration.md).
 There is no compiled default strip; empty configuration is valid. The broader
 generator, generic device-handle imports and non-pixel drivers below remain proposed.
 
@@ -95,9 +95,9 @@ boundary and the single owner of engine execution.
 | Board pin tables/budgets are separate from saved peripheral JSON | Extend resource planning to the proposed device types |
 
 Picolights provides a useful precedent: its
-[`device_factory`](../../picolights/picolights/devices/config.py) registers named
+[`device_factory`](../../../picolights/picolights/devices/config.py) registers named
 types, `DeviceList` instantiates configured devices, and
-[`PropertyManager`](../../picolights/picolights/devices/controller.py) exposes
+[`PropertyManager`](../../../picolights/picolights/devices/controller.py) exposes
 properties. Its animation helpers and transitions also establish buffer,
 publication and completion concepts. The [control proposal](feature-proposal-control-api.md#prior-art-and-provenance)
 records the Git lineage and upstream reuse constraints. LightVM should use explicit field types,
@@ -359,7 +359,7 @@ Guest execution has no timed watchdog; scheduling uses bounded work slices.
 
 Tone/pulse expiry uses native time and does not need another guest callback.
 Servo pulses and tone waveforms come from native peripherals. Bus-based sensors
-use bounded native servicing and cached samples/jobs instead of blocking a guest
+use bounded native servicing and cached examples/animations/jobs instead of blocking a guest
 import on a conversion or absent peripheral.
 
 Initialization may resolve bindings and prepare state while validating a

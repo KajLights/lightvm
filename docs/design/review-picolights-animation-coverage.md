@@ -24,7 +24,7 @@ catalogue; its full implementations were not reconstructed or certified here.
 
 The language specification has two relevant levels:
 
-- [Current bytecode profile](../docs/control-api.md): implemented restricted
+- [Current bytecode profile](../control-api.md): implemented restricted
   Python, LBC1/2, i32/f32/bool/RGB8, scalar state, one rendering stage.
 - [Language-neutral animation contract](architecture-decision-portable-bytecode.md):
   intended `init`/events/`step`/`prepare`/`shade`/kernel permissions, bounded
@@ -72,9 +72,9 @@ Three different buffer roles explain the apparent disagreement between documents
 | Render working/scratch image | Produces the current contribution under its declared initialization and write rules | One checked RGB working view; cleared each invocation, write-only to bytecode |
 | Committed/published image | Retained for consumers, snapshots, hold/failure policy; protected while in use | Native committed/output buffers exist, but bytecode cannot read or use them as history |
 
-In [control.c](../src/control.c), lines 93–95 bind the guest only to `working`;
+In [control.c](../../src/control.c), lines 93–95 bind the guest only to `working`;
 line 107 clears it and line 126 copies successful output to `committed`.
-[LbcInstance](../src/bytecode.h) has one buffer view and scalar registers, with no
+[LbcInstance](../../src/bytecode.h) has one buffer view and scalar registers, with no
 declared resource table. Thus the shortfall is **no guest-visible persistent pixel
 resource and no element-load path**, not merely the presence of `memset`.
 
@@ -150,7 +150,7 @@ sequence image retention.
 
 ## What is already available
 
-There are **33 opcodes**, IDs 0–32, in [bytecode.h](../src/bytecode.h):
+There are **33 opcodes**, IDs 0–32, in [bytecode.h](../../src/bytecode.h):
 
 | Group | Existing instructions |
 |---|---|
@@ -173,7 +173,7 @@ palette to 255 entries. There are eight live scalar parameters. The compiler
 allocates new temporaries without liveness-based register reuse.
 
 The renderer clears working RGB on **every invocation** in
-[control.c](../src/control.c), then commits the complete successful frame. There
+[control.c](../../src/control.c), then commits the complete successful frame. There
 is no pixel load, retained-paint API, mutable array, init callback, user-function
 call or RGBW value. Scalar state persists; output pixels do not form simulation
 history.
@@ -182,7 +182,7 @@ history.
 
 At the time of this review, the replay suite compared against copies of the
 earlier LightVM Python examples. Those copies and their tests have since been
-removed. Current replay tests execute the six shared sources in `samples/`.
+removed. Current replay tests execute the six shared sources in `examples/animations/`.
 
 | Example | Difference from the original picolights implementation |
 |---|---|
@@ -194,7 +194,7 @@ removed. Current replay tests execute the six shared sources in `samples/`.
 | Twinkle | The original tracks births, positions and per-star colours in bounded arrays; spawns probabilistically from elapsed time; uses a sine fade and channel-wise background maxima. The sample uses deterministic per-pixel phases, cubic fading, fixed warm colours and black background. |
 
 At the time of this review, a separate Rainbow port preserved the old WASM demo.
-That duplicate has since been removed; `samples/rainbow.py` is now the single
+That duplicate has since been removed; `examples/animations/rainbow.py` is now the single
 current picolights Rainbow example.
 
 ## Coverage matrix
@@ -205,32 +205,32 @@ syntax, legacy timing, inherited pixels or completion notifications.
 
 | Original module/effect | Required work for a faithful usable port |
 |---|---|
-| [Color](../../picolights/picolights/effects/animations/color.py) | Existing `FILL`/shade. Resolve named/hex colours off-device; random defaults need an explicit seed/init policy. |
-| [Pattern](../../picolights/picolights/effects/animations/pattern.py) | Existing palettes, arithmetic and indexed writes. Compile run-length strings and fit/repeat options; support bounded generated palettes for random defaults, or specialize a chosen palette at installation. |
-| [Ident](../../picolights/picolights/effects/animations/ident.py) | Existing arithmetic and conditionals can implement the three divisibility bands, with red overriding green overriding blue. General stepped ranges are a compiler convenience. |
-| [Locator](../../picolights/picolights/effects/animations/locator.py) | Existing scalar time, conditions and fill/store. Lower floor and early returns; retain initial flash/blackout and timed marker semantics. |
-| [Rainbow](../../picolights/picolights/effects/animations/rainbow.py) | Colour-to-hue conversion, a compatible colourwheel helper/table, start hue, duration/scale and timing. Easing support belongs to the shared timed-animation binding. |
-| [Colors](../../picolights/picolights/effects/animations/colors.py) | Dynamic palette colour extraction, RGB-to-HSV and shortest-hue interpolation. A fixed palette can instead become precomputed HSV tables. Handle one-colour and degenerate segment lengths explicitly. |
-| [Chase](../../picolights/picolights/effects/animations/chase.py) | Tick/draw counter and completion. Redraw an accumulated prefix for a fixed colour/background; use explicit paint history if colours change or pre-existing pixels must survive. |
-| [Wipe](../../picolights/picolights/effects/animations/wipe.py) | Draw cadence, `step`, end completion and safe range writes. Scalar redraw covers a fixed background; an arbitrary inherited image requires a bound initial image/history. |
-| [ColorWipe](../../picolights/picolights/effects/animations/color_wipe.py) | Seeded choice of four directions, ceil, easing, completion and guaranteed final fill. Preserve the unrevealed source image through an explicit input/history binding. |
-| [ZipOut](../../picolights/picolights/effects/animations/zip_out.py) | Cubic/default or selected easing, ceil, two bounded ranges and completion/hold. Existing arithmetic implements the default curve; inherited pixels need an input image. |
-| [Blend](../../picolights/picolights/effects/animations/blend.py) | RGB-to-HSV for hue-offset colours; boolean conditions; cycle count and final fill; explicit history/input for untouched pixels. Despite its name, this is spatial painting, not a general alpha blend. |
-| [Flashy](../../picolights/picolights/effects/animations/flashy.py) | RGB channel scaling, easing and repeated phase. Its optional `epoc` uses synchronized nanosecond time; preserving that feature requires a native timeline binding and wide timestamp/difference semantics. |
-| [Cylon / Eye](../../picolights/picolights/effects/animations/cylon.py) | Bounded eyes/palette iteration, floor, cubic easing and **per-channel maximum** on overlaps. `BlendStrip` currently calls `naive_blend`, not averaging. Can render by looping over eyes per pixel, or use admitted scratch plus indexed splats. |
-| [Matrix](../../picolights/picolights/effects/animations/matrix.py) | Compile base64 RGB data/dimensions into immutable flash resources; add practical lookup beyond a 255-entry palette. Nested kernel loops and arithmetic can implement scrolling and column-serpentine indexing. Bind the 32×8 geometry and define wrapped-write order for oversized images. |
-| [Candle](../../picolights/picolights/effects/animations/candle.py) | Scalar stochastic state in `step`, logarithm for rotation, channel extraction/scaling/warmth, init seed and two indexed outputs. Full original coverage includes independent white-channel RGBW and its layout binding. |
-| [Flame](../../picolights/picolights/effects/animations/flame.py) | Persistent per-pixel RGB state, loops in `step`, seeded random choices, scalar height random walk and Gaussian sampling. Its Box–Muller path needs log/sqrt/cos, or a versioned equivalent normal sampler. |
-| [Starlight](../../picolights/picolights/effects/animations/starlight.py) | Mutable RGB history, step loops, RNG, abs, RGB-to-HSV and HSV-to-RGB. Read back the quantized RGB history on updates if reproducing its accumulated colour-rounding behaviour. |
-| [Twinkle](../../picolights/picolights/effects/animations/twinkle.py) | Bounded star arrays, init, step iteration, free-slot/position selection, random colours, sine easing, colour scaling and channel maxima. Render with background fill plus active-star stores. |
-| [Patchy](../../picolights/picolights/effects/animations/patchy.py) | Seeded random patch position/colour, retained paint array, bounded range writes, duration and completion. Painting only the newest patch onto the cleared output would be incorrect. |
-| [Fluoresce](../../picolights/picolights/effects/animations/fluoresce.py) | Scalar on/off state and randomized next-switch deadline in `step`; render the remembered state on every frame. Complete with the configured colour. No pixel array is intrinsically necessary for one strip. |
-| [MultiStripFluoresce](../../picolights/picolights/effects/animations/fluoresce.py) | Bounded per-segment state/deadlines, independent random streams, computed subranges and group completion. Can be flattened into one effect; it does not inherently require a general compositor. Preserve gaps through a defined background/input. |
-| [Pause](../../picolights/picolights/effects/animations/pause.py) | Sequence/timeline hold and completion while retaining the preceding image. An empty current kernel commits black; the management pause command alone does not implement an automatically completing sequence stage. |
-| [Fade](../../picolights/picolights/effects/animations/fade.py) | A timed gain on an existing image and completion. The original mutates the physical strip's brightness property; model it as an explicit native gain/transition stage if that property behaviour is required. |
-| [Clone](../../picolights/picolights/effects/animations/clone.py) | Read-only, host-bound source image with known length, offset and coherent publication. Needs producer/consumer scheduling and availability rules; a numeric guest pointer or arbitrary controller lookup is unsuitable. Preserve the untouched destination tail if matching the original. |
-| [FlashyStartupSequence](../../picolights/picolights/effects/animations/sequences.py) | Compose multi-strip fluoresce → 3-second hold → random Patchy → fixed-colour Patchy → solid, with completion and `auto_clear=False` history. A bounded state machine in one package is sufficient initially. |
-| [Transition wrapper](../../picolights/picolights/effects/transition.py) | An evolving target buffer plus retained old image, easing and four reveal masks. A native transition graph or explicit two-image adapter can express it. The wrapper's own target buffer also persists between sparse writes. |
+| [Color](../../../picolights/picolights/effects/animations/color.py) | Existing `FILL`/shade. Resolve named/hex colours off-device; random defaults need an explicit seed/init policy. |
+| [Pattern](../../../picolights/picolights/effects/animations/pattern.py) | Existing palettes, arithmetic and indexed writes. Compile run-length strings and fit/repeat options; support bounded generated palettes for random defaults, or specialize a chosen palette at installation. |
+| [Ident](../../../picolights/picolights/effects/animations/ident.py) | Existing arithmetic and conditionals can implement the three divisibility bands, with red overriding green overriding blue. General stepped ranges are a compiler convenience. |
+| [Locator](../../../picolights/picolights/effects/animations/locator.py) | Existing scalar time, conditions and fill/store. Lower floor and early returns; retain initial flash/blackout and timed marker semantics. |
+| [Rainbow](../../../picolights/picolights/effects/animations/rainbow.py) | Colour-to-hue conversion, a compatible colourwheel helper/table, start hue, duration/scale and timing. Easing support belongs to the shared timed-animation binding. |
+| [Colors](../../../picolights/picolights/effects/animations/colors.py) | Dynamic palette colour extraction, RGB-to-HSV and shortest-hue interpolation. A fixed palette can instead become precomputed HSV tables. Handle one-colour and degenerate segment lengths explicitly. |
+| [Chase](../../../picolights/picolights/effects/animations/chase.py) | Tick/draw counter and completion. Redraw an accumulated prefix for a fixed colour/background; use explicit paint history if colours change or pre-existing pixels must survive. |
+| [Wipe](../../../picolights/picolights/effects/animations/wipe.py) | Draw cadence, `step`, end completion and safe range writes. Scalar redraw covers a fixed background; an arbitrary inherited image requires a bound initial image/history. |
+| [ColorWipe](../../../picolights/picolights/effects/animations/color_wipe.py) | Seeded choice of four directions, ceil, easing, completion and guaranteed final fill. Preserve the unrevealed source image through an explicit input/history binding. |
+| [ZipOut](../../../picolights/picolights/effects/animations/zip_out.py) | Cubic/default or selected easing, ceil, two bounded ranges and completion/hold. Existing arithmetic implements the default curve; inherited pixels need an input image. |
+| [Blend](../../../picolights/picolights/effects/animations/blend.py) | RGB-to-HSV for hue-offset colours; boolean conditions; cycle count and final fill; explicit history/input for untouched pixels. Despite its name, this is spatial painting, not a general alpha blend. |
+| [Flashy](../../../picolights/picolights/effects/animations/flashy.py) | RGB channel scaling, easing and repeated phase. Its optional `epoc` uses synchronized nanosecond time; preserving that feature requires a native timeline binding and wide timestamp/difference semantics. |
+| [Cylon / Eye](../../../picolights/picolights/effects/animations/cylon.py) | Bounded eyes/palette iteration, floor, cubic easing and **per-channel maximum** on overlaps. `BlendStrip` currently calls `naive_blend`, not averaging. Can render by looping over eyes per pixel, or use admitted scratch plus indexed splats. |
+| [Matrix](../../../picolights/picolights/effects/animations/matrix.py) | Compile base64 RGB data/dimensions into immutable flash resources; add practical lookup beyond a 255-entry palette. Nested kernel loops and arithmetic can implement scrolling and column-serpentine indexing. Bind the 32×8 geometry and define wrapped-write order for oversized images. |
+| [Candle](../../../picolights/picolights/effects/animations/candle.py) | Scalar stochastic state in `step`, logarithm for rotation, channel extraction/scaling/warmth, init seed and two indexed outputs. Full original coverage includes independent white-channel RGBW and its layout binding. |
+| [Flame](../../../picolights/picolights/effects/animations/flame.py) | Persistent per-pixel RGB state, loops in `step`, seeded random choices, scalar height random walk and Gaussian sampling. Its Box–Muller path needs log/sqrt/cos, or a versioned equivalent normal sampler. |
+| [Starlight](../../../picolights/picolights/effects/animations/starlight.py) | Mutable RGB history, step loops, RNG, abs, RGB-to-HSV and HSV-to-RGB. Read back the quantized RGB history on updates if reproducing its accumulated colour-rounding behaviour. |
+| [Twinkle](../../../picolights/picolights/effects/animations/twinkle.py) | Bounded star arrays, init, step iteration, free-slot/position selection, random colours, sine easing, colour scaling and channel maxima. Render with background fill plus active-star stores. |
+| [Patchy](../../../picolights/picolights/effects/animations/patchy.py) | Seeded random patch position/colour, retained paint array, bounded range writes, duration and completion. Painting only the newest patch onto the cleared output would be incorrect. |
+| [Fluoresce](../../../picolights/picolights/effects/animations/fluoresce.py) | Scalar on/off state and randomized next-switch deadline in `step`; render the remembered state on every frame. Complete with the configured colour. No pixel array is intrinsically necessary for one strip. |
+| [MultiStripFluoresce](../../../picolights/picolights/effects/animations/fluoresce.py) | Bounded per-segment state/deadlines, independent random streams, computed subranges and group completion. Can be flattened into one effect; it does not inherently require a general compositor. Preserve gaps through a defined background/input. |
+| [Pause](../../../picolights/picolights/effects/animations/pause.py) | Sequence/timeline hold and completion while retaining the preceding image. An empty current kernel commits black; the management pause command alone does not implement an automatically completing sequence stage. |
+| [Fade](../../../picolights/picolights/effects/animations/fade.py) | A timed gain on an existing image and completion. The original mutates the physical strip's brightness property; model it as an explicit native gain/transition stage if that property behaviour is required. |
+| [Clone](../../../picolights/picolights/effects/animations/clone.py) | Read-only, host-bound source image with known length, offset and coherent publication. Needs producer/consumer scheduling and availability rules; a numeric guest pointer or arbitrary controller lookup is unsuitable. Preserve the untouched destination tail if matching the original. |
+| [FlashyStartupSequence](../../../picolights/picolights/effects/animations/sequences.py) | Compose multi-strip fluoresce → 3-second hold → random Patchy → fixed-colour Patchy → solid, with completion and `auto_clear=False` history. A bounded state machine in one package is sufficient initially. |
+| [Transition wrapper](../../../picolights/picolights/effects/transition.py) | An evolving target buffer plus retained old image, easing and four reveal masks. A native transition graph or explicit two-image adapter can express it. The wrapper's own target buffer also persists between sparse writes. |
 
 ## Implementation choices: opcodes and native-library operations
 
@@ -265,7 +265,7 @@ still needed to keep wiring and placement outside the portable effect.
 
 ## Compiler changes
 
-The main work is in [bytecode.py](../lightvm/bytecode.py); the public compiler
+The main work is in [bytecode.py](../../lightvm/bytecode.py); the public compiler
 wrapper, browser frontend and target capability checks must stay in agreement.
 
 | Priority | Change | Lowering / examples |
@@ -387,9 +387,9 @@ oracle. Record intentional fixes separately from bytecode capability changes:
 
 | Source | Coverage and extra requirements |
 |---|---|
-| [sfdl/xmas.py](../../picolights/sfdl/xmas.py) | Moving palette, fixed ornaments/trunk and half-second cadence use existing palette/store operations plus a logical timer. Optional rainbow uses the colourwheel helper. GPIO setup belongs to native device bindings; the declared trigger is not used by the running animation. |
-| [julian1.py](../../picolights/julian1.py) | Rainbow/dash/demon/full_rambo/police/sweep/switch/super use seeded choice, palettes/colourwheel, fills/slices, bounded loops and sequences. Lower sleeps to resumable state/deadlines. `auto_write=True` makes intermediate writes observable: batching all writes into one frame changes those effects. Specify presentation/cadence for the port; fix invalid list/tuple slice shapes and float range bounds. |
-| [julian2.py](../../picolights/julian2.py) | Sparse multi-trail chase and reverse fill need paint history, helper lowering, explicit negative-index semantics and timed phases. Replace sleeps/show with native scheduling/publication; keep setup and wiring in the deployment. |
+| [sfdl/xmas.py](../../../picolights/sfdl/xmas.py) | Moving palette, fixed ornaments/trunk and half-second cadence use existing palette/store operations plus a logical timer. Optional rainbow uses the colourwheel helper. GPIO setup belongs to native device bindings; the declared trigger is not used by the running animation. |
+| [julian1.py](../../../picolights/julian1.py) | Rainbow/dash/demon/full_rambo/police/sweep/switch/super use seeded choice, palettes/colourwheel, fills/slices, bounded loops and sequences. Lower sleeps to resumable state/deadlines. `auto_write=True` makes intermediate writes observable: batching all writes into one frame changes those effects. Specify presentation/cadence for the port; fix invalid list/tuple slice shapes and float range bounds. |
+| [julian2.py](../../../picolights/julian2.py) | Sparse multi-trail chase and reverse fill need paint history, helper lowering, explicit negative-index semantics and timed phases. Replace sleeps/show with native scheduling/publication; keep setup and wiring in the deployment. |
 
 These demos do not require a new animation-specific instruction family. Faithful
 intermediate presentation can require multiple scheduled frames, and the default

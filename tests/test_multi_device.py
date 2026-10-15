@@ -27,7 +27,7 @@ class MultiDeviceTests(unittest.TestCase):
         self.client.configure(configuration())
         self.effects = {}
         for name in ('rainbow', 'color', 'pattern', 'chase', 'wipe', 'twinkle'):
-            result = compile_source((ROOT / 'samples' / f'{name}.py').read_text())
+            result = compile_source((ROOT / 'examples/animations' / f'{name}.py').read_text())
             self.assertTrue(result.success, result.diagnostics)
             self.effects[name] = result.bytecode
 

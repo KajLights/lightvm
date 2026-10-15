@@ -54,7 +54,7 @@ def run(client, reference, count, seconds, output):
         check(client.program_parameters(device=primary)['generation'] == baseline['generation'],
               'adding devices restarted Rainbow')
         for effect in EFFECTS:
-            source = ROOT / 'samples' / (effect + '.py')
+            source = ROOT / 'examples/animations' / (effect + '.py')
             artifact = compile_source(source.read_text().replace("random.seed()", "random.seed(1)"), str(source), info)
             check(artifact.success, str(artifact.diagnostics))
             client.upload(artifact.bytecode, device=effect)

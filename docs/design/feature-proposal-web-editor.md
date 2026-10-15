@@ -54,14 +54,14 @@ conversion of arbitrary code between languages, or back into blocks, is outside
 the initial scope.
 
 Runtime configuration and compiled-procedure persistence are now implemented over
-USB on host, Pico and ESP32. [Configuration management](../docs/configuration.md)
+USB on host, Pico and ESP32. [Configuration management](../configuration.md)
 specifies staging, revisions, quotas and idle recovery. Editable source/project
 storage and the HTTP mappings below remain proposed.
-The [control ABI 2 Python frontend](../docs/control-api.md) is now available as a
+The [control ABI 2 Python frontend](../control-api.md) is now available as a
 desktop compiler and SDK with live parameters and passive snapshots. It supports
 one RGB8 frame redrawn from black each step and six original examples. Browser authoring,
 compiler workers and USB uploading are now available in the
-[static Python editor prototype](../docs/web-editor.md). It saves a local browser
+[static Python editor prototype](../web-editor.md). It saves a local browser
 draft and downloads source/WASM; managed project/source storage and preview UI
 remain future editor work.
 

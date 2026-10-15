@@ -77,7 +77,7 @@ runs at a time; switching retains both station and AP credentials. An omitted
 mode selects `station` for compatibility with existing configurations.
 
 For standalone operation, save a configuration such as
-[`examples/network-ap.json`](../examples/network-ap.json):
+[`examples/config/network-ap.json`](../examples/config/network-ap.json):
 
 ```json
 {

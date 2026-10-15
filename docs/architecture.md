@@ -8,12 +8,12 @@
 > the current driver or upload specification.
 
 
-The [portable bytecode architecture decision](../documents/architecture-decision-portable-bytecode.md)
+The [portable bytecode architecture decision](design/architecture-decision-portable-bytecode.md)
 selects the next runtime direction: multiple source-language frontends compile
 off-device to portable typed bytecode, interpreted directly from flash with
 bounded contexts and native buffer views. It records the staged animation API,
 numeric policy, memory ownership, live replacement and open design choices.
-The [component runtime requirements](../documents/architecture-request-component-runtime.md)
+The [component runtime requirements](design/architecture-request-component-runtime.md)
 cover concurrent effects, independent live updates, communications plugins,
 multicore execution and hardware offload. The contracts below describe the
 current WASM implementation and earlier proposals, not the new bytecode ABI.
@@ -70,7 +70,7 @@ brightness and order belong to runtime JSON.
 Current wasm3 builds enforce one 64 KiB linear-memory page and a function stack
 height of 128; these interpreter limits are common to the present ports.
 
-The proposed [build profiles](../documents/feature-proposal-build-profiles.md)
+The proposed [build profiles](design/feature-proposal-build-profiles.md)
 separate each instance's selected drivers, services, storage layout and budgets
 from its board's physical capabilities. HTTP, MQTT and OTA should be optional
 build components, with dependencies and capacity validated for the selected
@@ -168,7 +168,7 @@ and contributions for subsequent scene/A/B composition.
 
 ## Proposed control model
 
-The [control API and execution model](../documents/feature-proposal-control-api.md)
+The [control API and execution model](design/feature-proposal-control-api.md)
 defines LightVM's next guest contract independently, with documented picolights
 lineage. It separates resources/capabilities, properties/samples, actions/jobs,
 events/triggers, tasks and clocks. Pixelblaze compatibility is a frontend or
@@ -185,7 +185,7 @@ roll back earlier commits or general guest state.
 New resources declare snapshot/readback semantics, publication, units, ownership
 and lifecycle. Addressable RGB frame steps start black; effects redraw their
 current output from animation state. Alpha transparency and
-[scene composition](../documents/feature-proposal-animation-composition.md)
+[scene composition](design/feature-proposal-animation-composition.md)
 will be designed separately. Completed scenes may later feed an A/B mixer,
 subject to jointly advertised limits. Native brightness applies once after final
 mixing. Ordinary actuators initially have an exclusive writer. The legacy adapter
@@ -193,7 +193,7 @@ keeps API v1's black-at-frame-start and callback/delta rules. General control
 contexts, event records and task continuation layouts remain proposed; no
 GPIO/ADC/PWM/servo support is implied by the current driver registry.
 
-The [device proposal](../documents/feature-proposal-device-support.md) describes
+The [device proposal](design/feature-proposal-device-support.md) describes
 definitions, native driver servicing and resource planning. Aggregate admission
 must include event queues, tasks, subscriptions, timers, jobs, continuation state
 and pixel buffers in addition to interpreter and native port storage. Layered

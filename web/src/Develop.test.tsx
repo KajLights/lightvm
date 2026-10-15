@@ -9,7 +9,7 @@ import { RuntimeContext } from './runtime';
 import { createAppStore, deviceActions } from './store';
 import type { Description, ParameterState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
-import originalRainbow from '../../samples/rainbow.py?raw';
+import originalRainbow from '../../examples/animations/rainbow.py?raw';
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 

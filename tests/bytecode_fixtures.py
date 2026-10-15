@@ -21,7 +21,7 @@ def color(red=1, green=2, blue=3):
 
 
 def sample(name):
-    return program((ROOT / 'samples' / (name + '.py')).read_text())
+    return program((ROOT / 'examples/animations' / (name + '.py')).read_text())
 
 
 def fault():

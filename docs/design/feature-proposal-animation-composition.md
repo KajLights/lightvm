@@ -10,7 +10,7 @@ Proper alpha transparency and composition will be designed and implemented in
 separate work. This note records the intended use cases and remaining decisions;
 it does not define a replacement alpha API.
 
-The implemented [control ABI 2](../docs/control-api.md) supplies one RGB8 frame
+The implemented [control ABI 2](../control-api.md) supplies one RGB8 frame
 through deployment-injected `ctx.pixels`. Every guest step begins black. Indexed
 RGB writes, fill and own-step readback are supported. Working and committed
 frames exist for successful-step publication and failure recovery; completed

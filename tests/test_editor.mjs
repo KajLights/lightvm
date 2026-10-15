@@ -80,7 +80,7 @@ const python = pathJoin(root, "build/venv/bin/python");
 test("browser protocol uploads and plays a real animation on bytecode", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
   const directory = mkdtempSync(pathJoin(tmpdir(), "lightvm-editor-"));
   const program = pathJoin(directory, "rainbow.lbc");
-  execFileSync(python, ["-m", "lightvm.compiler", "samples/rainbow.py", "-o", program], { cwd: root });
+  execFileSync(python, ["-m", "lightvm.compiler", "examples/animations/rainbow.py", "-o", program], { cwd: root });
   const process = spawn(receiver, [], { stdio: ["pipe", "pipe", "pipe"] });
   const transport = {
     write: bytes => new Promise((resolve, reject) => process.stdin.write(bytes, error => error ? reject(error) : resolve())),
