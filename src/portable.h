@@ -1,7 +1,7 @@
 #ifndef LIGHTVM_PORTABLE_H
 #define LIGHTVM_PORTABLE_H
-/* LBC1/3: general typed functions/resources, bound here to animation/1.
- * No guest address is a native pointer. No animation completion ends a component.
+/* LBC1/4: general typed functions/resources, bound here to animation/1.
+ * No guest address is a native pointer. The native caller supplies render timing.
  */
 #include "bytecode.h"
 typedef union { uint64_t stamp; uint32_t u; int32_t i; float f; } PbcValue;
@@ -17,32 +17,37 @@ typedef struct {
 typedef struct Portable {
     LbcRead read; void *context;
     uint32_t size,nregs,ncode,ncolors,nfunctions,nresources,nexpressions,ncalls,nsettings;
-    uint32_t entries[4],mode,period_expression,max_catch_up,first,profile;
+    uint32_t entries[2],profile;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
-    uint8_t *metadata, *descriptors;
-    PbcFunction *functions; PbcResourceSpec *specs; PbcExpression *expressions;
-    PbcCall *calls; PbcSetting *settings;
-    PbcValue *values; PbcResource *resources; void *state;
-    size_t metadata_bytes,state_bytes,payload_bytes;
+    uint8_t *metadata, *descriptors; uint16_t *register_offsets;
+    uint32_t functions_offset,specs_offset,expressions_offset,calls_offset,settings_offset;
+    bool io_fault;
+    uint8_t *values; PbcResource *resources; void *state;
+    size_t metadata_bytes,state_bytes,payload_bytes,register_bytes;
     uint32_t generation,pc,function,used,bulk,status;
     PbcValue result;
     LbcBuffer *output;
     char setting_names[16][33];
+    char argument_error[33];
     PbcValue overrides[16]; uint32_t override_mask;
-    uint64_t now_us,period_us,credit_us,ticks,cycles,pending_cycles,completion_time_us;
-    uint64_t active_wall_us,dropped_ticks,cancelled_ticks,random_exhaustions;
-    bool completion_pending,completed,initialized;
+    uint64_t now_us,render_count,active_wall_us,random_state;
+    bool native_pending;
+    bool initialized;
     _Alignas(4) uint8_t cache[256]; uint32_t cache_offset,cache_size;
 } Portable;
 const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size);
 void pbc_destroy(Portable *p);
-const char *pbc_period(Portable *p,unsigned count,uint64_t *period_us);
 const char *pbc_prepare(Portable *p,LbcBuffer *output);
 bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned count);
 int pbc_resume(Portable *p,unsigned quota);
-bool pbc_parameter(Portable *p,unsigned reg,uint32_t bits);
 unsigned pbc_type(const Portable *p,unsigned reg);
 unsigned pbc_role(const Portable *p,unsigned reg);
 uint32_t pbc_initial(const Portable *p,unsigned reg);
-bool pbc_random_index(uint32_t bound,uint32_t (*word)(void *),void *context,int32_t *result);
+PbcFunction pbc_function(Portable *, unsigned);
+PbcResourceSpec pbc_spec(Portable *, unsigned);
+PbcExpression pbc_expression(Portable *, unsigned);
+PbcCall pbc_call(Portable *, unsigned);
+PbcSetting pbc_setting(Portable *, unsigned);
+PbcValue pbc_value(const Portable *, unsigned);
+void pbc_set_value(Portable *,unsigned,PbcValue);
 #endif

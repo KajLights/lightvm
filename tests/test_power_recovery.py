@@ -123,8 +123,8 @@ class PowerRecoveryTests(unittest.TestCase):
         module = color()
         self.http.save_procedure('startup', module)
         config = {'schema': 'lightvm.config/1', 'devices': [
-            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}},
-        ], 'targets': {'A': {'device': 'lights'}}, 'startup': {'procedure': 'startup', 'target': 'A'}}
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'procedure': 'startup'}},
+        ]}
         self.http.configure(config, save=True)
         snapshot = self.storage.read_bytes()
         self.restart()

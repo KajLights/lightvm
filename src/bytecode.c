@@ -173,8 +173,6 @@ int lbc_resume(LbcInstance *i,unsigned quota) {
     LbcProgram *p=i->program;LbcValue *r=i->r;uint32_t pc=i->pc;unsigned used=0;
     /* Static instruction/type checks happened at admission. Ownership is stable
      * during this single-owner slice. Only dynamic value checks remain here. */
-    if(i->used>=2000000)return i->status=-1;
-    if(quota>2000000-i->used)quota=2000000-i->used;
     while(used<quota) {
         const uint8_t *q=fetch(p,p->code_offset+pc*8,8);if(!q)goto fault;uint32_t word=aligned_u32(q);
         unsigned op=word&255,a=(word>>8)&255,b=(word>>16)&255,c=word>>24;

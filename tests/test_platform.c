@@ -2,6 +2,7 @@
 #include "session.h"
 #include "pixels.h"
 #include "vm_allocator.h"
+#include "runtime.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,12 @@ static uint64_t clock_now, clock_step;
 static unsigned shows, allocations;
 static bool deny_allocation;
 static bool deny_show;
+static bool delayed_output, output_ready, output_failed;
+static const uint8_t *borrowed_output;
+static void *borrowed_driver;
+static size_t borrowed_count;
+static uint32_t borrowed_crc;
+static unsigned cancelled_outputs;
 static uint8_t displayed[PIXEL_BYTES];
 static const PlatformInfo info = {"test", "virtual", "capture", -1, 7};
 const PlatformInfo *platform_info(void) { return &info; }
@@ -31,12 +38,30 @@ bool platform_pixels_open(const PixelConfig *config,void **driver) {
     PixelConfig *p=calloc(1,sizeof(*p)); if (!p) return false;
     *p=*config; *driver=p; return true;
 }
-void platform_pixels_close(void *driver) { free(driver); }
+void platform_pixels_close(void *driver) { CHECK(driver!=borrowed_driver);free(driver); }
 bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     CHECK(driver && count==((PixelConfig *)driver)->count);
     CHECK(count*3<=sizeof(displayed));
     if (deny_show) return false;
     memcpy(displayed,rgb,count*3); ++shows; return true;
+}
+bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
+    CHECK(!borrowed_output);
+    if(!delayed_output)return platform_pixels_show(driver,rgb,count);
+    borrowed_output=rgb;borrowed_driver=driver;borrowed_count=count;
+    borrowed_crc=crc32_bytes(rgb,count*3);return true;
+}
+int platform_pixels_poll(void *driver) {
+    if(!borrowed_output)return 1;
+    CHECK(driver==borrowed_driver&&crc32_bytes(borrowed_output,borrowed_count*3)==borrowed_crc);
+    if(!output_ready&&!output_failed)return 0;
+    bool ok=!output_failed&&platform_pixels_show(driver,borrowed_output,borrowed_count);
+    borrowed_output=NULL;borrowed_driver=NULL;return ok?1:-1;
+}
+void platform_pixels_cancel(void *driver) {
+    if(!borrowed_output)return;
+    CHECK(driver==borrowed_driver&&crc32_bytes(borrowed_output,borrowed_count*3)==borrowed_crc);
+    borrowed_output=NULL;borrowed_driver=NULL;cancelled_outputs++;
 }
 static uint8_t flash[STORAGE_BYTES], baseline[STORAGE_BYTES];
 static bool storage_available;
@@ -88,7 +113,21 @@ static void storage_faults(void) {
         CHECK(store_find(&recovered,STORE_NETWORK) && recovered.network_revision==1);
         if (!ok) ++interrupted;
     }
-    CHECK(interrupted>60);
+    CHECK(interrupted>8 && interrupted<20);
+    // Configuration publication remains atomic without a separate boot selector.
+    for(int point=0;point<30;point++){
+        memcpy(flash,baseline,sizeof(flash));CHECK(store_mount(&s));
+        fail_after=point;(void)store_put_config(&s,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG));fail_after=-1;
+        Store recovered;CHECK(store_mount(&recovered));
+        CHECK(recovered.config_revision==1||recovered.config_revision==2);
+        CHECK(store_find(&recovered,"effect")&&store_find(&recovered,STORE_NETWORK));
+        for(unsigned i=736;i<800;i++)CHECK(flash[(unsigned)recovered.bank*STORE_BANK_BYTES+i]==0);
+    }
+    // Abandoning the very first payload leaves a blank, usable catalogue.
+    memset(flash,255,sizeof(flash));CHECK(store_mount(&s));StoreUpload upload={.pin=-1};
+    CHECK(store_upload_begin(&s,&upload,"incomplete",300,0));
+    CHECK(store_upload_chunk(&upload,0,baseline,256));store_upload_cancel(&upload);
+    CHECK(store_mount(&s)&&!s.count&&s.bank==-1);
     storage_available=false;
 }
 void *platform_calloc(size_t count, size_t size) {
@@ -207,8 +246,12 @@ static void network_transactions(void) {
 
 #include "portable_contract.inc"
 
+static unsigned service_calls;
+static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
+static void disconnect_service(void *context) { App *a=context;app_disconnect(a,a->upload_owner); }
+
 int main(void) {
-    storage_faults();
+    storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
     static App app;
     static Session session;
     Capture reply = {.marker = 0x12345678u};
@@ -228,14 +271,14 @@ int main(void) {
     command(&other,CMD_STATUS,NULL,0); CHECK(other_reply.code==STATUS_OK && other_reply.id==42);
     command(&other,CMD_OBJECT_CANCEL,NULL,0); CHECK(other_reply.code==STATUS_BUSY && app.upload_owner==1);
     command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_BUSY);
-    session_destroy(&session); CHECK(!app.vm.uploading && !app.upload_owner);
+    session_destroy(&session); CHECK(!app_device(&app,NULL)->vm.uploading && !app.upload_owner);
     session_init(&session,&app,1,capture,&reply);
     command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_OK && app.upload_owner==2);
-    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app.vm.uploading); clock_now=0;
+    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app_device(&app,NULL)->vm.uploading); clock_now=0;
     command(&session,CMD_RESET,NULL,0);
 
     char config[400], metadata[120];
-    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}],\"targets\":{\"A\":{\"device\":\"lights\"}}}",PIXEL_COUNT);
+    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}]}",PIXEL_COUNT);
     int metadata_size=snprintf(metadata,sizeof(metadata),"{\"kind\":\"config\",\"size\":%d,\"crc32\":%lu}",config_size,(unsigned long)crc32_bytes((const uint8_t *)config,(size_t)config_size));
     command(&session,CMD_OBJECT_BEGIN,(const uint8_t *)metadata,(size_t)metadata_size);
     CHECK(reply.code==STATUS_OK);
@@ -258,7 +301,7 @@ int main(void) {
     CHECK(reply.code == STATUS_PROTOCOL && !strcmp(reply.message, "unknown command"));
     CHECK(shows == 1);
     upload(&session, &reply, render_lbc, sizeof(render_lbc));
-    CHECK(reply.code == STATUS_OK && vm_heap_used() == 0);
+    CHECK(reply.code == STATUS_OK && vm_heap_used() > 0);
     command(&session, CMD_PLAY, NULL, 0);
     CHECK(reply.code == STATUS_OK);
     unsigned playback_shows = shows;
@@ -282,27 +325,39 @@ int main(void) {
     }
     CHECK(!memcmp(displayed, reply.snapshot, PIXEL_BYTES));
 
-    upload(&session, &reply, loop_lbc, sizeof(loop_lbc));
-    CHECK(reply.code == STATUS_OK);
-    clock_step = RUN_TIMEOUT_US / 4 + 1;
+    command(&session,CMD_PLAY,NULL,0);CHECK(reply.code==STATUS_OK);
+    unsigned live_frames=app_device(&app,NULL)->vm.frame_count;uint32_t generation=app_device(&app,NULL)->vm.generation;
+    app.service_io=advance_service;upload(&session, &reply, fault_lbc, sizeof(fault_lbc));app.service_io=NULL;
+    CHECK(reply.code == STATUS_LOAD && app_device(&app,NULL)->vm.ready); /* failed preparation retains old instance */
+    CHECK(app_device(&app,NULL)->vm.generation==generation&&app_device(&app,NULL)->vm.playing&&app_device(&app,NULL)->vm.frame_count>live_frames&&service_calls>0);
+    // A native link-loss callback may arrive at a flash checkpoint; cancellation
+    // waits for the serialized command to release its upload workspace.
+    write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
+    command(&session,CMD_BEGIN,begin,sizeof(begin));CHECK(reply.code==STATUS_OK);
+    app.service_io=disconnect_service;app.service_context=&app;
+    uint8_t interrupted[260]={0};memcpy(interrupted+4,render_lbc,100);
+    command(&session,CMD_CHUNK,interrupted,104);app.service_io=NULL;app.service_context=NULL;
+    CHECK(!app.upload_owner&&!app.upload.active&&app.upload.pin==-1&&!app_device(&app,NULL)->vm.uploading&&app_device(&app,NULL)->vm.ready);
+    vm_destroy(&app_device(&app,NULL)->vm);vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);
+    app_device(&app,NULL)->vm.memory=fault_lbc;app_device(&app,NULL)->vm.expected=sizeof(fault_lbc);CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
     command(&session, CMD_FRAME, delta, sizeof(delta));
-    CHECK(reply.code == STATUS_LIMIT && (strstr(reply.message, "deadline") || strstr(reply.message,"instruction limit")));
-    clock_step = 0;
+    CHECK(reply.code == STATUS_RUN);
     command(&session, CMD_RESET, NULL, 0);
     CHECK(reply.code == STATUS_OK && vm_heap_used() == 0);
     deny_allocation = true;
-    upload(&session, &reply, render_lbc, sizeof(render_lbc));
-    CHECK(reply.code == STATUS_LOAD && vm_heap_used() == 0);
+    write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
+    command(&session,CMD_BEGIN,begin,sizeof(begin));
+    CHECK(reply.code == STATUS_STORAGE && !app.upload_owner && vm_heap_used() == 0);
     deny_allocation = false;
     upload(&session, &reply, render_lbc, sizeof(render_lbc));
     CHECK(reply.code == STATUS_OK);
     // Control steps allocate only during preparation. The output buffer is
     // charged alongside interpreter/history/staging storage in the same budget.
     upload(&session,&reply,control_lbc,sizeof(control_lbc));
-    CHECK(reply.code==STATUS_OK && app.vm.control.enabled);
+    CHECK(reply.code==STATUS_OK && app_device(&app,NULL)->vm.control.enabled);
     reply.snapshot_size=0; write_u32(delta,1);
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_OK);
-    CHECK(app.vm.control.output_charge==PIXEL_BYTES);
+    CHECK(app_device(&app,NULL)->vm.control.output_charge==PIXEL_BYTES);
     unsigned control_allocations=allocations;
     deny_allocation=true;
     for (unsigned i=0;i<100;++i) {
@@ -311,25 +366,26 @@ int main(void) {
     }
     CHECK(allocations==control_allocations);
     command(&session,CMD_PLAY,NULL,0); CHECK(reply.code==STATUS_OK);
-    uint64_t before_time=app.vm.control.program_us;
+    uint64_t before_time=app_device(&app,NULL)->vm.control.program_us;
     clock_now+=1500123u;
     app_tick(&app);
-    CHECK(app.vm.control.program_us-before_time==1500123u);
+    CHECK(app_device(&app,NULL)->vm.control.program_us-before_time==1500123u);
     CHECK(displayed[0]==0 && displayed[1]==5 && displayed[2]==220);
-    uint32_t before_frame=app.vm.control.output_frame;
+    uint32_t before_frame=app_device(&app,NULL)->vm.control.output_frame;
     deny_show=true; reply.snapshot_size=0; write_u32(delta,7);
     command(&session,CMD_FRAME,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_RUN && app.vm.control.faulted && !app.vm.playing);
-    CHECK(app.vm.control.output_frame==before_frame);
-    CHECK(displayed[2]==220 && app.pixels.rgb[2]==220);
-    CHECK(app.vm.control.committed[2]==7); // successful batch survives driver failure
+    CHECK(reply.code==STATUS_RUN && !app_device(&app,NULL)->vm.control.faulted && app_device(&app,NULL)->vm.playing);
+    CHECK(app_device(&app,NULL)->vm.control.output_frame==before_frame);
+    CHECK(displayed[2]==220 && app_device(&app,NULL)->pixels.rgb[2]==220);
+    CHECK(app_device(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
     deny_show=false; deny_allocation=false;
     command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==0);
     // Allocation failure during control preparation leaves management usable.
-    upload(&session,&reply,control_lbc,sizeof(control_lbc)); CHECK(reply.code==STATUS_OK);
+    vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);app_device(&app,NULL)->vm.memory=control_lbc;app_device(&app,NULL)->vm.expected=sizeof(control_lbc);
+    CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
     deny_allocation=true; reply.snapshot_size=0;
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_RUN);
-    CHECK(app.vm.control.output_charge==0);
+    CHECK(app_device(&app,NULL)->vm.control.output_charge==0);
     deny_allocation=false;
     // Admission also rejects an output reservation when the aggregate budget
     // is already occupied; it does not raise the limit or lose that accounting.
@@ -352,8 +408,8 @@ int main(void) {
     static VmInstance one,two;
     Capture first_reply={.marker=0x12345678u}, second_reply={.marker=0x12345678u};
     vm_init(&one,&first,capture,&first_reply); vm_init(&two,&second,capture,&second_reply);
-    memcpy(one.bytes,render_lbc,sizeof(render_lbc)); one.expected=sizeof(render_lbc);
-    memcpy(two.bytes,render_lbc,sizeof(render_lbc)); two.expected=sizeof(render_lbc);
+    one.memory=render_lbc; one.expected=sizeof(render_lbc);
+    two.memory=render_lbc; two.expected=sizeof(render_lbc);
     CHECK(!vm_load(&one) && !vm_load(&two)); one.ready=true; two.ready=true;
     vm_command(&one,CMD_FRAME,42,delta,sizeof(delta));
     CHECK(first_reply.code==STATUS_OK && first_reply.value==3 && second.rgb[0]==0);
@@ -370,21 +426,26 @@ int main(void) {
     CHECK(vm_heap_used()==0);
 
     // One identical artifact renders into arbitrary assigned canvases, with no
-    // physical driver. State, clock, parameters and RGB frames are private.
+    // physical driver. State, clock, settings and RGB frames are private.
     uint8_t canvas_one[9], canvas_two[21];
     memset(canvas_one,99,sizeof(canvas_one)); memset(canvas_two,99,sizeof(canvas_two));
     PixelBuffer offscreen_one={.rgb=canvas_one,.count=3}, offscreen_two={.rgb=canvas_two,.count=7};
     vm_init(&one,&offscreen_one,capture,&first_reply); vm_init(&two,&offscreen_two,capture,&second_reply);
     memcpy(one.slot,"A",2); memcpy(two.slot,"B",2);
-    memcpy(one.bytes,slot_lbc,sizeof(slot_lbc)); one.expected=sizeof(slot_lbc);
-    memcpy(two.bytes,slot_lbc,sizeof(slot_lbc)); two.expected=sizeof(slot_lbc);
+    one.memory=slot_lbc; one.expected=sizeof(slot_lbc);
+    two.memory=slot_lbc; two.expected=sizeof(slot_lbc);
     CHECK(!vm_load(&one) && !vm_load(&two)); one.ready=true; two.ready=true;
     unsigned offscreen_shows=shows;
+    Json settings;
+    const char *first_settings="{\"seed\":7}", *second_settings="{\"seed\":11}";
+    CHECK(json_parse(&settings,(const uint8_t *)first_settings,strlen(first_settings)));
+    CHECK(!control_settings(&one,&settings,0));
+    CHECK(json_parse(&settings,(const uint8_t *)second_settings,strlen(second_settings)));
+    CHECK(!control_settings(&two,&settings,0));
     CHECK(!control_prepare(&one) && !control_prepare(&two));
     CHECK(one.control.count==3 && two.control.count==7);
     CHECK(!one.output && !two.output && !one.control.output_charge && !two.control.output_charge);
     CHECK(one.control.allocation!=two.control.allocation);
-    one.control.parameters[0].value.integer=7; two.control.parameters[0].value.integer=11;
     allocation_count=allocations; deny_allocation=true;
     CHECK(!control_step(&one,1,5000) && !control_step(&two,1,9000));
     CHECK(one.control.committed[8]==13 && two.control.committed[20]==21);
@@ -402,19 +463,18 @@ int main(void) {
     vm_destroy(&two); CHECK(vm_heap_used()==0 && shows==offscreen_shows);
 
     // Stored execution reads flash, not the resident upload array. The running
-    // version survives a later erase after materialization into that same slot.
+    // version remains pinned in flash through repeated catalogue replacements.
     storage_available=true;memset(flash,255,sizeof(flash));Store stored;CHECK(store_mount(&stored));
     CHECK(store_put(&stored,"bytecode",slot_lbc,sizeof(slot_lbc)));
     const StoreEntry *entry=store_find(&stored,"bytecode");CHECK(entry);
     vm_init(&one,&offscreen_one,capture,&first_reply);
-    one.expected=entry->size;one.from_storage=true;
-    one.storage_offset=(uint32_t)stored.bank*STORE_BANK_BYTES+entry->offset;
-    memset(one.bytes,0xa5,sizeof(one.bytes));
+    CHECK(vm_bind_storage(&one,&stored,entry));
     CHECK(!vm_load(&one));one.ready=true;CHECK(!control_prepare(&one));
     CHECK(!control_step(&one,1,5000));CHECK(one.control.committed[8]==10);
-    for(size_t k=0;k<sizeof(one.bytes);k++)CHECK(one.bytes[k]==0xa5);
-    CHECK(vm_materialize(&one) && !one.from_storage);
-    memset(flash,255,sizeof(flash));CHECK(!control_step(&one,1,7000));
+    uint32_t pinned=one.code.offset;
+    for(unsigned k=0;k<20;k++)CHECK(store_put(&stored,"bytecode",render_lbc,sizeof(render_lbc)));
+    CHECK(one.from_storage && one.code.offset==pinned);
+    CHECK(!control_step(&one,1,7000));
     CHECK(one.control.committed[8]==13);vm_destroy(&one);storage_available=false;
 
     // Initialization failure changes the active revision and leaves no driver.
@@ -423,7 +483,7 @@ int main(void) {
     char *pin=strstr((char *)app.staging,"GP16"); CHECK(pin); pin[3]='7';
     app.expected=(uint32_t)config_size; app.object_kind=1; app.staged=true; app.upload_owner=1;
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));
-    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app.pixels.driver && !app.vm.target);
+    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app_device(&app,NULL)->pixels.driver && !app_device(&app,NULL)->vm.target);
     CHECK(strstr(reply.message,"initialization failed"));
     session_destroy(&session); app_destroy(&app);
     network_transactions();

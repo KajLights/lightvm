@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", type=Path, default=ROOT / "build/samples")
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
-for source in sorted((ROOT / "samples/python").glob("*.py")):
+for source in sorted((ROOT / "samples").glob("*.py")):
     result = compile_source(source.read_text(), str(source))
     if not result.success:
         raise SystemExit(str(result.diagnostics))

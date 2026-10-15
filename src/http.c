@@ -67,11 +67,12 @@ static void headers(Http *h,unsigned code,bool binary) {
     h->header_size=(size_t)snprintf(h->header,sizeof(h->header),"HTTP/1.1 %u %s\r\nContent-Type: %s\r\nContent-Length: %lu\r\nConnection: close\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, X-LightVM-Session\r\n\r\n",code,reason,binary?"application/octet-stream":"application/json",(unsigned long)h->used);
 }
 void http_tick(Http *h,uint64_t now) {
+    if(h->executing||h->app->command_active)return;
     expire(h,now);
     if (!h->sending && h->count) {
         h->active=h->queue[h->head]; h->head=(h->head+1)%HTTP_QUEUE; h->count--;
         h->used=0; h->sent=0; h->header_sent=0; h->overflow=false; h->reply_source=0;
-        unsigned code=execute(h,&h->active,now);
+        h->executing=true;unsigned code=execute(h,&h->active,now);h->executing=false;
         if (code>=400) { h->used=(size_t)snprintf((char *)h->response,sizeof(h->response),"{\"error\":%u}",code); }
         headers(h,code,code==200 && !strcmp(h->active.path,"/api/v1/command")); h->deadline=now+2000000u; h->sending=true; h->closing=false;
     }

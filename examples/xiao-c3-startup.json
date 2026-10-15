@@ -4,9 +4,18 @@
     {
       "id": "lights",
       "type": "ws2812b",
-      "config": {"pin": "D1", "count": 100, "order": "GRB", "brightness_limit": 32}
+      "config": {
+        "pin": "D1",
+        "count": 100,
+        "order": "GRB",
+        "brightness_limit": 32
+      },
+      "startup": {
+        "procedure": "rainbow",
+        "args": {
+          "duration": 3.3
+        }
+      }
     }
-  ],
-  "targets": {"A": {"device": "lights"}},
-  "startup": {"procedure": "rainbow", "target": "A"}
+  ]
 }

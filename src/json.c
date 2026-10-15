@@ -50,6 +50,15 @@ bool json_equal(const Json *j, int t, const char *value) {
     char buffer[128];
     return json_string(j, t, buffer, sizeof(buffer)) && !strcmp(buffer, value);
 }
+/* Keep decoded-key scratch off the recursive parser's stack. Inlining it
+ * multiplies two 128-byte buffers by every accepted nesting level. */
+static __attribute__((noinline)) bool unique_key(const Json *j,int object,int key) {
+    char name[128];
+    if(key<0||!json_string(j,key,name,sizeof(name)))return false;
+    for(int k=object+1;k<key;k=j->tokens[k+1].next)
+        if(json_equal(j,k,name))return false;
+    return true;
+}
 static int parse_value(Json *j, unsigned depth) {
     whitespace(j);
     if (depth > 16 || j->position == j->size || j->count == 256) return -1;
@@ -65,11 +74,8 @@ static int parse_value(Json *j, unsigned depth) {
         else for (;;) {
             if (t->type == JSON_OBJECT) {
                 int key = parse_value(j, depth + 1);
-                char name[128];
-                if (key < 0 || !json_string(j, key, name, sizeof(name))) return -1;
                 // Reject duplicate keys, including escaped spellings.
-                for (int k = index + 1; k < key; k = j->tokens[k + 1].next)
-                    if (json_equal(j, k, name)) return -1;
+                if(!unique_key(j,index,key))return -1;
                 whitespace(j);
                 if (j->position == j->size || j->text[j->position++] != ':') return -1;
             }

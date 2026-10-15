@@ -65,12 +65,12 @@ function announcedUrl(child, output) {
     assert.equal(await page.locator('#http-address').inputValue(), url);
     assert.equal(await page.locator('#nearby-devices option').count(), 2);
     await page.locator('#connect-http').click();
-    await page.waitForFunction(() => location.hash.endsWith('/configure') && document.querySelector('#output-enabled'));
+    await page.waitForFunction(() => location.hash.endsWith('/configure') && document.querySelector('#output-add'));
     assert.match(await page.locator('#path-health').innerText(), /HTTP: connected/);
     console.log('Device picker connected HTTP and opened configuration: passed');
 
-    await page.locator('#output-enabled').check();
-    await page.locator('#config-count').fill('5');
+    await page.locator('#output-add').click();
+    await page.locator('#config-count-0').fill('5');
     await page.locator('#config-save').click();
     await page.waitForFunction(() => document.querySelector('#output-binding')?.textContent.includes('5 pixels') && !document.querySelector('#config-fields')?.disabled);
     const activeConfig = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--get-config'], { encoding: 'utf8' }));
@@ -135,7 +135,7 @@ function announcedUrl(child, output) {
     await page.locator('#network-save').click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Network settings saved') && !document.querySelector('#network-fields')?.disabled);
     await page.getByRole('button', { name: 'Output & startup' }).click();
-    await page.locator('#startup-procedure').selectOption('browser');
+    await page.locator('#startup-procedure-0').selectOption('browser');
     await page.locator('#config-save').click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Output configuration applied') && !document.querySelector('#config-fields')?.disabled);
     await page.getByRole('link', { name: 'Develop', exact: true }).click();

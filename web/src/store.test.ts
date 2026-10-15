@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import rainbow from '../../samples/python/rainbow.py?raw';
+import rainbow from '../../samples/rainbow.py?raw';
 
 afterEach(() => { localStorage.clear(); vi.resetModules(); });
 

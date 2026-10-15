@@ -75,7 +75,7 @@ load Develop while online before relying on compilation without internet.
 During power-cycle recovery, the panel shows saved network settings while the
 open recovery AP stays active. **Save network for next boot** preserves the
 current connection; restart after the detector has cleared its counter to apply
-those values. Recovery keeps the startup program idle until manually activated.
+those values. Startup programs stay idle during recovery; manual activation remains available.
 See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode)
 and [power-cycle recovery](boot-sequence.md#recovery-access-point).
 
@@ -95,10 +95,13 @@ and review its state. Web Serial requires HTTPS or localhost and desktop
 Chrome/Edge. Editing and bytecode downloads still work in browsers without Web Serial.
 
 In **Configure → Output & startup**, select the data pin, count, colour order and
-brightness limit, bind the output to slot A, and optionally select a stored startup
-program. An advanced JSON editor is available for the full configuration schema.
+brightness limit for each output, and optionally select its stored startup program
+and arguments. Add or remove outputs independently. Startup arguments are a JSON
+object; omitted values use program defaults. Changing a program clears its argument
+draft, and choosing idle removes that output’s startup invocation. An advanced
+JSON editor stays synchronized with the form.
 Validate has no hardware side effect; Apply changes RAM; Apply & save persists for
-reboot. Applying output or startup settings stops playback. Saves use the revision
+reboot. Unchanged hardware retains playback, including after startup-only edits. Saves use the revision
 loaded with the draft. If another client changes device settings, the draft stays
 intact and saving pauses until the new state is reviewed.
 
@@ -110,26 +113,26 @@ reconnect. Background status polling does not replace focused fields or unsaved
 values.
 
 **Develop** contains the Python editor, upload/run, stored bytecode programs,
-preparation settings and live parameters. The initial `rainbow.py` is selected in
+initialization settings and playback controls. The initial `rainbow.py` is selected in
 the dropdown and uses the same canonical source as its example. It preserves the
 original picolights Rainbow's default 60-second cycle, adjustable with its existing
 duration setting. Existing stored programs are not replaced when firmware or
 examples change. Chase accumulates colour from one end (about four seconds for
-200 pixels); Wipe fills from both ends (about two seconds), then completes and
-holds. Both look solid after filling. The local draft is saved in browser storage and can be downloaded as
+200 pixels) and keeps running with the strip solid; Wipe fills from both ends
+(about two seconds), then clears and repeats. Animations have no automatic stop
+condition. The local draft is saved in browser storage and can be downloaded as
 .py. Compiled .lbc can also be downloaded. **Upload & run** requires slot A to
 be configured; it replaces the transient resident program and does not persist it.
 Stored programs can be saved, downloaded, activated and deleted when storage is
-available. The parameter panel uses the program's manifest and sends generation
-and revision checks for live changes and pause/resume. A conflict refreshes device
-state before another edit.
+available. The playback panel sends generation checks for pause/resume. Live parameter
+controls remain available only for stored ABI 2 programs.
 
-The [animation/1](animation-profile.md) preparation settings panel validates and
+The [animation/1](animation-profile.md) initialization settings panel validates and
 restarts a fresh instance, preserving the prior instance if preparation fails.
 Its changes are runtime-only: edit source defaults and save the compiled program
 to retain them after reboot. Playback status refreshes every five seconds without
-overwriting unsaved parameter or preparation-setting edits. Completion is shown separately from pause; completed
-animations hold their final frame and require restart to run again. Profile and
+overwriting unsaved initialization settings. Settings are frozen for each instance;
+there are no listeners or cycle notifications. Profile and
 format capability checks prevent sending new examples to unsupported firmware.
 
 Pico Web Serial uses the existing USB CDC protocol. Pico asserts DTR at 115200;

@@ -66,7 +66,7 @@ class HttpTests(unittest.TestCase):
         self.directory.cleanup()
 
     def config(self):
-        return {'schema': 'lightvm.config/1', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}], 'targets': {'A': {'device': 'lights'}}}
+        return {'schema': 'lightvm.config/1', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
 
     def network(self):
         return {'schema': 'lightvm.network/1', 'wifi': {'enabled': False, 'country': 'XX', 'networks': [{'ssid': 'café🌈', 'password': 'secret123'}, {'ssid': 'open', 'password': '', 'hidden': True}]}, 'http': {'enabled': True, 'port': 8080}}
@@ -258,24 +258,6 @@ class HttpTests(unittest.TestCase):
         self.assertNotEqual(replacement.transport.session, clients[1].transport.session)
         self.assertEqual(replacement.status_fields()['mode'], 'idle')
 
-    def test_control_parameters_and_conflicts_work_on_both_paths(self):
-        from lightvm.compiler import compile_source
-        from bytecode_fixtures import color, sample, padded_program
-        source = 'from lightvm import parameter, kernel, rgb\nspeed = parameter(1.0)\n@kernel\ndef draw():\n    pixels[0] = rgb(17,34,51)\n'
-        compiled = compile_source(source)
-        self.assertFalse(compiled.diagnostics)
-        wasm = compiled.bytecode
-        self.http.configure(self.config())
-        self.http.save_procedure('control', wasm)
-        self.pipe.activate('control')
-        old = self.http.program_parameters()
-        self.pipe.set_parameters({'speed': 2.0})
-        with self.assertRaises(ProtocolError):
-            self.http.manage('program_parameters_set', values={'speed': 3.0}, expected_generation=old['generation'], expected_parameter_revision=old['parameter_revision'])
-        self.assertEqual(self.http.program_parameters()['values']['speed'], 2.0)
-        self.http.set_parameters({'speed': 4.0})
-        self.assertEqual(self.pipe.program_parameters()['values']['speed'], 4.0)
-        self.assertEqual(self.http.snapshot()[1][:3], bytes.fromhex('112233'))
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,9 +15,7 @@ export interface Description {
 }
 export interface HardwareConfig {
   schema: 'lightvm.config/1';
-  devices: { id: string; type: 'ws2812b'; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
-  targets?: { A?: { device: string } };
-  startup?: { procedure: string; target: 'A' } | null;
+  devices: { id: string; type: 'ws2812b'; startup?: { procedure: string; args?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {
   schema: 'lightvm.network/1';
@@ -31,10 +29,10 @@ export interface Manifest { abi: number; schema?: string; profile?: string; para
 export interface ParameterState {
   manifest: Manifest; values: Record<string, string | number | boolean>;
   generation: number; parameter_revision: number; slot: string; paused: boolean; faulted: boolean;
-  completed?: boolean; cycle_count?: number; settings_values?: Record<string, number | boolean>;
+  render_count?: number; settings_values?: Record<string, number | boolean>;
 }
 export interface NearbyDevice { device_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { message: string; line: number; column: number; end_line?: number; end_column?: number }
 export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[] }
-export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config/1', devices: [], targets: {}, startup: null };
+export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config/1', devices: [] };
 export const DEFAULT_SOURCE = DEFAULT_EXAMPLE.source;

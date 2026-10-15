@@ -1,14 +1,13 @@
 """Bytecode admission and the unchanged framed upload/command protocol."""
 import os
-import json
 from pathlib import Path
 import struct
 import sys
 import unittest
 import zlib
-from bytecode_fixtures import ROOT, color, fault, infinite, legacy_sample
+from bytecode_fixtures import ROOT, color, fault
 sys.path.insert(0, str(ROOT / 'tools'))
-from client import BEGIN, CHUNK, FINISH, FRAME, RESET, RUN, STATUS, Client, ProcessTransport
+from client import BEGIN, CHUNK, FINISH, FRAME, RESET, RUN, STATUS, OBJECT_CANCEL, Client, ProcessTransport, ProtocolError
 from test_configuration import config
 
 class ReceiverTests(unittest.TestCase):
@@ -35,18 +34,18 @@ class ReceiverTests(unittest.TestCase):
         self.client.command(BEGIN,struct.pack('<II',len(data),zlib.crc32(data)^1))
         self.client.command(CHUNK,bytes(4)+data)
         self.assertEqual(self.client.command(FINISH).code, 2)
-        self.assertEqual(self.client.status_fields()['ready'],'0')
+        self.assertEqual(self.client.status_fields()['ready'],'1')
         self.client.command(RESET)
         self.assertEqual(self.client.status_fields()['heap'],'0')
 
     def test_invalid_packages_are_rejected_without_execution(self):
         original = color()
-        code = 64 + struct.unpack_from('<I',original,8)[0]*8
+        code = 96 + struct.unpack_from('<I',original,8)[0]*8
         variants = [b'\0asm\1\0\0\0', original[:-1], original+b'x']
-        for offset, value in ((4,99),(8,0xffffffff),(20,1),(32,7),(40,1),(code,255)):
+        for offset, value in ((4,99),(8,0xffffffff),(20,0),(32,257),(80,1),(code,255)):
             data=bytearray(original);struct.pack_into('<I',data,offset,value);variants.append(data)
         # Typed destination and register indices must be checked before dispatch.
-        data=bytearray(original);data[code+16+1]=255;variants.append(data)
+        data=bytearray(original);data[code+8+1]=255;variants.append(data)
         for data in variants:
             with self.subTest(data=bytes(data[:40])):
                 self.client.command(BEGIN,struct.pack('<II',len(data),zlib.crc32(data)))
@@ -57,27 +56,27 @@ class ReceiverTests(unittest.TestCase):
         self.client.upload(original)
         self.assertEqual(self.client.command(FRAME,bytes(4)).code,0)
 
-    def test_manifest_must_match_parameter_registers(self):
-        original=legacy_sample('color')
-        length=struct.unpack_from('<I',original,36)[0]
-        metadata=json.loads(original[-length:])
-        for change in ('default','type','schema','count'):
-            candidate=json.loads(json.dumps(metadata))
-            if change=='default':candidate['parameters'][0]['default']=7
-            elif change=='type':candidate['parameters'][0]['type']='int'
-            elif change=='schema':candidate['schema']='lightvm.program/2'
-            else:candidate['parameters']=[]
-            manifest=json.dumps(candidate).encode()
-            data=bytearray(original[:-length])+manifest
-            struct.pack_into('<I',data,36,len(manifest))
-            self.client.command(BEGIN,struct.pack('<II',len(data),zlib.crc32(data)))
-            for at in range(0,len(data),508):self.client.command(CHUNK,struct.pack('<I',at)+data[at:at+508])
-            self.assertEqual(self.client.command(FINISH).code,3)
 
-    def test_fault_and_instruction_limit_leave_protocol_usable(self):
-        for data, expected in ((fault(),4),(infinite(),5)):
-            self.client.upload(data)
-            self.assertEqual(self.client.command(FRAME,bytes(4)).code,expected)
+    def test_failed_or_cancelled_replacement_preserves_live_program(self):
+        self.client.upload(color(31))
+        generation = self.client.program_parameters()['generation']
+        for candidate in (fault(), b'LBC1' + bytes(12)):
+            with self.assertRaises(ProtocolError):
+                self.client.upload(candidate)
+            self.assertEqual(self.client.program_parameters()['generation'], generation)
+            self.client.command(FRAME, bytes(4))
+            self.assertEqual(self.client.pixel_snapshot[0], 31)
+        data = color(99)
+        self.client.require_ok(self.client.command(BEGIN, struct.pack('<II', len(data), zlib.crc32(data))))
+        self.client.require_ok(self.client.command(CHUNK, bytes(4) + data[:100]))
+        self.client.require_ok(self.client.command(OBJECT_CANCEL))
+        self.assertEqual(self.client.program_parameters()['generation'], generation)
+        self.client.command(FRAME, bytes(4))
+        self.assertEqual(self.client.pixel_snapshot[0], 31)
+
+    def test_fault_leaves_protocol_usable(self):
+        for data, expected in ((fault(),4),):
+            with self.assertRaises(ProtocolError):self.client.upload(data)
             self.assertEqual(self.client.command(STATUS).code,0)
             self.client.upload(color(12))
             self.assertEqual(self.client.command(FRAME,bytes(4)).code,0)

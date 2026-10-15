@@ -129,8 +129,8 @@ by animation API v1. The current control ABI 2 also produces RGB-only frames;
 alpha layers and A/B transitions remain separate future work.
 
 The default engine profile limits uploads to 32 KiB, interpreter heap use to
-128 KiB and WASM linear memory to one 64 KiB page. Its cooperative execution
-deadline is 500 ms. These limits are a starting target for compiler design;
+128 KiB and WASM linear memory to one 64 KiB page. Guest execution has no timed
+watchdog. These limits are a starting target for compiler design;
 browser execution alone cannot establish that a program fits or renders fast
 enough on a device.
 
@@ -461,9 +461,9 @@ cannot stall rendering. Source-level runtime locations depend on toolchain and
 interpreter support; retain useful raw trap details when mapping is unavailable.
 
 Set execution and rendering budgets to preserve device responsiveness. The
-current 500 ms deadline is a recovery bound, not an acceptable frame-time target.
-Transport writes and queues also need bounds because native blocking I/O is
-outside the guest deadline.
+guest interpreter uses bounded work slices without a timed execution watchdog.
+Transport writes and queues also need bounds to prevent native blocking I/O
+from stalling the scheduler.
 
 ## Discovery and browser access
 

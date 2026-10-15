@@ -16,6 +16,13 @@ static void output_message(void *context, uint8_t type, uint16_t id,
     write_frame(output_bytes, context, type, id, payload, size);
     stdio_flush();
 }
+static void service_io(void *context) {
+    (void)context;
+#if LIGHTVM_WIFI
+    pico_network_poll();
+#endif
+    tight_loop_contents();
+}
 int main(void) {
     static App app;
     static Session session;
@@ -27,6 +34,7 @@ int main(void) {
 #if LIGHTVM_WIFI
     pico_network_init(&app);
 #endif
+    app.service_io=service_io;
     bool connected=stdio_usb_connected();
     for (;;) {
 #if LIGHTVM_WIFI
@@ -39,7 +47,14 @@ int main(void) {
         int byte = getchar_timeout_us(1000);
         if (byte == PICO_ERROR_TIMEOUT)
             continue;
-        uint8_t input = (uint8_t)byte;
-        session_feed(&session, &input, 1); app_reply_delivered(&app,1);
+        // Bound ingress work, but do not render every device between individual
+        // bytes of a command. A busy multi-device controller must remain usable.
+        uint8_t input[256];size_t size=0;
+        do {
+            input[size++]=(uint8_t)byte;
+            if(size==sizeof(input))break;
+            byte=getchar_timeout_us(0);
+        } while(byte!=PICO_ERROR_TIMEOUT);
+        session_feed(&session,input,size);app_reply_delivered(&app,1);
     }
 }

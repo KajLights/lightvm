@@ -7,7 +7,7 @@ export function supportsProgram(target: Description, manifest: Manifest) {
   const formats = target.bytecode_formats ?? [target.bytecode_format];
   return abis.includes(manifest.abi) && formats.includes(`LBC1/${manifest.abi}`) &&
     target.program_schemas.includes(manifest.schema ?? `lightvm.program/${manifest.abi + 1}`) &&
-    (manifest.abi !== 3 || Boolean(target.program_profiles?.includes('animation/1')));
+    (manifest.abi !== 4 || Boolean(target.program_profiles?.includes('animation/1')));
 }
 
 export function assetUrl(name: string) { return new URL(name, new URL(import.meta.env.BASE_URL, document.baseURI)).href; }

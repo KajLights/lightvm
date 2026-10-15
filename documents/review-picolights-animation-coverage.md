@@ -180,8 +180,9 @@ history.
 
 ## The six samples are not six faithful original ports
 
-The replay suite compares against `tests/reference_effects`, which contains the
-earlier **LightVM** Python examples. It does not replay the picolights classes.
+At the time of this review, the replay suite compared against copies of the
+earlier LightVM Python examples. Those copies and their tests have since been
+removed. Current replay tests execute the six shared sources in `samples/`.
 
 | Example | Difference from the original picolights implementation |
 |---|---|
@@ -192,8 +193,9 @@ earlier **LightVM** Python examples. It does not replay the picolights classes.
 | Rainbow | The original has a colour-derived starting hue, duration and `rainbowio.colorwheel` conversion. The sample uses normalized HSV, speed and a zero initial phase. Its unused original `color_count`/`color_n` settings should not acquire invented behaviour. |
 | Twinkle | The original tracks births, positions and per-star colours in bounded arrays; spawns probabilistically from elapsed time; uses a sine fade and channel-wise background maxima. The sample uses deterministic per-pixel phases, cubic fading, fixed warm colours and black background. |
 
-The separate `samples/rainbow.py` port preserves the old **WASM demo**, not the
-picolights Rainbow class. Keep those three rainbow references distinct.
+At the time of this review, a separate Rainbow port preserved the old WASM demo.
+That duplicate has since been removed; `samples/rainbow.py` is now the single
+current picolights Rainbow example.
 
 ## Coverage matrix
 

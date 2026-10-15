@@ -22,16 +22,16 @@ def check(condition,message):
 def smoke(client, board, reference):
     info=client.describe()
     check(info['board']==board, 'unexpected device identity')
-    check(info.get('bytecode_format')=='LBC1/2','bytecode firmware required')
+    check('LBC1/4' in info.get('bytecode_formats',[]),'current bytecode firmware required')
     original=client.get_config()
     count=min(100,info['pixel_capacity'])
     pin='D1' if board=='xiao_esp32c3' else 'D0' if board.startswith('xiao_esp32') else 'GP16'
-    config={'schema':'lightvm.config/1','devices':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}],'targets':{'A':{'device':'lights'}}}
+    config={'schema':'lightvm.config/1','devices':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}]}
     host_config={**config,'devices':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]}
     try:
         client.configure(config);reference.configure(host_config)
-        for source in sorted((ROOT/'samples/python').glob('*.py')):
-            artifact=compile_source(source.read_text(),str(source),info)
+        for source in sorted((ROOT/'samples').glob('*.py')):
+            artifact=compile_source(source.read_text().replace("random.seed()", "random.seed(1)"),str(source),info)
             check(artifact.success,str(artifact.diagnostics))
             client.upload(artifact.bytecode);reference.upload(artifact.bytecode)
             for delta in (0,16,17,1000):
@@ -45,9 +45,10 @@ def smoke(client, board, reference):
                 client.require_ok(client.command(FRAME,bytes(4)))
                 check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'settings restart failed')
             if source.stem=='wipe':
-                check(client.program_parameters()['completed'],'Wipe did not complete')
-        # Wipe is terminal. Use the repeating Rainbow to test autonomous playback.
-        rainbow=compile_source((ROOT/'samples/python/rainbow.py').read_text(),target=info)
+                state=client.program_parameters()
+                check(state['render_count']>1,'Wipe did not keep rendering')
+        # Use Rainbow to test autonomous playback and pause/resume.
+        rainbow=compile_source((ROOT/'samples/rainbow.py').read_text(),target=info)
         check(rainbow.success,str(rainbow.diagnostics));client.upload(rainbow.bytecode)
         client.require_ok(client.command(PLAY));time.sleep(.1)
         before=client.status_fields();time.sleep(.1);after=client.status_fields()
@@ -55,8 +56,11 @@ def smoke(client, board, reference):
         check(after['heap']==before['heap'],'playback allocation changed')
         client.pause_program();paused=client.program_parameters()['program_us'];time.sleep(.03)
         check(client.program_parameters()['program_us']==paused,'pause advanced time')
-        client.resume_program();time.sleep(.03)
-        check(client.program_parameters()['program_us']>paused,'resume failed')
+        client.resume_program()
+        deadline=time.monotonic()+1
+        while client.program_parameters()['program_us']<=paused:
+            check(time.monotonic()<deadline,'resume failed')
+            time.sleep(.02)
         print('Six effects, identical bytecode/pixels, controls, snapshots, playback and pause/resume passed.')
     finally:
         client.command(STOP);client.command(RESET);client.configure(original)

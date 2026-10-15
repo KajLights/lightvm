@@ -2,6 +2,7 @@
 #include "control.h"
 #include "vm.h"
 #include "vm_allocator.h"
+#include "runtime.h"
 #include "animation.h"
 #include <inttypes.h>
 #include <float.h>
@@ -28,8 +29,8 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
     static const char *const pixel_fields[]={"format",NULL};
     static const char *const param_fields[]={"name","type","default","minimum","maximum",NULL};
     if (size>CONTROL_MANIFEST_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,portable?portable_fields:fields) ||
-        !json_equal(&j,json_get(&j,0,"schema"),portable?"lightvm.program/4":"lightvm.program/3") ||
-        !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=(portable?3u:CONTROL_ABI_VERSION)) return false;
+        !json_equal(&j,json_get(&j,0,"schema"),portable?"lightvm.program/5":"lightvm.program/3") ||
+        !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=(portable?4u:CONTROL_ABI_VERSION)) return false;
     if(portable){
         int settings=json_get(&j,0,"settings");
         static const char *const setting_fields[]={"name","type","register",NULL};
@@ -39,7 +40,7 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
         for(int t=settings+1;t<j.tokens[settings].next;t=j.tokens[t].next,n++){
             uint32_t reg;
             if(!json_fields(&j,t,setting_fields)||!json_string(&j,json_get(&j,t,"name"),portable->setting_names[n],33)||!object_name_valid(portable->setting_names[n])||
-                !json_u32(&j,json_get(&j,t,"register"),&reg)||reg!=portable->settings[n].reg||!json_equal(&j,json_get(&j,t,"type"),types[pbc_type(portable,reg)]))return false;
+                !json_u32(&j,json_get(&j,t,"register"),&reg)||reg!=pbc_setting(portable,n).reg||!json_equal(&j,json_get(&j,t,"type"),types[pbc_type(portable,reg)]))return false;
             for(unsigned k=0;k<n;k++)if(!strcmp(portable->setting_names[k],portable->setting_names[n]))return false;
         }
     }
@@ -64,11 +65,12 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
         if ((p->has_minimum && !value(&j,lo,p->kind,&p->minimum)) ||
             (p->has_maximum && !value(&j,hi,p->kind,&p->maximum)) || !in_bounds(p,p->value)) return false;
     }
+    if(portable&&c->parameter_count)return false;
     c->enabled=true; return true;
 }
 const char *control_probe(VmInstance *a) {
     Control *c=&a->control;memset(c,0,sizeof(*c));
-    LbcProgram *p=&a->program;
+    LbcProgram *p=a->legacy?&a->legacy->program:NULL;
     uint32_t size=a->portable?a->portable->manifest_size:p->manifest_size;
     uint32_t offset=a->portable?a->portable->manifest_offset:p->manifest_offset;
     if(!size || size>CONTROL_MANIFEST_LIMIT)return "bytecode requires a LightVM manifest";
@@ -92,13 +94,16 @@ const char *control_probe(VmInstance *a) {
     return n==c->parameter_count ? NULL : "parameter manifest does not match bytecode";
 }
 void control_destroy(VmInstance *a) {
+    vm_output_cancel(a);
+    store_unpin(a->store,a->code_pin);a->code_pin=-1;a->store=NULL;
+    demo_free(a->legacy);a->legacy=NULL;
     demo_free(a->control.continuation);
     pbc_destroy(a->portable);a->portable=NULL;
     demo_free(a->control.allocation);
     vm_heap_uncharge(a->control.output_charge);
     memset(&a->control,0,sizeof(a->control));
 }
-const char * control_prepare(VmInstance *a) {
+static const char *control_prepare_impl(VmInstance *a) {
     Control *c=&a->control;
     if (c->faulted) return "control program faulted; reactivate to recover";
     if (c->initialized) return NULL;
@@ -115,12 +120,13 @@ const char * control_prepare(VmInstance *a) {
     }
     a->view=(LbcBuffer){.data=c->working,.count=c->count,.generation=a->generation};
     if(a->portable){const char *error=animation_prepare(a);if(!error)c->initialized=true;return error;}
-    if(!lbc_init(&a->instance,&a->program,&a->view))return "bytecode instance initialization failed";
+    if(!lbc_init(&a->legacy->instance,&a->legacy->program,&a->view))return "bytecode instance initialization failed";
     const char *error=control_step(a,0,0);
     if (!error) c->initialized=true;
     return error;
 }
-const char * control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
+static const char *control_step_impl(VmInstance *a,uint32_t trigger,uint64_t delta) {
+    if(a->output_pending)return "output frame is still in use";
     if(a->portable)return trigger<=1?animation_advance(a,trigger?delta:0,true):"invalid animation trigger";
     Control *c=&a->control;
     if (!c->allocation || c->faulted || trigger>1) return "control contribution is not prepared or faulted";
@@ -134,16 +140,16 @@ const char * control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
     for(uint32_t n=0;n<c->parameter_count;n++) {
         ControlParameter *p=&c->parameters[n];LbcValue v;
         if(p->kind==PARAM_FLOAT)v.f=(float)p->value.real;else v.i=(int32_t)p->value.integer;
-        if(!lbc_parameter(&a->instance,c->parameter_registers[n],v.u))error="invalid bytecode parameter";
+        if(!lbc_parameter(&a->legacy->instance,c->parameter_registers[n],v.u))error="invalid bytecode parameter";
     }
     // Initial preparation renders declared state without advancing simulation.
-    if(!error && !(trigger ? lbc_begin(&a->instance,(float)(c->program_us/1000000.0),(float)(delta/1000000.0)) :
-                            lbc_render(&a->instance,0)))error="bytecode invocation failed";
+    if(!error && !(trigger ? lbc_begin(&a->legacy->instance,(float)(c->program_us/1000000.0),(float)(delta/1000000.0)) :
+                            lbc_render(&a->legacy->instance,0)))error="bytecode invocation failed";
     int status=0;
-    while(!error && !(status=lbc_resume(&a->instance,64))) {
-        if(platform_time_us()-started>=RUN_TIMEOUT_US)error="execution deadline exceeded";
+    while(!error && !(status=lbc_resume(&a->legacy->instance,64))) {
+        runtime_checkpoint();
     }
-    if(!error && status<0)error=a->instance.used>=2000000 ? "bytecode instruction limit exceeded" : "bytecode execution fault";
+    if(!error && status<0)error="bytecode execution fault";
     c->in_step=false;
     if (error) { c->faulted=true; a->playing=false; return error; }
     memcpy(c->committed,c->working,n);
@@ -161,15 +167,17 @@ const char *control_settings(VmInstance *a,const Json *j,int object){
     for(int t=object+1;t<j->tokens[object].next;t=j->tokens[t+1].next){
         char name[33];unsigned n;
         if(!json_string(j,t,name,sizeof(name)))return "invalid setting name";
+        strcpy(p->argument_error,name);
         for(n=0;n<p->nsettings;n++)if(!strcmp(name,p->setting_names[n]))break;
         if(n==p->nsettings)return "unknown setting";
-        unsigned type=pbc_type(p,p->settings[n].reg);
+        unsigned type=pbc_type(p,pbc_setting(p,n).reg);
         ParameterKind kind=type==T_FLOAT?PARAM_FLOAT:type==T_BOOL?PARAM_BOOL:type==T_COLOR?PARAM_RGB:PARAM_INT;
         ParameterValue v;
         if(!value(j,t+1,kind,&v))return "invalid setting value";
         if(type==T_FLOAT)p->overrides[n].f=(float)v.real;else p->overrides[n].i=(int32_t)v.integer;
         p->override_mask|=1u<<n;
     }
+    p->argument_error[0]=0;
     return NULL;
 }
 const char *control_reset_program(VmInstance *a,const Json *request,int settings){
@@ -179,43 +187,40 @@ const char *control_reset_program(VmInstance *a,const Json *request,int settings
     if(!candidate)return "replacement exceeds peak memory budget";
     vm_init(candidate,a->target,a->send,a->transport);candidate->output=a->output;
     candidate->generation=a->generation+1;candidate->expected=a->expected;candidate->received=a->received;
-    candidate->from_storage=a->from_storage;candidate->storage_offset=a->storage_offset;
+    candidate->uploading=a->uploading; /* the shared install transaction survives a live reset */
+    if(a->from_storage&&!vm_bind_storage(candidate,a->store,&a->code)){demo_free(candidate);return "package reference limit exceeded";}
     memcpy(candidate->slot,a->slot,sizeof(a->slot));
-    if(!a->from_storage)memcpy(candidate->bytes,a->bytes,a->expected);
+    memcpy(candidate->device,a->device,sizeof(a->device));
+    if(!a->from_storage)candidate->memory=a->memory;
     const char *error=vm_load(candidate);
     if(!error){
         Portable *old=a->portable,*next=candidate->portable;
         for(unsigned n=0;n<old->nsettings;n++){
-            if(old->initialized){next->overrides[n]=old->values[old->settings[n].reg];next->override_mask|=1u<<n;}
+            if(old->initialized){next->overrides[n]=pbc_value(old,pbc_setting(old,n).reg);next->override_mask|=1u<<n;}
             else if(old->override_mask&(1u<<n)){next->overrides[n]=old->overrides[n];next->override_mask|=1u<<n;}
         }
         for(unsigned n=0;n<a->control.parameter_count;n++)candidate->control.parameters[n].value=a->control.parameters[n].value;
         error=control_settings(candidate,request,settings);
-        int values=json_get(request,0,"values");
-        if(!error&&values>=0){
-            if(request->tokens[values].type!=JSON_OBJECT)error="values must be an object";
-            else for(int t=values+1;!error&&t<request->tokens[values].next;t=request->tokens[t+1].next){
-                char name[33];unsigned n;
-                if(!json_string(request,t,name,sizeof(name))){error="invalid parameter name";break;}
-                for(n=0;n<candidate->control.parameter_count;n++)if(!strcmp(name,candidate->control.parameters[n].name))break;
-                if(n==candidate->control.parameter_count){error="unknown parameter";break;}
-                ControlParameter *param=&candidate->control.parameters[n];ParameterValue v;
-                if(!value(request,t+1,param->kind,&v)||!in_bounds(param,v)){error="invalid parameter value/bounds";break;}
-                param->value=v;
-            }
-        }
+
     }
     if(!error){candidate->ready=true;error=control_prepare(candidate);}
+    bool was_playing=a->playing,output_attempted=false;
     if(!error&&candidate->output){
+        a->playing=false;output_attempted=true;
+        vm_output_cancel(a);
         PixelBuffer *output=candidate->output;const uint8_t *frame=control_frame(candidate);
-        if(!output->driver||!output->type||!output->rgb||output->count!=candidate->control.count||!output->type->show(output->driver,frame,output->count))error="native pixel output failed";
-        else{memcpy(output->rgb,frame,(size_t)output->count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
+        bool shown=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&output->type->show(output->driver,frame,output->count);
+        control_presented(candidate,shown);
+        if(shown){memcpy(output->rgb,frame,(size_t)output->count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
     }
-    if(error){control_destroy(candidate);demo_free(candidate);return error;}
-    control_presented(candidate,true);
-    bool playing=a->playing&&!candidate->portable->completed;
+    if(error){
+        if(output_attempted&&a->output&&a->control.output_valid)
+            (void)a->output->type->show(a->output->driver,a->output->rgb,a->output->count);
+        a->playing=was_playing;control_destroy(candidate);demo_free(candidate);return error;
+    }
+    bool playing=was_playing;
     control_destroy(a);*a=*candidate;demo_free(candidate);
-    a->portable->context=a;a->portable->output=&a->view;a->playing=playing;
+    vm_rebind(a);a->playing=playing;
     a->last_frame=platform_time_us();a->next_frame=a->last_frame;
     return NULL;
 }
@@ -245,20 +250,18 @@ static void result(VmInstance *a,uint16_t id,enum Status code,const char *messag
 static void describe(ControlWriter *w,bool with_parameters) {
     VmInstance *a=w->vm;
     Control *c=&a->control; char b[512];
-    snprintf(b,sizeof(b),"{\"slot\":\"%s\",\"generation\":%lu,\"parameter_revision\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
-        a->slot,(unsigned long)a->generation,(unsigned long)c->parameter_revision,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
+    snprintf(b,sizeof(b),"{\"device\":\"%s\",\"slot\":\"%s\",\"generation\":%lu,\"parameter_revision\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
+        a->device,a->slot,(unsigned long)a->generation,(unsigned long)c->parameter_revision,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
     text(w,b);
     if(a->portable){
         Portable *p=a->portable;
-        snprintf(b,sizeof(b),",\"completed\":%s,\"cycle_count\":%" PRIu64 ",\"completion_time_us\":%" PRIu64 ",\"logical_ticks\":%" PRIu64 ",\"active_wall_us\":%" PRIu64 ",\"dropped_wall_ticks\":%" PRIu64 ",\"random_exhaustions\":%" PRIu64,
-            p->completed?"true":"false",p->cycles,p->completion_time_us,p->ticks,p->active_wall_us,p->dropped_ticks,p->random_exhaustions);text(w,b);
-        snprintf(b,sizeof(b),",\"cancelled_wall_ticks\":%" PRIu64 ",\"continuation_bytes\":%zu",p->cancelled_ticks,c->continuation_bytes);text(w,b);
+        snprintf(b,sizeof(b),",\"render_count\":%" PRIu64 ",\"active_wall_us\":%" PRIu64 ",\"continuation_bytes\":%zu",p->render_count,p->active_wall_us,c->continuation_bytes);text(w,b);
         snprintf(b,sizeof(b),",\"instance_context_bytes\":%zu,\"portable_context_bytes\":%zu,\"metadata_bytes\":%zu,\"state_bytes\":%zu,\"resource_payload_bytes\":%zu,\"register_bytes\":%zu,\"call_storage_bytes\":0,\"heap_used\":%zu,\"heap_peak\":%zu",
-            sizeof(*a),sizeof(*p),p->metadata_bytes,p->state_bytes,p->payload_bytes,(size_t)p->nregs*sizeof(PbcValue),vm_heap_used(),vm_heap_peak());text(w,b);
+            sizeof(*a),sizeof(*p),p->metadata_bytes,p->state_bytes,p->payload_bytes,p->register_bytes,vm_heap_used(),vm_heap_peak());text(w,b);
         if(p->initialized){
             text(w,",\"settings_values\":{");
             for(unsigned n=0;n<p->nsettings;n++){
-                unsigned reg=p->settings[n].reg,type=pbc_type(p,reg);PbcValue v=p->values[reg];
+                unsigned reg=pbc_setting(p,n).reg,type=pbc_type(p,reg);PbcValue v=pbc_value(p,reg);
                 snprintf(b,sizeof(b),"%s\"%s\":",n?",":"",p->setting_names[n]);text(w,b);
                 if(type==T_FLOAT)snprintf(b,sizeof(b),"%.9g",(double)v.f);
                 else if(type==T_BOOL)snprintf(b,sizeof(b),"%s",v.u?"true":"false");
@@ -294,10 +297,10 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     bool get=!strcmp(op,"program_parameters_get"),set=!strcmp(op,"program_parameters_set"),pause=!strcmp(op,"program_pause"),resume=!strcmp(op,"program_resume"),snapshot=!strcmp(op,"program_snapshot"),reset=!strcmp(op,"program_reset");
     if (!get && !set && !pause && !resume && !snapshot && !reset) return false;
     if (!a->ready || !a->control.enabled) { result(a,id,STATUS_RUN,"no control program loaded"); return true; }
-    static const char *const fields[]={"op","expected_generation","expected_parameter_revision","values",NULL};
-    static const char *const read_fields[]={"op",NULL};
-    static const char *const lifecycle_fields[]={"op","expected_generation",NULL};
-    static const char *const reset_fields[]={"op","expected_generation","settings","values",NULL};
+    static const char *const fields[]={"op","slot","device","expected_generation","expected_parameter_revision","values",NULL};
+    static const char *const read_fields[]={"op","slot","device",NULL};
+    static const char *const lifecycle_fields[]={"op","slot","device","expected_generation",NULL};
+    static const char *const reset_fields[]={"op","slot","device","expected_generation","settings",NULL};
     if (!json_fields(&j,0,(get || snapshot) ? read_fields : set ? fields : reset ? reset_fields : lifecycle_fields)) { result(a,id,STATUS_PROTOCOL,"invalid control management fields"); return true; }
     uint32_t generation,revision;
     if ((set || pause || resume || reset) && (!json_u32(&j,json_get(&j,0,"expected_generation"),&generation) || generation!=a->generation)) {
@@ -309,7 +312,7 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
         if(error){result(a,id,STATUS_CONFIG,error);return true;}
     }
     if (set) {
-        if(a->portable&&a->portable->completed){result(a,id,STATUS_CONFIG,"requires_reset");return true;}
+        if(a->portable){result(a,id,STATUS_CONFIG,"settings are frozen for this animation instance");return true;}
         if (!json_u32(&j,json_get(&j,0,"expected_parameter_revision"),&revision) || revision!=c->parameter_revision || revision==UINT32_MAX) {
             result(a,id,STATUS_CONFIG,"stale parameter revision"); return true;
         }
@@ -329,13 +332,14 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
         ++c->parameter_revision;
     }
     if (pause) {
+        vm_output_cancel(a);
         const char *error=a->portable?animation_quiesce(a):NULL;
         a->playing=false;
         if(error){result(a,id,STATUS_RUN,error);return true;}
     }
     if (resume) {
         if (!c->initialized || c->faulted) { result(a,id,STATUS_RUN,"initialize with PLAY/FRAME; reactivate a faulted program"); return true; }
-        a->playing=!(a->portable&&a->portable->completed); a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
+        a->playing=true; a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
     }
     ControlWriter writer={.vm=a,.id=id}; ControlWriter *w=&writer;
     if (snapshot) {
@@ -344,4 +348,16 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     } else describe(w,true);
     flush(w);
     result(a,id,STATUS_OK,"control management completed"); return true;
+}
+
+const char *control_prepare(VmInstance *a) {
+    const void *previous=runtime_enter(a);
+    const char *error=control_prepare_impl(a);
+    runtime_leave(previous);return error;
+}
+
+const char *control_step(VmInstance *a,uint32_t trigger,uint64_t delta) {
+    const void *previous=runtime_enter(a);
+    const char *error=control_step_impl(a,trigger,delta);
+    runtime_leave(previous);return error;
 }

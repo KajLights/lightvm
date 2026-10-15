@@ -114,4 +114,4 @@ export type RootState = ReturnType<AppStore['getState']>;
 export type AppDispatch = AppStore['dispatch'];
 export const useAppSelector = useSelector.withTypes<RootState>();
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
-export function outputFor(config: HardwareConfig | null) { return config?.devices.find(item => item.id === config.targets?.A?.device); }
+export function outputFor(config: HardwareConfig | null) { return config?.devices[0]; }

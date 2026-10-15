@@ -42,6 +42,13 @@ static void output_message(void *context, uint8_t type, uint16_t id,
     if (!transport->failed && usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(100)) != ESP_OK)
         transport->failed = true;
 }
+static void service_io(void *context) {
+    (void)context;
+#if LIGHTVM_WIFI
+    esp32_network_poll();
+#endif
+    taskYIELD();
+}
 void app_main(void) {
     static App app;
     static Session session;
@@ -54,6 +61,7 @@ void app_main(void) {
 #if LIGHTVM_WIFI
     esp32_network_init(&app);
 #endif
+    app.service_io=service_io;
     bool connected=usb_serial_jtag_is_connected();
     for (;;) {
 #if LIGHTVM_WIFI

@@ -1,8 +1,18 @@
 # Persistent animation state, initialization and timing API
 
+> Historical proposal: its decorators, scheduler and cycle notifications were
+> superseded by the [init/render proof-of-concept API](../docs/animation-profile.md).
+> Current settings are frozen at initialization; live controls and listeners are deferred.
+
+
 Status: **Accepted and implemented for the six supplied examples**
 
 Date: 15 October 2026
+
+Lifecycle correction: animations have no terminal state. The completion/hold
+semantics below are superseded by the [current animation profile](../docs/animation-profile.md):
+cycle notifications keep playback running, legacy `complete()` records a cycle,
+and Wipe clears and repeats. Live parameters remain editable across cycles.
 
 Scope: the six supplied examples — Color, Pattern, Chase, Wipe, Rainbow and
 Twinkle — and the compiler/runtime/editor support necessary to port their
@@ -319,7 +329,7 @@ Autonomous playback yields to the native event loop after at most 4096 VM
 dispatches; each fill/copy dispatch handles at most 32 elements. Other components
 and management can run between slices. Preparation and manual FRAME are bounded
 synchronous management operations in this increment (two million aggregate VM
-dispatches and a 500 ms deadline), so their completion does not require a new
+dispatches, without a timed execution watchdog), so their completion does not require a new
 asynchronous management protocol.
 The catch-up limit complements per-invocation and aggregate CPU budgets; it does
 not authorize four unbounded native calls. Fault/work-limit behaviour is distinct

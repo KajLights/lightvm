@@ -7,8 +7,8 @@ import ast
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-from .bytecode import Compiler, CompileError
-from .portable import PortableCompiler, is_portable
+from .bytecode import CompileError
+from .portable import PortableCompiler
 
 @dataclass
 class Diagnostic:
@@ -32,7 +32,7 @@ def compile_source(source, filename="<string>", target=None):
     try:
         if len(source.encode()) > 65536:
             raise CompileError("source exceeds 64 KiB")
-        bytecode, manifest = (PortableCompiler(source) if is_portable(source) else Compiler(source)).compile()
+        bytecode, manifest = PortableCompiler(source).compile()
         if target is not None:
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
@@ -41,7 +41,7 @@ def compile_source(source, filename="<string>", target=None):
                 raise CompileError(f'target does not advertise program ABI {abi} and {manifest["schema"]}')
             if f'LBC1/{abi}' not in target.get('bytecode_formats', [target.get('bytecode_format')]):
                 raise CompileError(f'target does not advertise LBC1/{abi} bytecode')
-            if abi == 3 and 'animation/1' not in target.get('program_profiles', []):
+            if abi == 4 and 'animation/1' not in target.get('program_profiles', []):
                 raise CompileError('target does not advertise animation/1')
         return Compilation(bytecode, manifest)
     except (CompileError, SyntaxError, ValueError, OverflowError, RecursionError) as error:

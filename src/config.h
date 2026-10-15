@@ -39,9 +39,6 @@
 #ifndef OUTPUT_LIMIT
 #define OUTPUT_LIMIT (16u * 1024u)
 #endif
-#ifndef RUN_TIMEOUT_US
-#define RUN_TIMEOUT_US 500000u
-#endif
 #ifndef FRAME_INTERVAL_US
 #define FRAME_INTERVAL_US 16667u
 #endif
@@ -58,7 +55,7 @@
 #if VM_HEAP_LIMIT < 1 || VM_STACK_SIZE < 1 || OUTPUT_LIMIT < 1
 #error "Heap, stack and output budgets must be positive"
 #endif
-#if RUN_TIMEOUT_US < 1 || FRAME_INTERVAL_US < 1
-#error "Execution deadline and frame interval must be positive"
+#if FRAME_INTERVAL_US < 1
+#error "Frame interval must be positive"
 #endif
 #endif

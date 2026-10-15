@@ -212,7 +212,7 @@ export class DeviceService {
         await this.readConfig(connection); await this.readParameters(connection);
         this.store.dispatch(editorActions.targetChanged());
       }
-      this.log(options.validate ? 'Configuration is valid.' : 'Output configuration applied; playback stopped.', 'success');
+      this.log(options.validate ? 'Configuration is valid.' : 'Output configuration applied; unchanged devices keep playing.', 'success');
     });
   }
   configureNetwork(config: NetworkConfig, revision: number) {

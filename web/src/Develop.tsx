@@ -85,9 +85,9 @@ function SendProgram() {
     await devices.upload(compiled.bytecode, compiled.source, compiled.id);
   }
   return <section className="card"><div className="card-heading"><h2>Send your animation</h2></div><p className="muted">Compilation happens in your browser. Only the bytecode program is sent to the device.</p>
-    <div className="artifact"><span>Compiled program</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div><p id="artifact-detail" className="helper">{artifact ? 'ABI ' + artifact.manifest.abi + ' · RGB8 · ' + artifact.manifest.parameters.length + ' parameters' : 'Ready when the code checks pass.'}</p>
+    <div className="artifact"><span>Compiled program</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div><p id="artifact-detail" className="helper">{artifact ? 'ABI ' + artifact.manifest.abi + ' · RGB8 · ' + (artifact.manifest.parameters.length + (artifact.manifest.settings?.length ?? 0)) + ' settings' : 'Ready when the code checks pass.'}</p>
     {incompatible && <p className="helper">This device needs firmware that supports this animation's program profile.</p>}
-    {!outputFor(device.config) && device.selectedPath && <p className="helper">Configure output on slot A before uploading. <Link to={'/devices/' + device.description?.device_id + '/configure'}>Open configuration</Link></p>}
+    {!outputFor(device.config) && device.selectedPath && <p className="helper">Configure an output before uploading. <Link to={'/devices/' + device.description?.device_id + '/configure'}>Open configuration</Link></p>}
     <button id="upload" className="primary full" disabled={Boolean(activity.operation) || !canUpload || incompatible} onClick={() => void upload()}>{activity.operation === 'Uploading animation' ? 'Uploading…' : 'Upload & run →'}</button>
     {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
     <div className="button-pair"><button id="download" className="secondary" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), editor.filename.replace(/\.py$/i, '') + '.lbc', 'application/octet-stream'); }}>Download .lbc</button><button id="stop" className="quiet" disabled={Boolean(activity.operation) || !device.selectedPath} onClick={() => void devices.stopPlayback()}>Stop lights</button></div>
@@ -128,7 +128,7 @@ function Procedures() {
       <label htmlFor="procedure-name">Save compiled animation as</label><input id="procedure-name" value={name} onChange={event => setName(event.target.value)} placeholder="rainbow" maxLength={32} autoComplete="off" />
       <button id="procedure-save" className="secondary full" disabled={!editor.artifact} onClick={() => void save()}>Save compiled bytecode</button>
       <label htmlFor="procedure-select">Stored program</label><select id="procedure-select" value={selected} onChange={event => setSelected(event.target.value)}>{!device.procedures.length && <option value="">No programs saved</option>}{device.procedures.map(item => <option key={item.name} value={item.name}>{item.name + ' · ' + item.size + ' bytes'}</option>)}</select>
-      <div className="button-pair"><button id="procedure-activate" className="secondary" disabled={!selected || !outputFor(device.config)} onClick={() => void activate()}>Activate on A</button><button id="procedure-download" className="quiet" disabled={!selected} onClick={() => void devices.run('Downloading program', async client => { const reply = await devices.require(client).manage('procedure_get', { name: selected }); download(new Uint8Array(reply.data), selected + '.lbc', 'application/octet-stream'); })}>Download</button></div>
+      <div className="button-pair"><button id="procedure-activate" className="secondary" disabled={!selected || !outputFor(device.config)} onClick={() => void activate()}>Activate on first output</button><button id="procedure-download" className="quiet" disabled={!selected} onClick={() => void devices.run('Downloading program', async client => { const reply = await devices.require(client).manage('procedure_get', { name: selected }); download(new Uint8Array(reply.data), selected + '.lbc', 'application/octet-stream'); })}>Download</button></div>
       <button id="procedure-delete" className="quiet full" disabled={!selected} onClick={() => void remove()}>Delete selected program</button>
     </fieldset>
     <p className="helper">Saving adds to the library. Startup behaviour is set in Configure.</p>
@@ -139,15 +139,16 @@ function Parameters() {
   const { devices } = useRuntime(), state = useAppSelector(store => store.device.parameters), selectedPath = useAppSelector(store => store.device.selectedPath), busy = useAppSelector(store => Boolean(store.activity.operation));
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   // Playback counters/status can refresh without replacing an unfinished edit.
-  const inputKey = JSON.stringify([state?.generation, state?.parameter_revision, state?.values, state?.manifest.parameters]);
+  const parameters = state?.manifest.parameters ?? [];
+  const inputKey = JSON.stringify([state?.generation, state?.parameter_revision, state?.values, parameters]);
   useEffect(() => {
     if (!state) { setValues({}); return; }
-    setValues(Object.fromEntries(state.manifest.parameters.map(parameter => [parameter.name, parameter.type === 'rgb8' ? '#' + Number(state.values[parameter.name]).toString(16).padStart(6, '0') : parameter.type === 'bool' ? Boolean(state.values[parameter.name]) : String(state.values[parameter.name])])));
+    setValues(Object.fromEntries(parameters.map(parameter => [parameter.name, parameter.type === 'rgb8' ? '#' + Number(state.values[parameter.name]).toString(16).padStart(6, '0') : parameter.type === 'bool' ? Boolean(state.values[parameter.name]) : String(state.values[parameter.name])])));
   }, [inputKey]);
   async function apply() {
     if (!state) return;
     const patch: Record<string, bigint | number | boolean> = {};
-    for (const parameter of state.manifest.parameters) {
+    for (const parameter of parameters) {
       const input = values[parameter.name];
       if (parameter.type === 'int') {
         if (!/^-?\d+$/.test(String(input))) { await devices.run('Applying parameters', async () => { throw new Error('Enter a whole signed integer.'); }); return; }
@@ -170,10 +171,10 @@ function Parameters() {
       await devices.readParameters(connection);
     });
   }
-  return <section className="card"><div className="card-heading"><h2>Live parameters</h2><button id="parameters-refresh" className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing parameters', async client => devices.readParameters(devices.require(client)))}>Refresh</button></div>
-    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.completed ? 'Completed · holding final frame' : state.paused ? 'Paused' : 'Running') + ' · slot ' + state.slot : 'Load a control program to edit its parameters.'}</p>
-    <fieldset id="parameter-fields" disabled={!state || !selectedPath || busy}><div id="parameters">{state?.manifest.parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input data-name={parameter.name} data-type={parameter.type} type={parameter.type === 'bool' ? 'checkbox' : parameter.type === 'rgb8' ? 'color' : parameter.type === 'int' ? 'text' : 'number'} inputMode={parameter.type === 'int' ? 'numeric' : undefined} step={parameter.type === 'float' ? 'any' : undefined} min={parameter.minimum} max={parameter.maximum} checked={parameter.type === 'bool' ? Boolean(values[parameter.name]) : undefined} value={parameter.type !== 'bool' ? String(values[parameter.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [parameter.name]: parameter.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
-      <button id="parameters-apply" className="secondary full" disabled={!state?.manifest.parameters.length || state.completed} onClick={() => void apply()}>Apply parameter values</button><div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused || state.completed} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused || state.completed} onClick={() => void playback('resume')}>Resume</button></div>
+  return <section className="card"><div className="card-heading"><h2>{state?.manifest.abi === 4 ? 'Playback' : 'Live parameters'}</h2><button id="parameters-refresh" className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing parameters', async client => devices.readParameters(devices.require(client)))}>Refresh</button></div>
+    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') + ' · slot ' + state.slot : 'Load a control program to edit its parameters.'}</p>
+    <fieldset id="parameter-fields" disabled={!state || !selectedPath || busy}><div id="parameters">{parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input data-name={parameter.name} data-type={parameter.type} type={parameter.type === 'bool' ? 'checkbox' : parameter.type === 'rgb8' ? 'color' : parameter.type === 'int' ? 'text' : 'number'} inputMode={parameter.type === 'int' ? 'numeric' : undefined} step={parameter.type === 'float' ? 'any' : undefined} min={parameter.minimum} max={parameter.maximum} checked={parameter.type === 'bool' ? Boolean(values[parameter.name]) : undefined} value={parameter.type !== 'bool' ? String(values[parameter.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [parameter.name]: parameter.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
+      {parameters.length > 0 && <button id="parameters-apply" className="secondary full" onClick={() => void apply()}>Apply parameter values</button>}<div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div>
     </fieldset>
   </section>;
 }
@@ -190,7 +191,7 @@ function Settings() {
       return [setting.name, setting.type === 'rgb8' ? '#' + Number(value ?? 0).toString(16).padStart(6, '0') : setting.type === 'bool' ? Boolean(value) : String(value ?? '')];
     })));
   }, [inputKey]);
-  if (state?.manifest.abi !== 3) return null;
+  if (state?.manifest.abi !== 4) return null;
   async function restart() {
     if (!state) return;
     await devices.run('Restarting animation', async client => {
@@ -202,14 +203,13 @@ function Settings() {
         settings[setting.name] = value;
       }
       const connection = devices.require(client);
-      const restarted = await connection.json('program_reset', { expected_generation: state.generation, settings });
-      await connection.manage('program_resume', { expected_generation: restarted.generation });
+      await connection.json('program_reset', { expected_generation: state.generation, settings });
       await devices.readParameters(connection);
       devices.log('Animation restarted with the selected settings.', 'success');
     });
   }
-  return <section className="card"><div className="card-heading"><h2>Preparation settings</h2></div>
-    <p className="helper">Changing these values restarts the animation. Edit source defaults before saving them to the program library.</p>
+  return <section className="card"><div className="card-heading"><h2>Initialization settings</h2></div>
+    <p className="helper">Settings are fixed for each instance. Apply them by restarting the animation.</p>
     <fieldset id="setting-fields" disabled={!selectedPath || busy}><div id="settings">{state.manifest.settings?.map(setting => <label key={setting.name}>{setting.name}<input data-name={setting.name} type={setting.type === 'bool' ? 'checkbox' : setting.type === 'rgb8' ? 'color' : 'number'} step={setting.type === 'float' ? 'any' : 1} checked={setting.type === 'bool' ? Boolean(values[setting.name]) : undefined} value={setting.type !== 'bool' ? String(values[setting.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [setting.name]: setting.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
       <button id="settings-apply" className="secondary full" onClick={() => void restart()}>Apply settings &amp; restart</button>
     </fieldset>

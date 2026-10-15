@@ -1,24 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { supportsProgram } from './compiler';
 import { DEFAULT_SOURCE, type Description, type Manifest } from './types';
-import rainbow from '../../samples/python/rainbow.py?raw';
+import rainbow from '../../samples/rainbow.py?raw';
 
-describe('animation compiler compatibility', () => {
-  const legacy = { control_abi: 2, bytecode_format: 'LBC1/2', program_schemas: ['lightvm.program/3'] } as Description;
-  const animation = { ...legacy, program_abis: [2, 3], bytecode_formats: ['LBC1/2', 'LBC1/3'], program_schemas: ['lightvm.program/3', 'lightvm.program/4'], program_profiles: ['animation/1'] };
-  const v2: Manifest = { abi: 2, schema: 'lightvm.program/3', parameters: [] };
-  const v3: Manifest = { abi: 3, schema: 'lightvm.program/4', profile: 'animation/1', parameters: [], settings: [] };
+describe('animation compiler', () => {
+  const animation = { control_abi: 4, program_abis: [4], bytecode_formats: ['LBC1/4'], program_schemas: ['lightvm.program/5'], program_profiles: ['animation/1'] } as Description;
+  const v4: Manifest = { abi: 4, schema: 'lightvm.program/5', profile: 'animation/1', parameters: [], settings: [] };
   it('keeps the editor default identical to the supplied Rainbow example', () => {
     expect(DEFAULT_SOURCE).toBe(rainbow);
     expect(DEFAULT_SOURCE).toContain('profile("animation/1")');
   });
-  it('requires explicit support for the new format and profile', () => {
-    expect(supportsProgram(legacy, v2)).toBe(true);
-    expect(supportsProgram(legacy, v3)).toBe(false);
-    expect(supportsProgram(animation, v2)).toBe(true);
-    expect(supportsProgram(animation, v3)).toBe(true);
-    expect(supportsProgram({ ...animation, program_profiles: [] }, v3)).toBe(false);
-    expect(supportsProgram({ ...animation, program_abis: [2] }, v3)).toBe(false);
-    expect(supportsProgram({ ...animation, bytecode_formats: ['LBC1/2'] }, v3)).toBe(false);
+  it('requires the target to advertise the format and profile', () => {
+    expect(supportsProgram(animation, v4)).toBe(true);
+    expect(supportsProgram({ ...animation, program_profiles: [] }, v4)).toBe(false);
+    expect(supportsProgram({ ...animation, program_abis: [] }, v4)).toBe(false);
+    expect(supportsProgram({ ...animation, bytecode_formats: [] }, v4)).toBe(false);
   });
 });

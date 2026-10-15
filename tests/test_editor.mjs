@@ -80,7 +80,7 @@ const python = pathJoin(root, "build/venv/bin/python");
 test("browser protocol uploads and plays a real animation on bytecode", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
   const directory = mkdtempSync(pathJoin(tmpdir(), "lightvm-editor-"));
   const program = pathJoin(directory, "rainbow.lbc");
-  execFileSync(python, ["-m", "lightvm.compiler", "samples/python/rainbow.py", "-o", program], { cwd: root });
+  execFileSync(python, ["-m", "lightvm.compiler", "samples/rainbow.py", "-o", program], { cwd: root });
   const process = spawn(receiver, [], { stdio: ["pipe", "pipe", "pipe"] });
   const transport = {
     write: bytes => new Promise((resolve, reject) => process.stdin.write(bytes, error => error ? reject(error) : resolve())),
@@ -96,7 +96,7 @@ test("browser protocol uploads and plays a real animation on bytecode", { skip: 
     assert.equal(description.control_abi, 2);
     const config = Buffer.from(JSON.stringify({ schema: "lightvm.config/1", devices: [
       { id: "lights", type: "ws2812b", config: { pin: "GP16", count: 5 } },
-    ], targets: { A: { device: "lights" } } }));
+    ] }));
     await client.command(12, Buffer.from(JSON.stringify({ kind: "config", size: config.length, crc32: crc32(config) })));
     const chunk = Buffer.alloc(4 + config.length); config.copy(chunk, 4);
     await client.command(13, chunk); await client.command(14);

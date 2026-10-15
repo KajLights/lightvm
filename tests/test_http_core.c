@@ -1,4 +1,5 @@
 #include "http.h"
+#include "runtime.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,10 +8,14 @@ typedef struct { uint8_t bytes[4096]; size_t used; bool stalled,close_stalled,cl
 static int output(void *context,const uint8_t *bytes,size_t size) { Sink *s=context; if (s->stalled) return 0; CHECK(size<=sizeof(s->bytes)-s->used); memcpy(s->bytes+s->used,bytes,size); s->used+=size; return (int)size; }
 static bool close_sink(void *context) { Sink *s=context; if (s->close_stalled) return false; s->closed=true; return true; }
 static void drain(Http *http,uint64_t now,Sink *sink) { for (unsigned i=0;i<200 && !sink->closed;i++) http_tick(http,now+i); CHECK(sink->closed); sink->bytes[sink->used]=0; }
+static void service_ingress(void *context) { Http *h=context;CHECK(h->app->command_active);http_tick(h,0); }
 int main(void) {
     static App app; static Http http; app_init(&app,NULL,NULL); strcpy(app.device_id,"test"); strcpy(app.boot_id,"boot"); http_init(&http,&app);
     Sink list={0}; HttpRequest get={.method="GET",.path="/api/v1/devices",.io={&list,output,close_sink}};
-    CHECK(http_submit(&http,&get)); drain(&http,0,&list);
+    CHECK(http_submit(&http,&get));app.command_active=true;http_tick(&http,0);
+    CHECK(http.count==1&&!list.used&&!http.sending);app.command_active=false;
+    app.service_io=service_ingress;app.service_context=&http;runtime_checkpoint();app.service_io=NULL;
+    CHECK(!app.command_active&&http.count==1&&!list.used&&!http.sending);drain(&http,0,&list);
     CHECK(strstr((char *)list.bytes,"200 OK") && strstr((char *)list.bytes,"Content-Type: application/json") && strstr((char *)list.bytes,"\"devices\":[]"));
     CHECK(!http.sessions[0].source);
     memset(&list,0,sizeof(list)); get.discovery_only=true; strcpy(get.method,"POST"); strcpy(get.path,"/api/v1/sessions"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"404 Not Found") && !http.sessions[0].source);

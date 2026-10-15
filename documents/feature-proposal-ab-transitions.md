@@ -373,8 +373,7 @@ implementation should retain the full mix for simple verification and preview.
 
 Budget the whole frame: every A/B layer and filter, scene composition, mix
 generation, mixing and output. Report each stage, missed frame deadlines and peak
-memory. The current 500 ms guest deadline is a recovery bound, not a usable
-rendering target; participating guests must not each receive a separate full
+memory. Participating guests must not each receive a separate full
 frame budget. Use a shared deadline and bounded guest work. Supported pixel
 counts and frame rates require measurements on each port, including physical
 transmission time and the native services actually enabled.

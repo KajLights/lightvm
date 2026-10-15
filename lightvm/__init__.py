@@ -1,12 +1,9 @@
-"""LightVM's historical Python reference SDK and pixel semantics.
+"""Scalar helpers and authoring markers for LightVM's restricted Python API.
 
-The current bytecode compiler recognizes its source API statically, including
-new animation/1 forms that are not executable Python APIs in this module. This
-module supplies the older reference implementation for trusted desktop programs; it is never
-embedded on the device and compilation never executes user source.
-MIT License, copyright 2026 Kaj Wik Siebert.
+The compiler parses these names without importing or executing guest code.
+Desktop calls use ordinary Python values; managed setting bindings are supplied
+by the compiler and VM, not by these convenience functions.
 """
-from dataclasses import dataclass
 import math
 RGB = int
 
@@ -39,72 +36,51 @@ def hash01(index: int, seed: int) -> float:
     return x / 65521.0
 
 
-@dataclass
-class Context:
-    program_us: int
-    delta_us: int
-    pixels: "Pixels"
-
-    @property
-    def time(self):
-        return self.program_us / 1_000_000.0
-
-    @property
-    def delta(self):
-        return self.delta_us / 1_000_000.0
+def profile(name):
+    if name != "animation/1": raise ValueError("unsupported profile")
 
 
-class Parameter:
-    def __init__(self, name, default, minimum=None, maximum=None, kind=None):
-        self.name, self.value = name, default
-        self.minimum, self.maximum = minimum, maximum
-        self.kind = kind or ("bool" if type(default) is bool else "float" if type(default) is float else "int")
+def setting(default, *, minimum=None, maximum=None):
+    if minimum is not None and default < minimum or maximum is not None and default > maximum:
+        raise ValueError("setting outside bounds")
+    return default
 
 
-def parameter(name, default, *, minimum=None, maximum=None, kind=None):
-    return Parameter(name, default, minimum, maximum, kind)
-
-
-class Pixels:
-    """A deployment-owned canvas for trusted reference replay, injected in Context."""
-    def __init__(self):
-        self.count = 0
-        self.committed, self.working = [], []
-
-    def bind(self, count):
-        self.count = count
-        self.committed = [0] * count
-
-    def begin(self):
-        self.working = [0] * self.count
-
-    def commit(self):
-        self.committed = self.working.copy()
-
-    def _index(self, index):
-        if type(index) is not int or not 0 <= index < self.count:
-            raise IndexError(index)
-
-    def __setitem__(self, index, color):
-        self._index(index)
-        if type(color) is not int or not 0 <= color <= 0xffffff:
-            raise ValueError("invalid packed RGB8")
-        self.working[index] = color
-
-    def __getitem__(self, index):
-        self._index(index)
-        return self.working[index]
-
-    def fill(self, color):
-        for i in range(self.count):
-            self[i] = color
-
-
-def on_start(function):
-    function.lightvm_trigger = 0
+def init(function):
     return function
 
 
-def on_frame(function):
-    function.lightvm_trigger = 1
+def render(function):
     return function
+
+
+def red(color): return color >> 16
+
+def green(color): return color >> 8 & 255
+
+def blue(color): return color & 255
+
+
+def pico_colorwheel(hue):
+    if type(hue) is not int or not 0 <= hue <= 360: raise ValueError("hue must be in 0..360")
+    hue %= 360
+    angle = (hue % 120) * math.pi / 240
+    x, y = int(255 * math.cos(angle)), int(255 * math.sin(angle))
+    return rgb(x,y,0) if hue < 120 else rgb(0,x,y) if hue < 240 else rgb(y,0,x)
+
+
+def colorwheel(hue):
+    if not math.isfinite(hue) or hue < 0: raise ValueError("hue must be finite and nonnegative")
+    hue %= 256
+    sector = 0 if hue < 85 else 1 if hue < 170 else 2
+    rising = min(255, int((hue - 85 * sector) * 3))
+    falling = 255 - rising
+    return (rgb(falling,rising,0),rgb(0,falling,rising),rgb(rising,0,falling))[sector]
+
+
+def hue_degrees(color):
+    r, g, b = red(color)/255, green(color)/255, blue(color)/255
+    top, bottom = max(r,g,b), min(r,g,b)
+    delta = top - bottom
+    hue = 0 if not delta else 60 * (((g-b)/delta) % 6) if top == r else 60 * ((b-r)/delta+2) if top == g else 60 * ((r-g)/delta+4)
+    return float(round(hue))

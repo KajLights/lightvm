@@ -160,6 +160,8 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .config-card input[type=checkbox], .network-card input[type=checkbox] { accent-color: var(--accent); }
 .config-card label, .network-card label, .sidebar label { display: block; font-size: 11px; color: var(--muted); margin: 12px 0 6px; }
 .config-card label.checkbox-label, .network-card label.checkbox-label { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 12px; }
+.config-card fieldset.output-config { border: 1px solid var(--line); border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+.output-config legend { padding: 0 6px; font-weight: 600; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
 .form-grid label input, .form-grid label select { margin-top: 6px; }
 .form-grid .output-binding { grid-column: 1/-1; }

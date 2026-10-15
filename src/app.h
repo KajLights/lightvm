@@ -9,32 +9,45 @@
 #endif
 
 typedef struct {
+    HardwareDevice hardware;
+    VmInstance vm;
+    PixelBuffer pixels;
+    char active_procedure[OBJECT_NAME_LIMIT + 1];
+    uint32_t active_crc;
+} AppDevice;
+typedef struct {
 #if LIGHTVM_BOOT_SEQUENCE
     BootSequence boot_sequence;
 #endif
+    void (*service_io)(void *); void *service_context;
     Network network;
     // Keep the active interface/settings intact until the commit reply has left.
     NetworkConfig pending_network;
     bool network_pending;
     uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
     char device_id[65], boot_id[33], network_error[160];
-    VmInstance vm;
-    PixelBuffer pixels;
+    AppDevice fallback;
+    AppDevice **devices;
+    unsigned device_count;
+    AppDevice *upload_device;
     Store store;
     HardwareConfig hardware;
     char config_json[CONFIG_LIMIT];
     uint32_t config_size, revision;
-    uint8_t staging[MODULE_LIMIT > CONFIG_LIMIT ? MODULE_LIMIT : CONFIG_LIMIT];
+    uint8_t staging[CONFIG_LIMIT];
+    StoreUpload upload;
     uint32_t expected, received, expected_crc;
-    unsigned object_kind;
+    unsigned object_kind, schedule_cursor;
     bool uploading, staged, booting;
+    bool command_active, disconnect_pending;
     uint64_t upload_deadline;
-    char object_name[OBJECT_NAME_LIMIT + 1], active_procedure[OBJECT_NAME_LIMIT + 1];
-    uint32_t active_crc, last_code;
+    char object_name[OBJECT_NAME_LIMIT + 1];
+    uint32_t last_code;
     char boot_error[160];
     SendMessage send;
     void *transport;
 } App;
+AppDevice *app_device(App *, const char *id);
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);

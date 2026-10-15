@@ -1,8 +1,0 @@
-"""Full-coverage colour, with a live RGB8 parameter."""
-from lightvm import parameter, rgb, on_frame
-color = parameter("color", rgb(255, 64, 0), kind="rgb8")
-
-@on_frame
-def draw(ctx):
-    strip = ctx.pixels
-    strip.fill(color.value)

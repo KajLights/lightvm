@@ -354,8 +354,8 @@ on a human-input event queue.
 Use native monotonic capture/dispatch timestamps and pausable program time as
 specified in the control proposal. The legacy millisecond carry and 1000 ms gap
 cap remain confined to animation API v1. General deadlines retain actual elapsed
-time; missed periodic intervals cannot create an unbounded catch-up queue. The
-present 500 ms deadline is a recovery bound, not an interactive scheduling target.
+time; missed periodic intervals cannot create an unbounded catch-up queue.
+Guest execution has no timed watchdog; scheduling uses bounded work slices.
 
 Tone/pulse expiry uses native time and does not need another guest callback.
 Servo pulses and tone waveforms come from native peripherals. Bus-based sensors

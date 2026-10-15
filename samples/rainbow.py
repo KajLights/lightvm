@@ -1,28 +1,35 @@
-"""Bytecode port of rainbow.wat, including its speed and brightness waves.
+"""Rainbow gradient with a repeating duration-based colour cycle.
 
-The original advances a 16-bit hue by 20 units per millisecond: one cycle
-every 3.2768 seconds. Carry fractional milliseconds across variable frames.
 """
-from lightvm import hsv, step, shade
+import random
 
-phase = 0
-remainder_ms = 0.0
+from lightvm import profile, setting, rgb, init, render, pico_colorwheel, hue_degrees, colorwheel
 
-
-@step
-def update():
-    global phase, remainder_ms
-    elapsed_ms = remainder_ms + delta * 1000.0
-    whole_ms = int(elapsed_ms)
-    remainder_ms = elapsed_ms - whole_ms
-    phase = (phase + whole_ms * 20) % 65536
+profile("animation/1")
 
 
-@shade
-def pixel():
-    hue = (index * 65536 // count + phase) % 65536
-    wave = ((index * 131072 // count + phase * 3) % 65536) // 256
-    if wave > 127:
-        wave = 255 - wave
-    value = wave * 215 // 127 + 40
-    return hsv(hue / 65536.0, 1.0, value / 255.0)
+@init
+def setup(ctx, runtime):
+    ctx.duration = setting(60.0, minimum=0.001)
+    ctx.scale = setting(1.0, minimum=0.0)
+
+    color = setting(rgb(255, 0, 0))
+    random_color = setting(True)
+
+    random.seed()
+    chosen_color = color
+    if random_color:
+        hue_index = random.randint(0, 359)
+        chosen_color = pico_colorwheel(hue_index)
+
+    ctx.hue = hue_degrees(chosen_color) * 255 / 360
+
+
+@render
+def draw(ctx, runtime, pixels):
+    progress = (runtime.time % ctx.duration) / ctx.duration
+    start_hue = ctx.hue + progress * 255
+    spatial_scale = ctx.scale * 255 / pixels.count
+    for i in range(pixels.count):
+        pixel_hue = start_hue + i * spatial_scale
+        pixels[i] = colorwheel(pixel_hue)

@@ -13,7 +13,7 @@ function(lightvm_add_core)
     target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
     add_library(lightvm_core STATIC
-        "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
+        "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
         "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/bytecode.c"

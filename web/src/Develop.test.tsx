@@ -9,7 +9,7 @@ import { RuntimeContext } from './runtime';
 import { createAppStore, deviceActions } from './store';
 import type { Description, ParameterState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
-import originalRainbow from '../../samples/python/rainbow.py?raw';
+import originalRainbow from '../../samples/rainbow.py?raw';
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 
@@ -43,31 +43,37 @@ describe('editor examples and playback status', () => {
     expect(store.getState().editor.source).toBe(originalRainbow);
   });
 
-  it('polls completion without discarding unsaved inputs, then loads inputs for a new instance', async () => {
+  it('polls renders and pause without discarding unsaved inputs, then loads inputs for a new instance', async () => {
     const { store, devices, show } = workspace();
     const description = { device_id: 'pico', boot_id: 'boot', board: 'pico_w', active_revision: 0,
       saved_revision: 0, catalog_revision: 0, network_revision: 0 } as Description;
     const running: ParameterState = { generation: 1, parameter_revision: 0, slot: 'A', paused: false,
-      faulted: false, completed: false, values: { speed: 0.1 }, settings_values: { duration: 60 },
-      manifest: { abi: 3, parameters: [{ name: 'speed', type: 'float' }], settings: [{ name: 'duration', type: 'float' }] } };
-    const response = vi.fn().mockResolvedValue({ ...running, completed: true, paused: true });
+      faulted: false, render_count: 0, values: {}, settings_values: { duration: 60 },
+      manifest: { abi: 4, parameters: [], settings: [{ name: 'duration', type: 'float' }] } };
+    const response = vi.fn().mockResolvedValue({ ...running, render_count: 3 });
     const client = { closed: false, transport: { label: 'HTTP' }, describe: vi.fn().mockResolvedValue(description), json: response } as unknown as LightVMClient;
     devices.paths.attach('http', client, description); devices.syncPaths(description);
     store.dispatch(deviceActions.parameters(running)); show();
     fireEvent.change(screen.getByLabelText('duration'), { target: { value: '3' } });
-    fireEvent.change(screen.getByLabelText('speed'), { target: { value: '0.5' } });
 
     await act(async () => { await devices.poll(); });
     expect(response).toHaveBeenCalledWith('program_parameters_get');
-    expect(document.querySelector('#parameter-state')).toHaveTextContent('Completed · holding final frame');
-    expect(screen.getByRole('button', { name: /^Pause$/ })).toBeDisabled();
+    expect(document.querySelector('#parameter-state')).toHaveTextContent('Running');
+    expect(screen.getByRole('button', { name: /^Pause$/ })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Apply parameter values' })).toBeNull();
     expect(screen.getByLabelText('duration')).toHaveValue(3);
-    expect(screen.getByLabelText('speed')).toHaveValue(0.5);
 
-    response.mockResolvedValue({ ...running, generation: 2, values: { speed: 0.2 }, settings_values: { duration: 20 } });
+    response.mockResolvedValue({ ...running, render_count: 3, paused: true });
+    await act(async () => { await devices.poll(); });
+    expect(document.querySelector('#parameter-state')).toHaveTextContent('Paused');
+    expect(screen.getByRole('button', { name: /^Pause$/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Resume$/ })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Apply parameter values' })).toBeNull();
+    expect(screen.getByLabelText('duration')).toHaveValue(3);
+
+    response.mockResolvedValue({ ...running, generation: 2, values: {}, settings_values: { duration: 20 } });
     await act(async () => { await devices.poll(); });
     expect(screen.getByLabelText('duration')).toHaveValue(20);
-    expect(screen.getByLabelText('speed')).toHaveValue(0.2);
     expect(document.querySelector('#parameter-state')).toHaveTextContent('Running');
   });
 });

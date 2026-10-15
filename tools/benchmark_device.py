@@ -40,9 +40,8 @@ def measure(client, board, pin, pixels, samples, seconds):
         "schema": "lightvm.config/1",
         "devices": [{"id": "benchmark", "type": "ws2812b", "config": {
             "pin": pin, "count": pixels, "order": "GRB", "brightness_limit": 32}}],
-        "targets": {"A": {"device": "benchmark"}},
     }
-    source = (ROOT / "samples/python/rainbow.py").read_text()
+    source = (ROOT / "samples/rainbow.py").read_text()
     artifact = compile_source(source)
     if not artifact.success:
         raise ValueError(artifact.diagnostics)
@@ -82,7 +81,7 @@ def measure(client, board, pin, pixels, samples, seconds):
             "pin": pin,
             "pixels": pixels,
             "brightness_limit": 32,
-            "workload": "samples/python/rainbow.py",
+            "workload": "samples/rainbow.py",
             "bytecode_sha256": hashlib.sha256(module).hexdigest(),
             "frame_interval_us": int(end["frame_interval_us"]),
             "samples": samples,

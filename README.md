@@ -12,12 +12,12 @@ are read from flash through the existing native storage API, and the runtime own
 pixel memory. Procedures can be replaced independently of firmware.
 
 The [animation profile](docs/animation-profile.md) defines persistent buffers,
-arrays, initialization, logical timing and completion for the six supplied
-picolights examples. The [LBC1/2 profile](docs/control-api.md) remains supported
-for existing source and packages. Together they implement a limited part of the
+arrays and the `@init` / `@render` callbacks. Caller arguments supply context,
+time, delta and pixels; settings are frozen at initialization.
+The current compiler emits LBC1/4 packages. Together they implement a limited part of the
 [portable bytecode architecture decision](documents/architecture-decision-portable-bytecode.md).
-Multiple languages, concurrent slots, composition and a broader component system
-remain future work.
+Up to eight independent device slots run concurrently. Multiple languages,
+composition and a broader component system remain future work.
 
 ## Build and exercise on the host
 
@@ -47,16 +47,15 @@ directory to exercise the 175-pixel, 16 KiB program-budget profile.
 ## Compile, save and run on a device
 
 The samples preserve color, pattern, chase, wipe, twinkle and rainbow. The source
-syntax now separates simulation updates, frame preparation and pixel shading (or
-an explicit pixel-writing kernel). Parameters retain their names and bounds.
+API initializes context once and renders each frame using the actual elapsed delta.
 
-For an existing deployment of `samples/rainbow.wat`, compile
-`samples/rainbow.py` instead. That port preserves its 3.2768-second colour cycle
-and two moving brightness waves. The separate `samples/python/rainbow.py`
-example is a constant-brightness gradient with a 10-second default cycle.
+Each effect has one source in `samples/`, shared by the editor, build tools and
+current animation tests. `samples/rainbow.py` is the picolights gradient with a
+60-second default cycle; its `duration` setting accepts startup arguments such
+as `{"duration": 3.3}`.
 
 ```sh
-build/venv/bin/python -m lightvm.compiler samples/python/rainbow.py \
+build/venv/bin/python -m lightvm.compiler samples/rainbow.py \
   -o build/samples/rainbow.lbc
 build/venv/bin/python tools/client.py --port PORT --status
 build/venv/bin/python tools/client.py --port PORT \
@@ -69,25 +68,28 @@ build/venv/bin/python tools/client.py --port PORT --activate rainbow
 Use the configuration matching the board and actual wiring. For XIAO ESP32-C3,
 use `examples/xiao-c3-startup.json` and add `--no-reset` to serial commands;
 S3/C6 use `examples/xiao-startup.json`. The device keeps its configured pin,
-count, order and brightness when changing programs. Reboot runs the saved startup
-procedure. `STATUS` reports `mode=bytecode` and `code_storage=flash` for a stored
-program; transient uploads use the existing RAM slot.
+count, order and brightness when changing programs. Reboot runs each device’s
+`startup.procedure` with its `startup.args`; omitted arguments use program defaults. `STATUS` reports `mode=bytecode` and `code_storage=flash`
+for both named and transient programs. Uploads share one 256-byte page buffer;
+there is no package-sized buffer in an animation instance.
 
 Uploading a new version under the same stored name preserves the current running
-version until explicit activation. If a storage-bank rotation would invalidate
-it, the core retains that version in the existing RAM slot. Corrupt/incomplete
-uploads cannot commit a new catalog snapshot. Activation resets guest state and
-may leave playback idle on an initialization fault, as before.
+version in pinned flash until explicit activation. Activation prepares a separate
+candidate and retains the old instance on failure. Startup resolves the current
+catalogue entry for each configured procedure name; saving a replacement changes
+what runs on the next boot. Root-level `targets` and `startup` are unsupported.
 
 Existing stored WASM programs must be recompiled; the loader rejects them. This
-does not change saved configuration or storage layout. `RUN`, WASI and arbitrary
+preserves saved configuration. Legacy storage directories migrate automatically
+to immutable payload extents and alternating directory commits; older firmware
+cannot read the new directory format. `RUN`, WASI and arbitrary
 WASM exports are outside this limited animation profile. PLAY, FRAME, STOP,
 parameters, snapshots and named procedure management remain available. The wire
 framing retains its historical `WASM` magic for client compatibility.
 
 ## Firmware builds
 
-The native ports and LED drivers are unchanged. Host and RP2040 use the root
+Pico output uses PIO with DMA; ESP32 uses asynchronous RMT. Host and RP2040 use the root
 CMake project. ESP32 uses its SDK project. Resource budgets remain in board
 headers; bytecode contains no GPIO, controller or driver selection.
 
@@ -146,26 +148,22 @@ npm test
 HTTP tests require a host build with HTTP enabled and permission to open local
 loopback sockets. The tests preserve the existing driver/storage/configuration
 contracts and use bytecode fixtures in place of WASM fixtures. They cover
-admission, instruction limits, faults, buffer ownership, parameter conflicts,
+admission, cooperative execution, faults, buffer ownership, parameter conflicts,
 snapshots, procedure replacement, bank rotation and startup persistence. Effect
-replay compares current examples with the supplied original picolights methods,
-using the accepted timing and bounded Twinkle corrections. Separate legacy
-fixtures retain the previous independent effects' checks. Rainbow/Twinkle permit
+replay executes the same six sample sources through an independent Python caller
+harness. There are no historical sample copies or compatibility test suites.
+Rainbow/Twinkle permit
 one channel level for f32 arithmetic. See the animation profile for measured
 memory, including contexts and replacement peaks.
 
-A matched native rainbow remains the LBC1/2 performance baseline:
+Measure the current Rainbow on a device with:
 
 ```sh
-python -m lightvm.compiler tests/legacy_samples/rainbow.py -o build/samples/rainbow-legacy.lbc
-build/host/benchmark_bytecode build/samples/rainbow-legacy.lbc
 build/venv/bin/python tools/benchmark_device.py --port PORT --board pico_w \
   --pixels 200 --output build/benchmark-pico-w.json
 ```
 
-The host benchmark measures the LBC1/2 interpreter versus native f32 rainbow
-and checks 3,000 frames byte for byte. It is **not a board timing** or a benchmark
-of the new animation profile. The device command measures the current canonical
+The device command measures the current canonical
 Rainbow through the integrated firmware's render/output times and playback
 rate through the existing API, temporarily configuring the output and restoring
 its prior configuration afterward. Flash saves retain existing blocking behavior.

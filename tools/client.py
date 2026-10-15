@@ -184,7 +184,23 @@ class Client:
             result.extend(self.transport.read(size - len(result), remaining))
         return bytes(result)
 
-    def command(self, kind, payload=b""):
+    def command(self, kind, payload=b"", slot=None, device=None):
+        if slot is not None and slot != "A":
+            raise ValueError("a device has only slot A")
+        if slot is not None or device is not None:
+            if kind not in (STATUS, PLAY, STOP, RESET, FRAME):
+                raise ValueError("slot routing supports STATUS/PLAY/STOP/RESET/FRAME")
+            fields = {"op": "device_command", "slot": "A", "command": kind}
+            if device is not None:
+                fields["device"] = device
+            if kind == FRAME:
+                if len(payload) != 4:
+                    raise ValueError("FRAME requires a four-byte delta")
+                fields["delta_ms"] = struct.unpack("<I", payload)[0]
+                self.pixel_snapshot.clear()
+            elif payload:
+                raise ValueError("device command takes no payload")
+            return self.command(MANAGE, json.dumps(fields, separators=(",", ":")).encode())
         self.data_reply.clear()
         if kind == FRAME:
             self.pixel_snapshot.clear()
@@ -223,13 +239,13 @@ class Client:
             raise ProtocolError(f"receiver status {reply.code}: {reply.message}")
         return reply
 
-    def status_fields(self):
-        reply = self.require_ok(self.command(STATUS))
+    def status_fields(self, slot=None, device=None):
+        reply = self.require_ok(self.command(STATUS, slot=slot, device=device))
         # animation_error may contain spaces; capability/limit tokens do not.
         return dict(item.split("=", 1) for item in reply.message.split() if "=" in item)
 
-    def upload(self, bytecode):
-        fields = self.status_fields()
+    def upload(self, bytecode, slot=None, device=None):
+        fields = self.status_fields(slot=slot, device=device)
         try:
             limit = int(fields.get("module_limit", MODULE_LIMIT))
         except ValueError as error:
@@ -238,7 +254,7 @@ class Client:
             raise ProtocolError("receiver reported an invalid module limit")
         if not 8 <= len(bytecode) <= limit:
             raise ValueError(f"module must be 8..{limit} bytes for this receiver")
-        self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode))))
+        self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode)) + (device.encode("ascii") if device is not None else b"")))
         for offset in range(0, len(bytecode), FRAME_LIMIT - 4):
             chunk = bytecode[offset:offset + FRAME_LIMIT - 4]
             reply = self.require_ok(self.command(CHUNK, struct.pack("<I", offset) + chunk))
@@ -336,47 +352,51 @@ class Client:
         revision = self.describe()["catalog_revision"]
         return self.manage("procedure_delete", name=name, expected_revision=revision)
 
-    def activate(self, name, action="play", export="run", slot=None, settings=None):
+    def activate(self, name, action="play", export="run", slot=None, settings=None, device=None):
         fields = {"name": name, "action": action, "export": export}
+        if device is not None:
+            fields["device"] = device
         if slot is not None:
             fields["slot"] = slot
         if settings is not None:
             fields["settings"] = settings
         return self.manage("procedure_activate", **fields)
 
-    def program_parameters(self):
-        self.manage("program_parameters_get")
+    def program_parameters(self, slot=None, device=None):
+        self.manage("program_parameters_get", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}))
         return json.loads(self.data_reply)
 
-    def reset_program(self, settings=None, values=None):
-        state = self.program_parameters()
+    def reset_program(self, settings=None, slot=None, device=None):
+        state = self.program_parameters(slot=slot, device=device)
         fields = {"expected_generation": state["generation"]}
+        if device is not None:
+            fields["device"] = device
+        if slot is not None:
+            fields["slot"] = slot
         if settings is not None:
             fields["settings"] = settings
-        if values is not None:
-            fields["values"] = values
         self.manage("program_reset", **fields)
         return json.loads(self.data_reply)
 
-    def set_parameters(self, values):
-        state = self.program_parameters()
+    def set_parameters(self, values, slot=None, device=None):
+        state = self.program_parameters(slot=slot, device=device)
         self.manage("program_parameters_set", values=values, expected_generation=state["generation"],
-                    expected_parameter_revision=state["parameter_revision"])
+                    expected_parameter_revision=state["parameter_revision"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}))
         return json.loads(self.data_reply)
 
-    def pause_program(self):
-        state = self.program_parameters()
-        self.manage("program_pause", expected_generation=state["generation"])
+    def pause_program(self, slot=None, device=None):
+        state = self.program_parameters(slot=slot, device=device)
+        self.manage("program_pause", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}))
         return json.loads(self.data_reply)
 
-    def resume_program(self):
-        state = self.program_parameters()
-        self.manage("program_resume", expected_generation=state["generation"])
+    def resume_program(self, slot=None, device=None):
+        state = self.program_parameters(slot=slot, device=device)
+        self.manage("program_resume", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}))
         return json.loads(self.data_reply)
 
-    def snapshot(self):
+    def snapshot(self, slot=None, device=None):
         self.pixel_snapshot.clear()
-        self.manage("program_snapshot")
+        self.manage("program_snapshot", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
 
 
@@ -408,7 +428,8 @@ def main():
     action.add_argument("--get-procedure", metavar="NAME")
     action.add_argument("--delete-procedure", metavar="NAME")
     action.add_argument("--activate", metavar="NAME")
-    parser.add_argument("--slot", help="deployment slot for --activate (default A)")
+    parser.add_argument("--slot", choices=("A",), help="the device’s only slot, A")
+    parser.add_argument("--device", help="configured device ID for upload, activation and controls")
     action.add_argument("--cancel-upload", action="store_true")
     action.add_argument("--parameters", action="store_true", help="read control parameters and program state")
     action.add_argument("--set-parameters", metavar="JSON", help="atomically update live control parameters")
@@ -486,36 +507,36 @@ def main():
             elif args.delete_procedure:
                 client.delete_procedure(args.delete_procedure)
             elif args.activate:
-                client.activate(args.activate, args.action, args.function, args.slot)
+                client.activate(args.activate, args.action, args.function, args.slot, device=args.device)
             elif args.cancel_upload:
                 client.require_ok(client.command(OBJECT_CANCEL))
             elif args.parameters:
-                print(json.dumps(client.program_parameters(), indent=2))
+                print(json.dumps(client.program_parameters(slot=args.slot, device=args.device), indent=2))
             elif args.set_parameters is not None:
-                print(json.dumps(client.set_parameters(json.loads(args.set_parameters)), indent=2))
+                print(json.dumps(client.set_parameters(json.loads(args.set_parameters), slot=args.slot, device=args.device), indent=2))
             elif args.pause:
-                print(json.dumps(client.pause_program(), indent=2))
+                print(json.dumps(client.pause_program(slot=args.slot, device=args.device), indent=2))
             elif args.resume:
-                print(json.dumps(client.resume_program(), indent=2))
+                print(json.dumps(client.resume_program(slot=args.slot, device=args.device), indent=2))
             elif args.snapshot:
-                state, rgb = client.snapshot()
+                state, rgb = client.snapshot(slot=args.slot, device=args.device)
                 print(json.dumps({**state, "rgb": rgb.hex()}, indent=2))
             return 0
         if args.module is not None:
-            loaded = client.upload(args.module.read_bytes())
+            loaded = client.upload(args.module.read_bytes(), slot=args.slot, device=args.device)
             print(f"Loaded {loaded.value} bytes", file=sys.stderr)
         if args.animate:
-            reply = client.command(PLAY)
+            reply = client.command(PLAY, slot=args.slot, device=args.device)
         elif args.stop:
-            reply = client.command(STOP)
+            reply = client.command(STOP, slot=args.slot, device=args.device)
         elif args.frame_ms is not None:
-            reply = client.command(FRAME, struct.pack("<I", args.frame_ms))
+            reply = client.command(FRAME, struct.pack("<I", args.frame_ms), slot=args.slot, device=args.device)
             if client.pixel_snapshot:
                 colors = [tuple(client.pixel_snapshot[index:index+3])
                           for index in range(0, min(15, len(client.pixel_snapshot)), 3)]
                 print(f"RGB snapshot: {len(client.pixel_snapshot)//3} pixels; first five {colors}", file=sys.stderr)
         elif args.status or args.module is None:
-            reply = client.command(STATUS)
+            reply = client.command(STATUS, slot=args.slot, device=args.device)
         else:
             reply = client.command(RUN, args.function.encode("utf-8"))
         print(f"Status {reply.code}, result {reply.value}: {reply.message}", file=sys.stderr)

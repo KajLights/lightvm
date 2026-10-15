@@ -1,10 +1,11 @@
 #include "devices.h"
 #include "json.h"
+#include "runtime.h"
 #include <stdio.h>
 #include <string.h>
 static bool validate_pixels(const Json *, int, PixelConfig *, char *, size_t);
 static const DeviceType types[] = {
-    {"ws2812b", validate_pixels, platform_pixels_open, platform_pixels_close, platform_pixels_show}
+    {"ws2812b",validate_pixels,platform_pixels_open,platform_pixels_close,platform_pixels_show,platform_pixels_submit,platform_pixels_poll,platform_pixels_cancel}
 };
 const DeviceType *device_type(const char *name) {
     for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); ++i)
@@ -47,51 +48,55 @@ static bool validate_pixels(const Json *j, int c, PixelConfig *cfg, char *error,
         return failure(error, capacity, "devices[0].config.order: expected a permutation of RGB");
     return true;
 }
-bool hardware_parse(const void *bytes, size_t size, HardwareConfig *cfg, char *error, size_t capacity) {
-    Json j;
-    memset(cfg, 0, sizeof(*cfg));
-    cfg->pixels.pin = -1; cfg->pixels.brightness = 255;
-    memcpy(cfg->pixels.order, "GRB", 4);
-    static const char *const root[] = {"schema", "devices", "targets", "startup", NULL};
-    if (size > CONFIG_LIMIT || !json_parse(&j, bytes, size) || !json_fields(&j, 0, root))
-        return failure(error, capacity, "config: invalid JSON, duplicate/unknown fields or configuration limit");
-    if (!json_equal(&j, json_get(&j, 0, "schema"), "lightvm.config/1"))
-        return failure(error, capacity, "schema: expected lightvm.config/1");
-    int list = json_get(&j, 0, "devices");
-    if (list < 0 || j.tokens[list].type != JSON_ARRAY || j.tokens[list].children > 1)
-        return failure(error, capacity, "devices: expected an array with at most one ws2812b instance");
-    if (j.tokens[list].children) {
-        int d = list + 1;
-        static const char *const fields[] = {"id", "type", "config", NULL};
-        char type[33];
-        if (!json_fields(&j, d, fields) || !json_string(&j, json_get(&j, d, "id"), cfg->device, sizeof(cfg->device)) ||
-            !object_name_valid(cfg->device)) return failure(error, capacity, "devices[0].id: missing or invalid instance identifier/fields");
-        if (!json_string(&j, json_get(&j, d, "type"), type, sizeof(type)) || !device_type(type))
-            return failure(error, capacity, "devices[0].type: unsupported device type");
-        const DeviceType *descriptor = device_type(type);
-        if (!descriptor->validate(&j, json_get(&j, d, "config"), &cfg->pixels, error, capacity)) return false;
-        cfg->has_pixels = true;
-    }
-    int targets = json_get(&j, 0, "targets");
-    static const char *const target_fields[] = {"A", NULL};
-    if (targets >= 0) {
-        if (!json_fields(&j, targets, target_fields)) return failure(error, capacity, "targets: only target A is supported");
-        int a = json_get(&j, targets, "A");
-        static const char *const binding[] = {"device", NULL};
-        if (a >= 0) {
-            if (!json_fields(&j, a, binding) || !cfg->has_pixels || !json_equal(&j, json_get(&j, a, "device"), cfg->device))
-                return failure(error, capacity, "targets.A.device: missing configured pixel instance");
-            cfg->target_a = true;
+static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,size_t capacity){
+    Json j;memset(cfg,0,sizeof(*cfg));
+    cfg->default_device=-1;
+    static const char *const root[]={"schema","devices",NULL};
+    if(size>CONFIG_LIMIT||!json_parse(&j,bytes,size)||!json_fields(&j,0,root))
+        return failure(error,capacity,"config: invalid JSON, duplicate/unknown fields or configuration limit");
+    if(!json_equal(&j,json_get(&j,0,"schema"),"lightvm.config/1"))return failure(error,capacity,"schema: expected lightvm.config/1");
+    int list=json_get(&j,0,"devices");
+    if(list<0||j.tokens[list].type!=JSON_ARRAY)
+        return failure(error,capacity,"devices: array exceeds device capacity");
+    cfg->devices=platform_calloc((size_t)j.tokens[list].children,sizeof(*cfg->devices));
+    if(j.tokens[list].children&&!cfg->devices)return failure(error,capacity,"devices: allocation failed");
+    for(int t=list+1;t<j.tokens[list].next;t=j.tokens[t].next){
+        HardwareDevice *d=&cfg->devices[cfg->count];
+        static const char *const fields[]={"id","type","config","startup",NULL};
+        if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id))
+            return failure(error,capacity,"devices.id: missing or invalid identifier/fields");
+        if(!json_string(&j,json_get(&j,t,"type"),d->type,sizeof(d->type))||!device_type(d->type))
+            return failure(error,capacity,"devices.type: unsupported device type");
+        int startup=json_get(&j,t,"startup");
+        if(startup>=0){
+            static const char *const startup_fields[]={"procedure","args",NULL};
+            if(!json_fields(&j,startup,startup_fields)||
+               !json_string(&j,json_get(&j,startup,"procedure"),d->startup,sizeof(d->startup))||!object_name_valid(d->startup)){
+                snprintf(error,capacity,"devices[%s].startup.procedure: expected a named procedure and optional args",d->id);return false;
+            }
+            int args=json_get(&j,startup,"args");
+            if(args>=0){
+                if(j.tokens[args].type!=JSON_OBJECT){
+                    snprintf(error,capacity,"devices[%s].startup.args: expected an object",d->id);return false;
+                }
+                d->args_offset=(uint32_t)j.tokens[args].start;
+                d->args_size=(uint32_t)(j.tokens[args].end-j.tokens[args].start);
+            }
         }
+        d->pixels.pin=-1;d->pixels.brightness=255;memcpy(d->pixels.order,"GRB",4);
+        if(!device_type(d->type)->validate(&j,json_get(&j,t,"config"),&d->pixels,error,capacity))return false;
+        for(unsigned n=0;n<cfg->count;n++){
+            if(!strcmp(d->id,cfg->devices[n].id))return failure(error,capacity,"devices.id: duplicate identifier");
+            if(d->pixels.pin>=0&&d->pixels.pin==cfg->devices[n].pixels.pin)return failure(error,capacity,"devices.config.pin: duplicate physical pin");
+        }
+        cfg->count++;
     }
-    int startup = json_get(&j, 0, "startup");
-    if (startup >= 0 && !(j.tokens[startup].type == JSON_PRIMITIVE &&
-        j.tokens[startup].end - j.tokens[startup].start == 4 && !memcmp(j.text + j.tokens[startup].start, "null", 4))) {
-        static const char *const startup_fields[] = {"procedure", "target", NULL};
-        if (!json_fields(&j, startup, startup_fields) || !cfg->target_a ||
-            !json_equal(&j, json_get(&j, startup, "target"), "A") ||
-            !json_string(&j, json_get(&j, startup, "procedure"), cfg->startup, sizeof(cfg->startup)) || !object_name_valid(cfg->startup))
-            return failure(error, capacity, "startup: expected a named procedure and configured target A");
-    }
-    error[0] = 0; return true;
+    if(cfg->count)cfg->default_device=0;
+    error[0]=0;return true;
+}
+
+void hardware_destroy(HardwareConfig *cfg){platform_free(cfg->devices);memset(cfg,0,sizeof(*cfg));cfg->default_device=-1;}
+bool hardware_parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,size_t capacity){
+    if(parse(bytes,size,cfg,error,capacity))return true;
+    hardware_destroy(cfg);return false;
 }

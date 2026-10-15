@@ -26,12 +26,14 @@ const BoardPin *platform_pins(size_t *count) { *count=sizeof(pins)/sizeof(pins[0
 typedef struct { PIO pio; uint sm,offset; PixelConfig config; } Pixels;
 bool platform_pixels_open(const PixelConfig *config,void **driver) {
     Pixels *p=calloc(1,sizeof(*p)); if (!p) return false;
-    p->pio=pio0; p->config=*config;
-    int sm=pio_claim_unused_sm(p->pio,false);
-    if (sm<0 || !pio_can_add_program(p->pio,&ws2812_program)) {
-        if (sm>=0) pio_sm_unclaim(p->pio,(uint)sm);
-        free(p); return false;
+    p->config=*config;int sm=-1;
+    const PIO blocks[]={pio0,pio1};
+    for(unsigned n=0;n<2;n++){
+        p->pio=blocks[n];
+        if(!pio_can_add_program(p->pio,&ws2812_program))continue;
+        sm=pio_claim_unused_sm(p->pio,false);if(sm>=0)break;
     }
+    if(sm<0){free(p);return false;}
     p->sm=(uint)sm; p->offset=pio_add_program(p->pio,&ws2812_program);
     ws2812_program_init(p->pio,p->sm,p->offset,(uint)config->pin,800000,false);
     *driver=p; return true;
@@ -44,6 +46,8 @@ void platform_pixels_close(void *driver) {
 }
 bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     Pixels *p=driver; if (!p || count!=p->config.count) return false;
+    // Feed each device's PIO directly and finish the wire frame before returning.
+    // The shared submit/poll adapter treats this synchronous transfer as complete.
     for (size_t i=0;i<count;++i) {
         uint32_t word=0;
         for (size_t c=0;c<3;++c) {

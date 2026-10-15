@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 import zlib
-from bytecode_fixtures import color, sample, fault, infinite, padded_program
+from bytecode_fixtures import color, sample, fault, padded_program, program
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -20,9 +20,9 @@ def config(count=5, pin="GP16", startup=None):
     result = {"schema": "lightvm.config/1", "devices": [
         {"id": "lights", "type": "ws2812b", "config": {
             "pin": pin, "count": count, "order": "GRB", "brightness_limit": 32}}
-    ], "targets": {"A": {"device": "lights"}}}
+    ]}
     if startup:
-        result["startup"] = {"procedure": startup, "target": "A"}
+        result["devices"][0]["startup"] = {"procedure": startup}
     return result
 
 
@@ -142,10 +142,10 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_incompatible_startup_is_idle_and_repairable(self):
         self.client.save_procedure("bad", fault())
-        self.client.configure(config(startup="bad"), save=True)
+        with self.assertRaises(ProtocolError):self.client.configure(config(startup="bad"), save=True)
         self.restart()
         self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.assertIn("fault", self.client.describe()["boot_error"])
+        self.assertEqual(self.client.describe()["boot_error"], "")
         self.assertEqual(self.client.status_fields()["heap"], "0")
         self.client.configure(config())
         self.assertEqual(self.client.describe()["boot_error"], "")
@@ -153,13 +153,13 @@ class ConfigurationTests(unittest.TestCase):
         self.restart()
         self.assertEqual(self.client.status_fields()["pixels"], "5")
 
-    def test_startup_timeout_and_render_trap(self):
-        for data in (infinite(), fault()):
+    def test_startup_render_trap(self):
+        for data in (fault(),):
             self.client.save_procedure("bad", data)
-            self.client.configure(config(startup="bad"), save=True)
+            with self.assertRaises(ProtocolError):self.client.configure(config(startup="bad"), save=True)
             self.restart()
             self.assertEqual(self.client.status_fields()["mode"], "idle")
-            self.assertTrue(self.client.describe()["boot_error"])
+            self.assertFalse(self.client.describe()["boot_error"])
             self.assertEqual(self.client.command(RESET).code, 0)
 
     def test_library_replacement_preserves_resident_instance(self):
@@ -170,7 +170,7 @@ class ConfigurationTests(unittest.TestCase):
         old_crc = self.client.describe()["active_crc32"]
         self.assertEqual(self.client.status_fields()["code_storage"],"flash")
         self.client.save_procedure("effect", color(77))
-        self.assertEqual(self.client.status_fields()["code_storage"],"ram")
+        self.assertEqual(self.client.status_fields()["code_storage"],"flash")
         # Multiple snapshot rotations must preserve the old active version.
         for i in range(3):
             self.client.save_procedure("other", color(i))
@@ -199,6 +199,54 @@ class ConfigurationTests(unittest.TestCase):
         self.client.save_config()
         self.client.delete_procedure("effect")
         self.assertEqual(self.client.procedures(), [])
+
+    def test_startup_uses_current_catalogue_without_activation_promotion(self):
+        self.client.save_procedure("effect", color(7))
+        self.client.configure(config(startup="effect"), save=True)
+        self.restart()
+        self.client.save_procedure("effect", color(77))
+        self.assertEqual(self.client.describe()["active_crc32"], zlib.crc32(color(7)))
+        self.restart()
+        description = self.client.describe()
+        self.assertNotIn("boot_crc32", description)
+        self.assertNotIn("boot_procedure", description)
+        self.assertEqual(description["active_crc32"], zlib.crc32(color(77)))
+        self.client.save_procedure("effect", fault())
+        self.restart()
+        self.assertEqual(self.client.status_fields()["mode"], "idle")
+        self.assertIn("devices[lights].startup", self.client.describe()["boot_error"])
+        self.client.save_procedure("effect", color(9))
+        self.restart()
+        self.client.command(FRAME, bytes(4))
+        self.assertEqual(self.client.pixel_snapshot[0], 9)
+
+
+    def test_startup_arguments_are_used_during_validation_and_initialization(self):
+        self.client.save_procedure("effect", color(7))
+        self.client.configure(config(startup="effect"), save=True)
+        candidate = program('''from lightvm import profile,setting,init,render,rgb
+profile("animation/1")
+@init
+def setup(ctx, runtime):
+ divisor=setting(0,minimum=0,maximum=10)
+ ctx.intensity=10//divisor
+@render
+def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
+''')
+        self.client.save_procedure("effect", candidate)
+        supplied = config(startup="effect")
+        supplied['devices'][0]['startup']['args'] = {'divisor': 1}
+        self.client.configure(supplied, save=True)
+        self.restart()
+        self.client.command(FRAME, bytes(4))
+        self.assertEqual(self.client.pixel_snapshot[0], 10)
+        self.client.activate("effect", settings={"divisor": 2})
+        self.client.command(FRAME, bytes(4))
+        self.assertEqual(self.client.pixel_snapshot[0], 5)
+        self.assertEqual(self.client.get_config(), supplied)
+        self.restart()
+        self.client.command(FRAME, bytes(4))
+        self.assertEqual(self.client.pixel_snapshot[0], 10)
 
     def test_active_runtime_blocks_deletion(self):
         self.client.save_procedure("one", color())
@@ -284,7 +332,7 @@ class ConfigurationTests(unittest.TestCase):
         self.transport.close()
         self.transport = None
         with self.storage.open("r+b") as stream:
-            stream.seek(256 * 1024 + 4096)
+            stream.seek(256 * 1024)
             stream.write(b"bad!")
         self.restart()
         self.assertEqual(self.client.get_procedure("p"), one)
@@ -305,16 +353,16 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(self.client.describe()["boot_error"], "")
         self.assertEqual(self.client.get_procedure("repair"), color())
 
-    def test_saved_missing_reference_after_external_corruption(self):
+    def test_missing_startup_catalog_name_is_idle_and_repairable(self):
         data = sample("rainbow")
         self.client.save_procedure("p", data)
         self.client.configure(config(startup="p"), save=True)
         # Replace only the catalog identifier, recomputing directory/commit CRCs,
-        # to model a structurally valid imported snapshot with a broken reference.
+        # to model a missing startup procedure in an otherwise valid store.
         self.transport.close()
         self.transport = None
         raw = bytearray(self.storage.read_bytes())
-        base = 256 * 1024
+        base = max((0,256*1024),key=lambda at: struct.unpack_from("<I",raw,at+8)[0])
         raw[base+32:base+65] = b"q" + bytes(32)
         crc = zlib.crc32(raw[base:base+1020])
         struct.pack_into("<I", raw, base+1020, crc)
@@ -323,7 +371,12 @@ class ConfigurationTests(unittest.TestCase):
         self.storage.write_bytes(raw)
         self.restart()
         self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.assertIn("startup.procedure", self.client.describe()["boot_error"])
+        self.assertIn("devices[lights].startup", self.client.describe()["boot_error"])
+        self.assertIn("procedure", self.client.describe()["boot_error"])
+        self.assertEqual(self.client.get_config(), config(startup="p"))
+        self.client.configure(config(startup="q"), save=True)
+        self.restart()
+        self.assertEqual(self.client.describe()["active_crc32"], zlib.crc32(data))
 
     def test_multi_frame_readback_and_configuration_size_limit(self):
         data = padded_program(2000)

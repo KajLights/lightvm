@@ -1,211 +1,138 @@
-# Animation profile 1
+# Animation profile
 
-The six supplied examples now use `profile("animation/1")`, LBC1/3, execution ABI
-3 and `lightvm.program/4`. Unmarked source still compiles to LBC1/2 with its old
-semantics. The [accepted API](../documents/feature-proposal-persistent-animation-state.md)
-defines ownership, initialization, timing, completion and the bounded Twinkle fix.
-This document records the implemented bindings and their limits.
-
-## Authoring
+The proof-of-concept Python API has two decorators: `@init` and `@render`.
+The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/5`, with profile
+`animation/1`. It parses source without executing it.
 
 ```python
-from lightvm import profile, setting, pixel_buffer, rgb, step, kernel, cycle_complete
+from lightvm import profile, setting, rgb, init, render
 profile("animation/1")
-color = setting(rgb(255, 64, 0))
-update_us = setting(20_000, minimum=1_000, maximum=1_000_000)
-paint = pixel_buffer(length=count)
-draw_count = 0
 
-@step(period_us=update_us, first="immediate", max_catch_up=4, overload="slow")
-def update():
-    global draw_count
-    paint[draw_count % count] = color
-    draw_count += 1
-    if draw_count % count == 0:
-        cycle_complete()
+@init
+def setup(ctx, runtime):
+    ctx.color = setting(rgb(255, 64, 0))
+    ctx.speed = setting(50.0, minimum=0.0)
+    ctx.progress = 1.0
 
-@kernel
-def draw():
-    pixels.copy_from(paint)
+@render
+def draw(ctx, runtime, pixels):
+    ctx.progress = min(float(pixels.count), ctx.progress + runtime.delta * ctx.speed)
+    pixels.fill(ctx.color, start=0, stop=int(ctx.progress))
 ```
 
-`array(i32|f32|rgb8|bool8|u8|u16|stamp, length=..., fill=...)` and
-`pixel_buffer(...)` declare persistent native storage. Their size is fixed at
-preparation; `len`, indexed access, `fill(value, start=..., stop=...)` and
-whole-array `copy_from` are checked. Stop is exclusive. Empty arrays/ranges are
-valid; out-of-range access and narrowing stores fault. An immutable RGB tuple
-can be indexed or copied into an equal-length RGB array.
+## Caller arguments and lifetime
 
-`@init` runs once after templates/settings resolve. Init and step may mutate
-persistent state; prepare derives frame scalars, reset before each prepare;
-shade/kernel read stable simulation state. Kernel alone reads/writes working
-`pixels`, which starts black each render. Scalar assignments require `global`
-when referring to module state. Helpers are statically inlined, positional,
-nonrecursive, at most eight nested calls, and must return a value on every path.
-Effects are checked through helpers. Scalar arguments are passed by value;
-resource arguments retain their binding and permissions. The compiler never
-executes source Python, and these source forms are not desktop SDK constructors.
+`@init` receives `(ctx, runtime)` once per instance. It is optional. `@render`
+receives `(ctx, runtime, pixels)` and is required. These are ordinary positional
+arguments; their names can differ from the example. Decorators take no options.
+There are no implicit `time`, `delta`, `count`, `index` or `pixels` globals.
 
-Declaration expressions support literals, `count`, earlier settings, `+ - * // %
-/`, and two-argument `min`/`max`; integer size arithmetic is checked, not wrapping.
-Settings are immutable bool/i32/f32/RGB values. Numeric bounds have the setting's
-type. Resource sizes cannot depend on live parameters or runtime calls. Supplied
-examples use settings for their original constructor controls. A custom live
-`parameter` still supports atomic updates; using it in init does not make later
-updates rerun init.
+`ctx` holds per-instance scalar fields and managed arrays. Declare fields directly
+in init, before using them. Their types and array bindings stay fixed. Render may
+change ordinary context fields and array elements. Module-level state and `global`
+are unsupported.
 
-## Execution and lifecycle
+`runtime.time` is the pausable elapsed program time in seconds. `runtime.delta`
+is the actual elapsed time supplied for this render, also in seconds.
+`runtime.pixel_count` is available during initialization and rendering.
+Runtime properties are read-only. `pixels.count` describes the output buffer.
+Pixels support indexed reads/writes and `fill(color, start=0, stop=pixels.count)`;
+stop is exclusive. Each render starts with black working pixels.
 
-An explicit step period must resolve to 1,000..1,000,000 microseconds. Examples
-use 20,000. Immediate tick zero has delta zero; later ticks receive one period.
-`first="after_period"` omits tick zero. Render sees the last successful tick's
-logical time. No-step programs follow pausable elapsed time. `now()` produces an
-opaque u64 microsecond stamp; `elapsed(stamp)` subtracts integers before converting
-to f32 seconds. Zero is a valid birth time.
+Preparation calls init at time/delta zero, then renders the initial frame at zero.
+Each subsequent render runs once with the supplied delta. A zero-delta render is
+still a call. The animation cannot request a period: there is no fixed-step
+scheduler, catch-up loop, cycle notification or completion callback. Animations
+keep rendering until the host stops them or execution faults.
 
-Playback preserves fractional wall credit, executes at most `max_catch_up`
-(default four, maximum 64) updates, and counts/discards excess whole intervals.
-Discarding wall debt never skips a simulation transition. Autonomous work yields
-to the native event loop after at most 4,096 VM dispatches; native fill/copy does
-at most 32 elements per dispatch. Parameters remain stable for the entire pass.
-Each pass is bounded by two million aggregate dispatches and a 500 ms deadline.
-Preparation and manual FRAME use the same aggregate limits synchronously.
+The VM can suspend a render between instruction slices and resume the same call.
+Its arguments remain unchanged across those slices. Only completed frames are
+published. A runtime fault preserves the previous published frame and stops the
+instance; context changes made before the fault are not rolled back. Pause and
+STOP finish an already-started render before suspending; STOP also clears output.
+The native presenter retains each complete frame until transfer finishes.
 
-FRAME accepts 0..1000 ms, processes all due logical ticks and renders once. More
-than 64 due ticks is rejected before execution, even before fresh init. Repeated
-FRAME(0) does not update state. Pause/STOP finish a partially started tick, cancel
-unstarted catch-up ticks (`cancelled_wall_ticks`), discard unfinished render and
-retain fractional credit. Pause holds the last image; STOP clears physical output.
-PLAY re-renders retained state and resumes with a fresh wall-time anchor.
+## Frozen settings
 
-`cycle_complete(count=1)` increments a checked counter after a successful update;
-it does not stop. `complete()` requests the final render without returning early.
-Completion and cycles from that terminal update become visible only after the
-final contribution and attached native output succeed. Failure preserves the
-previous complete image and reports a fault. Offscreen completion needs only a
-contribution commit. Completed animations hold their image/time until fresh reset;
-PLAY can redisplay a held image after STOP but cannot restart it. The component
-remains available; independent service handlers are not terminated by completion.
+`setting(default, minimum=..., maximum=...)` is declared directly in init, either
+as a local variable or a ctx field. All settings are frozen for that instance.
+There are no live setting updates or change listeners in this proof of concept.
+The separate source `parameter(...)` API is removed.
 
-Simulation writes are not rolled back after a fault. Reset is required before
-further updates. Reset/activation prepare a candidate alongside the old instance
-and replace it only after successful preparation/presentation; memory admission
-includes coexistence and rejects a candidate that cannot fit. Raw upload retains
-its existing replace/unload behaviour and is not this transactional reset API.
+Names come from assignment targets: `ctx.duration = setting(...)` exposes the
+setting `duration`. Defaults and bounds can use literals, `runtime.pixel_count`,
+earlier settings, arithmetic, and two-argument `min`/`max`. Bounds are inclusive
+and numeric types must match. Initialization validates overrides before execution.
 
-## Management and editor
+Existing activation and `program_reset(settings=...)` operations initialize a
+fresh instance with supplied overrides. Reset keeps the old instance if candidate
+preparation fails. `program_parameters_get` reports `manifest.settings` and
+`settings_values`; `program_parameters_set` rejects this profile. The editor's
+initialization settings panel applies settings through an explicit restart.
+Activation/reset inputs belong to that invocation. Per-device `startup.args` in
+configuration supplies inputs at boot; omitted arguments use the program defaults.
 
-`describe` retains legacy scalar fields and adds `program_abis`,
-`bytecode_formats`, `program_profiles`, `max_manual_ticks`, `animation_reset` and
-`activation_settings`. The compiler/editor require explicit profile support.
+## Arrays and standard library subset
 
-```json
-{"op":"procedure_activate","name":"twinkle","slot":"A","settings":{"max_stars":12}}
-{"op":"program_reset","expected_generation":7,"settings":{"duration":1.5},"values":{}}
-```
+Use `from array import array` and `array(typecode, initializer)` in init. Supported
+typecodes are `i`, `I`, `f`, `B`, and `H`. Initializers are literal lists/tuples or
+`[value] * length`. Length may depend on initialization settings or pixel count.
+Storage is allocated during preparation; rendering does not allocate. Indexing,
+assignment and `len(array)` are supported. Resizing, slicing and append are not.
+The integer value domain is signed 32-bit, including values stored in `I` arrays;
+packed RGB fits within this domain. Narrow stores and invalid indices fault.
 
-Reset retains resolved settings and current parameter values unless overridden;
-success increments the instance generation and preserves whether playback was
-running. Failure keeps the old instance/output. Transport RESET still unloads.
-Parameter updates to completed instances return `requires_reset`.
+Use normal `import random`. The supported functions follow these call shapes:
 
-Parameter/snapshot status adds `completed`, `cycle_count`, `completion_time_us`,
-`logical_ticks`, `active_wall_us`, `dropped_wall_ticks`, `cancelled_wall_ticks`,
-`random_exhaustions`, resolved `settings_values`, and memory fields below.
-The editor loads all six canonical files and imports the same Rainbow file for
-its initial `rainbow.py`, selected in the dropdown. Rainbow's existing duration
-setting controls its cycle time, with a 60-second default.
-Its preparation settings panel applies a fresh reset;
-live parameters remain a separate control. Overrides are runtime-only. To retain
-settings after reboot, change source defaults and save the recompiled procedure.
-Startup-binding overrides and init-only parameter diagnostics are deferred.
+- `random.seed(a=None, version=2)`: integer or None seeds; version 1 or 2.
+- `random.random()`: float in `[0, 1)`.
+- `random.randint(a, b)`: inclusive integer endpoints, including keyword arguments.
+- `random.randrange(stop)` or `random.randrange(start, stop[, step])`: positional
+  integer arguments; negative steps are supported and stop is excluded.
 
-## Portable container and native calls
+An empty integer range or zero step faults. An omitted seed uses native entropy
+inputs (clock and an instance sequence). Explicit integer seeds reproduce the
+per-instance PCG32 sequence across hosts; this is not CPython's generator or a
+cryptographic RNG. Unbiased integer sampling may yield and resume internally.
+`random.randint(0, 359)` is the Rainbow hue selection.
 
-The VM's typed function table is general. Its host invokes a selected function
-with checked typed arguments and receives a typed return. The animation adapter
-selects lifecycle entries, schedules updates and traverses pixels; the interpreter
-does not embed that scheduling. Native contract tests also execute a non-animation
-callback and a private array in resource slot zero without any output binding.
-No networking, dynamic resource registration or general service framework is
-introduced here. Source helpers are inlined, so guest call storage is currently
-zero; future bytecode-to-bytecode calls need their own admitted frame bound.
+`math.sin`, `math.pi`, and their explicit from-import forms are supported. LightVM
+provides `rgb`, `hsv`, `hash01`, `red`, `green`, `blue`, `pico_colorwheel`,
+`hue_degrees` and `colorwheel`. Hue degrees uses the original rounded hue; Rainbow
+converts it into the colorwheel's 255-unit scale.
 
-All table words are little endian. Header: 96 bytes (`LBC1`, followed by 23 u32s).
+Helpers are positional, nonrecursive, statically inlined and must return a value
+on every path. Scalar arguments are copied; ctx/runtime/pixels arguments retain
+access to the caller objects. The subset supports scalar arithmetic, comparisons,
+conditionals, `range(bound)` loops, break/continue, int/float and two-argument
+min/max. Numbers use signed wrapping i32, binary32 floats, bool and packed RGB8.
+General Python objects, arbitrary imports, exceptions and dynamic allocation are
+unsupported. Standard-library support is limited to the forms above.
 
-| Offset | Fields |
-|---|---|
-| 4 | Version = 3 |
-| 8..36 | Register, instruction, palette-colour, function, resource, declaration-expression, native-call-site, setting counts |
-| 40..52 | Animation step, prepare, render, init function IDs |
-| 56..76 | Render mode (1 shade/2 kernel), period expression ID, catch-up bound, first (0 after-period/1 immediate), profile ID (1 animation), manifest bytes |
-| 80..92 | Four reserved zero words |
+## Package and validation
 
-After the header: registers (8 bytes each), instructions (8), palette colours
-(4), functions (24), resource declarations (24), expressions (16), native call
-sites (16), settings (16), then UTF-8 JSON manifest. Functions contain first/end
-instruction, rights, result type, argument-start register and argument count.
-Arguments occupy typed input registers, maximum eight. Resource declarations
-contain kind, length/fill/seed/stream expression IDs and flags (1 borrowed output).
-Expressions form a checked acyclic graph. Call sites contain native binding ID,
-argument count, four register bytes and a reserved zero word. Settings contain
-register/default/minimum/maximum expression IDs; UINT32_MAX means absent bound.
+The 96-byte LBC1/4 header describes typed registers, instructions, functions,
+resources, declaration expressions, native calls and settings. It binds init and
+render entry IDs; old scheduler fields are reserved zero. Both entries receive
+three typed native values: pixel count, time and delta. Context and output storage
+are instance bindings. Init may write state and use randomness; render may also
+write output. Admission independently validates these rights and signatures.
 
-Types: 1 i32, 2 f32, 3 RGB8, 4 bool, 5 stamp, 6 resource reference. Array kinds use
-1..5 plus 7 u8, 8 u16, 9 RNG, 10 immutable palette. Registers hold eight-byte
-values; arrays use packed element storage. Reference values are checked IDs,
-never native pointers. Function effects are state write=1, frame write=2,
-output write=4, RNG=8, animation event=16. The profile requires exact lifecycle
-permissions; these restrictions do not impose an animation lifecycle on other
-portable functions.
+The current compiler emits LBC1/4, ABI 4, schema 5 and `animation/1`.
+All sample sources and generated test fixtures use this format.
 
-Scalar instruction IDs retain LBC1/2 assignments. Legacy PALETTE (22) and the
-profile-specific/fused operations 28..32 are not accepted in v3; arrays and
-ordinary typed instructions replace them. The new instructions are:
+`render_count` counts successful calls including the initial frame. `program_us`
+tracks elapsed time; snapshots are passive. The fixed-step statistics and cycle
+fields have been removed. FRAME keeps its existing wire range of 0..1000 ms;
+autonomous playback supplies its complete elapsed delta without clamping it.
 
-| ID | Operation | Operands |
-|---|---|---|
-| 33 | LOAD_ELEM | destination, resource, i32 index |
-| 34 | STORE_ELEM | resource, i32 index, value |
-| 35 | LENGTH | destination, resource |
-| 36 | RESOURCE_FILL | resource, value, start register, stop register |
-| 37 | RESOURCE_COPY | destination resource, source resource |
-| 38 | NATIVE | result register (255 for void), call-site ID |
+Tests compile the six Python examples in `samples/`, compare their output
+against a Python caller harness, exercise seeded random ranges and checked arrays,
+and verify variable frame rates, frozen settings, fault publication and native
+continuation/ownership. Hardware measurements below describe the previous API;
+they are historical evidence, not measurements of LBC1/4.
 
-The common typed native-call boundary handles clocks, random streams and lifecycle
-signals; none needs its own interpreter opcode. Binding IDs are fixed for v3:
-1 now, 2 elapsed, 3 uniform, 4 try_index, 5 cycle_complete, 6 complete, 7 sin,
-8 red, 9 green, 10 blue, 11 rainbowio-compatible colorwheel, 12 original
-pico_colorwheel, 13 rounded hue_degrees, 14 require (fault if false).
-`try_index` has an internal i32 result, -1 on exhaustion; source scalarizes that
-to `(False, 0)` or `(True, rank)`. RNG v1 and its four-attempt rejection policy
-are fixed in the accepted API. RGB8 uses the existing checked channel rules.
-
-Maximums: 128 physical registers, 2,048 instructions, 1,024 palette colours,
-16 functions/resources/settings, 128 declaration expressions, 256 native call
-sites, eight live parameters, 8 KiB manifest and 32 KiB package, further limited
-by board `MODULE_LIMIT` and aggregate `VM_HEAP_LIMIT`. Each array has at most
-65,535 elements. Lengths/capacities are also constrained by actual byte admission.
-The loader independently checks types, permissions, indices and all table entries.
-The compiler uses liveness allocation to reuse typed local registers.
-
-## Original fidelity and validation
-
-The [original source fixtures](../tests/original_picolights/README.md) preserve the
-supplied methods. Replay supplies controlled clocks/RNG and substitutes only the
-accepted bounded Twinkle allocation and Chase's missing colour binding. Color,
-Pattern, Chase and Wipe compare exactly. Rainbow/Twinkle permit one channel level
-for f32 arithmetic; integer birth-time differences remain precise at long uptime.
-Original f64 and VM f32 threshold comparisons can differ at values not exactly
-representable in f32; the VM's f32 duration/elapsed comparison is normative.
-
-Tests cover counts 1, 5 and 175, varied presentation schedules, constructor
-settings, full star pools, short/non-divisible Wipe widths, all 9,227 selector
-occupancy/rank cases through compiled bytecode, forced RNG rejection, late clocks,
-permissions, stale views, render/publication faults, reset/activation rollback,
-storage relocation, bounded autonomous suspension and no execution-time allocation.
-Legacy fixtures retain the previous simplified algorithms' tests. Browser checks
-exercise compilation, upload, storage and settings restart against the native host.
+## Historical measurements (LBC1/3, before this API change)
 
 ## Measured memory
 
@@ -216,40 +143,92 @@ register/payload columns are subsets, not additional allocations.
 
 | Example | Package | Metadata | State | Registers | Payload | Steady tracked heap | Preparation peak | Reset peak |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| color | 984 | 496 | 208 | 144 | 0 | 3631 | 3631 | 42950 |
-| pattern | 1527 | 688 | 392 | 240 | 24 | 4007 | 4383 | 44078 |
-| chase | 889 | 448 | 717 | 128 | 525 | 4092 | 4292 | 44072 |
-| wipe | 1146 | 544 | 765 | 176 | 525 | 4236 | 4484 | 44408 |
-| rainbow | 1977 | 952 | 376 | 312 | 0 | 4255 | 4255 | 44198 |
-| twinkle | 3822 | 1592 | 1085 | 448 | 413 | 5604 | 6284 | 47576 |
+| color | 984 | 54 | 112 | 44 | 0 | 3093 | 4141 | 7234 |
+| pattern | 1527 | 90 | 216 | 60 | 24 | 3233 | 4481 | 7714 |
+| chase | 889 | 48 | 629 | 36 | 525 | 3604 | 4764 | 8368 |
+| wipe | 1146 | 66 | 645 | 56 | 525 | 3638 | 4814 | 8452 |
+| rainbow | 1977 | 118 | 152 | 84 | 0 | 3197 | 4245 | 7442 |
+| twinkle | 3822 | 168 | 765 | 124 | 413 | 3860 | 5268 | 9128 |
 
 Each row additionally has a 1,272-byte portable context and 40-byte continuation,
 already included in tracked heap, and 1,575 bytes of RGB buffers (working,
 committed and physical output), also included. Call storage is zero because
 helpers are inlined. Twinkle payload is 14×17 + 175 = 413 bytes.
 
-The enclosing `VmInstance` is **35,680 bytes on this host**, including the existing
-32 KiB upload staging area and legacy VM context. The live instance is embedded
-in native App storage and is **not** included in steady tracked heap. A replacement
-candidate is heap allocated, so the reset peaks include that candidate, old/new
-resources and admission temporaries. Package bytes occupy staging or native
-storage and must not be added a second time when counting that staging allocation.
-Native App/transport/driver memory and stacks also remain outside these per-effect
-heap figures. These are not total firmware RAM or evidence of an inherent memory
-advantage over WASM.
+The enclosing `VmInstance` is **1,040 bytes on this host**, down from 35,680.
+It contains no package/upload array and no embedded legacy interpreter. V2
+interpreter state is allocated only for v2 packages. V3 immutable tables and
+initial values remain in flash; compact type/layout bindings use roughly three
+bytes per register. Mutable ordinary registers use four bytes, timestamps eight;
+constants have no mutable register slot. Code, palettes and immutable table size
+do not determine steady RAM consumption.
 
-The Pico W HTTP/boot build passes the link-time RAM gate: 165,992 static bytes,
-65,536-byte VM heap ceiling, 16,384-byte native stack, 3,072-byte driver reservation
-and 16,384-byte operating headroom, leaving 2,968 bytes. ESP32-C3 HTTP/boot and ESP32-S3 USB also
-cross-compile. Layout sizes differ on 32-bit targets; these are build/admission
-checks, not on-hardware stack high-water or timing measurements. No firmware was
-flashed as part of this change.
+The shared App is 30,488 bytes on this host, including eight 1,040-byte slot
+contexts, down from the earlier 79,992-byte single-slot App. It includes one
+336-byte upload workspace (256 bytes of page data), configuration staging and
+the store's bounded extent references. Slot contexts are embedded in App and are
+not included in steady tracked heap; replacement candidates are heap allocated and
+included in peaks. Preparation now happens before a transient upload replaces the
+old instance. The table uses fresh processes and includes that candidate in its
+preparation peak. Reset also overlaps old/new resources and admission temporaries.
+Native App/transport/driver memory and stacks are outside the VM heap figures.
+These numbers are not total firmware RAM or a cross-runtime performance benchmark.
 
-The Arm GCC 13.2 `-O3 -fstack-usage` audit also checks the new management paths.
-Control requests bypass the general upload/management parser frames. Largest
-individual core frames are management 6,480 bytes, control management 5,848,
-manifest validation 5,224 and declaration evaluation 1,112. Reset's retained core
-chain is approximately 11.3 KiB; activation's approximately 12 KiB, before native
-transport/libc frames. Keeping these parser paths separate removes a former
-nesting of more than 22 KiB. The reserved 16 KiB native stack still needs hardware
-high-water verification; these compiler estimates do not substitute for it.
+The multi-device Pico W HTTP/boot build uses 115,880 static bytes, including
+a 29,720-byte App with eight 968-byte slot contexts. Its RAM gate reserves a
+65,536-byte VM heap, 16,384-byte native stack, 6,144 bytes for aggregate Pico
+conversion buffers/drivers, and 16,384 bytes of operating headroom, leaving
+50,008 bytes. Aggregate configured pixels cannot exceed the board pixel capacity. Native SDK/driver costs remain separate from per-effect payload figures.
+ESP32-C3 HTTP/boot and ESP32-S3/C6 USB builds also pass. The changed DMA/RMT
+paths still need on-device timing, cancellation and stack high-water checks;
+cross-builds and simulated delayed-output tests do not establish those timings.
+
+Before the multi-device extension, Arm GCC 13.2 `-O3 -fstack-usage` reported the
+largest individual core frames as
+management 6,480 bytes, control management 5,848 and manifest validation 5,240.
+Decoded-key scratch is outside recursive JSON parsing, reducing each recursive
+frame from 312 bytes to at most 56 (depth remains bounded at 16). The shared
+native stack is retained during cooperative management work. Native polling
+callbacks must only enqueue commands; the command guard prevents recursive
+execution and defers upload cancellation until the current command releases its
+workspace. The 16 KiB reservation still requires hardware high-water verification.
+
+## Pico W simultaneous-device verification (2026-10-15)
+
+On Pico W `E6614103E7236D37`, the GP16 physical output retained the original
+200-pixel Rainbow at brightness 100/255. Five additional named `virtual_rgb`
+devices each ran an independent 100-pixel Color, Pattern, Chase, Wipe or Twinkle
+instance. They use separate VM state and RGB buffers, with a timed output sink
+on the controller; only Rainbow exercised physical PIO/DMA in this test.
+
+The 60-second run passed exact fixed-step host parity for all five added
+animations, independent pause/resume, unchanged generation on A during uploads,
+and stable aggregate VM heap. Heap remained **16,632 bytes**, with a
+**20,868-byte** preparation/reset peak. Each Pico slot context is 968 bytes in
+App; the single shared upload workspace is 328 bytes including its 256-byte page.
+These figures exclude static App/transport memory, native drivers and stacks.
+
+| Slot | Device | Pixels | Average output fps |
+|---|---|---:|---:|
+| A | Physical Rainbow, GP16 | 200 | 31.25 |
+| B | Virtual Color | 100 | 48.53 |
+| C | Virtual Pattern | 100 | 35.16 |
+| D | Virtual Chase | 100 | 40.96 |
+| E | Virtual Wipe | 100 | 34.38 |
+| F | Virtual Twinkle | 100 | 34.69 |
+
+Rainbow alone measured approximately 47.6 fps in the short baseline sample.
+That historical run used the former one-shot Wipe, with a one-second update
+interval; it held its output after approximately 51 seconds. Wipe now repeats,
+so the recorded average includes a hold that no longer occurs. That workload therefore
+does not establish six simultaneous 60 fps outputs. No device faulted. Saved
+configuration and the procedure library were unchanged; the extra devices were
+left in the active RAM configuration.
+
+The first concurrent attempt exposed excessive background work during manual
+commands; checkpoints now cap each background v3 instance at 64 dispatches.
+USB ingress now reads up to 256 bytes per scheduler pass, resolving the severe
+command latency caused by processing one byte per pass under concurrent load.
+The final run used both fixes. Reproduce with `tools/smoke_multi_device.py`.
+Electrical timing across multiple physical strips, RMT hardware behavior and
+native stack high-water measurements remain separate checks.

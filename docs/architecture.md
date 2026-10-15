@@ -2,7 +2,10 @@
 
 > The implementation now uses the [portable bytecode control profile](control-api.md).
 > The WASM-specific loader, guest imports and memory limits described below are
-> historical. Native platform, storage, transport and driver contracts are retained.
+> historical. Current storage, cooperative servicing and asynchronous output
+> contracts are documented in [control-api.md](control-api.md) and
+> [configuration.md](configuration.md); the historical contracts below are not
+> the current driver or upload specification.
 
 
 The [portable bytecode architecture decision](../documents/architecture-decision-portable-bytecode.md)
@@ -51,15 +54,16 @@ evidence separately from build success.
 
 The core contains no GPIO, PIO, USB, POSIX or RTOS calls, nor platform-selection
 branches. `pixels.c` always stores packed logical RGB and delegates physical output.
-All animation effects run as WASM procedures. All ports start from saved JSON
-configuration and an optional named startup WASM; otherwise they stay idle.
+Animation effects run as bytecode procedures. All ports start from saved JSON
+configuration; each device can name a startup procedure and supply initialization
+arguments. Devices without startup remain idle.
 The shared snapshot store delegates bounded block I/O to native ports.
 See [configuration and persistence](configuration.md).
 
 `src/config.h` includes the selected `LIGHTVM_BOARD_CONFIG` header and supplies
 portable defaults. Board headers must contain constants and portable declarations,
 without SDK includes. Adjustable engine constants are `PIXEL_CAPACITY`, `MODULE_LIMIT`,
-`VM_HEAP_LIMIT`, `VM_STACK_SIZE`, `OUTPUT_LIMIT`, `RUN_TIMEOUT_US` and
+`VM_HEAP_LIMIT`, `VM_STACK_SIZE`, `OUTPUT_LIMIT` and
 `FRAME_INTERVAL_US`. Compile the core and entry point with the same header.
 Native pin tables describe exposed capabilities; peripheral selection, count,
 brightness and order belong to runtime JSON.
@@ -146,7 +150,7 @@ must be serialized; neither several concurrent Sessions nor reentrant callbacks
 are supported. Future ESP32/RTOS network callbacks should enqueue commands for one
 engine task. They must not invoke wasm3, mutate its module, change the RGB buffer
 or enter the command handler concurrently. Reply/output callbacks must not reenter
-the engine. Native blocking writes are outside the cooperative guest deadline.
+the engine. Native blocking writes use their own transport deadlines.
 
 Matter/MQTT lighting controls should feed a shared controller-state API when that
 API is implemented. Vendor networking imports should not become prerequisites for
@@ -244,8 +248,8 @@ wasm3's intentional type aliasing is compiled with `-fno-strict-aliasing` on all
 GNU/Clang native ports. No architecture branches enter the shared engine.
 
 `app_main` owns one session on a 16 KiB native stack and yields every millisecond,
-including under continuous input. The shared 500 ms guest deadline remains
-cooperative; native compilation/output and SDK stacks are outside its budget.
+including under continuous input. Guest execution uses bounded instruction
+slices that yield and resume, without an instruction cutoff or timed watchdog.
 The port supplies `esp_timer_get_time`, ordinary C allocators, USB Serial/JTAG
 and synchronous RMT output. PSRAM, radio stacks and automatic light sleep are
 not enabled. USB pins are rejected as strip outputs. Native driver failures

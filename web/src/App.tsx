@@ -36,7 +36,7 @@ export function App() {
       {activity.notice && <div id="notice" className="notice" role="alert"><span>{activity.notice}</span><button className="quiet" aria-label="Dismiss notice" onClick={() => dispatch(activityActions.notice(''))}>×</button></div>}
       {workspace && description && <>
         <section className="device-bar" aria-label="Selected device">
-          <div><p className="eyebrow">DEVICE WORKSPACE</p><strong id="board">{description.board}</strong><span className="device-id">{description.device_id}</span><p id="output-binding" className="helper">{outputFor(device.config) ? outputFor(device.config)!.config.count + ' pixels · slot A' : 'Output is not configured'}</p></div>
+          <div><p className="eyebrow">DEVICE WORKSPACE</p><strong id="board">{description.board}</strong><span className="device-id">{description.device_id}</span><p id="output-binding" className="helper">{outputFor(device.config) ? outputFor(device.config)!.config.count + ' pixels · ' + outputFor(device.config)!.id : 'Output is not configured'}</p></div>
           <div className="connection-tools"><label className="sr-only" htmlFor="command-path">Command path</label>
             <select id="command-path" value={device.selectedPath || ''} disabled={busy || !device.paths.length} onChange={event => void devices.select(event.target.value as Path)}>
               {!device.selectedPath && <option value="">Choose a connection</option>}

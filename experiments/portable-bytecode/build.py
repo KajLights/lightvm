@@ -6,21 +6,17 @@ from pathlib import Path
 import shlex
 import subprocess
 import sys
-from compiler import Compiler
 HERE=Path(__file__).resolve().parent
 ROOT=HERE.parents[1]
 BUILD=ROOT/'build/portable-bytecode'
 def main():
     p=argparse.ArgumentParser();p.add_argument('--device',action='store_true');p.add_argument('--sanitize',action='store_true');p.add_argument('--idf',type=Path,default=Path('/tmp/lightvm-esp-deps/esp-idf'));p.add_argument('--idf-tools',type=Path,default=Path('/tmp/lightvm-esp-deps/tools'));p.add_argument('--cmake-bin',type=Path)
     p.add_argument('--pico',action='store_true');p.add_argument('--pico-sdk',type=Path);p.add_argument('--arm-toolchain',type=Path)
-    p.add_argument('--pico-config',type=Path,help='existing lightvm.config/1 JSON; bind target A to its configured strip')
+    p.add_argument('--pico-config',type=Path,help='existing lightvm.config/1 JSON; use its first configured strip')
     a=p.parse_args();BUILD.mkdir(parents=True,exist_ok=True)
-    for path in sorted((HERE/'samples').glob('*.py')):
-        raw,manifest=Compiler(path.read_text()).compile();(BUILD/(path.stem+'.lbc')).write_bytes(raw);(BUILD/(path.stem+'.json')).write_text(json.dumps(manifest,indent=2)+'\n')
     flags=['-O3','-Wall','-Wextra','-Werror','-ffp-contract=off']
     if a.sanitize:flags+=['-fsanitize=address,undefined','-g']
     subprocess.run(['cc',*flags,str(HERE/'vm.c'),str(HERE/'host.c'),'-o',str(BUILD/('host-sanitized' if a.sanitize else 'host'))],check=True)
-    subprocess.run(['cc',*flags,str(HERE/'vm.c'),str(HERE/'test_runtime.c'),'-o',str(BUILD/('test-runtime-sanitized' if a.sanitize else 'test-runtime'))],check=True)
     if a.pico:
         env=os.environ.copy()
         if a.pico_sdk:env['PICO_SDK_PATH']=str(a.pico_sdk.resolve())
@@ -29,9 +25,10 @@ def main():
         if a.cmake_bin:env['PATH']=str(a.cmake_bin.resolve())+os.pathsep+env['PATH']
         cmd=['cmake','-S',str(HERE/'pico'),'-B',str(BUILD/'pico-firmware'),'-DPICO_BOARD=pico_w','-DCMAKE_BUILD_TYPE=Release']
         if a.pico_config:
-            config=json.loads(a.pico_config.read_text());target=config['targets']['A']['device']
-            device=next(d for d in config['devices'] if d['id']==target)
-            if device['type']!='ws2812b':p.error('Pico PoC requires a ws2812b target A')
+            config=json.loads(a.pico_config.read_text())
+            if not config.get('devices'):p.error('Pico PoC requires a configured device')
+            device=config['devices'][0]
+            if device['type']!='ws2812b':p.error('Pico PoC requires a ws2812b first device')
             strip=device['config'];pin=strip['pin']
             if not pin.startswith('GP') or not pin[2:].isdigit():p.error('Pico pin must be GP<number>')
             count=strip['count'];brightness=strip.get('brightness_limit',255);order=strip.get('order','GRB')
