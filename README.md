@@ -1,17 +1,25 @@
 # LightVM
 
-LightVM is a [Kajlights](https://kajlights.com/) project developing a native WebAssembly
+LightVM is a [Kajlights](https://kajlights.com/) project developing a portable
 runtime for programmable lighting across microcontrollers and native hosts, under the
 [Kajlights GitHub organisation](https://github.com/Kajlights).
 
-The goal is one portable, language-neutral control API and the same `.wasm`
-programs across supported boards, within each board's resource limits. The
-implemented guest contracts are legacy animation API v1 and the independent
+The goal is one portable, language-neutral control API and identical program
+packages across supported boards, within each board's resource limits. The current
+implementation distributes `.wasm` programs. The implemented guest contracts are
+legacy animation API v1 and the independent
 [control ABI 2 animation profile](docs/control-api.md), with a restricted Python
 compiler, typed live parameters and RGB8 frames redrawn each step. The shared C engine and
 wasm3 interpreter are rebuilt for each processor; native ports supply the clock,
 LED output, memory allocation, transports and startup policy. Adding a board
 should not require board-specific imports or pin assumptions in an effect.
+
+The [portable bytecode architecture decision](documents/architecture-decision-portable-bytecode.md)
+selects the next component-runtime direction: multiple source-language frontends,
+off-device compilation to shared typed bytecode, direct interpretation from flash,
+and explicit state and buffer budgets. It also defines the staged animation API
+direction and numeric policy for these microcontrollers. This is planned work;
+the WASM upload paths and existing API semantics documented below remain current.
 
 The Pico and preliminary ESP32 firmwares receive a `.wasm` file over USB CDC,
 loads it with wasm3, calls an exported function, and returns console bytes,
@@ -97,9 +105,10 @@ describes selecting drivers, HTTP, MQTT, OTA and resource/storage settings for
 each board instance. Instances of the same board model can use different feature
 sets according to user needs and available capacity.
 
-Multi-board portability is a maintained requirement: identical compatible WASM
-must run on host, Pico, XIAO C3, XIAO S3 and XIAO C6 with native board configuration changes
-only. CI builds every firmware and tests both host profiles on pushes and PRs.
+Multi-board portability is a maintained requirement. In the current implementation,
+identical compatible WASM must run on host, Pico, XIAO C3, XIAO S3 and XIAO C6 with
+native board configuration changes only. CI builds every firmware and tests both
+host profiles on pushes and PRs.
 The portable smoke runner checks the same behavior over pipes or USB; successful
 cross-builds alone do not establish physical USB, output or timing correctness.
 

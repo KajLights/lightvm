@@ -1,8 +1,17 @@
 # LightVM Component Runtime Architecture Request
 
-Status: Requested; feasibility research and architecture selection pending
+Status: Requirements retained; portable typed bytecode direction selected, implementation pending
 
 Date: 14 October 2026
+
+Updated: 15 October 2026
+
+The [portable bytecode architecture decision](architecture-decision-portable-bytecode.md)
+selects a small typed interpreter, off-device compilation from multiple source
+languages and flash-resident programs as the next implementation direction. It
+also records the staged animation API and numeric policy. These requirements
+remain the acceptance criteria; exact formats, resource capacity and persistent
+replacement timing still need specification and measurement.
 
 LightVM should host multiple cooperating user-defined effects alongside
 communications and device services, with independent effect updates during
@@ -14,8 +23,12 @@ workloads and baselines.
 The architectural reference is an embedded operating environment with scheduling,
 priorities and resource ownership. The FreeRTOS analogy does not select an RTOS
 or require one native task, VM instance or memory allocation of a fixed size per
-component. Browser compilation for a known target is an available design option;
-WASM execution on the device is not a requirement of this request.
+component. Native memory mapping for pixel arrays and other hardware-facing buffers
+is a foundational requirement. Memory placement, ownership and the path from effect
+computation to physical output guide runtime design. Compile portable bytecode in
+the browser or on a computer; WASM execution on the device is not required for
+the future contract. Target-specific native code remains an optional execution
+optimisation, not a replacement for portable distribution.
 
 ## Core requirements
 
@@ -34,6 +47,23 @@ WASM execution on the device is not a requirement of this request.
    reset or intentional shutdown of unrelated effects and services. Flash stalls
    and other hardware constraints must be identified and measured. This is not a
    promise of zero timing interruption during every hardware operation.
+4. **Map component buffers to native memory usable by optimized operations and
+   hardware.** Effect code must be able to access bounded pixel-array views backed
+   by native allocations. Native array operations and, where supported by the
+   target and format, DMA must operate on the same backing storage. A private
+   runtime copy or a host call for every pixel must not be the only access path.
+   Memory placement, alignment, format and lifetime must satisfy the intended
+   consumers. Native mapping means access to the same backing storage; it does
+   not require virtual-memory hardware or unrestricted access to device memory.
+5. **Distribute identical programs to mixed compatible devices.** Compile once and
+   broadcast one package, including over MQTT, without per-controller native
+   builds at the sender. Each device checks the package's API, capabilities and
+   resource requirements; wiring and geometry bindings remain local.
+6. **Support multiple authoring languages through one execution contract.** Python,
+   JavaScript, blocks and compatibility frontends should share typed intermediate
+   representation, APIs and portable bytecode. Specify supported subsets and
+   numeric mappings; separate language frontends must not require separate device
+   interpreters or silently change existing source semantics.
 
 ## Ideal capabilities
 
@@ -47,14 +77,16 @@ WASM execution on the device is not a requirement of this request.
    to run on multiple general-purpose cores. Specialised or asymmetric processors
    should be used according to their capabilities. Avoid making a permanent global
    execution lock part of the component contract.
-3. **Use available hardware facilities fully.** Native services should exploit
+3. **Use available hardware facilities fully.** Extend the required native buffer
+   integration across the available peripherals. Native services should exploit
    GPIO, Pico PIO, DMA, PWM, timers, input capture, ESP32 RMT and other suitable
    peripherals. Hardware operations should allow other components to progress
    while a transfer or waveform is in flight.
 
 ## Proposed component boundaries
 
-The following is a design direction to evaluate, not a selected implementation.
+The selected direction uses these boundaries; their concrete APIs and service
+isolation mechanisms remain to be implemented and validated.
 
 | Part | Responsibility |
 |---|---|
@@ -81,6 +113,37 @@ capturing input or setting a waveform. Platform services choose the appropriate
 hardware implementation. Native driver and communications plugin boundaries,
 including a recovery path that survives plugin failure, need explicit design.
 
+## Native buffers and data flow
+
+The resident core should allocate or register buffers according to their consumers:
+effect computation, native transforms, composition and physical output. Define
+bounded views with element format, extent, access rights and lifetime. Permit
+native fill, blend, conversion and other optimized array operations on these views,
+as well as direct effect loops. A handle is useful for ownership, but a handle
+whose only operations are individual pixel calls does not meet the mapping
+requirement.
+
+Specify when a component may write, when a completed buffer is published, and when
+the compositor or driver releases it. Submitted storage must remain at a stable
+address and must not be overwritten, moved or reclaimed while a consumer or DMA
+transfer retains it. Define completion, cancellation, stale-view rejection and
+any target-specific cache synchronization. Component replacement must respect
+these outstanding references independently of the old code's lifetime.
+
+Use ownership transfer or buffer rotation where it avoids copying. Composition,
+format conversion, retaining a previous good frame and overlapping output with
+rendering may require additional storage. Count every retained buffer and copy,
+with its purpose and peak lifetime; zero-copy between compatible stages does not
+imply that every scene can use one buffer. The current consume-or-copy-before-return
+output contract is an implementation constraint to replace when evaluating this
+model, not a requirement for the future architecture.
+
+Evaluate memory protection against these shared buffers explicitly. Restricted
+views and checked access must enforce the selected isolation policy; sharing a
+native allocation does not itself provide fault containment. Any runtime candidate
+must demonstrate this buffer model within the board budget before detailed
+interpreter or compiler throughput comparisons drive a choice.
+
 ## Scheduling and resource management
 
 Separate physical output timing, input sampling, control updates, rendering,
@@ -95,6 +158,11 @@ not resumable scheduling. Long loops, nested calls and blocking native calls all
 matter. Consider compiler-generated continuations, runtime continuations and
 native task contexts, charging the retained state of each approach.
 
+Give loading, initialization, activation, ordinary execution and teardown separate
+budgets. Preparation must permit existing components to progress, including during
+native calls and bulk operations. A longer initialization timeout alone does not
+establish live replacement without disruptive stalls.
+
 Distinguish a scheduling interruption from a logical output commit. Suspending
 computation must not publish a partial frame or an incomplete batch of actuator
 changes. Define cancellation and fault behaviour for each owned resource.
@@ -104,6 +172,11 @@ metadata, queues, timers, buffers and native allocations. Include peak coexisten
 during uploads, validation, commissioning, reconnects and replacement, as well as
 the largest required contiguous allocation. Evaluate per-instance arenas, pooled
 storage and allocation-free rendering. Runtime heap counters alone are insufficient.
+Account separately for executable code, ordinary RAM and memory with peripheral or
+access restrictions. Include compiler workspace if compilation occurs on the
+device, allocations deferred until first use, and all simultaneously retained
+buffer versions. A runtime's allocation granularity must fit the component model
+and board capacity rather than dictate them.
 
 ## Proposed replacement lifecycle
 
@@ -121,14 +194,21 @@ instance first is a different service guarantee. Persistent installation also ne
 interrupted-write recovery. State migration and seamless protocol-session transfer
 remain optional capabilities rather than prerequisites for every replacement.
 
-## Technology choices to research
+## Selected execution direction and alternatives
 
-Compare these approaches against the same component contract and fault guarantees:
+Advance the small typed interpreter with native buffer views, explicit saved
+execution state and flash-resident bytecode. Compile source off-device and avoid
+a second expanded instruction representation in RAM. The initial device loader
+validates and prepares packages; it does not JIT-compile native code. Establish
+the shared staged animation and numeric contract before freezing the instruction
+set or language bindings. Exact fixed-point formats and the default real type
+remain measurement-driven choices.
 
-- Browser compilation directly to target-specific native components.
-- Browser compilation through WASM to native components with an AOT runtime.
-- Interpreted WASM with resumable execution and an appropriate memory model.
-- Embedded Java or another compact managed runtime with lightweight tasks.
+Use the native implementation as a performance and data-layout reference, and
+existing WASM runtimes as compatibility paths and measured alternatives. A native
+reference does not establish safe dynamic loading or fault isolation. Revisit
+install-time or selective compilation only where it offers a measured benefit
+within compiler workspace, code-storage and scheduling budgets.
 
 The browser compiler may itself run as WASM without requiring WASM on the device.
 Direct native compilation allows a component-specific memory layout; AOT compilation
@@ -141,12 +221,23 @@ working-memory costs in the browser, and backend availability for each target.
 Separate flash-write interference from scheduler priority. Keep a browser preview
 or simulator path with equivalent component semantics.
 
-Target-specific compilation would move portability towards common source and API
-semantics rather than identical executable bytes. This is a future architecture
-option; the existing WASM ABI and its portability commitments remain the current
-implementation contract until a migration is designed.
+Requiring target-specific uploads would violate the selected mixed-device
+distribution requirement. Optional native implementations must derive from the
+portable package without requiring sender-side builds for each board. The existing
+WASM ABI and its portability commitments remain the current implementation
+contract until an explicit migration is designed.
 
 ## Evaluation and open decisions
+
+The same-board component experiment (`experiments/component-runtime/device/REPORT.md`
+on `codex/experiment-component-runtime`)
+has exercised two integer effects, native buffer views, asynchronous RMT output,
+USB traffic and RAM-resident replacement. Next extend the typed path with a real
+source compiler, representative numeric workloads, flash-resident execution and
+persistent replacement while communications and effects remain active. Include
+replacement while a transfer is outstanding. Use DMA where the selected peripheral
+supports it; trace placement, ownership, copies, retained bytes and completion
+through computation, composition and physical output.
 
 Use mixed workloads with multiple effects, communications and live replacement.
 Exercise event floods, reconnects, commissioning, allocation failures, runaway
@@ -160,13 +251,24 @@ MicroPython native-module workloads, rather than only interpreter throughput or
 average FPS. Choose representative effect counts, output sizes, deadlines and
 improvement targets before declaring a technology suitable.
 
-Resolve the required fault-isolation level, permitted source languages, plugin
-trust model, supported board profiles, output composition semantics, component API,
-replacement-state policy and achievable communications plugin boundary. No runtime,
-compiler, package format or RTOS is selected by this request.
+The focused runtime measurements (`experiments/runtime/REPORT.md` on
+`codex/experiment-runtime`) provide
+evidence about the tested integrations' memory overhead, guest/host crossings,
+initialization costs and synchronous output. They do not establish the feasibility
+of native buffer mapping, DMA integration, concurrent effects or the requested
+replacement model. Keep them as supporting measurements. Further runtime-specific
+benchmarks should answer a concrete unresolved architecture question, particularly
+numeric cost, whole-device capacity and persistent installation interference.
+
+Resolve fault isolation, supported frontend subsets, numeric formats, plugin trust,
+board capacity, composition, concrete component APIs, replacement-state policy and
+the communications plugin boundary. The portable interpreter direction and
+multi-language input requirement are selected. The package encoding, compiler
+implementation and RTOS choice remain open.
 
 ## Related architecture and proposals
 
+- [Portable bytecode and animation contract](architecture-decision-portable-bytecode.md)
 - [Current engine and native ports](../docs/architecture.md)
 - [Control API and execution model](feature-proposal-control-api.md)
 - [Device support](feature-proposal-device-support.md)
@@ -174,7 +276,8 @@ compiler, package format or RTOS is selected by this request.
 - [A/B transitions](feature-proposal-ab-transitions.md)
 - [Build profiles](feature-proposal-build-profiles.md)
 - [Web editor](feature-proposal-web-editor.md)
-- [Existing MQTT feasibility measurements](../experiments/mqtt/REPORT.md)
+- Existing MQTT feasibility measurements: `experiments/mqtt/REPORT.md` on `codex/experiment-mqtt`
+- Focused runtime measurements: `experiments/runtime/REPORT.md` on `codex/experiment-runtime`
 
 The current WASM-specific and single-owner descriptions explain the implemented
 system or earlier proposals. Their assumptions should be revisited during this

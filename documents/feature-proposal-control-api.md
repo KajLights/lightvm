@@ -4,7 +4,14 @@ Status: Proposed general model; single-program animation profile implemented
 
 Date: 12 October 2026
 
-LightVM should provide one language-neutral WASM control API for lighting,
+The [portable bytecode decision of 15 October 2026](architecture-decision-portable-bytecode.md)
+sets the execution direction for the future component runtime and refines its
+animation lifecycle and numeric policy. This proposal's general resource and
+service concepts remain relevant; its WASM-specific bindings and start/frame
+examples describe the existing profile or earlier proposals. The new animation
+stages do not alter existing modules or replace the separate service/task model.
+
+LightVM should provide one language-neutral control API for lighting,
 digital and analogue IO, PWM, servos and future devices. Addressable RGB pixels
 are one capability within a shared model of resources, properties, actions, events,
 tasks and time. Python, C, a blocks editor and compatibility frontends should

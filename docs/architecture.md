@@ -1,13 +1,17 @@
 # Multi-platform engine and native ports
 
-The [component runtime architecture request](../documents/architecture-request-component-runtime.md)
-sets out future requirements for concurrent effects, independent live updates,
-communications plugins, multicore execution and hardware offload. Its research
-scope includes native compilation and alternatives to WASM; the contracts below
-describe the current implementation and earlier proposals.
+The [portable bytecode architecture decision](../documents/architecture-decision-portable-bytecode.md)
+selects the next runtime direction: multiple source-language frontends compile
+off-device to portable typed bytecode, interpreted directly from flash with
+bounded contexts and native buffer views. It records the staged animation API,
+numeric policy, memory ownership, live replacement and open design choices.
+The [component runtime requirements](../documents/architecture-request-component-runtime.md)
+cover concurrent effects, independent live updates, communications plugins,
+multicore execution and hardware offload. The contracts below describe the
+current WASM implementation and earlier proposals, not the new bytecode ABI.
 
 LightVM is intended to run portable lighting programs on multiple board families.
-Its unit of portability is the WASM module plus its versioned guest contract.
+Its current unit of portability is the WASM module plus its versioned guest contract.
 The implemented contracts are legacy animation API v1 and the independent
 [control ABI 2 animation profile](control-api.md). The broader proposed control
 API extends portability to event-driven device programs.
@@ -24,8 +28,9 @@ cross-build verified; hardware validation remains pending. Optional Wi-Fi/HTTP a
 native adapters. See [networking](networking.md).
 
 Multi-board support is a maintained requirement from the initial prototype.
-Compatible identical WASM bytes and API semantics must work across host, Pico,
-C3, S3 and C6; native wiring/resource profiles may differ. CI builds every firmware,
+Under the existing contract, compatible identical WASM bytes and API semantics
+must work across host, Pico, C3, S3 and C6; native wiring/resource profiles may
+differ. CI builds every firmware,
 tests both host profiles and exercises a portable smoke runner. Record hardware
 evidence separately from build success.
 
