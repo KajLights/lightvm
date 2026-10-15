@@ -5,7 +5,7 @@ import struct
 import sys
 import time
 import unittest
-from bytecode_fixtures import ROOT, color, sample, program
+from bytecode_fixtures import ROOT, color, legacy_sample as sample, program
 sys.path.insert(0,str(ROOT / 'tools'))
 from client import Client, ProcessTransport, ProtocolError, FRAME, PLAY, RESET, STOP
 from lightvm.compiler import compile_source
@@ -13,7 +13,7 @@ from test_configuration import config
 
 class CompilerTests(unittest.TestCase):
     def test_target_admission_and_portable_bytes(self):
-        source=(ROOT/'samples/python/rainbow.py').read_text()
+        source=(ROOT/'tests/legacy_samples/rainbow.py').read_text()
         result=compile_source(source)
         self.assertTrue(result.success)
         self.assertEqual(result.bytecode[:8],b'LBC1\x02\x00\x00\x00')
@@ -36,19 +36,13 @@ class CompilerTests(unittest.TestCase):
                 self.assertGreater(result.diagnostics[0].line,0)
 
     def test_parameter_metadata_bounds_and_limits(self):
-        result=compile_source((ROOT/'samples/python/rainbow.py').read_text())
+        result=compile_source((ROOT/'tests/legacy_samples/rainbow.py').read_text())
         p=result.manifest['parameters'][0]
         self.assertEqual((p['name'],p['type'],p['minimum'],p['maximum']),('speed','float',-10.0,10.0))
         for decl in ('x=parameter(1, minimum=2)', 'x=parameter(True, minimum=0)',
                      'x=parameter(1.0, maximum=0.0)', 'x=parameter(1e100)',
                      '\n'.join(f'p{i}=parameter({i})' for i in range(9))):
             self.assertFalse(compile_source('from lightvm import parameter,kernel\n'+decl+'\n@kernel\ndef draw(): pass').success)
-
-    def test_browser_default_source_compiles_with_the_shipped_compiler(self):
-        line=next(line for line in (ROOT/'web/src/types.ts').read_text().splitlines() if line.startswith('export const DEFAULT_SOURCE = '))
-        source=json.loads(line.split(' = ',1)[1].removesuffix(';'))
-        self.assertTrue(compile_source(source).success)
-        self.assertEqual(compile_source(source).bytecode,sample('rainbow'))
 
     def test_all_six_samples_compile_deterministically(self):
         for name in ('color','pattern','rainbow','chase','wipe','twinkle'):

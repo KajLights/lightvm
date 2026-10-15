@@ -1,9 +1,9 @@
-"""Replay adapted effects against the original independent f64 Python samples."""
+"""Preserve LBC1/2 replay against its independent f64 sample fixtures."""
 import os
 import struct
 import sys
 import unittest
-from bytecode_fixtures import ROOT, sample, program
+from bytecode_fixtures import ROOT, legacy_sample as sample, program
 sys.path.insert(0,str(ROOT/'tools'))
 sys.path.insert(0,str(ROOT/'tests/reference_effects'))
 from replay import Replay

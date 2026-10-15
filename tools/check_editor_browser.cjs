@@ -87,16 +87,16 @@ function announcedUrl(child, output) {
     assert.equal(compiler, 'Compiler ready', 'This check requires the pinned browser compiler assets');
 
     await page.locator('#upload').click();
-    await page.waitForFunction(() => document.querySelector('#parameter-state')?.textContent.includes('Running') && !document.querySelector('#parameter-fields')?.disabled);
+    await page.waitForFunction(() => document.querySelector('#parameter-state')?.textContent.includes('Running') && !document.querySelector('#setting-fields')?.disabled);
     await page.locator('#procedure-name').fill('browser');
     await page.locator('#procedure-save').click();
     await page.waitForFunction(() => document.querySelector('#procedure-select')?.value === 'browser' && !document.querySelector('#procedure-fields')?.disabled);
     await page.locator('#command-path').selectOption('usb');
-    await page.waitForFunction(() => !document.querySelector('#parameter-fields')?.disabled && !document.querySelector('#command-path')?.disabled);
-    await page.locator('#parameters input[data-name=speed]').fill('0.7');
-    await page.locator('#parameters-apply').click();
-    await page.waitForFunction(() => document.querySelector('#parameters input[data-name=speed]')?.value === '0.7' && !document.querySelector('#parameter-fields')?.disabled);
-    console.log('Compiled, uploaded, stored and updated live parameters: passed');
+    await page.waitForFunction(() => !document.querySelector('#setting-fields')?.disabled && !document.querySelector('#command-path')?.disabled);
+    await page.locator('#settings input[data-name=duration]').fill('30');
+    await page.locator('#settings-apply').click();
+    await page.waitForFunction(() => document.querySelector('#settings input[data-name=duration]')?.value === '30' && !document.querySelector('#setting-fields')?.disabled);
+    console.log('Compiled, uploaded, stored and restarted with preparation settings: passed');
 
     await page.evaluate(() => {
       const editor = document.querySelector('.CodeMirror')?.CodeMirror;
@@ -141,7 +141,8 @@ function announcedUrl(child, output) {
     await page.getByRole('link', { name: 'Develop', exact: true }).click();
     assert.equal(await page.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue().includes('# draft survives tab changes')), true);
     await page.locator('#procedure-activate').click();
-    await page.waitForFunction(() => document.querySelector('#parameter-state')?.textContent.includes('Running') && !document.querySelector('#parameter-fields')?.disabled);
+    await page.waitForFunction(() => document.querySelector('#parameter-state')?.textContent.includes('Running') && !document.querySelector('#setting-fields')?.disabled);
+    await page.waitForFunction(() => document.querySelector('#check-state')?.textContent === 'All checks passed');
     await page.screenshot({ path: path.join(root, 'build/network-editor-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);

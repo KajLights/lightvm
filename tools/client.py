@@ -336,14 +336,26 @@ class Client:
         revision = self.describe()["catalog_revision"]
         return self.manage("procedure_delete", name=name, expected_revision=revision)
 
-    def activate(self, name, action="play", export="run", slot=None):
+    def activate(self, name, action="play", export="run", slot=None, settings=None):
         fields = {"name": name, "action": action, "export": export}
         if slot is not None:
             fields["slot"] = slot
+        if settings is not None:
+            fields["settings"] = settings
         return self.manage("procedure_activate", **fields)
 
     def program_parameters(self):
         self.manage("program_parameters_get")
+        return json.loads(self.data_reply)
+
+    def reset_program(self, settings=None, values=None):
+        state = self.program_parameters()
+        fields = {"expected_generation": state["generation"]}
+        if settings is not None:
+            fields["settings"] = settings
+        if values is not None:
+            fields["values"] = values
+        self.manage("program_reset", **fields)
         return json.loads(self.data_reply)
 
     def set_parameters(self, values):

@@ -1,5 +1,9 @@
 # Portable bytecode control profile
 
+The six current examples use the opt-in [animation/1 API](animation-profile.md):
+persistent arrays/buffers, initialization, preparation settings and fixed logical
+ticks. The legacy LBC1/2 API below remains supported for unmarked source.
+
 The current firmware replaces wasm3 with a limited typed interpreter. The same
 `LBC1/2` package runs on compatible host, Pico and ESP32 builds. This is a proof of
 the [portable bytecode architecture](../documents/architecture-decision-portable-bytecode.md),
@@ -37,7 +41,7 @@ values. The compiler recognizes these names statically; Python source never runs
 on the device or during compilation.
 
 ```sh
-python -m lightvm.compiler samples/python/rainbow.py -o build/samples/rainbow.lbc
+python -m lightvm.compiler tests/legacy_samples/rainbow.py -o build/samples/rainbow.lbc
 python tools/client.py --port PORT --store-procedure rainbow build/samples/rainbow.lbc
 python tools/client.py --port PORT --activate rainbow
 ```
@@ -47,8 +51,8 @@ python tools/client.py --port PORT --activate rainbow
 The browser uses the same compiler and no longer needs a WAT assembler.
 Target checks require `bytecode_format: "LBC1/2"`, control ABI 2 and manifest
 schema 3. Python syntax was deliberately adapted; old `@on_frame` sources and
-WASM binaries must be migrated/recompiled. All six sample effects retain their
-behavior and parameter names/bounds.
+WASM binaries must be migrated/recompiled. The previous simplified examples remain in `tests/legacy_samples` as LBC1/2
+compatibility fixtures; the current examples use animation/1 settings.
 
 The subset supports typed scalar literals, parameters, immutable RGB palettes,
 arithmetic, `<`, `>`, `==`, conditionals and `range(bound)` loops in kernels.

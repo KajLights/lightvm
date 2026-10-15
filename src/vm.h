@@ -7,11 +7,13 @@
 #include <stdbool.h>
 #include "pixels.h"
 #include "control.h"
+#include "portable.h"
 
 typedef struct VmInstance {
     _Alignas(4) uint8_t bytes[MODULE_LIMIT];
     uint32_t storage_offset; bool from_storage;
     LbcProgram program; LbcInstance instance; LbcBuffer view;
+    Portable *portable;
     size_t received, expected;
     uint32_t expected_crc;
     bool uploading, ready;

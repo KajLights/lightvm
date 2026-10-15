@@ -29,8 +29,8 @@ The first visit to Develop loads the pinned Pyodide assets, and the
 CodeMirror editor uses a pinned CDN asset. Internet access is initially needed;
 offline operation is not guaranteed. Source is checked 220 ms after an edit. Only
 the current successful compilation can be uploaded or downloaded. Errors link
-back to the affected line. The six examples and the canonical compiler sources
-are packaged with the static build. Python source is parsed and never run by the
+back to the affected line. The six original examples and the canonical compiler
+sources are packaged with the static build. Python source is parsed and never run by the
 compiler. Only the compiled bytecode is sent to a device.
 
 The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
@@ -109,14 +109,28 @@ clears it. Network changes keep playback running and may require the HTTP path t
 reconnect. Background status polling does not replace focused fields or unsaved
 values.
 
-**Develop** contains the Python editor, upload/run, stored bytecode programs and live
-parameters. The local draft is saved in browser storage and can be downloaded as
+**Develop** contains the Python editor, upload/run, stored bytecode programs,
+preparation settings and live parameters. The initial `rainbow.py` is selected in
+the dropdown and uses the same canonical source as its example. It preserves the
+original picolights Rainbow's default 60-second cycle, adjustable with its existing
+duration setting. Existing stored programs are not replaced when firmware or
+examples change. Chase accumulates colour from one end (about four seconds for
+200 pixels); Wipe fills from both ends (about two seconds), then completes and
+holds. Both look solid after filling. The local draft is saved in browser storage and can be downloaded as
 .py. Compiled .lbc can also be downloaded. **Upload & run** requires slot A to
 be configured; it replaces the transient resident program and does not persist it.
 Stored programs can be saved, downloaded, activated and deleted when storage is
 available. The parameter panel uses the program's manifest and sends generation
 and revision checks for live changes and pause/resume. A conflict refreshes device
 state before another edit.
+
+The [animation/1](animation-profile.md) preparation settings panel validates and
+restarts a fresh instance, preserving the prior instance if preparation fails.
+Its changes are runtime-only: edit source defaults and save the compiled program
+to retain them after reboot. Playback status refreshes every five seconds without
+overwriting unsaved parameter or preparation-setting edits. Completion is shown separately from pause; completed
+animations hold their final frame and require restart to run again. Profile and
+format capability checks prevent sending new examples to unsupported firmware.
 
 Pico Web Serial uses the existing USB CDC protocol. Pico asserts DTR at 115200;
 ESP32 deasserts DTR/RTS immediately after opening. Web Serial cannot set signals

@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 from .bytecode import Compiler, CompileError
+from .portable import PortableCompiler, is_portable
 
 @dataclass
 class Diagnostic:
@@ -31,14 +32,17 @@ def compile_source(source, filename="<string>", target=None):
     try:
         if len(source.encode()) > 65536:
             raise CompileError("source exceeds 64 KiB")
-        bytecode, manifest = Compiler(source).compile()
+        bytecode, manifest = (PortableCompiler(source) if is_portable(source) else Compiler(source)).compile()
         if target is not None:
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
-            if target.get("control_abi") != 2 or manifest["schema"] not in target.get("program_schemas", []):
-                raise CompileError("target does not advertise control ABI 2 and program schema 3")
-            if target.get("bytecode_format") != "LBC1/2":
-                raise CompileError("target does not advertise LBC1/2 bytecode")
+            abi = manifest['abi']
+            if abi not in target.get('program_abis', [target.get('control_abi')]) or manifest['schema'] not in target.get('program_schemas', []):
+                raise CompileError(f'target does not advertise program ABI {abi} and {manifest["schema"]}')
+            if f'LBC1/{abi}' not in target.get('bytecode_formats', [target.get('bytecode_format')]):
+                raise CompileError(f'target does not advertise LBC1/{abi} bytecode')
+            if abi == 3 and 'animation/1' not in target.get('program_profiles', []):
+                raise CompileError('target does not advertise animation/1')
         return Compilation(bytecode, manifest)
     except (CompileError, SyntaxError, ValueError, OverflowError, RecursionError) as error:
         node = getattr(error, "node", None)

@@ -205,6 +205,8 @@ static void network_transactions(void) {
     session_destroy(&session); app_destroy(&app);
 }
 
+#include "portable_contract.inc"
+
 int main(void) {
     storage_faults();
     static App app;
@@ -425,5 +427,6 @@ int main(void) {
     CHECK(strstr(reply.message,"initialization failed"));
     session_destroy(&session); app_destroy(&app);
     network_transactions();
+    portable_contract();
     return 0;
 }

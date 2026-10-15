@@ -39,24 +39,28 @@ neither compiled nor linked into the firmware. Double-precision operations use
 the compiler/Newlib implementations; floating-point performance can differ from
 the SDK's ROM-assisted implementation.
 
-## Independent Python animation frontend provenance
+## Python animation frontend and example provenance
 
-The `lightvm/` SDK/compiler/easing and `samples/python/` effects are original
-LightVM implementations under the repository MIT license. They reuse no
-picolights or Adafruit source. Picolights supplied behavioural motivation only,
-as recorded in the control and composition feature proposals. Its
-`picolights/easing.py` explicitly declares GPLv3 and is excluded, along with
-mechanical translations of its easing/helpers. Linear, polynomial and smoothstep
-curves are implemented directly from their equations; the deterministic star
-mixer is original modular arithmetic. Twinkle intentionally uses procedural
-per-pixel lifetimes rather than picolights' stateful star slots.
+The compiler and native interpreter are LightVM implementations under the
+repository MIT license. The six current `samples/python/` effects are faithful
+ports of Kaj's supplied picolights algorithms, with the accepted lifecycle,
+timing and bounded Twinkle corrections documented in
+[the animation API](docs/animation-profile.md). Source snapshots and provenance
+are retained in `tests/original_picolights/` for algorithm replay. These fixtures
+are test inputs, not firmware dependencies. The previous independent simplified
+effects remain in `tests/legacy_samples/` for compatibility tests.
 
-Python AST parsing uses the standard library. The current compiler emits custom
-bytecode directly; Wasmtime and wasm3 are no longer dependencies of the normal
-build. Their notices are retained for historical artifacts. Native
-RGB/HSV conversion reuses LightVM's own existing MIT-licensed implementation. This
-addition does not change the licenses of the firmware SDKs and build dependencies
-above.
+The GPL-marked `picolights/easing.py` is not included. Twinkle's sine-out curve
+is implemented directly from its mathematical equation; no easing implementation
+is copied. Rainbow's colourwheel compatibility follows the published
+[CircuitPython rainbowio definition](https://github.com/adafruit/circuitpython/blob/main/shared-module/rainbowio/__init__.c);
+LightVM implements the arithmetic locally rather than linking that module.
+
+Python AST parsing uses the standard library. The compiler emits custom bytecode;
+Wasmtime and wasm3 are no longer dependencies of the normal build. Their notices
+are retained for historical artifacts. Native RGB/HSV conversion retains
+LightVM's existing MIT implementation. This does not change the licenses of the
+firmware SDKs and build dependencies above.
 
 ## Existing dependency modifications
 

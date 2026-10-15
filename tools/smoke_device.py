@@ -41,9 +41,14 @@ def smoke(client, board, reference):
             before,pixels=client.snapshot();after,repeated=client.snapshot()
             check(before==after and pixels==repeated,'snapshot changed program state')
             if source.stem=='color':
-                client.set_parameters({'color':0x123456})
+                client.reset_program(settings={'color':0x123456,'random_color':False})
                 client.require_ok(client.command(FRAME,bytes(4)))
-                check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'parameter update failed')
+                check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'settings restart failed')
+            if source.stem=='wipe':
+                check(client.program_parameters()['completed'],'Wipe did not complete')
+        # Wipe is terminal. Use the repeating Rainbow to test autonomous playback.
+        rainbow=compile_source((ROOT/'samples/python/rainbow.py').read_text(),target=info)
+        check(rainbow.success,str(rainbow.diagnostics));client.upload(rainbow.bytecode)
         client.require_ok(client.command(PLAY));time.sleep(.1)
         before=client.status_fields();time.sleep(.1);after=client.status_fields()
         check(after['mode']=='bytecode' and int(after['frames'])>int(before['frames']),'playback stopped')

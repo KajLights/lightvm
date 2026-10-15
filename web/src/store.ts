@@ -2,14 +2,18 @@ import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolki
 import { useDispatch, useSelector } from 'react-redux';
 import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyDevice, NetworkConfig, NetworkStatus, ParameterState, Path, Procedure } from './types';
 import { DEFAULT_SOURCE } from './types';
+import { DEFAULT_EXAMPLE, exampleForSource } from './examples';
 
 export const DRAFT_KEY = 'lightvm.editor.draft.v1';
 function readDraft() {
   try {
     const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
-    if (typeof saved?.source === 'string') return { source: saved.source, filename: typeof saved.filename === 'string' ? saved.filename : 'animation.py' };
+    if (typeof saved?.source === 'string') {
+      const filename = typeof saved.filename === 'string' ? saved.filename : 'animation.py';
+      return { source: saved.source, filename: filename === 'animation.py' ? exampleForSource(saved.source)?.filename ?? filename : filename };
+    }
   } catch { /* Browser storage is optional. */ }
-  return { source: DEFAULT_SOURCE, filename: 'animation.py' };
+  return { source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename };
 }
 interface DeviceState {
   description: Description | null;

@@ -11,8 +11,10 @@ There is no separate PoC firmware or upload protocol to install. Stored programs
 are read from flash through the existing native storage API, and the runtime owns
 pixel memory. Procedures can be replaced independently of firmware.
 
-The [bytecode profile](docs/control-api.md) defines syntax, numeric limits,
-package format and lifecycle. It implements a limited part of the
+The [animation profile](docs/animation-profile.md) defines persistent buffers,
+arrays, initialization, logical timing and completion for the six supplied
+picolights examples. The [LBC1/2 profile](docs/control-api.md) remains supported
+for existing source and packages. Together they implement a limited part of the
 [portable bytecode architecture decision](documents/architecture-decision-portable-bytecode.md).
 Multiple languages, concurrent slots, composition and a broader component system
 remain future work.
@@ -125,7 +127,8 @@ python3 tools/serve_editor.py
 
 The existing [browser workspace](docs/web-editor.md) compiles Python to bytecode
 in its worker, downloads `.lbc`, uploads over HTTP/USB, and manages saved programs
-and live parameters. Firmware installation, discovery and configuration flows
+and live parameters. Preparation settings restart an animation explicitly;
+the editor and example dropdown share the canonical sources. Firmware installation, discovery and configuration flows
 are unchanged. See [configuration and management](docs/configuration.md),
 [networking](docs/networking.md) and [power recovery](docs/boot-sequence.md).
 
@@ -145,20 +148,25 @@ loopback sockets. The tests preserve the existing driver/storage/configuration
 contracts and use bytecode fixtures in place of WASM fixtures. They cover
 admission, instruction limits, faults, buffer ownership, parameter conflicts,
 snapshots, procedure replacement, bank rotation and startup persistence. Effect
-replay compares the adapted sources with the original independent Python effects;
-rainbow/twinkle permit one channel level for the change from f64 to f32.
+replay compares current examples with the supplied original picolights methods,
+using the accepted timing and bounded Twinkle corrections. Separate legacy
+fixtures retain the previous independent effects' checks. Rainbow/Twinkle permit
+one channel level for f32 arithmetic. See the animation profile for measured
+memory, including contexts and replacement peaks.
 
-A matched native rainbow is the performance baseline, without a preset target:
+A matched native rainbow remains the LBC1/2 performance baseline:
 
 ```sh
-build/host/benchmark_bytecode build/samples/rainbow.lbc
+python -m lightvm.compiler tests/legacy_samples/rainbow.py -o build/samples/rainbow-legacy.lbc
+build/host/benchmark_bytecode build/samples/rainbow-legacy.lbc
 build/venv/bin/python tools/benchmark_device.py --port PORT --board pico_w \
   --pixels 200 --output build/benchmark-pico-w.json
 ```
 
-The first command measures the production interpreter versus native f32 rainbow
-on the host and checks 3,000 frames byte for byte. It is **not a board timing**.
-The second measures the integrated firmware's render/output times and playback
+The host benchmark measures the LBC1/2 interpreter versus native f32 rainbow
+and checks 3,000 frames byte for byte. It is **not a board timing** or a benchmark
+of the new animation profile. The device command measures the current canonical
+Rainbow through the integrated firmware's render/output times and playback
 rate through the existing API, temporarily configuring the output and restoring
 its prior configuration afterward. Flash saves retain existing blocking behavior.
 The earlier standalone experiment's device timings are not measurements of this

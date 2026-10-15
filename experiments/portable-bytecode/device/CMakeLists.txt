@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.18)
+set(IDF_TARGET esp32c3 CACHE STRING "Target")
+set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig")
+set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
+set(ENV{IDF_COMPONENT_MANAGER} "0")
+set(COMPONENTS main)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(bytecode_poc)

@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { activityActions, outputFor, useAppDispatch, useAppSelector } from './store';
 import { useRuntime } from './runtime';
-import { assetUrl } from './compiler';
+import { supportsProgram } from './compiler';
+import { EXAMPLES, exampleForSource } from './examples';
 import { download } from './device-service';
 import type { Diagnostic, ParameterState } from './types';
 
 function Editor() {
   const { compiler, devices } = useRuntime(), editor = useAppSelector(state => state.editor);
   const textarea = useRef<HTMLTextAreaElement>(null), cm = useRef<any>(null), marks = useRef<any[]>([]);
-  const [cursor, setCursor] = useState('Ln 1, Col 1'), [example, setExample] = useState('');
+  const [cursor, setCursor] = useState('Ln 1, Col 1');
+  const example = exampleForSource(editor.source);
   const picker = useRef<HTMLInputElement>(null);
   useEffect(() => {
     compiler.start();
@@ -49,30 +51,25 @@ function Editor() {
       if (file.size > 65536) throw new Error('Choose a Python file smaller than 64 KiB.');
       const revision = devices.snapshot.editor.revision;
       const source = await file.text();
-      if (revision === devices.snapshot.editor.revision) { compiler.edit(source, file.name); setExample(''); }
+      if (revision === devices.snapshot.editor.revision) compiler.edit(source, file.name);
     } catch (error) { void devices.run('Opening source', async () => { throw error; }); }
     if (picker.current) picker.current.value = '';
   }
-  async function loadExample(name: string) {
-    setExample(name); if (!name) return;
-    const revision = devices.snapshot.editor.revision;
-    try {
-      const response = await fetch(assetUrl('samples/' + name + '.py'));
-      if (!response.ok) throw new Error('Could not load the ' + name + ' example.');
-      const source = await response.text();
-      if (revision === devices.snapshot.editor.revision) compiler.edit(source, name + '.py');
-    } catch (error) { void devices.run('Loading example', async () => { throw error; }); }
+  function loadExample(name: string) {
+    const selected = EXAMPLES.find(item => item.id === name);
+    if (selected) compiler.edit(selected.source, selected.filename);
   }
   function focusDiagnostic(item: Diagnostic) {
     if (cm.current) { cm.current.focus(); cm.current.setCursor({ line: item.line - 1, ch: item.column - 1 }); cm.current.scrollIntoView({ line: item.line - 1, ch: item.column - 1 }, 60); }
     else textarea.current?.focus();
   }
   return <section className="editor-panel" aria-label="Python source editor">
-    <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example} onChange={event => void loadExample(event.target.value)}><option value="">Examples…</option>{['rainbow', 'twinkle', 'color', 'pattern', 'wipe', 'chase'].map(name => <option key={name}>{name}</option>)}</select><button id="open-source" className="quiet" onClick={() => picker.current?.click()}>Open .py</button><button id="save-source" className="quiet" onClick={() => download(editor.source, editor.filename, 'text/x-python')}>Save .py</button></div></div>
+    <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example?.id ?? ''} onChange={event => loadExample(event.target.value)}><option value="">Examples…</option>{EXAMPLES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button id="open-source" className="quiet" onClick={() => picker.current?.click()}>Open .py</button><button id="save-source" className="quiet" onClick={() => download(editor.source, editor.filename, 'text/x-python')}>Save .py</button></div></div>
+    {example && <p id="example-description" className="helper">{example.description}</p>}
     <label className="sr-only" htmlFor="source">Animation Python source</label><textarea ref={textarea} id="source" value={editor.source} spellCheck={false} autoCapitalize="off" autoComplete="off" onChange={event => compiler.edit(event.target.value)} />
     <input ref={picker} id="source-file" type="file" accept=".py,text/x-python,text/plain" hidden onChange={event => void open(event.target.files?.[0])} />
-    <div className="editor-footer"><span id="cursor-position">{cursor}</span><span>Python subset · Control ABI 2</span><span id="draft-state">{editor.draftSaved ? 'Draft saved in this browser' : 'Draft available for this session'}</span></div>
-    <div className="diagnostics-header"><h2>Code checks</h2><span id="check-state">{editor.compiler === 'error' ? 'Compiler unavailable' : editor.checking ? 'Checking…' : editor.artifact ? 'All checks passed' : 'Waiting for Python…'}</span></div>
+    <div className="editor-footer"><span id="cursor-position">{cursor}</span><span>Python subset · Portable bytecode</span><span id="draft-state">{editor.draftSaved ? 'Draft saved in this browser' : 'Draft available for this session'}</span></div>
+    <div className="diagnostics-header"><h2>Code checks</h2><span id="check-state">{editor.compiler === 'error' ? 'Compiler unavailable' : editor.checking ? 'Checking…' : editor.diagnostics.length ? 'Code needs attention' : editor.artifact ? 'All checks passed' : 'Waiting for Python…'}</span></div>
     <div id="diagnostics" className="diagnostics" role="status" aria-live="polite">{editor.diagnostics.length ? editor.diagnostics.map((item, index) => <button key={index} className="diagnostic" onClick={() => focusDiagnostic(item)}><strong>Line {item.line}:{item.column}</strong><span>{item.message}</span></button>) : <p className={editor.artifact ? 'check-ok' : 'muted'}>{editor.compiler === 'error' ? editor.message : editor.artifact ? '✓ Code checks passed. The compiled animation is ready.' : editor.message}</p>}</div>
   </section>;
 }
@@ -81,7 +78,7 @@ function SendProgram() {
   const { compiler, devices } = useRuntime(), editor = useAppSelector(state => state.editor);
   const device = useAppSelector(state => state.device), activity = useAppSelector(state => state.activity), dispatch = useAppDispatch();
   const artifact = editor.artifact, canUpload = Boolean(artifact && device.selectedPath && outputFor(device.config) && artifact.bytes <= (device.description?.module_limit || 0));
-  const incompatible = Boolean(device.description && (device.description.control_abi !== 2 || !device.description.program_schemas?.includes('lightvm.program/3')));
+  const incompatible = Boolean(device.description && artifact && !supportsProgram(device.description, artifact.manifest));
   async function upload() {
     const compiled = compiler.artifact;
     if (!compiled || compiled.id !== devices.snapshot.editor.revision) return;
@@ -89,7 +86,7 @@ function SendProgram() {
   }
   return <section className="card"><div className="card-heading"><h2>Send your animation</h2></div><p className="muted">Compilation happens in your browser. Only the bytecode program is sent to the device.</p>
     <div className="artifact"><span>Compiled program</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div><p id="artifact-detail" className="helper">{artifact ? 'ABI ' + artifact.manifest.abi + ' · RGB8 · ' + artifact.manifest.parameters.length + ' parameters' : 'Ready when the code checks pass.'}</p>
-    {incompatible && <p className="helper">This device needs current Control ABI 2 firmware for Python programs.</p>}
+    {incompatible && <p className="helper">This device needs firmware that supports this animation's program profile.</p>}
     {!outputFor(device.config) && device.selectedPath && <p className="helper">Configure output on slot A before uploading. <Link to={'/devices/' + device.description?.device_id + '/configure'}>Open configuration</Link></p>}
     <button id="upload" className="primary full" disabled={Boolean(activity.operation) || !canUpload || incompatible} onClick={() => void upload()}>{activity.operation === 'Uploading animation' ? 'Uploading…' : 'Upload & run →'}</button>
     {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
@@ -141,10 +138,12 @@ function Procedures() {
 function Parameters() {
   const { devices } = useRuntime(), state = useAppSelector(store => store.device.parameters), selectedPath = useAppSelector(store => store.device.selectedPath), busy = useAppSelector(store => Boolean(store.activity.operation));
   const [values, setValues] = useState<Record<string, string | boolean>>({});
+  // Playback counters/status can refresh without replacing an unfinished edit.
+  const inputKey = JSON.stringify([state?.generation, state?.parameter_revision, state?.values, state?.manifest.parameters]);
   useEffect(() => {
     if (!state) { setValues({}); return; }
     setValues(Object.fromEntries(state.manifest.parameters.map(parameter => [parameter.name, parameter.type === 'rgb8' ? '#' + Number(state.values[parameter.name]).toString(16).padStart(6, '0') : parameter.type === 'bool' ? Boolean(state.values[parameter.name]) : String(state.values[parameter.name])])));
-  }, [state]);
+  }, [inputKey]);
   async function apply() {
     if (!state) return;
     const patch: Record<string, bigint | number | boolean> = {};
@@ -172,18 +171,57 @@ function Parameters() {
     });
   }
   return <section className="card"><div className="card-heading"><h2>Live parameters</h2><button id="parameters-refresh" className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing parameters', async client => devices.readParameters(devices.require(client)))}>Refresh</button></div>
-    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') + ' · slot ' + state.slot : 'Load a control program to edit its parameters.'}</p>
+    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.completed ? 'Completed · holding final frame' : state.paused ? 'Paused' : 'Running') + ' · slot ' + state.slot : 'Load a control program to edit its parameters.'}</p>
     <fieldset id="parameter-fields" disabled={!state || !selectedPath || busy}><div id="parameters">{state?.manifest.parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input data-name={parameter.name} data-type={parameter.type} type={parameter.type === 'bool' ? 'checkbox' : parameter.type === 'rgb8' ? 'color' : parameter.type === 'int' ? 'text' : 'number'} inputMode={parameter.type === 'int' ? 'numeric' : undefined} step={parameter.type === 'float' ? 'any' : undefined} min={parameter.minimum} max={parameter.maximum} checked={parameter.type === 'bool' ? Boolean(values[parameter.name]) : undefined} value={parameter.type !== 'bool' ? String(values[parameter.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [parameter.name]: parameter.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
-      <button id="parameters-apply" className="secondary full" onClick={() => void apply()}>Apply parameter values</button><div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div>
+      <button id="parameters-apply" className="secondary full" disabled={!state?.manifest.parameters.length || state.completed} onClick={() => void apply()}>Apply parameter values</button><div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused || state.completed} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused || state.completed} onClick={() => void playback('resume')}>Resume</button></div>
     </fieldset>
   </section>;
 }
+function Settings() {
+  const { devices } = useRuntime();
+  const state = useAppSelector(store => store.device.parameters);
+  const selectedPath = useAppSelector(store => store.device.selectedPath);
+  const busy = useAppSelector(store => Boolean(store.activity.operation));
+  const [values, setValues] = useState<Record<string, string | boolean>>({});
+  const inputKey = JSON.stringify([state?.generation, state?.settings_values, state?.manifest.settings]);
+  useEffect(() => {
+    setValues(Object.fromEntries((state?.manifest.settings ?? []).map(setting => {
+      const value = state?.settings_values?.[setting.name];
+      return [setting.name, setting.type === 'rgb8' ? '#' + Number(value ?? 0).toString(16).padStart(6, '0') : setting.type === 'bool' ? Boolean(value) : String(value ?? '')];
+    })));
+  }, [inputKey]);
+  if (state?.manifest.abi !== 3) return null;
+  async function restart() {
+    if (!state) return;
+    await devices.run('Restarting animation', async client => {
+      const settings: Record<string, number | boolean> = {};
+      for (const setting of state.manifest.settings ?? []) {
+        const input = values[setting.name];
+        const value = setting.type === 'bool' ? Boolean(input) : setting.type === 'rgb8' ? parseInt(String(input).slice(1), 16) : Number(input);
+        if (typeof value === 'number' && (!String(input) || !Number.isFinite(value) || (setting.type === 'int' && (!Number.isInteger(value) || value < -2147483648 || value > 2147483647)))) throw new Error('Enter a valid ' + setting.type + ' value for ' + setting.name + '.');
+        settings[setting.name] = value;
+      }
+      const connection = devices.require(client);
+      const restarted = await connection.json('program_reset', { expected_generation: state.generation, settings });
+      await connection.manage('program_resume', { expected_generation: restarted.generation });
+      await devices.readParameters(connection);
+      devices.log('Animation restarted with the selected settings.', 'success');
+    });
+  }
+  return <section className="card"><div className="card-heading"><h2>Preparation settings</h2></div>
+    <p className="helper">Changing these values restarts the animation. Edit source defaults before saving them to the program library.</p>
+    <fieldset id="setting-fields" disabled={!selectedPath || busy}><div id="settings">{state.manifest.settings?.map(setting => <label key={setting.name}>{setting.name}<input data-name={setting.name} type={setting.type === 'bool' ? 'checkbox' : setting.type === 'rgb8' ? 'color' : 'number'} step={setting.type === 'float' ? 'any' : 1} checked={setting.type === 'bool' ? Boolean(values[setting.name]) : undefined} value={setting.type !== 'bool' ? String(values[setting.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [setting.name]: setting.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
+      <button id="settings-apply" className="secondary full" onClick={() => void restart()}>Apply settings &amp; restart</button>
+    </fieldset>
+  </section>;
+}
+
 export function Develop({ active }: { active: boolean }) {
   const description = useAppSelector(state => state.device.description), connected = useAppSelector(state => Boolean(state.device.selectedPath));
   const { compiler } = useRuntime();
   useEffect(() => { if (active) compiler.start(); }, [active, compiler]);
-  return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Write an animation, check it as you type, and send it to your lights.</p></div><div className="pipeline" aria-label="Compilation flow"><span>Python</span><span aria-hidden="true">→</span><span>WebAssembly</span><span aria-hidden="true">→</span><span>Device</span></div></div>
+  return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Write an animation, check it as you type, and send it to your lights.</p></div><div className="pipeline" aria-label="Compilation flow"><span>Python</span><span aria-hidden="true">→</span><span>Bytecode</span><span aria-hidden="true">→</span><span>Device</span></div></div>
     {description && !connected && <p className="connection-banner">Connect the device to upload. The editor and downloads remain available.</p>}
-    <div className="workspace"><Editor /><aside className="sidebar"><SendProgram /><Procedures /><Parameters /></aside></div>
+    <div className="workspace"><Editor /><aside className="sidebar"><SendProgram /><Procedures /><Settings /><Parameters /></aside></div>
   </>;
 }

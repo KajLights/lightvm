@@ -22,6 +22,10 @@ def sample(name):
     return program((ROOT / 'samples/python' / (name + '.py')).read_text())
 
 
+def legacy_sample(name):
+    return program((ROOT / 'tests/legacy_samples' / (name + '.py')).read_text())
+
+
 def fault():
     return program('from lightvm import rgb, kernel\n@kernel\ndef draw():\n    pixels[count] = rgb(1,2,3)\n')
 

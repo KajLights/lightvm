@@ -6,7 +6,7 @@ import struct
 import sys
 import unittest
 import zlib
-from bytecode_fixtures import ROOT, color, fault, infinite, sample
+from bytecode_fixtures import ROOT, color, fault, infinite, legacy_sample
 sys.path.insert(0, str(ROOT / 'tools'))
 from client import BEGIN, CHUNK, FINISH, FRAME, RESET, RUN, STATUS, Client, ProcessTransport
 from test_configuration import config
@@ -58,7 +58,7 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(self.client.command(FRAME,bytes(4)).code,0)
 
     def test_manifest_must_match_parameter_registers(self):
-        original=sample('color')
+        original=legacy_sample('color')
         length=struct.unpack_from('<I',original,36)[0]
         metadata=json.loads(original[-length:])
         for change in ('default','type','schema','count'):

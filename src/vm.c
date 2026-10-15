@@ -1,6 +1,7 @@
 #include "vm.h"
 #include "vm_allocator.h"
 #include "pixels.h"
+#include "animation.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -15,6 +16,7 @@ void vm_init(VmInstance *a, PixelBuffer *target, SendMessage send, void *transpo
 static void stop_animation(VmInstance *a) {
     a->playing=false;
     a->animation_error[0]=0;
+    if(a->portable){const char *error=animation_quiesce(a);if(error)snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);}
     if (a->control.enabled && a->control.allocation && a->output) {
         size_t n=(size_t)a->control.count*3;
         memset(a->control.working,0,n);
@@ -41,10 +43,16 @@ bool vm_read(void *context,uint32_t offset,void *bytes,size_t size) {
 bool vm_materialize(VmInstance *a) {
     if(!a->from_storage)return true;
     if(!vm_read(a,0,a->bytes,a->expected))return false;
-    a->from_storage=false;a->program.cache_size=0;return true;
+    a->from_storage=false;a->program.cache_size=0;if(a->portable)a->portable->cache_size=0;return true;
 }
 const char *vm_load(VmInstance *a) {
     if(a->generation==UINT32_MAX)return "program generation exhausted";
+    uint8_t header[8];
+    if(vm_read(a,0,header,sizeof(header))&&!memcmp(header,"LBC1",4)&&lbc_u32(header+4)==3){
+        const char *error=pbc_open(&a->portable,vm_read,a,a->expected);
+        if(!error)error=animation_validate(a->portable);
+        return error?error:control_probe(a);
+    }
     if(!lbc_open_reader(&a->program,vm_read,a,a->expected))return "invalid LBC1 bytecode package";
     if(lbc_validate(&a->program,LBC_CODE)!=1)return "invalid bytecode instruction";
     return control_probe(a);
@@ -68,11 +76,13 @@ static void show_frame(VmInstance *a, uint64_t started, bool contribution) {
     if (contribution) {
         // The single-slot presenter submits the complete RGB frame.
         // Each instance keeps an independent committed contribution for a mixer.
-        if (!a->output) { a->show_us=0; ++a->frame_count; return; }
+        if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
+        const uint8_t *frame=control_frame(a);
         success=a->output->driver && a->output->type && a->output->rgb &&
             a->output->count==a->control.count &&
-            a->output->type->show(a->output->driver,a->control.committed,a->control.count);
-        if (success) memcpy(a->output->rgb,a->control.committed,(size_t)a->control.count*3);
+            a->output->type->show(a->output->driver,frame,a->control.count);
+        if (success) memcpy(a->output->rgb,frame,(size_t)a->control.count*3);
+        control_presented(a,success);
     } else success=pixels_show(a->target);
     if (!success) {
         a->playing=false;
@@ -88,44 +98,55 @@ static void show_frame(VmInstance *a, uint64_t started, bool contribution) {
 void vm_tick(VmInstance *a) {
     if (!a->playing) return;
     uint64_t now=platform_time_us();
-    if (now<a->next_frame) return;
-    uint64_t elapsed_us=now-a->last_frame;
+    bool continuing=a->portable&&a->control.in_step;
+    if (!continuing&&now<a->next_frame) return;
+    uint64_t elapsed_us=continuing?0:now-a->last_frame;
     uint32_t delta_ms=elapsed_us>1000000u ? 1000 : (uint32_t)(elapsed_us/1000u);
     // Carry fractional milliseconds and keep the scheduled frame cadence.
-    a->last_frame=a->control.enabled || elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
-    a->next_frame+=FRAME_INTERVAL_US;
-    if (a->next_frame<=now) a->next_frame=now+FRAME_INTERVAL_US;
-    const char * error=a->control.enabled ? control_step(a,1,elapsed_us) : render_animation(a,delta_ms);
+    if(!continuing){
+        a->last_frame=a->control.enabled || elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
+        a->next_frame+=FRAME_INTERVAL_US;
+        if (a->next_frame<=now) a->next_frame=now+FRAME_INTERVAL_US;
+    }
+    bool ready=true;
+    const char * error=a->portable?animation_poll(a,elapsed_us,&ready):a->control.enabled ? control_playback_step(a,elapsed_us) : render_animation(a,delta_ms);
     if (error) {
         a->playing=false;
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         return; // Preserve the last complete frame on the physical strip.
     }
-    show_frame(a,now,a->control.enabled);
+    if(ready)show_frame(a,now,a->control.enabled);
 }
 static void play(VmInstance *a, uint16_t id) {
     a->playing=false; a->animation_error[0]=0;
     bool initial=a->control.enabled && !a->control.initialized;
     uint64_t started=platform_time_us();
-    const char * error=prepare_animation(a);
+    const char * error=a->portable?animation_quiesce(a):NULL;
+    if(!error)error=prepare_animation(a);
+    if(!error&&a->portable&&!initial)error=animation_advance(a,0,true);
     if (error) {
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         reply(a,id,execution_status(a,error),0,error);
         return;
     }
-    if (initial) {
+    if (initial || a->portable) {
         show_frame(a,started,true);
         if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
     }
-    a->playing=true; a->frame_count=0;
+    a->playing=!(a->portable&&a->portable->completed); a->frame_count=0;
     a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
     reply(a,id,STATUS_OK,(a->target ? a->target->count : 0),"animation started");
 }
 static void frame_step(VmInstance *a, uint16_t id, uint32_t delta_ms) {
+    if(a->portable){
+        const char *error=animation_preflight(a,(uint64_t)delta_ms*1000u);
+        if(error){reply(a,id,execution_status(a,error),0,error);return;}
+    }
     a->playing=false;
     a->animation_error[0]=0;
     uint64_t started=platform_time_us();
-    const char * error=prepare_animation(a);
+    const char * error=a->portable?animation_quiesce(a):NULL;
+    if(!error)error=prepare_animation(a);
     if (!error) error=render_animation(a,delta_ms);
     if (error) {
         reply(a,id,execution_status(a,error),0,error);
@@ -227,5 +248,5 @@ const char *vm_validate(const uint8_t *bytes,size_t size) {
         memcpy(candidate->bytes,bytes,size);candidate->expected=size;
         error=vm_load(candidate);
     }
-    demo_free(candidate);return error;
+    control_destroy(candidate);demo_free(candidate);return error;
 }

@@ -1,7 +1,8 @@
-"""LightVM's original Python authoring SDK and reference pixel semantics.
+"""LightVM's historical Python reference SDK and pixel semantics.
 
-The compiler recognizes these declarations statically. This module supplies a
-reference implementation for running trusted programs on a desktop; it is never
+The current bytecode compiler recognizes its source API statically, including
+new animation/1 forms that are not executable Python APIs in this module. This
+module supplies the older reference implementation for trusted desktop programs; it is never
 embedded on the device and compilation never executes user source.
 MIT License, copyright 2026 Kaj Wik Siebert.
 """

@@ -7,7 +7,7 @@ const ready = (async () => {
   pyodide = await loadPyodide();
   status("Loading the LightVM compiler…");
   pyodide.FS.mkdirTree("/editor/lightvm");
-  await Promise.all(["__init__.py", "compiler.py", "bytecode.py", "easing.py"].map(async name => {
+  await Promise.all(["__init__.py", "compiler.py", "bytecode.py", "portable.py", "easing.py"].map(async name => {
     const response = await fetch(new URL(`./python/lightvm/${name}`, import.meta.url));
     if (!response.ok) throw new Error(`Could not load ${name} (${response.status}). Rebuild the static editor assets.`);
     pyodide.FS.writeFile(`/editor/lightvm/${name}`, await response.text());

@@ -11,7 +11,7 @@ const staticAssets = resolve(root, 'build/editor-assets');
 mkdirSync(resolve(staticAssets, 'python/lightvm'), { recursive: true });
 mkdirSync(resolve(staticAssets, 'samples'), { recursive: true });
 cpSync(resolve(root, 'web/compiler-worker.mjs'), resolve(staticAssets, 'compiler-worker.mjs'));
-for (const name of ['__init__.py', 'compiler.py', 'bytecode.py', 'easing.py']) {
+for (const name of ['__init__.py', 'compiler.py', 'bytecode.py', 'portable.py', 'easing.py']) {
   cpSync(resolve(root, 'lightvm', name), resolve(staticAssets, 'python/lightvm', name));
 }
 cpSync(resolve(root, 'samples/python'), resolve(staticAssets, 'samples'), { recursive: true });

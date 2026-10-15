@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-15",
+  "board": "XIAO ESP32-C3",
+  "cpu_mhz": 160,
+  "sdk": "ESP-IDF 5.5.3",
+  "compiler": "riscv32-esp-elf GCC 14.2.0_20251107",
+  "sources": {
+    "build.py": "97509d99f370f18ed084f22206699e2d4a81bd060126cea48f0ea271e2aded6d",
+    "device_client.py": "deb0e473048c61b14b29cc78c49d41132897b7bed8c3a79bee5ca2f6e96742eb",
+    "compiler.py": "0c287fcc2d419105f53d4bd02cfe193bc7b43061b30cc0a8131d88c1db467876",
+    "vm.c": "0cdffeef4ee4f67c539c85e3b9028fe3d0230be831bbd1668e8d94f50f07b452",
+    "exercise_device.py": "05f9a067c7c6eb4ae3a182bc627b114d6538db4e6258b858513df16a344efd5f",
+    "test_runtime.c": "34c0d634d27fecc0db6fa08d7d38c2278a640e9803c03735a471963e262d5218",
+    "host.c": "e9b30b2497387c7174c5385db664406655f1e79296e6d0286c3b298079f78545",
+    "vm.h": "a444340638ac897213fd89fbb5323c44a41befbf4becdde51d4ab195e231fc45",
+    "test_poc.py": "ab15e33b8e368f5dae3bc41a83e9529fd0e03b2fd0f1f2b237a9486aca737549",
+    "samples/color.py": "1fa3becfd6df17ecc0b909f9e20e422971af33dbd2c189403d342d99b7b5dd1a",
+    "samples/twinkle.py": "78e086348ac09b1304c9caaeeee53bf95e4ca31c8fa1d04fc2822348ee84b9d8",
+    "samples/pattern.py": "b38b70ed9295afe39e26b52ea4a0396b2757f2ca8e99aa172a995d220cea2c50",
+    "samples/wipe.py": "56c6b3950836f6d57395cd016895427b7e012cd01bb696aab447960613e97f92",
+    "samples/chase.py": "22c8727b0ac07f07e217729cf04b4a80d2b44a78a5839593be716cb35ec01475",
+    "samples/rainbow.py": "37982bca5939ce1b13c3e878fb14a61778d8cc1d6e57048d5c41354314c4a286",
+    "device/CMakeLists.txt": "782f2357fce10381a6be1c1055550f57fb6ffb18f6f8d4649a6a4771f0f26eb1",
+    "device/partitions.csv": "7ec01c0d6ec2d9ad3f12d0c58d51cd2e1fb3da420dbd37ed9baec34511c5d295",
+    "device/main.c": "4b7d8524a125814d7c5111db41994c42a43bfb1f1340ef0c9f71f665efcdd587",
+    "device/sdkconfig.defaults": "653bbd811278dfcbd218993b6bf96ec73fed72963c29d7ac31a54e5c0b173a7b",
+    "device/main/CMakeLists.txt": "9495aa3055c88fcc034afc8f8896ed47d0318b87870aaf730152c7310015987f"
+  },
+  "artifacts": {
+    "firmware/bytecode_poc.bin": {
+      "bytes": 186512,
+      "sha256": "6996d6a6e2090481f7c5b9e6be43260c6bedf337432379a72b4157b8edc2842e"
+    },
+    "firmware/bytecode_poc.elf": {
+      "bytes": 3741608,
+      "sha256": "4ad0c081a5cda147a3bb3162e5029976871fb4b202468683b6bc01bb50cf1450"
+    },
+    "firmware/sdkconfig": {
+      "bytes": 40220,
+      "sha256": "9d569d9e0145e812ec56dbccd578dc7ab9ad786f2d6cdc140694c972cfccffdc"
+    },
+    "chase.lbc": {
+      "bytes": 328,
+      "sha256": "818ac5405485913e89cc67c4dac70ee5ef0017a26aa1846fc453d9b81c7b5a7f"
+    },
+    "color.lbc": {
+      "bytes": 136,
+      "sha256": "4c5b84e8af5503439a5575b00648154d00929b249f17b575d5e893c50f842956"
+    },
+    "pattern.lbc": {
+      "bytes": 356,
+      "sha256": "7e242e6f0503b3676a49ee43dea83a498dbcf935bf634ab11f8ff8cdc729ba1c"
+    },
+    "rainbow.lbc": {
+      "bytes": 328,
+      "sha256": "31b89c585fccd9650a4e783330df064c3785d6a564557939869dc4291f5612e3"
+    },
+    "twinkle.lbc": {
+      "bytes": 584,
+      "sha256": "13023129aea143ee10a3e1243faa1a9168abe5a2a3502f04daacfd3e2f1f740e"
+    },
+    "wipe.lbc": {
+      "bytes": 464,
+      "sha256": "6f9d88101e2c204f609534d4070866420d9d6e70e0c5074d3691d947464c2817"
+    }
+  }
+}
