@@ -263,8 +263,8 @@ class Client:
 
     def upload_object(self, kind, data, name=None):
         capabilities = self.describe()
-        limit = capabilities["module_limit" if kind == "procedure" else "config_limit"]
-        if not (8 if kind == "procedure" else 1) <= len(data) <= limit:
+        limit = capabilities["module_limit" if kind in ("procedure", "service") else "config_limit"]
+        if not (8 if kind in ("procedure", "service") else 1) <= len(data) <= limit:
             raise ValueError(f"{kind} exceeds receiver size limit {limit}")
         metadata = {"kind": kind, "size": len(data), "crc32": zlib.crc32(data)}
         if name is not None:

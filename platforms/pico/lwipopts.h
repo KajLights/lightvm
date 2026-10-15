@@ -3,7 +3,7 @@
 #define NO_SYS 1
 #define LWIP_SOCKET 0
 #define LWIP_NETCONN 0
-#define LWIP_TCP LIGHTVM_HTTP
+#define LWIP_TCP (LIGHTVM_HTTP || LIGHTVM_MQTT_EXPERIMENT)
 #define LWIP_UDP 1
 #define LWIP_DHCP 1
 #define LWIP_DNS 0
@@ -23,7 +23,7 @@
 #define MEMP_NUM_UDP_PCB 4
 #define PBUF_POOL_SIZE 8
 #define TCP_MSS 1460
-#define TCP_WND (2 * TCP_MSS)
+#define TCP_WND (LIGHTVM_MQTT_EXPERIMENT ? 2048 : (2 * TCP_MSS))
 #define TCP_SND_BUF (2 * TCP_MSS)
 #define TCP_SND_QUEUELEN 8
 #define LWIP_STATS 0

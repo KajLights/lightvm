@@ -8,6 +8,8 @@ native receiver, RP2040 Pico and XIAO ESP32 builds, and pinned Python tools.
 | Component | Version | License | Use | Preserved notice |
 |---|---|---|---|---|
 | wasm3 | v0.5.0 | MIT | Embedded interpreter | [License](licenses/wasm3-v0.5.0.txt) |
+| Toywasm | commit `964e182c1a1b09694f9f8f87c32fd26ba8b15e34` | BSD-2-Clause | Optional flash-interpreter experiment | [License](licenses/toywasm-964e182c1a1b.txt) |
+| coreMQTT serializer | v2.3.1 | MIT | Optional experimental MQTT WASM guest only | [License](licenses/coreMQTT-v2.3.1.txt), unmodified source headers and hashes in `experiments/mqtt/vendor/coreMQTT/` |
 | Pico SDK | 1.5.1 | BSD-3-Clause; selected files MIT | Pico firmware | [BSD license](licenses/pico-sdk-1.5.1.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | TinyUSB | SDK submodule `86c416d4c0fb38432460b3e11b08b9de76941bf5` | MIT | USB device driver | [License](licenses/tinyusb.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | pico⚡flash PICOBOOT package | commit `230759cf32ab245decf1194f5b37b7d3c0088aed` | MIT | Browser WebUSB Pico flashing | [License](licenses/picoflash.txt), copyright 2025–2026 Piers Finlayson |
@@ -70,6 +72,16 @@ CMake adds a loop-yield check to a build-local copy of wasm3's `m3_exec.h` and
 redirects its allocator calls through LightVM's tracked allocator. The upstream
 source checkout is unchanged; its MIT notice remains in the copied source and
 in the interpreter notice above.
+
+The build-local wasm3 copy also retains function/global array ownership and counts
+when allocation fails, allowing constrained-memory admission failures to clean up.
+
+The optional Toywasm build adds a cooperative deadline hook, redirects allocation
+through the tracked allocator, and disables an Apple allocator-size assertion that
+does not understand that allocator's headers. Two memory helper symbols are renamed
+to avoid lwIP collisions. Upstream sources remain unchanged. Benchmark options can
+enable switch jump tables or disable internal debug assertions; guest bounds,
+validation and deadline checks remain active.
 
 The shared native build disables strict-aliasing optimization for wasm3's
 intentional type-punned code/stack representation. This changes compile options,

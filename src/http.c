@@ -4,13 +4,42 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <limits.h>
+static size_t response_capacity(Http *h) {
+#if LIGHTVM_FLASH_EXPERIMENT
+    return h->capacity;
+#else
+    return sizeof(h->response);
+#endif
+}
+static bool response_reserve(Http *h,size_t size) {
+#if LIGHTVM_FLASH_EXPERIMENT
+    if(size>HTTP_RESPONSE_LIMIT) return false;
+    if(size<=h->capacity) return true;
+    size_t capacity=(size+511u)&~511u;
+    if(capacity>HTTP_RESPONSE_LIMIT) capacity=HTTP_RESPONSE_LIMIT;
+    uint8_t *p=platform_realloc(h->response==h->emergency?NULL:h->response,capacity);
+    if(!p) return false;
+    if(h->response==h->emergency) memcpy(p,h->emergency,h->used);
+    h->response=p; h->capacity=capacity; return true;
+#else
+    return size<=sizeof(h->response);
+#endif
+}
+static void response_release(Http *h) {
+#if LIGHTVM_FLASH_EXPERIMENT
+    if(h->response!=h->emergency) platform_free(h->response);
+    h->response=h->emergency; h->capacity=sizeof(h->emergency);
+#else
+    (void)h;
+#endif
+}
 static void capture_bytes(void *context,const uint8_t *bytes,size_t size) {
     Http *h=context;
-    if (size>sizeof(h->response)-h->used) { h->overflow=true; return; }
+    if (size>HTTP_RESPONSE_LIMIT-h->used || !response_reserve(h,h->used+size)) { h->overflow=true; return; }
     memcpy(h->response+h->used,bytes,size); h->used+=size;
 }
 static void capture(void *context,uint8_t kind,uint16_t id,const uint8_t *bytes,size_t size) { write_frame(capture_bytes,context,kind,id,bytes,size); }
-void http_init(Http *h,App *a) { memset(h,0,sizeof(*h)); h->app=a; h->sequence=a->connection_sequence; }
+void http_init(Http *h,App *a) { memset(h,0,sizeof(*h)); h->app=a; h->sequence=a->connection_sequence; response_release(h); }
 bool http_submit(Http *h,const HttpRequest *r) {
     if (h->count==HTTP_QUEUE) return false;
     h->queue[(h->head+h->count)%HTTP_QUEUE]=*r; h->count++; return true;
@@ -34,7 +63,8 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     if (!strcmp(r->path,"/api/v1/devices")) {
         if (strcmp(r->method,"GET")) return 405;
         if (r->size) return 400;
-        h->used=discovery_json(h->discovery,(char *)h->response,sizeof(h->response),now);
+        if(!response_reserve(h,8192)) return 503;
+        h->used=discovery_json(h->discovery,(char *)h->response,response_capacity(h),now);
         return h->used?200:500;
     }
     if (!strcmp(r->method,"POST") && !strcmp(r->path,"/api/v1/sessions")) {
@@ -44,7 +74,8 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
         if (!s || h->sequence==UINT64_MAX) return 503;
         s->source=++h->sequence; h->app->connection_sequence=h->sequence; s->expires=now+300000000u;
         snprintf(s->token,sizeof(s->token),"%016llx%016llx",(unsigned long long)crc32_bytes((const uint8_t *)h->app->boot_id,strlen(h->app->boot_id)),(unsigned long long)s->source);
-        int n=snprintf((char *)h->response,sizeof(h->response),"{\"session_id\":\"%s\",\"device_id\":\"%s\",\"boot_id\":\"%s\",\"expires_in_ms\":300000}",s->token,h->app->device_id,h->app->boot_id);
+        if(!response_reserve(h,512)) { memset(s,0,sizeof(*s)); return 503; }
+        int n=snprintf((char *)h->response,response_capacity(h),"{\"session_id\":\"%s\",\"device_id\":\"%s\",\"boot_id\":\"%s\",\"expires_in_ms\":300000}",s->token,h->app->device_id,h->app->boot_id);
         h->used=(size_t)n; return 201;
     }
     if (!strcmp(r->method,"DELETE") && !strncmp(r->path,"/api/v1/sessions/",17)) {
@@ -72,7 +103,7 @@ void http_tick(Http *h,uint64_t now) {
         h->active=h->queue[h->head]; h->head=(h->head+1)%HTTP_QUEUE; h->count--;
         h->used=0; h->sent=0; h->header_sent=0; h->overflow=false; h->reply_source=0;
         unsigned code=execute(h,&h->active,now);
-        if (code>=400) { h->used=(size_t)snprintf((char *)h->response,sizeof(h->response),"{\"error\":%u}",code); }
+        if (code>=400) { h->used=(size_t)snprintf((char *)h->response,response_capacity(h),"{\"error\":%u}",code); }
         headers(h,code,code==200 && !strcmp(h->active.path,"/api/v1/command")); h->deadline=now+2000000u; h->sending=true; h->closing=false;
     }
     if (!h->sending) return;
@@ -92,11 +123,12 @@ void http_tick(Http *h,uint64_t now) {
         if (closed) {
             if (closed && complete) app_reply_delivered(h->app,h->reply_source);
             h->sending=false;
+            response_release(h);
         }
     }
 }
 void http_cancel_io(Http *h,void *context) {
-    if (h->sending && h->active.io.context==context) h->sending=false;
+    if (h->sending && h->active.io.context==context) { h->sending=false; response_release(h); }
     HttpRequest kept[HTTP_QUEUE]; unsigned count=0;
     for (unsigned i=0;i<h->count;i++) { HttpRequest *r=&h->queue[(h->head+i)%HTTP_QUEUE]; if (r->io.context!=context) kept[count++]=*r; }
     memcpy(h->queue,kept,count*sizeof(*kept)); h->count=count; h->head=0;

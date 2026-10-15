@@ -5,6 +5,8 @@
 #include <string.h>
 
 static VmInstance *executing;
+static uint64_t service_deadline;
+void vm_service_execution(uint64_t deadline) { service_deadline=deadline; }
 static const char timeout_error[]="execution deadline exceeded";
 static const char output_error[]="console output limit exceeded";
 static const char exit_trap[]="guest requested exit";
@@ -12,7 +14,8 @@ static const char background_console_error[]="use FRAME to debug animation conso
 static const char color_error[]="rgb/hsv require render(index) and valid 8-bit color values";
 
 M3Result m3_Yield(void) {
-    return executing && platform_time_us()>=executing->deadline ? timeout_error : m3Err_none;
+    return ((executing && platform_time_us()>=executing->deadline) ||
+            (service_deadline && platform_time_us()>=service_deadline)) ? timeout_error : m3Err_none;
 }
 static void reply(VmInstance *a, uint16_t id, enum Status code, int32_t value, const char *message) {
     send_status(a->send,a->transport,id,code,value,message);
@@ -39,6 +42,13 @@ void vm_destroy(VmInstance *a) {
     if (a->runtime) m3_FreeRuntime(a->runtime);
     if (a->environment) m3_FreeEnvironment(a->environment);
     control_destroy(a);
+#if LIGHTVM_FLASH_EXPERIMENT
+    if (a->code_mapping.bytes) program_unmap(&a->code_mapping); else demo_free(a->bytes);
+    a->bytes=NULL;
+#endif
+#if LIGHTVM_MQTT_EXPERIMENT
+    vm_heap_uncharge(a->code_charge); a->code_charge=0;
+#endif
     if (a->generation!=UINT32_MAX) ++a->generation;
     a->runtime=NULL; a->environment=NULL; a->module=NULL; a->ready=false;
 }
@@ -135,8 +145,22 @@ static M3Result link_optional(VmInstance *a, const char *space, const char *name
     M3Result result=m3_LinkRawFunctionEx(a->module,space,name,signature,fn,a);
     return result==m3Err_functionLookupFailed ? m3Err_none : result;
 }
+bool vm_reserve_upload(VmInstance *a,size_t size) {
+#if LIGHTVM_FLASH_EXPERIMENT
+    a->bytes=demo_calloc(1,size); return a->bytes!=NULL;
+#else
+    (void)a; (void)size; return true;
+#endif
+}
 M3Result vm_load(VmInstance *a) {
     if (a->generation==UINT32_MAX) return "program generation exhausted";
+#if LIGHTVM_FLASH_EXPERIMENT
+    if (!program_map(&a->code_mapping,a->bytes,a->expected)) return "program flash mapping failed";
+    demo_free(a->bytes); a->bytes=(uint8_t *)a->code_mapping.bytes;
+#elif LIGHTVM_MQTT_EXPERIMENT
+    if (!vm_heap_charge(a->expected)) return "animation code admission failed";
+    a->code_charge=a->expected;
+#endif
     M3Result profile=control_probe(a->bytes,a->expected,&a->control);
     if (profile) return profile;
     a->environment=m3_NewEnvironment();
@@ -356,6 +380,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
             reply(a,id,STATUS_UPLOAD,0,message); break;
         }
         vm_destroy(a); a->received=0; a->expected=read_u32(p);
+        if (!vm_reserve_upload(a,a->expected)) { reply(a,id,STATUS_UPLOAD,0,"upload allocation failed"); break; }
         a->expected_crc=read_u32(p+4); a->uploading=true;
         reply(a,id,STATUS_OK,0,"upload started"); break;
     }

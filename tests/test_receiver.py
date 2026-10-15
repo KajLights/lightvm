@@ -203,7 +203,7 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(self.client.command(RUN).value, 23)
 
     def test_heap_limit_releases_failed_module(self):
-        functions = "(func (result i32) i32.const 1)" * 600
+        functions = "(func (result i32) i32.const 1)" * 3000
         data = bytes(wasmtime.wat2wasm(f'(module (memory 1) {functions})'))
         self.client.command(BEGIN, struct.pack("<II", len(data), zlib.crc32(data)))
         for offset in range(0, len(data), 508):

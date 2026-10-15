@@ -8,8 +8,16 @@
 #include "pixels.h"
 #include "control.h"
 
+#if LIGHTVM_FLASH_EXPERIMENT
+#include "program.h"
+#endif
 typedef struct VmInstance {
+#if LIGHTVM_FLASH_EXPERIMENT
+    uint8_t *bytes;
+    ProgramMapping code_mapping;
+#else
     uint8_t bytes[MODULE_LIMIT];
+#endif
     size_t received, expected, output_size;
     uint32_t expected_crc;
     bool uploading, ready, guest_exit;
@@ -31,11 +39,17 @@ typedef struct VmInstance {
     char slot[33];
     uint32_t generation;
     Control control;
+#if LIGHTVM_MQTT_EXPERIMENT
+    size_t code_charge;
+#endif
 } VmInstance;
 void vm_init(VmInstance *app, PixelBuffer *target, SendMessage send, void *transport);
+bool vm_reserve_upload(VmInstance *,size_t);
 M3Result vm_load(VmInstance *app);
 M3Result vm_validate(const uint8_t *bytes, size_t size);
 void vm_destroy(VmInstance *app);
 void vm_tick(VmInstance *app);
+// The same engine owner brackets experimental service execution.
+void vm_service_execution(uint64_t deadline);
 void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 #endif

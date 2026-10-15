@@ -65,6 +65,11 @@ Optional [power-cycle sequence detection](docs/boot-sequence.md) counts power-on
 recovery AP and keeps the startup program idle, preserving saved settings. Enable
 the detector with `LIGHTVM_BOOT_SEQUENCE=ON`; it defaults to `OFF`. Detector-only
 builds leave startup unchanged.
+An optional [separate MQTT WASM experiment](experiments/mqtt/README.md) is built
+with `LIGHTVM_MQTT_EXPERIMENT=ON` and defaults to off. It includes a portable
+coreMQTT serializer guest, HA speed/discovery sample, bounded native TCP ABI,
+independent service uploads and buffered benchmarks. Its measured capacity
+results are recorded separately from normal firmware support.
 The porting contract and extension rules are in [docs/architecture.md](docs/architecture.md).
 
 The [control API and execution model proposal](documents/feature-proposal-control-api.md)

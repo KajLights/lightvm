@@ -5,6 +5,8 @@
 #include "config.h"
 size_t vm_heap_used(void);
 size_t vm_heap_peak(void);
+size_t vm_heap_window_peak(void);
+void vm_heap_window_reset(void);
 void *demo_calloc(size_t count, size_t size);
 void demo_free(void *memory);
 bool vm_heap_charge(size_t bytes);

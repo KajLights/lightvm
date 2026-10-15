@@ -1,0 +1,40 @@
+{
+  "c3": {
+    "artifact": "build/mqtt-c3/lightvm.bin",
+    "bytes": 960384,
+    "sha256": "b57c9577332efb4cf5b0a8cde8ab3829ee63d42aacf734f664d8a3ddef308bde",
+    "physical_execution": true
+  },
+  "s3": {
+    "artifact": "build/mqtt-s3/lightvm.bin",
+    "bytes": 878032,
+    "sha256": "e482d94cd14e22decbca0b8b2987c91361bdf210384019eab89beb43b8073aa7",
+    "physical_execution": false
+  },
+  "c6": {
+    "artifact": "build/mqtt-c6/lightvm.bin",
+    "bytes": 999600,
+    "sha256": "785e9e61e222aebbb94a5e55d583399c05cf152a56c55f4795fba5799ecac7df",
+    "physical_execution": false
+  },
+  "pico_w": {
+    "artifact": "build/mqtt-pico-w/lightvm.uf2",
+    "bytes": 1032704,
+    "sha256": "9104d76cf240b84b7610ffb8b4e0e03456880655e014d7071e5aad6f1ab05396",
+    "physical_execution": false,
+    "ram_reservations": {
+      "static_bytes": 117804,
+      "vm_heap_ceiling": 114688,
+      "native_stack": 16384,
+      "pixel_driver_max": 3072,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 2004,
+      "dynamic_costs": "lwIP pools are static; other native allocations must fit operating headroom"
+    }
+  },
+  "mosquitto": {
+    "version": "2.0.22",
+    "image_digest": "sha256:199ea8ef2e35ec2b1b37e59cfd1dbae538ed4dfa4a2251a121a52215a6248a21",
+    "binding": "127.0.0.1:18883"
+  }
+}

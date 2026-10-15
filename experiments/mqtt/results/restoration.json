@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "config": true,
+    "network": true,
+    "procedures": true,
+    "device_id": true,
+    "original_firmware_feature_set": true,
+    "original_playback_mode": true,
+    "full_flash_verify": true
+  },
+  "flash_backup_bytes": 4194304,
+  "flash_backup_sha256": "1b1d580930fcaf2132905953055a8d4cf99d4d5b64f41f29582d5fc1be05a823"
+}

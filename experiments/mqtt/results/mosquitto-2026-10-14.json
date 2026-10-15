@@ -1,0 +1,1091 @@
+{
+  "timestamp_utc": "2026-10-14T06:36:11.597668+00:00",
+  "runtime": "Wasmtime protocol harness; no firmware performance claim",
+  "module_sha256": "e38c8e76428aac21c413f0bc344ef8e8e4498ca4e1fda87cbc5ac462861e4025",
+  "commands_applied": 110,
+  "stale_commands_rejected": 1,
+  "discovery_configs": 20,
+  "retained_discovery_and_availability": true,
+  "last_will_observed": true,
+  "broker_restart": true,
+  "messages": [
+    {
+      "topic": "homeassistant/number/host-mqtt-test/speed/config",
+      "payload": "{\"name\":\"speed\",\"unique_id\":\"host-mqtt-test_speed\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/speed/state\",\"command_topic\":\"lightvm/host-mqtt-test/speed/set\",\"min\":-10,\"max\":10,\"step\":0.01,\"mode\":\"box\"}",
+      "qos": 1,
+      "retained": true,
+      "time": 327076.407975833
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/vm_heap/config",
+      "payload": "{\"name\":\"vm_heap\",\"unique_id\":\"host-mqtt-test_vm_heap\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.vm_heap }}\",\"unit_of_measurement\":\"B\"}",
+      "qos": 1,
+      "retained": true,
+      "time": 327076.408011208
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/render_us/config",
+      "payload": "{\"name\":\"render_us\",\"unique_id\":\"host-mqtt-test_render_us\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.render_us }}\",\"unit_of_measurement\":\"\u00b5s\"}",
+      "qos": 1,
+      "retained": true,
+      "time": 327076.408034833
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/commands/config",
+      "payload": "{\"name\":\"commands\",\"unique_id\":\"host-mqtt-test_commands\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.commands }}\"}",
+      "qos": 1,
+      "retained": true,
+      "time": 327076.408054375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/availability",
+      "payload": "offline",
+      "qos": 1,
+      "retained": true,
+      "time": 327076.408064708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "9.900000",
+      "qos": 1,
+      "retained": true,
+      "time": 327076.408082083
+    },
+    {
+      "topic": "homeassistant/number/host-mqtt-test/speed/config",
+      "payload": "{\"name\":\"speed\",\"unique_id\":\"host-mqtt-test_speed\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/speed/state\",\"command_topic\":\"lightvm/host-mqtt-test/speed/set\",\"min\":-10,\"max\":10,\"step\":0.01,\"mode\":\"box\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.408095458
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/vm_heap/config",
+      "payload": "{\"name\":\"vm_heap\",\"unique_id\":\"host-mqtt-test_vm_heap\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.vm_heap }}\",\"unit_of_measurement\":\"B\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.408108041
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/render_us/config",
+      "payload": "{\"name\":\"render_us\",\"unique_id\":\"host-mqtt-test_render_us\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.render_us }}\",\"unit_of_measurement\":\"\u00b5s\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.408116416
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/commands/config",
+      "payload": "{\"name\":\"commands\",\"unique_id\":\"host-mqtt-test_commands\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.commands }}\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.408133291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/availability",
+      "payload": "online",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.408147416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.100000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.408157166
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/diagnostics",
+      "payload": "{\"vm_heap\":100000,\"render_us\":500,\"commands\":0,\"rejected\":0,\"malformed\":0,\"duplicates\":0,\"reconnects\":0}",
+      "qos": 0,
+      "retained": false,
+      "time": 327076.408169875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.410042458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.000000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.453726458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.510511958
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.100000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.556578583
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.610158083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.200000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.656767333
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.710983916
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.300000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.757766375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.810652291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.400000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.856718583
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.91068225
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.500000",
+      "qos": 1,
+      "retained": false,
+      "time": 327076.956102041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.010936708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.600000",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.052609125
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.110923416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.700000",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.152742375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.210290583
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.800000",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.251775166
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.310804458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "0.900000",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.356791166
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/diagnostics",
+      "payload": "{\"vm_heap\":100000,\"render_us\":500,\"commands\":10,\"rejected\":0,\"malformed\":0,\"duplicates\":0,\"reconnects\":0}",
+      "qos": 0,
+      "retained": false,
+      "time": 327077.390417791
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.412910833
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.413040708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.413069916
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.413089416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.413106916
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.413125541
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.414353458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.414579375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.414971708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "0.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415026083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415072416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415115291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415159291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415202208
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415466708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415537041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415587625
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.41563775
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.415681291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "1.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.416027958
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4206115
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4207665
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.420826375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.420930833
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.421365875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.421429291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.421477583
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.422105333
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.422176583
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "2.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.422726041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.422940833
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423002
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423047041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.42309
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423132583
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423175958
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423217375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423259125
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423302083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "3.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423343416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423387
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423429416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423482916
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423527916
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423575208
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.423626875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.42366775
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4253085
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.425590083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "4.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.426784041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.426868791
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.426919666
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.426964416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427005708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4270465
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4270865
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427126416
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427166291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427206333
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "5.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4272475
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427288
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427327541
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427369166
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427764208
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427808166
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427849375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.42789
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.427932291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.428961666
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "6.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4298915
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.429944041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.429989083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430032875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430075291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430120708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430187833
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430247166
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430294
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.4303615
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "7.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430404791
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.430595541
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431002333
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431052833
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431093083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431131708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431406708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431457291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.431496375
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.43225075
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "8.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432420875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.0",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432494458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.1",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432556458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.2",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432717041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.3",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432772791
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.4",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432840458
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.5",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432882875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.6",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.432940291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.7",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.433357125
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.8",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.433398666
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "9.9",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.433838041
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/set",
+      "payload": "{\"speed\": 1, \"generation\": 0, \"revision\": 0}",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.568426875
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "9.900000",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.610526708
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/availability",
+      "payload": "offline",
+      "qos": 1,
+      "retained": false,
+      "time": 327077.610563208
+    },
+    {
+      "topic": "homeassistant/number/host-mqtt-test/speed/config",
+      "payload": "{\"name\":\"speed\",\"unique_id\":\"host-mqtt-test_speed\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/speed/state\",\"command_topic\":\"lightvm/host-mqtt-test/speed/set\",\"min\":-10,\"max\":10,\"step\":0.01,\"mode\":\"box\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327078.576760458
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/vm_heap/config",
+      "payload": "{\"name\":\"vm_heap\",\"unique_id\":\"host-mqtt-test_vm_heap\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.vm_heap }}\",\"unit_of_measurement\":\"B\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327078.579407791
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/render_us/config",
+      "payload": "{\"name\":\"render_us\",\"unique_id\":\"host-mqtt-test_render_us\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.render_us }}\",\"unit_of_measurement\":\"\u00b5s\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327078.581911125
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/commands/config",
+      "payload": "{\"name\":\"commands\",\"unique_id\":\"host-mqtt-test_commands\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.commands }}\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327078.584219208
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/availability",
+      "payload": "offline",
+      "qos": 1,
+      "retained": false,
+      "time": 327078.6910825
+    },
+    {
+      "topic": "homeassistant/number/host-mqtt-test/speed/config",
+      "payload": "{\"name\":\"speed\",\"unique_id\":\"host-mqtt-test_speed\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/speed/state\",\"command_topic\":\"lightvm/host-mqtt-test/speed/set\",\"min\":-10,\"max\":10,\"step\":0.01,\"mode\":\"box\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.934248458
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/vm_heap/config",
+      "payload": "{\"name\":\"vm_heap\",\"unique_id\":\"host-mqtt-test_vm_heap\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.vm_heap }}\",\"unit_of_measurement\":\"B\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.936797208
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/render_us/config",
+      "payload": "{\"name\":\"render_us\",\"unique_id\":\"host-mqtt-test_render_us\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.render_us }}\",\"unit_of_measurement\":\"\u00b5s\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.939415916
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/commands/config",
+      "payload": "{\"name\":\"commands\",\"unique_id\":\"host-mqtt-test_commands\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.commands }}\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.941914083
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/availability",
+      "payload": "offline",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.943371541
+    },
+    {
+      "topic": "homeassistant/number/host-mqtt-test/speed/config",
+      "payload": "{\"name\":\"speed\",\"unique_id\":\"host-mqtt-test_speed\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/speed/state\",\"command_topic\":\"lightvm/host-mqtt-test/speed/set\",\"min\":-10,\"max\":10,\"step\":0.01,\"mode\":\"box\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.949928875
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/vm_heap/config",
+      "payload": "{\"name\":\"vm_heap\",\"unique_id\":\"host-mqtt-test_vm_heap\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.vm_heap }}\",\"unit_of_measurement\":\"B\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.953791708
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/render_us/config",
+      "payload": "{\"name\":\"render_us\",\"unique_id\":\"host-mqtt-test_render_us\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.render_us }}\",\"unit_of_measurement\":\"\u00b5s\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.956382458
+    },
+    {
+      "topic": "homeassistant/sensor/host-mqtt-test/commands/config",
+      "payload": "{\"name\":\"commands\",\"unique_id\":\"host-mqtt-test_commands\",\"device\":{\"identifiers\":[\"host-mqtt-test\"],\"name\":\"LightVM MQTT experiment\",\"manufacturer\":\"Kajlights\"},\"availability_topic\":\"lightvm/host-mqtt-test/availability\",\"state_topic\":\"lightvm/host-mqtt-test/diagnostics\",\"entity_category\":\"diagnostic\",\"value_template\":\"{{ value_json.commands }}\"}",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.959205291
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/availability",
+      "payload": "online",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.960668791
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/speed/state",
+      "payload": "9.900000",
+      "qos": 1,
+      "retained": false,
+      "time": 327079.96375675
+    },
+    {
+      "topic": "lightvm/host-mqtt-test/diagnostics",
+      "payload": "{\"vm_heap\":100000,\"render_us\":500,\"commands\":110,\"rejected\":1,\"malformed\":0,\"duplicates\":0,\"reconnects\":2}",
+      "qos": 0,
+      "retained": false,
+      "time": 327079.966240458
+    }
+  ]
+}

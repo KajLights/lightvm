@@ -33,4 +33,5 @@ M3Result control_prepare(struct VmInstance *vm);
 M3Result control_step(struct VmInstance *vm,uint32_t trigger,uint64_t delta);
 void control_destroy(struct VmInstance *vm);
 bool control_manage(struct VmInstance *vm,uint16_t id,const uint8_t *payload,size_t size);
+bool control_set_float(struct VmInstance *,const char *,uint32_t,uint32_t,double);
 #endif

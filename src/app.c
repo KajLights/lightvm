@@ -83,6 +83,7 @@ static bool activate(App *a, const char *name, uint16_t id, const char *action, 
     if (!strcmp(action,"play") && !a->vm.target) { error_reply(a,id,STATUS_CONFIG,"missing_target","target A has no configured output"); return false; }
     vm_destroy(&a->vm); a->vm.uploading=false; a->active_procedure[0]=0; a->active_crc=0;
     a->vm.expected=entry->size; a->vm.received=entry->size;
+    if (!vm_reserve_upload(&a->vm,entry->size)) { error_reply(a,id,STATUS_LOAD,"load_failed","upload allocation failed"); return false; }
     if (!store_read(&a->store,entry,0,a->vm.bytes,entry->size) || crc32_bytes(a->vm.bytes,entry->size)!=entry->crc) {
         error_reply(a,id,STATUS_STORAGE,"read_failed","procedure read/checksum failed"); return false;
     }
@@ -104,6 +105,9 @@ void app_init(App *a, SendMessage send, void *transport) {
     a->network.recovery=LIGHTVM_POWER_RECOVERY && app_boot_sequence_triggered(a);
     platform_identity(a->device_id,sizeof(a->device_id),a->boot_id,sizeof(a->boot_id));
     vm_init(&a->vm,NULL,vm_send,a); empty_config(a);
+#if LIGHTVM_MQTT_EXPERIMENT
+    service_init(&a->service,&a->vm);
+#endif
     a->booting=true;
     if (!store_mount(&a->store)) snprintf(a->boot_error,sizeof(a->boot_error),"storage: no valid snapshot or read failure");
     const StoreEntry *config=store_find(&a->store,STORE_CONFIG);
@@ -128,7 +132,12 @@ void app_init(App *a, SendMessage send, void *transport) {
     }
     a->booting=false;
 }
-void app_destroy(App *a) { vm_destroy(&a->vm); pixels_destroy(&a->pixels); }
+void app_destroy(App *a) {
+#if LIGHTVM_MQTT_EXPERIMENT
+    service_unload(&a->service);
+#endif
+    vm_destroy(&a->vm); pixels_destroy(&a->pixels);
+}
 bool app_boot_sequence_triggered(const App *a) {
 #if LIGHTVM_BOOT_SEQUENCE
     return a->boot_sequence.triggered;
@@ -148,7 +157,14 @@ void app_tick(App *a) {
         memset(&a->pending_network,0,sizeof(a->pending_network));
     }
     if (!a->network_pending) network_tick(&a->network,now);
+#if LIGHTVM_MQTT_EXPERIMENT
+    uint32_t before=a->vm.frame_count;
+#endif
     vm_tick(&a->vm);
+#if LIGHTVM_MQTT_EXPERIMENT
+    if (a->vm.frame_count!=before) service_frame(&a->service,platform_time_us());
+    service_tick(&a->service);
+#endif
 }
 static void resume_clock(App *a) {
     // Persistence can stall physical output; retain guest state and discard the gap.
@@ -164,6 +180,10 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"wifi_ap_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"recovery_supported\":"); literal(&w,LIGHTVM_POWER_RECOVERY?"true":"false");
     literal(&w,",\"http_supported\":"); literal(&w,LIGHTVM_HTTP?"true":"false");
+    literal(&w,",\"flash_interpreter\":"); literal(&w,LIGHTVM_TOYWASM?"true":"false");
+    literal(&w,",\"flash_programs\":"); literal(&w,LIGHTVM_FLASH_EXPERIMENT?"true":"false");
+    literal(&w,",\"runtime_benchmark\":"); literal(&w,LIGHTVM_RUNTIME_BENCHMARK?"true":"false");
+    literal(&w,",\"mqtt_experiment\":"); literal(&w,LIGHTVM_MQTT_EXPERIMENT?"true":"false");
     literal(&w,",\"boot_sequence_supported\":"); literal(&w,LIGHTVM_BOOT_SEQUENCE?"true":"false");
 #if LIGHTVM_BOOT_SEQUENCE
     literal(&w,",\"boot_sequence\":{\"count\":"); number(&w,a->boot_sequence.count);
@@ -234,7 +254,36 @@ static void read_object(App *a,uint16_t id,const StoreEntry *entry) {
     }
     reply(a,id,STATUS_OK,(int32_t)entry->size,"object read");
 }
+#if LIGHTVM_MQTT_EXPERIMENT
+// Return before interpreter admission or other management parsing uses the stack.
+static __attribute__((noinline)) int service_load_request(const uint8_t *p,size_t size) {
+    Json service_json; char service_op[40];
+    if (json_parse(&service_json,p,size) && json_string(&service_json,json_get(&service_json,0,"op"),service_op,sizeof(service_op)) && !strcmp(service_op,"service_load")) {
+        static const char *const service_fields[]={"op",NULL};
+        return json_fields(&service_json,0,service_fields)?1:2;
+    }
+    return 0;
+}
+static bool experimental_manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
+    int request=service_load_request(p,size);
+    if (request) {
+        if (request!=1 || !a->staged || a->object_kind!=4 || a->upload_owner!=a->source) {
+            error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage a service in this session first"); return true;
+        }
+        M3Result error=service_load(&a->service,a->staging,a->expected);
+        a->staged=false; a->upload_owner=0;
+        if (error) error_reply(a,id,STATUS_LOAD,"service_admission_failed",error);
+        else reply(a,id,STATUS_OK,0,"experimental service loaded independently");
+        return true;
+    }
+    return service_manage(&a->service,a->send,a->transport,id,p,size);
+}
+#endif
 static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
+#if LIGHTVM_RUNTIME_BENCHMARK
+    extern bool runtime_benchmark(App *,uint16_t,const uint8_t *,size_t);
+    if (runtime_benchmark(a,id,p,size)) return;
+#endif
     if (control_manage(&a->vm,id,p,size)) return;
     Arguments args;
     if (!arguments(p,size,&args)) { error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management JSON or fields"); return; }
@@ -350,8 +399,9 @@ static bool object_begin(App *a,const uint8_t *p,size_t size) {
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) ||
         !json_string(&j,json_get(&j,0,"kind"),kind,sizeof(kind)) ||
         !json_u32(&j,json_get(&j,0,"size"),&expected) || !json_u32(&j,json_get(&j,0,"crc32"),&crc)) return false;
-    unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"procedure") ? 2u : !strcmp(kind,"network") ? 3u : 0u;
-    if (!object_kind || expected<(object_kind==2 ? 8u : 1u) || expected>(object_kind==2 ? MODULE_LIMIT : CONFIG_LIMIT)) return false;
+    unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"procedure") ? 2u : !strcmp(kind,"network") ? 3u : LIGHTVM_MQTT_EXPERIMENT && !strcmp(kind,"service") ? 4u : 0u;
+    bool module=object_kind==2 || object_kind==4;
+    if (!object_kind || expected<(module ? 8u : 1u) || expected>(module ? MODULE_LIMIT : CONFIG_LIMIT)) return false;
     int n=json_get(&j,0,"name");
     if (object_kind==2 && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name))) return false;
     if (object_kind!=2 && n>=0) return false;
@@ -364,7 +414,12 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     if (a->upload_owner && a->upload_owner!=a->source && (type==CMD_BEGIN || type==CMD_OBJECT_BEGIN || type==CMD_CHUNK || type==CMD_FINISH || type==CMD_OBJECT_CHUNK || type==CMD_OBJECT_FINISH || type==CMD_OBJECT_CANCEL)) {
         error_reply(a,id,STATUS_BUSY,"upload_busy","upload belongs to another session"); return;
     }
-    if (type==CMD_MANAGE) { manage(a,id,p,size); return; }
+    if (type==CMD_MANAGE) {
+#if LIGHTVM_MQTT_EXPERIMENT
+        if (experimental_manage(a,id,p,size)) return;
+#endif
+        manage(a,id,p,size); return;
+    }
     if (type==CMD_OBJECT_BEGIN) {
         if (a->uploading || a->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","another upload is in progress; cancel it first"); return; }
         if (!object_begin(a,p,size)) error_reply(a,id,STATUS_UPLOAD,"invalid_upload","invalid object upload metadata or size");
@@ -391,7 +446,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         } else if (a->object_kind==3) {
             NetworkConfig config; char error[160];
             if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error))) { a->upload_owner=0; error_reply(a,id,STATUS_CONFIG,"invalid_network",error); return; }
-        } else {
+        } else if (a->object_kind==2) {
             M3Result error=vm_validate(a->staging,a->expected);
             if (error) { error_reply(a,id,STATUS_LOAD,"invalid_module",error); return; }
         }

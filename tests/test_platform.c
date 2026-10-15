@@ -139,7 +139,7 @@ static void upload(Session *session, Capture *reply, const uint8_t *wasm, size_t
     write_u32(begin, (uint32_t)size);
     write_u32(begin + 4, crc32_bytes(wasm, size));
     command(session, CMD_BEGIN, begin, sizeof(begin));
-    CHECK(reply->code == STATUS_OK);
+    if (reply->code != STATUS_OK) return;
     write_u32(chunk, 0);
     memcpy(chunk + 4, wasm, size);
     command(session, CMD_CHUNK, chunk, size + 4);
@@ -394,7 +394,7 @@ int main(void) {
     CHECK(reply.code == STATUS_OK && vm_heap_used() == 0);
     deny_allocation = true;
     upload(&session, &reply, render_wasm, sizeof(render_wasm));
-    CHECK(reply.code == STATUS_LOAD && vm_heap_used() == 0);
+    CHECK((reply.code == STATUS_LOAD || reply.code == STATUS_UPLOAD) && vm_heap_used() == 0);
     deny_allocation = false;
     upload(&session, &reply, render_wasm, sizeof(render_wasm));
     CHECK(reply.code == STATUS_OK);
@@ -454,6 +454,7 @@ int main(void) {
     static VmInstance one,two;
     Capture first_reply={.marker=0x12345678u}, second_reply={.marker=0x12345678u};
     vm_init(&one,&first,capture,&first_reply); vm_init(&two,&second,capture,&second_reply);
+    CHECK(vm_reserve_upload(&one,sizeof(render_wasm)) && vm_reserve_upload(&two,sizeof(render_wasm)));
     memcpy(one.bytes,render_wasm,sizeof(render_wasm)); one.expected=sizeof(render_wasm);
     memcpy(two.bytes,render_wasm,sizeof(render_wasm)); two.expected=sizeof(render_wasm);
     CHECK(!vm_load(&one) && !vm_load(&two)); one.ready=true; two.ready=true;
@@ -478,6 +479,7 @@ int main(void) {
     PixelBuffer offscreen_one={.rgb=canvas_one,.count=3}, offscreen_two={.rgb=canvas_two,.count=7};
     vm_init(&one,&offscreen_one,capture,&first_reply); vm_init(&two,&offscreen_two,capture,&second_reply);
     memcpy(one.slot,"A",2); memcpy(two.slot,"B",2);
+    CHECK(vm_reserve_upload(&one,sizeof(slot_wasm)) && vm_reserve_upload(&two,sizeof(slot_wasm)));
     memcpy(one.bytes,slot_wasm,sizeof(slot_wasm)); one.expected=sizeof(slot_wasm);
     memcpy(two.bytes,slot_wasm,sizeof(slot_wasm)); two.expected=sizeof(slot_wasm);
     CHECK(!vm_load(&one) && !vm_load(&two)); one.ready=true; two.ready=true;

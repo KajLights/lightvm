@@ -307,6 +307,18 @@ static void describe(ControlWriter *w,bool with_parameters) {
     }
     text(w,"}");
 }
+bool control_set_float(VmInstance *a,const char *name,uint32_t generation,uint32_t revision,double real) {
+    Control *c=&a->control;
+    if (!a->ready || !c->enabled || generation!=a->generation || revision!=c->parameter_revision || revision==UINT32_MAX) return false;
+    ParameterValue pending={.real=real};
+    for (uint32_t i=0;i<c->parameter_count;++i) {
+        ControlParameter *p=&c->parameters[i];
+        if (!strcmp(p->name,name) && p->kind==PARAM_FLOAT && isfinite(real) && in_bounds(p,pending)) {
+            p->value=pending; ++c->parameter_revision; return true;
+        }
+    }
+    return false;
+}
 bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size) {
     Json j; char op[40];
     if (!json_parse(&j,payload,size) || !json_string(&j,json_get(&j,0,"op"),op,sizeof(op)) || strncmp(op,"program_",8)) return false;

@@ -4,6 +4,9 @@
 #include "vm.h"
 #include "store.h"
 #include "network.h"
+#if LIGHTVM_MQTT_EXPERIMENT
+#include "service.h"
+#endif
 #if LIGHTVM_BOOT_SEQUENCE
 #include "boot_sequence.h"
 #endif
@@ -19,6 +22,9 @@ typedef struct {
     uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
     char device_id[65], boot_id[33], network_error[160];
     VmInstance vm;
+#if LIGHTVM_MQTT_EXPERIMENT
+    Service service;
+#endif
     PixelBuffer pixels;
     Store store;
     HardwareConfig hardware;

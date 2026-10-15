@@ -1,0 +1,13 @@
+{
+  "version": "v2.3.1",
+  "archive_url": "https://codeload.github.com/FreeRTOS/coreMQTT/tar.gz/refs/tags/v2.3.1",
+  "archive_sha256": "b8e95044e6ef8381610949b7fe546c5ddf4e52989ce9938209d5dd5f3371b5d7",
+  "files": {
+    "core_mqtt_serializer.c": "1e4bf5a2b307f37f3cbc83a898e9c6b89b873daf93968fddb81eac06bb113c0b",
+    "include/core_mqtt_config_defaults.h": "e56ff8c4e440be37d4ca413315f10c503fe47d558922b78830aef18878f9f9cd",
+    "include/core_mqtt_serializer.h": "7d14754eda1efc43b8f7e85ccb0b03bcbae363444a6f22c11b6850e5d094aa23",
+    "include/stdbool.readme": "3b5fea454a7ffd75a0dc1a752e10ab00f56e9f07141a7a1cd420b0ba3a979090",
+    "include/stdint.readme": "dd6b448c2e42251785a058360c728511a87282f159819b274ae1a976172ee586",
+    "include/transport_interface.h": "2118819dd0f7d2e64c312f071c0d4ab688d2fa36a659b91aeab557d888ac1c73"
+  }
+}

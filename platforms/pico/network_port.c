@@ -11,7 +11,7 @@
 #include "lwip/udp.h"
 #include "lwip/igmp.h"
 #endif
-_Static_assert(VM_HEAP_LIMIT==64u*1024u, "Pico W network builds require the 64 KiB heap profile used by the RAM gate");
+_Static_assert(VM_HEAP_LIMIT==(LIGHTVM_MQTT_EXPERIMENT?112u:64u)*1024u, "Pico W heap must match the RAM gate profile");
 _Static_assert(PIXEL_CAPACITY<=1024u, "Pico W RAM gate reserves at most 1024 physical pixels");
 static App *engine;
 static bool initialized;
@@ -36,6 +36,9 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
     uint32_t country=!strcmp(c->country,"XX")?CYW43_COUNTRY_WORLDWIDE:CYW43_COUNTRY(c->country[0],c->country[1],0);
     if (initialized) {
+#if LIGHTVM_MQTT_EXPERIMENT
+        platform_tcp_close(&engine->service.tcp);
+#endif
 #if LIGHTVM_HTTP
         stop_http();
 #endif
@@ -78,6 +81,9 @@ static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capa
 static void disconnect(void *ctx) {
     (void)ctx; if (!initialized) return;
     if (mode==NET_MODE_AP) {
+#if LIGHTVM_MQTT_EXPERIMENT
+        platform_tcp_close(&engine->service.tcp);
+#endif
 #if LIGHTVM_HTTP
         stop_http();
 #endif

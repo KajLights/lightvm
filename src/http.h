@@ -25,7 +25,13 @@ typedef struct { char token[33]; uint64_t source,expires; } HttpSession;
 typedef struct {
     App *app; Discovery *discovery; HttpSession sessions[HTTP_SESSIONS]; uint64_t sequence;
     HttpRequest queue[HTTP_QUEUE],active; unsigned head,count;
-    uint8_t response[HTTP_RESPONSE_LIMIT]; size_t used,sent;
+#if LIGHTVM_FLASH_EXPERIMENT
+    uint8_t *response; size_t capacity;
+    uint8_t emergency[64];
+#else
+    uint8_t response[HTTP_RESPONSE_LIMIT];
+#endif
+    size_t used,sent;
     char header[512]; size_t header_size,header_sent;
     bool sending,closing,overflow; uint64_t deadline,reply_source;
 } Http;

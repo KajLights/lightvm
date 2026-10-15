@@ -16,3 +16,6 @@ target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
 # long calls and section placement). No SDK dependency enters the shared source.
 target_link_libraries(wasm3 PRIVATE idf::esp_common)
 target_link_libraries(lightvm_core PRIVATE idf::esp_common)
+if(LIGHTVM_FLASH_EXPERIMENT)
+    target_link_libraries(lightvm_core PRIVATE idf::esp_partition)
+endif()
