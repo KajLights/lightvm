@@ -1,0 +1,290 @@
+{
+  "c3-toywasm-flash": {
+    "kernels": {
+      "bench_integer": {
+        "guest_us": 71292,
+        "native_us": 158
+      },
+      "bench_float": {
+        "guest_us": 21850,
+        "native_us": 4459
+      },
+      "bench_memory": {
+        "guest_us": 80831,
+        "native_us": 200
+      },
+      "bench_import": {
+        "guest_us": 46004,
+        "native_us": 167
+      }
+    },
+    "animations": [
+      {
+        "name": "legacy_integer",
+        "pixels": 100,
+        "render_median_us": 8744,
+        "heap": 2518,
+        "fps_median": 59.991385954481885,
+        "gap_max_us": 20639,
+        "show_median_us": 3450,
+        "missed": 0
+      },
+      {
+        "name": "python_control",
+        "pixels": 100,
+        "render_median_us": 18519,
+        "heap": 8336,
+        "fps_median": 40.016404735075476,
+        "gap_max_us": 33117,
+        "show_median_us": 3454,
+        "missed": 168
+      },
+      {
+        "name": "python_control",
+        "pixels": 300,
+        "render_median_us": 49353,
+        "heap": 10136,
+        "fps_median": 15.32312998611167,
+        "gap_max_us": 84736,
+        "show_median_us": 9559,
+        "missed": 530
+      }
+    ]
+  },
+  "c3-toywasm-jump": {
+    "kernels": {
+      "bench_integer": {
+        "guest_us": 73572,
+        "native_us": 159
+      },
+      "bench_float": {
+        "guest_us": 22450,
+        "native_us": 4460
+      },
+      "bench_memory": {
+        "guest_us": 80425,
+        "native_us": 199
+      },
+      "bench_import": {
+        "guest_us": 46158,
+        "native_us": 172
+      }
+    },
+    "animations": [
+      {
+        "name": "legacy_integer",
+        "pixels": 100,
+        "render_median_us": 10936,
+        "heap": 2518,
+        "fps_median": 58.457282588448834,
+        "gap_max_us": 20514,
+        "show_median_us": 3455,
+        "missed": 0
+      },
+      {
+        "name": "python_control",
+        "pixels": 100,
+        "render_median_us": 31015,
+        "heap": 8336,
+        "fps_median": 26.775062698271817,
+        "gap_max_us": 43405,
+        "show_median_us": 3452,
+        "missed": 26
+      },
+      {
+        "name": "python_control",
+        "pixels": 300,
+        "render_median_us": 91938,
+        "heap": 10136,
+        "fps_median": 9.537752810060422,
+        "gap_max_us": 115959,
+        "show_median_us": 9561,
+        "missed": 44
+      }
+    ]
+  },
+  "c3-toywasm-release": {
+    "kernels": {
+      "bench_integer": {
+        "guest_us": 54445,
+        "native_us": 155
+      },
+      "bench_float": {
+        "guest_us": 17871,
+        "native_us": 4459
+      },
+      "bench_memory": {
+        "guest_us": 61813,
+        "native_us": 195
+      },
+      "bench_import": {
+        "guest_us": 35798,
+        "native_us": 167
+      }
+    },
+    "animations": [
+      {
+        "name": "legacy_integer",
+        "pixels": 100,
+        "render_median_us": 6976,
+        "heap": 2518,
+        "fps_median": 59.97138165667343,
+        "gap_max_us": 20105,
+        "show_median_us": 3455,
+        "missed": 0
+      },
+      {
+        "name": "python_control",
+        "pixels": 100,
+        "render_median_us": 17782,
+        "heap": 8336,
+        "fps_median": 41.06332482963703,
+        "gap_max_us": 37250,
+        "show_median_us": 3454,
+        "missed": 136
+      },
+      {
+        "name": "python_control",
+        "pixels": 300,
+        "render_median_us": 50188,
+        "heap": 10136,
+        "fps_median": 14.901660958999372,
+        "gap_max_us": 88978,
+        "show_median_us": 9565,
+        "missed": 536
+      }
+    ]
+  },
+  "c3-toywasm-init-original": {
+    "kernels": {},
+    "animations": [],
+    "service_probe": {
+      "status": 0,
+      "message": "diagnostic probe only; unload service afterward",
+      "timings": {
+        "diagnostic_deadline_us": 500000,
+        "production_deadline_us": 2000,
+        "init_us": [
+          108589,
+          108229,
+          111732
+        ],
+        "disconnected_step_us": [
+          5239,
+          390,
+          88,
+          57,
+          57,
+          57,
+          57,
+          57,
+          62,
+          57,
+          57,
+          56,
+          57,
+          57,
+          57,
+          57,
+          56,
+          57,
+          57,
+          56,
+          57
+        ]
+      }
+    }
+  },
+  "c3-toywasm-init-bulk": {
+    "kernels": {},
+    "animations": [],
+    "service_probe": {
+      "status": 0,
+      "message": "diagnostic probe only; unload service afterward",
+      "timings": {
+        "diagnostic_deadline_us": 500000,
+        "production_deadline_us": 2000,
+        "init_us": [
+          3136,
+          1796,
+          1768
+        ],
+        "disconnected_step_us": [
+          4924,
+          398,
+          79,
+          64,
+          57,
+          56,
+          57,
+          57,
+          56,
+          57,
+          63,
+          56,
+          57,
+          57,
+          56,
+          57,
+          57,
+          57,
+          57,
+          57,
+          57
+        ]
+      }
+    }
+  },
+  "c3-wasm3-flash": {
+    "kernels": {
+      "bench_integer": {
+        "guest_us": 3019,
+        "native_us": 142
+      },
+      "bench_float": {
+        "guest_us": 5593,
+        "native_us": 4454
+      },
+      "bench_memory": {
+        "guest_us": 3768,
+        "native_us": 180
+      },
+      "bench_import": {
+        "guest_us": 6390,
+        "native_us": 167
+      }
+    },
+    "animations": [
+      {
+        "name": "legacy_integer",
+        "pixels": 100,
+        "render_median_us": 942,
+        "heap": 12270,
+        "fps_median": 59.93627575162088,
+        "gap_max_us": 22320,
+        "show_median_us": 3414,
+        "missed": 0
+      },
+      {
+        "name": "python_control",
+        "pixels": 100,
+        "render_median_us": 4155,
+        "heap": 20559,
+        "fps_median": 59.92447119650393,
+        "gap_max_us": 19699,
+        "show_median_us": 3464,
+        "missed": 0
+      },
+      {
+        "name": "python_control",
+        "pixels": 300,
+        "render_median_us": 10938,
+        "heap": 22359,
+        "fps_median": 43.70303171323467,
+        "gap_max_us": 25622,
+        "show_median_us": 9573,
+        "missed": 8
+      }
+    ]
+  }
+}

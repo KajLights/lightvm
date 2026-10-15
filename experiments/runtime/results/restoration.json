@@ -1,0 +1,15 @@
+{
+  "flash_bytes": 4194304,
+  "flash_sha256": "9193b4ba62c24844c930b91eb351508653839f449026da3b4679bc8cb0df5556",
+  "full_flash_verified": true,
+  "checks": {
+    "device_identity": true,
+    "configuration": true,
+    "network_configuration": true,
+    "playback_mode": true,
+    "original_features": true,
+    "active_procedure": true
+  },
+  "credentials_in_report": false,
+  "stored_data_verification": "All saved-store bytes covered by full 4 MiB flash digest verification; no separate pre-run procedure-list snapshot."
+}

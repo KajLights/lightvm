@@ -1,0 +1,56 @@
+{
+  "c3-toywasm-flash": {
+    "firmware_bytes": 1043760,
+    "firmware_sha256": "94105e3aab04805477f52b015254b97f33e4d16b3e94c9048334f2c92711bfe9",
+    "cpu_mhz": 160,
+    "sdk": "ESP-IDF 5.5.3",
+    "compiler": "riscv32-esp-elf GCC 14.2.0 -O2",
+    "jump_tables": false,
+    "toywasm_internal_debug_assertions": true
+  },
+  "c3-toywasm-jump": {
+    "firmware_bytes": 1042640,
+    "firmware_sha256": "ca0dab7a6a6bf45b83845b9e56647720a992b3a4452358ffb8a6f3edb048330c",
+    "cpu_mhz": 160,
+    "sdk": "ESP-IDF 5.5.3",
+    "compiler": "riscv32-esp-elf GCC 14.2.0 -O2",
+    "jump_tables": true,
+    "toywasm_internal_debug_assertions": true
+  },
+  "c3-toywasm-release": {
+    "firmware_bytes": 998672,
+    "firmware_sha256": "939e28a9417b03b9c1760e217be5431098b85cb2eb9cc1327f76848e81b09ad1",
+    "cpu_mhz": 160,
+    "sdk": "ESP-IDF 5.5.3",
+    "compiler": "riscv32-esp-elf GCC 14.2.0 -O2",
+    "jump_tables": true,
+    "toywasm_internal_debug_assertions": false
+  },
+  "c3-toywasm-init-original": {
+    "firmware_bytes": 999568,
+    "firmware_sha256": "7c193ec2e2c2e2eeac77de0ec0412e7b655a8eda9a7bf67e639344fcf99982df",
+    "cpu_mhz": 160,
+    "sdk": "ESP-IDF 5.5.3",
+    "compiler": "riscv32-esp-elf GCC 14.2.0 -O2",
+    "jump_tables": true,
+    "toywasm_internal_debug_assertions": false
+  },
+  "c3-toywasm-init-bulk": {
+    "firmware_bytes": 999568,
+    "firmware_sha256": "7c193ec2e2c2e2eeac77de0ec0412e7b655a8eda9a7bf67e639344fcf99982df",
+    "cpu_mhz": 160,
+    "sdk": "ESP-IDF 5.5.3",
+    "compiler": "riscv32-esp-elf GCC 14.2.0 -O2",
+    "jump_tables": true,
+    "toywasm_internal_debug_assertions": false
+  },
+  "c3-wasm3-flash": {
+    "firmware_bytes": 962336,
+    "firmware_sha256": "9d1334435c7f4b0e5dc7b6f3c7a3d1909fc86003b6fd7be409990636f282ee6a",
+    "cpu_mhz": 160,
+    "sdk": "ESP-IDF 5.5.3",
+    "compiler": "riscv32-esp-elf GCC 14.2.0 -O2",
+    "jump_tables": false,
+    "toywasm_internal_debug_assertions": null
+  }
+}

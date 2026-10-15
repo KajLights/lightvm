@@ -1,0 +1,8 @@
+{
+  "bytes": 10733,
+  "sha256": "e38c8e76428aac21c413f0bc344ef8e8e4498ca4e1fda87cbc5ac462861e4025",
+  "zig": "0.13.0",
+  "serializer": "coreMQTT v2.3.1",
+  "linear_memory_bytes": 65536,
+  "coreMQTT_archive_sha256": "b8e95044e6ef8381610949b7fe546c5ddf4e52989ce9938209d5dd5f3371b5d7"
+}

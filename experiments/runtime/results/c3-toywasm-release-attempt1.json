@@ -1,0 +1,18 @@
+{
+  "timestamp_utc": "2026-10-14T07:53:13.842947+00:00",
+  "label": "c3-toywasm-release",
+  "board": "xiao_esp32c3",
+  "flash_programs": true,
+  "interpreter": "toywasm",
+  "heap_limit": 131072,
+  "samples": 21,
+  "repetitions": 3,
+  "seconds_per_window": 5,
+  "native_reference": "unsandboxed C; same kernels.c, not WASM AOT",
+  "network_testing": "no external broker; service reconnect uses device loopback",
+  "kernels": [],
+  "animations": [],
+  "service_admissions": [],
+  "service_windows": [],
+  "error": "receiver status 7: upload and finish a configuration first"
+}

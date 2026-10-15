@@ -1,0 +1,23 @@
+{
+  "bytes": 1085,
+  "sha256": "97b59448fafdd92acb0290df1fffa83945215a79b6bd24e706c2e74357aa5492",
+  "source_sha256": "7a9e122d1bd81cb7b4e52de96a23df35fb9e7c90a4d541f59fd7a95213a29c79",
+  "command": [
+    "/tmp/lightvm-mqtt-tools/ziglang/zig",
+    "cc",
+    "-target",
+    "wasm32-freestanding",
+    "-O2",
+    "-ffp-contract=off",
+    "-fno-builtin",
+    "-nostdlib",
+    "/Users/kws/work/kajlights/lightvm/experiments/runtime/kernels.c",
+    "-Wl,--no-entry",
+    "-Wl,--initial-memory=0x10000",
+    "-Wl,--max-memory=0x10000",
+    "-Wl,-z,stack-size=0x1000",
+    "-Wl,--strip-all",
+    "-o",
+    "/Users/kws/work/kajlights/lightvm/build/runtime-bench/kernels.wasm"
+  ]
+}
