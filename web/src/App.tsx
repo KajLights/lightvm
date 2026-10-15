@@ -5,6 +5,7 @@ import { useRuntime } from './runtime';
 import type { Path } from './types';
 import { Develop } from './Develop';
 import { Configure } from './Configure';
+import { Firmware } from './Firmware';
 
 export function deviceRoute(id: string, view: string) { return '/devices/' + encodeURIComponent(id) + '/' + view; }
 export function App() {
@@ -49,7 +50,7 @@ export function App() {
         <nav className="workspace-tabs" aria-label="Device workspace">
           <Link to={deviceRoute(description.device_id, 'develop')} aria-current={develop ? 'page' : undefined}>Develop</Link>
           <Link to={deviceRoute(description.device_id, 'configure')} aria-current={configure ? 'page' : undefined}>Configure</Link>
-          <Link to={deviceRoute(description.device_id, 'firmware')} aria-current={firmware ? 'page' : undefined}>Firmware <span className="coming-soon">Soon</span></Link>
+          <Link to={deviceRoute(description.device_id, 'firmware')} aria-current={firmware ? 'page' : undefined}>Firmware</Link>
         </nav>
         {!device.selectedPath && <p className="connection-banner" role="status">{device.paths.length ? 'Select a remaining connection to continue. Commands stay on the path you choose.' : 'Device disconnected. Your drafts are still here.'} <Link to="/devices">Reconnect</Link></p>}
       </>}
@@ -59,7 +60,7 @@ export function App() {
       }} />}
       {openedDevelop && <div hidden={!develop}><Develop active={develop} /></div>}
       {openedConfigure && <div hidden={!configure}><Configure key={description?.device_id || 'none'} /></div>}
-      {firmware && <Firmware />}
+      {firmware && <Firmware usbConnected={device.paths.some(path => path.key === 'usb')} />}
       {!knownRoute && <section className="empty-state"><h1>Select a device to continue.</h1><p>Connect to a device to open its workspace.</p><Link className="button primary" to="/devices">Choose a device</Link></section>}
       {develop && <span id="compiler-state" className="sr-only">{editor.compiler === 'ready' ? 'Compiler ready' : editor.compiler === 'error' ? 'Compiler unavailable' : 'Loading compiler'}</span>}
       <details className="activity-panel"><summary>Activity <span>{activity.operation || (activity.entries.length ? activity.entries[0].text : 'No activity')}</span></summary><button id="clear-log" className="quiet small" onClick={() => dispatch(activityActions.clear())}>Clear</button><ol id="activity" aria-live="polite">{activity.entries.map(entry => <li key={entry.id} className={entry.kind}><span className="log-dot" /><span>{entry.text}</span></li>)}</ol></details>
@@ -95,11 +96,8 @@ function Devices({ onConnected }: { onConnected: () => void }) {
       <section className="card device-card"><div className="card-heading"><h2>Plugged in over USB</h2></div><p className="muted">Connect a Pico or ESP32 running LightVM. The browser will ask you to choose its USB port.</p>
         <button id="connect" className="primary full" disabled={busy || hasUsb || !availableSerial} onClick={() => void connect('usb')}>Choose USB device <span aria-hidden="true">↗</span></button>
         <p className="helper">{!isSecureContext ? 'USB requires HTTPS or localhost.' : !navigator.serial ? 'USB requires a browser with Web Serial, such as desktop Chrome or Edge.' : 'Close other serial clients before connecting. Disconnecting leaves playback running.'}</p>
-        <div className="setup-entry"><h3>Starting with a new board?</h3><p className="muted">Firmware setup will live here, including devices that are not yet running LightVM.</p><Link to="/firmware">Firmware installation <span className="coming-soon">Coming soon</span> →</Link></div>
+        <div className="setup-entry"><h3>Starting with a new board?</h3><p className="muted">Install LightVM firmware on a supported XIAO ESP32 board.</p><Link to="/firmware">Firmware installation →</Link></div>
       </section>
     </div>
   </>;
-}
-function Firmware() {
-  return <section className="empty-state firmware-page"><p className="eyebrow">DEVICE SETUP</p><h1>Firmware installation</h1><span className="badge">Coming soon</span><p>This is where you’ll install LightVM on a new board or update an existing device.</p><p className="muted">Development and configuration are available today for devices already running LightVM.</p><Link className="button secondary" to="/devices">Choose a device</Link></section>;
 }

@@ -36,7 +36,7 @@ would require an offset/length convention; console output is the smaller API.
 | POSIX host (macOS/Linux) | Implemented: pipes, monotonic clock, logical RGB snapshots and integration tests |
 | Original RP2040 Pico | Implemented: USB CDC and WS2812 PIO output; previous hardware checks are recorded below |
 | RP2040 Pico W | Implemented: USB, optional Wi-Fi/HTTP and WS2812 PIO; radio hardware validation pending |
-| Seeed XIAO ESP32-C3 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
+| Seeed XIAO ESP32-C3 | USB, Wi-Fi/HTTP and web-editor WASM execution verified on a board; WS2812 RMT implemented, physical strip check pending |
 | Seeed XIAO ESP32-S3 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 | Seeed XIAO ESP32-C6 | Preliminary: ESP-IDF cross-build verified; USB Serial/JTAG and WS2812 RMT implemented; hardware validation pending |
 
@@ -132,8 +132,10 @@ Redux Toolkit and Vite. Start with a device connection, then use separate
 **Develop** and **Configure** views. Development compiles the existing Python
 subset in a Pyodide worker, shows inline diagnostics and uploads WASM over USB
 CDC or HTTP. Configuration handles output, startup and networking. The workspace
-also manages stored programs and live parameters. Firmware installation has a
-reserved entry point for future work. USB and HTTP can stay connected together.
+also manages stored programs and live parameters. Its Firmware page installs
+XIAO ESP32-C3/S3/C6 images over Web Serial and Pico/Pico W images from BOOTSEL
+over WebUSB. The Pico UF2 files can also be downloaded for manual installation.
+USB and HTTP can stay connected together for management.
 Install npm dependencies, then run the local editor server and open it in desktop
 Chrome or Edge. Compilation stays in the browser.
 
@@ -272,6 +274,9 @@ The ARM compiler must be on `PATH`, or set
 `build/pico/lightvm.uf2`. Enter BOOTSEL and copy that file onto `RPI-RP2`
 to install the native firmware, replacing the firmware currently on that Pico.
 Reconnect normally and identify its USB serial port.
+The browser workspace's **Firmware** page can install the packaged Pico or Pico W
+UF2 directly from BOOTSEL in Chrome or Edge. Select the exact model first; both
+boards expose the same RP2040 bootloader identity.
 
 `-DLIGHTVM_PICO=ON` remains a compatibility alias. Use a separate build directory
 for each platform/profile. Wiring changes use runtime configuration. To change
@@ -604,11 +609,18 @@ comparison.
 | Host, 100 pixels | 39 Python tests, C contract test and portable smoke passed | Not applicable |
 | Host, 175 pixels | 39 Python tests, C contract test and portable smoke passed | Not applicable |
 | Original Pico | Cross-build passed | Earlier pre-refactor checks below; current build pending |
-| XIAO ESP32-C3 | 2026-10-13: ESP-IDF 5.5.3 USB build passed (295,104-byte app); Wi-Fi/HTTP with boot sequence passed (948,704-byte app) | Pending |
+| XIAO ESP32-C3 | 2026-10-13: ESP-IDF 5.5.3 USB build passed (295,104-byte app); Wi-Fi/HTTP with boot sequence passed (948,704-byte app) | Board accepted USB and HTTP uploads. A web-editor-compiled Python rainbow ran 306 frames in 5.119 s (59.78 fps) with 100 logical pixels and no animation error; 20,559-byte tracked interpreter heap peak. Physical strip output pending. |
 | XIAO ESP32-S3 | ESP-IDF 5.5.3 cross-build passed; app image 255,216 bytes | Pending |
 | XIAO ESP32-C6 | ESP-IDF 5.5.3 cross-build passed; app image 208,800 bytes | Pending |
 
 The workflow is added for future push/PR runs; these results are local checks.
+
+The C3 runtime check used a temporary D1 configuration and restored the original
+output settings afterward. A 64 KiB linear-memory WASM sample failed to load
+with `memory allocation failed` while Wi-Fi/HTTP was active; the editor's
+memoryless control-ABI rainbow loaded and ran. The interpreter heap figures do
+not include all ESP-IDF and Wi-Fi allocations, so test other WASM workloads on
+the C3 before relying on them.
 
 The earlier Pico firmware was cross-compiled successfully. That build had
 150,244 bytes of text and 37,644 bytes of static BSS. Physical USB operation was

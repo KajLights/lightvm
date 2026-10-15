@@ -11,7 +11,59 @@ permissions:
   contents: read
 
 jobs:
+  firmware:
+    runs-on: ubuntu-24.04
+    container: espressif/idf:v5.5.3
+    env:
+      IDF_COMPONENT_MANAGER: '0'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build installable ESP32 firmware
+        run: |
+          . "$IDF_PATH/export.sh"
+          for board in xiao_esp32c3 xiao_esp32s3 xiao_esp32c6; do
+            idf.py -C platforms/esp32 -B "$PWD/build/firmware/$board" -D LIGHTVM_BOARD="$board" -D LIGHTVM_WIFI=ON -D LIGHTVM_HTTP=ON -D LIGHTVM_BOOT_SEQUENCE=ON build
+          done
+          tar -C build/firmware -czf web-firmware.tar.gz \
+            xiao_esp32c3/lightvm.bin xiao_esp32c3/bootloader/bootloader.bin xiao_esp32c3/partition_table/partition-table.bin xiao_esp32c3/flasher_args.json xiao_esp32c3/CMakeCache.txt \
+            xiao_esp32s3/lightvm.bin xiao_esp32s3/bootloader/bootloader.bin xiao_esp32s3/partition_table/partition-table.bin xiao_esp32s3/flasher_args.json xiao_esp32s3/CMakeCache.txt \
+            xiao_esp32c6/lightvm.bin xiao_esp32c6/bootloader/bootloader.bin xiao_esp32c6/partition_table/partition-table.bin xiao_esp32c6/flasher_args.json xiao_esp32c6/CMakeCache.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-firmware
+          path: web-firmware.tar.gz
+
+  pico-firmware:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Pico SDK and Arm compiler
+        shell: bash
+        run: |
+          mkdir -p build/deps
+          git clone --branch 1.5.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git build/deps/pico-sdk
+          git -C build/deps/pico-sdk submodule update --init lib/tinyusb lib/cyw43-driver lib/lwip
+          curl --fail --location --retry 3 https://developer.arm.com/-/media/Files/downloads/gnu/13.2.Rel1/binrel/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi.tar.xz -o build/deps/arm.tar.xz
+          tar -xJf build/deps/arm.tar.xz -C build/deps
+          echo "$PWD/build/deps/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin" >> "$GITHUB_PATH"
+      - name: Build Pico and Pico W firmware
+        shell: bash
+        run: |
+          cmake -S . -B build/firmware/pico -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico -DLIGHTVM_WIFI=OFF -DLIGHTVM_HTTP=OFF -DLIGHTVM_BOOT_SEQUENCE=ON -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/firmware/pico --parallel 2
+          cmake -S . -B build/firmware/pico_w -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico_w -DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON -DLIGHTVM_BOOT_SEQUENCE=ON -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/firmware/pico_w --parallel 2
+          tar -C build/firmware -czf pico-firmware.tar.gz pico/lightvm.uf2 pico_w/lightvm.uf2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pico-firmware
+          path: pico-firmware.tar.gz
+
   build:
+    needs: [firmware, pico-firmware]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +76,25 @@ jobs:
           python-version: '3.12'
       - name: Install workspace dependencies
         run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-firmware
+      - uses: actions/download-artifact@v4
+        with:
+          name: pico-firmware
+      - name: Extract firmware images
+        run: |
+          mkdir -p build/firmware
+          tar -C build/firmware -xzf web-firmware.tar.gz
+          tar -C build/firmware -xzf pico-firmware.tar.gz
+      - name: Package browser firmware images
+        run: |
+          python tools/package_web_firmware.py --version "${GITHUB_SHA::12}" \
+            --board xiao_esp32c3=build/firmware/xiao_esp32c3 \
+            --board xiao_esp32s3=build/firmware/xiao_esp32s3 \
+            --board xiao_esp32c6=build/firmware/xiao_esp32c6 \
+            --pico pico=build/firmware/pico/lightvm.uf2 \
+            --pico pico_w=build/firmware/pico_w/lightvm.uf2
       - name: Package browser editor
         run: python tools/build_editor.py
       - uses: actions/upload-pages-artifact@v4

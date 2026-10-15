@@ -3,7 +3,8 @@
 The browser app is a static React, TypeScript and Redux Toolkit application built
 with Vite. **Devices** is the entry point. Connect to a LightVM board over HTTP or
 USB, then use the **Develop** and **Configure** views for that device. **Firmware**
-has a visible route for installation and updates; flashing is not implemented yet.
+installs and updates XIAO ESP32-C3, S3 and C6 through Web Serial, and Pico and
+Pico W from BOOTSEL through WebUSB. The Pico UF2s are also available to download.
 The app can also open Develop without a device for editing and WASM compilation.
 
 The app reuses the existing JavaScript protocol, transport and discovery modules.
@@ -31,6 +32,38 @@ the current successful compilation can be uploaded or downloaded. Errors link
 back to the affected line. The six examples and the canonical compiler sources
 are packaged with the static build. Python source is parsed and never run by the
 compiler. Only the compiled WASM is sent to a device.
+
+The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
+firmware bundle. The published editor builds matching Wi-Fi, HTTP and boot
+sequence firmware for all three XIAO boards and includes the bootloader,
+partition table and application binaries. Confirm that the physical board is a
+supported XIAO model; the installer detects the ESP chip family only. Choose the
+serial port when prompted. Existing boards should keep their data
+when offered an erase choice. The published bundle also contains a USB Pico
+image and a Wi-Fi/HTTP Pico W image, both with boot-sequence support. Hold
+BOOTSEL while connecting a Pico, select its printed model, and choose RP2 Boot
+in the WebUSB picker. The RP2040 bootloader cannot distinguish Pico from Pico W.
+The installer validates the UF2 and checksum, writes below the reserved flash
+storage, reads back the written image and then restarts the board. A UF2 download
+provides a manual fallback. Disconnect an editor USB session before flashing,
+then reconnect after the board restarts. Firmware images are absent from a plain
+`npm run dev` or `npm run build` unless they have been packaged first.
+
+To include local builds in the editor, package the matching ESP-IDF outputs and
+Pico UF2s before starting Vite or building the site:
+
+    python3 tools/package_web_firmware.py --version local \
+      --board xiao_esp32c6=build/boot-sequence-c6 \
+      --pico pico=build/boot-sequence-pico/lightvm.uf2 \
+      --pico pico_w=build/boot-sequence-pico-w-http/lightvm.uf2
+    npm run dev
+
+The packager checks the chip and flash offsets in `flasher_args.json` and requires
+Wi-Fi, HTTP and boot-sequence support in the ESP build's `CMakeCache.txt` before
+copying images into `build/editor-assets/firmware`. Add a `--board` argument
+for each additional built XIAO profile. Each `--pico` UF2 is checked for RP2040
+family, contiguous blocks and the reserved flash boundary. The Pages workflow
+builds all five profiles and packages them into the deployed editor automatically.
 
 For initial setup or standalone use, Wi-Fi firmware can host an access point
 at **http://192.168.4.1**. Open the hosted editor before joining that network or
@@ -114,3 +147,43 @@ host simulator plus Chrome or Chromium and exercises the device picker, both
 workspace views, configurations, uploads and live controls. Set LIGHTVM_RECEIVER
 to a host build and CHROME_EXECUTABLE if needed, then run npm run test:browser.
 It requires the pinned browser compiler assets.
+
+### XIAO ESP32-C6 browser installation, 13 October 2026
+
+A newly connected 4 MiB ESP32-C6 was identified over USB Serial/JTAG. The
+local Firmware page served the XIAO C6 Wi-Fi/HTTP/boot-sequence bundle and the
+Chrome flow reached the new LightVM device workspace. Readback verification
+matched the packaged bootloader at `0x0`, partition table at `0x8000` and app
+at `0x10000` against the device flash. After reset, USB `describe` reported
+`board:xiao_esp32c6`, Control ABI 2, Wi-Fi/HTTP and recovery support, with
+empty boot and animation errors. `status` returned idle with no output
+configuration, as expected for a new installation.
+
+### XIAO ESP32-S3 browser installation, 13 October 2026
+
+The next connected USB Serial/JTAG device identified as ESP32-S3 with 8 MiB
+flash. The first local installer attempt said the chip was unsupported because
+that local manifest contained only the C6 image. Repackaging the local site
+with all three XIAO images and reloading the page exposed the S3 bundle. The
+browser installation then reached the LightVM workspace, which connected over
+USB as `xiao_esp32s3` with device ID matching the detected chip MAC and fresh
+output setup. The S3 flash bytes were not independently read back while the
+browser held the active USB session.
+
+### XIAO ESP32-C3 browser installation, 13 October 2026
+
+The first local C3 installer bundle accidentally used a USB-only profile, so
+the device reported no Wi-Fi/HTTP support and the editor hid its network
+configuration. The bundle was corrected to the C3 Wi-Fi/HTTP/boot-sequence
+profile, and the packager now rejects installer images built without those
+features. Kaj installed the corrected image through the Chrome installer. The
+editor then showed Wi-Fi & HTTP configuration, a connected Wi-Fi network, and
+both USB and HTTP command paths for the C3. Flash bytes were not independently
+read back after installation.
+
+### Pico and Pico W browser installation
+
+The Pages workflow builds and validates RP2040 UF2 images for Pico and Pico W.
+The browser path uses the vendored pico⚡flash PICOBOOT implementation. Local
+packaging and browser rendering have been checked with real UF2 builds; direct
+WebUSB flashing and readback still need a physical Pico and Pico W test.
