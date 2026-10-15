@@ -1,5 +1,12 @@
 # Control ABI 2 and the Python animation frontend
 
+This is the implemented WASM profile. The
+[portable bytecode architecture decision](../documents/architecture-decision-portable-bytecode.md)
+defines the future multi-language, staged animation and numeric direction; it
+does not change these start/frame callbacks, `i64`/`f64` semantics or RGB8
+publication rules. Moving existing source to a new numeric or scheduling profile
+will require an explicit migration.
+
 The first control profile implements one independently owned RGB8 contribution
 assigned at deployment to a source slot. Animations receive `ctx.pixels`; they
 contain no slot or physical device name. It follows the control feature notes'

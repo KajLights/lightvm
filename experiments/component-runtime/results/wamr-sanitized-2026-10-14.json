@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "backend": "wamr-aot",
+  "status": "passed",
+  "environment": {
+    "wamr_version": "2.4.5",
+    "interpreter_enabled": false,
+    "jit_enabled": false,
+    "output": "host simulated peripheral",
+    "service": "nonblocking POSIX socketpair, one byte per turn",
+    "system": "macOS-27.0.1-arm64-arm-64bit",
+    "architecture": "arm64",
+    "wamr_revision": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+    "wamrc": "wamrc 2.4.5",
+    "wasm_clang": "Homebrew clang version 22.1.8",
+    "wasm_linker": "LLD 20.1.8 (https://github.com/rust-lang/llvm-project.git e8a2ffcf322f45b8dce82c65ab27a3e2430a6b51)",
+    "native_compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "sanitizer": true
+  },
+  "workload": {
+    "pixels": 300,
+    "seed": 305419896,
+    "frame_hashes": [
+      "28e71914",
+      "7e73067a",
+      "f1e1bdc6"
+    ]
+  },
+  "checks": {
+    "independent_instances": true,
+    "resumable_execution": true,
+    "native_buffer_alias": true,
+    "native_bulk_operation": true,
+    "async_output_retention": true,
+    "service_progress": true,
+    "replacement": true,
+    "failed_replacement_preserves_old": true,
+    "bounds_rejection": true,
+    "stale_view_rejection": true,
+    "runaway_bounded": true,
+    "admission_failure": true,
+    "malformed_artifact_rejected": true,
+    "cleanup": true,
+    "cancellation": true,
+    "aot_only": true
+  },
+  "metrics": {
+    "timing_unit": "ns",
+    "load_total_ns": 1624709,
+    "instantiate_total_ns": 264333,
+    "initialization_total_ns": 7830,
+    "activation_ns": 42,
+    "max_guest_dispatch_ns": 14542,
+    "max_service_gap_ns": 1410667,
+    "mean_frame_ns": 4714,
+    "max_frame_ns": 13250,
+    "benchmark_frames": 1000,
+    "guest_calls": 11259,
+    "service_messages": 256,
+    "service_messages_during_preparation": 14,
+    "preparation_steps": 14,
+    "peak_tracked_runtime_heap_bytes": 63236,
+    "loaded_module_and_runtime_heap_bytes": 1570,
+    "tracked_instance_bytes": 20032,
+    "linear_memory_bytes_per_instance": 6064,
+    "retained_old_instance_bytes": 20032,
+    "retained_output_buffer_bytes": 900,
+    "peak_instance_count": 3,
+    "peak_rgb_buffer_bytes": 2700,
+    "pixel_data_copies": 0,
+    "heap_bytes_after_cleanup": 0,
+    "aot_artifact_bytes": 4696,
+    "quantum_pixels": 32
+  },
+  "memory_accounting": {
+    "tracked_heap_definition": "requested allocator payload including linear memory; excludes headers and libc malloc overhead",
+    "peak_linear_allocation_bytes": 49152,
+    "linear_allocation_bytes_per_instance": 16384,
+    "peak_allocator_header_bytes_upper_bound": 408,
+    "host_page_bytes": 16384,
+    "simultaneous_artifact_staging_bytes": 9404,
+    "executable_mapping_bytes": null,
+    "native_stack_bytes": null,
+    "host_component_struct_bytes": 56
+  },
+  "observations": {
+    "arbitrary_guest_store_can_mutate_published_buffer": true,
+    "replacement_artifact_changes_seed_algorithm": true
+  },
+  "limitations": [
+    "Host experiment: no MCU, physical DMA, Wi-Fi, MQTT, flash writes, multicore or browser compiler tested.",
+    "Resumption uses explicit generated continuation state. Arbitrary uploaded AOT with uninstrumented loops is not preemptible or safe.",
+    "WAMR protects linear-memory bounds; object bounds and ownership depend on the trusted compiler/scheduler contract. An explicit bypass test mutates published storage using an in-range raw guest store, then restores it.",
+    "Native storage aliases WAMR-owned linear memory; retention pins the whole old instance. No general external-buffer mapping is demonstrated.",
+    "Loading and instantiation are synchronous native operations. Reported maxima are observations, not proven interruption bounds.",
+    "Tracked heap excludes mapped executable code, allocator overhead, host stack, socket buffers and process/SDK memory.",
+    "The manifest describes a trusted local artifact; this prototype does not authenticate hostile uploads."
+  ],
+  "artifacts": {
+    "wamr-guest.wasm": {
+      "sha256": "86449494ce17be006060cfa431c64da9420e7cbdfe16d1925f75fc4529167c54",
+      "bytes": 1779
+    },
+    "wamr-guest.aot": {
+      "sha256": "ea6dd80c6a2925b28fb2704c676444d56bdbf8e4b08e7024465c4a8463c0b59b",
+      "bytes": 4696
+    },
+    "wamr-replacement.wasm": {
+      "sha256": "1a930ee47eda226d54f3e17b2534d1082970c34cc3ad663866197eb866874947",
+      "bytes": 1792
+    },
+    "wamr-replacement.aot": {
+      "sha256": "26f28c529667ceae7e60e68eafccce117906d3ad8cebfdb2c3c6a66349e449d9",
+      "bytes": 4708
+    },
+    "wamr-manifest.json": {
+      "sha256": "8d450130ed416d5529cfc2973b7604a949026aa76b5ac327a8eeeb76ba610ffa",
+      "bytes": 366
+    },
+    "wamr-replacement-manifest.json": {
+      "sha256": "7a3b35de8925855cede90b3f73d31abaaf1dea8a63dcf6ee2832595836fed13a",
+      "bytes": 366
+    },
+    "wamr_probe": {
+      "sha256": "f0285055a7e2c1dfd2843442f0dae06df84a75392468f91c5fdb86845c0caf9f",
+      "bytes": 1493832
+    }
+  }
+}

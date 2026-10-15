@@ -1,0 +1,403 @@
+{
+  "status": "passed",
+  "scope": "one ESP32-C3, 160 MHz, 200 pixels on GPIO3, two effects, USB50Hz, RAM replacement",
+  "ram_method": "static shared instruction/data RAM + internal heap total minus free; SDK minimum is conservative sum of regional low-watermarks",
+  "backends": {
+    "wamr": {
+      "repetitions": 3,
+      "physical_outputs_measured": 1941,
+      "static_ram_bytes": 91246,
+      "firmware_image_bytes": 251504,
+      "resident_ram_before_components_bytes": 119850,
+      "peak_ram_conservative_bytes": 166902,
+      "peak_ram_sampled_bytes": 166902,
+      "phase_ram_sampled_bytes": {
+        "baseline": 142594,
+        "replacement": 166902,
+        "after": 151222
+      },
+      "smallest_largest_free_data_block_bytes": 114688,
+      "worker_stack_spare_min_bytes": 9544,
+      "largest_component_step_elapsed_us": 24,
+      "memory_probe_elapsed_us_by_run": [
+        13077,
+        13219,
+        13386
+      ],
+      "memory_probe_max_elapsed_us": 202,
+      "render_call_elapsed_us": {
+        "n": 1941,
+        "median": 80,
+        "p95": 85,
+        "p99": 90,
+        "max": 122
+      },
+      "rmt_submit_to_callback_us": {
+        "n": 1941,
+        "median": 6328,
+        "p95": 6332,
+        "p99": 6347,
+        "max": 6466
+      },
+      "completion_gap_us": {
+        "n": 1938,
+        "median": 16667.0,
+        "p95": 17615,
+        "p99": 17673,
+        "max": 17776
+      },
+      "completion_gaps_over_25ms": 0,
+      "fps_by_run": [
+        59.9997265128745,
+        60.00431733849829,
+        60.00433663490116
+      ],
+      "load_elapsed_us": {
+        "n": 9,
+        "median": 2296,
+        "p95": 2339,
+        "p99": 2339,
+        "max": 2339
+      },
+      "preparation_poll_elapsed_us": {
+        "n": 9,
+        "median": 110,
+        "p95": 113,
+        "p99": 113,
+        "max": 152
+      },
+      "activation_elapsed_us": {
+        "n": 9,
+        "median": 17,
+        "p95": 19,
+        "p99": 19,
+        "max": 19
+      },
+      "load_start_to_activation_us": {
+        "n": 9,
+        "median": 4318,
+        "p95": 4729,
+        "p99": 4729,
+        "max": 5671
+      },
+      "retained_handoffs": 9,
+      "service_gap_max_us": {
+        "baseline": 1144,
+        "replacement": 4856,
+        "after": 1130
+      },
+      "usb_roundtrip_us": {
+        "baseline": {
+          "n": 600,
+          "median": 465.438,
+          "p95": 1326.792,
+          "p99": 1419.125,
+          "max": 2363.458
+        },
+        "replacement": {
+          "n": 692,
+          "median": 475.60400000000004,
+          "p95": 1247.792,
+          "p99": 1444.417,
+          "max": 2208.708
+        },
+        "after": {
+          "n": 300,
+          "median": 465.95849999999996,
+          "p95": 1320.625,
+          "p99": 1403.0,
+          "max": 1490.708
+        }
+      },
+      "usb_requests_acknowledged": 2045,
+      "errors": 0,
+      "frame_gap_by_phase_us": {
+        "baseline": {
+          "n": 720,
+          "median": 16666.0,
+          "p95": 17641,
+          "p99": 17676,
+          "max": 17776
+        },
+        "replacement": {
+          "n": 827,
+          "median": 16668,
+          "p95": 17596,
+          "p99": 17652,
+          "max": 17737
+        },
+        "after": {
+          "n": 391,
+          "median": 16667,
+          "p95": 17526,
+          "p99": 17606,
+          "max": 17663
+        }
+      }
+    },
+    "native": {
+      "repetitions": 3,
+      "physical_outputs_measured": 1931,
+      "static_ram_bytes": 88474,
+      "firmware_image_bytes": 178064,
+      "resident_ram_before_components_bytes": 115894,
+      "peak_ram_conservative_bytes": 121994,
+      "peak_ram_sampled_bytes": 121994,
+      "phase_ram_sampled_bytes": {
+        "baseline": 118646,
+        "replacement": 121994,
+        "after": 119982
+      },
+      "smallest_largest_free_data_block_bytes": 139264,
+      "worker_stack_spare_min_bytes": 9536,
+      "largest_component_step_elapsed_us": 28,
+      "memory_probe_elapsed_us_by_run": [
+        12771,
+        12265,
+        14650
+      ],
+      "memory_probe_max_elapsed_us": 63,
+      "render_call_elapsed_us": {
+        "n": 1931,
+        "median": 87,
+        "p95": 93,
+        "p99": 97,
+        "max": 100
+      },
+      "rmt_submit_to_callback_us": {
+        "n": 1931,
+        "median": 6324,
+        "p95": 6326,
+        "p99": 6329,
+        "max": 6341
+      },
+      "completion_gap_us": {
+        "n": 1928,
+        "median": 16668.0,
+        "p95": 17625,
+        "p99": 17668,
+        "max": 17764
+      },
+      "completion_gaps_over_25ms": 0,
+      "fps_by_run": [
+        59.99526766299929,
+        60.000753975259904,
+        60.00032846214026
+      ],
+      "load_elapsed_us": {
+        "n": 9,
+        "median": 447,
+        "p95": 448,
+        "p99": 448,
+        "max": 455
+      },
+      "preparation_poll_elapsed_us": {
+        "n": 9,
+        "median": 15,
+        "p95": 19,
+        "p99": 19,
+        "max": 942
+      },
+      "activation_elapsed_us": {
+        "n": 9,
+        "median": 6,
+        "p95": 17,
+        "p99": 17,
+        "max": 18
+      },
+      "load_start_to_activation_us": {
+        "n": 9,
+        "median": 592,
+        "p95": 1490,
+        "p99": 1490,
+        "max": 10135
+      },
+      "retained_handoffs": 9,
+      "service_gap_max_us": {
+        "baseline": 1138,
+        "replacement": 1565,
+        "after": 1127
+      },
+      "usb_roundtrip_us": {
+        "baseline": {
+          "n": 600,
+          "median": 454.7285,
+          "p95": 1292.959,
+          "p99": 1411.541,
+          "max": 1475.541
+        },
+        "replacement": {
+          "n": 685,
+          "median": 480.333,
+          "p95": 1322.583,
+          "p99": 1464.292,
+          "max": 1908.75
+        },
+        "after": {
+          "n": 301,
+          "median": 487.917,
+          "p95": 1294.375,
+          "p99": 1411.5,
+          "max": 1612.625
+        }
+      },
+      "usb_requests_acknowledged": 2039,
+      "errors": 0,
+      "frame_gap_by_phase_us": {
+        "baseline": {
+          "n": 719,
+          "median": 16668,
+          "p95": 17596,
+          "p99": 17651,
+          "max": 17764
+        },
+        "replacement": {
+          "n": 821,
+          "median": 16669,
+          "p95": 17625,
+          "p99": 17659,
+          "max": 17744
+        },
+        "after": {
+          "n": 388,
+          "median": 16667.0,
+          "p95": 17637,
+          "p99": 17727,
+          "max": 17751
+        }
+      }
+    },
+    "typed": {
+      "repetitions": 3,
+      "physical_outputs_measured": 1930,
+      "static_ram_bytes": 88642,
+      "firmware_image_bytes": 179792,
+      "resident_ram_before_components_bytes": 116062,
+      "peak_ram_conservative_bytes": 119886,
+      "peak_ram_sampled_bytes": 119886,
+      "phase_ram_sampled_bytes": {
+        "baseline": 118218,
+        "replacement": 119886,
+        "after": 118622
+      },
+      "smallest_largest_free_data_block_bytes": 139264,
+      "worker_stack_spare_min_bytes": 9536,
+      "largest_component_step_elapsed_us": 76,
+      "memory_probe_elapsed_us_by_run": [
+        14983,
+        14633,
+        15091
+      ],
+      "memory_probe_max_elapsed_us": 77,
+      "render_call_elapsed_us": {
+        "n": 1930,
+        "median": 1808.0,
+        "p95": 1822,
+        "p99": 1829,
+        "max": 1909
+      },
+      "rmt_submit_to_callback_us": {
+        "n": 1930,
+        "median": 6322.0,
+        "p95": 6322,
+        "p99": 6326,
+        "max": 6335
+      },
+      "completion_gap_us": {
+        "n": 1927,
+        "median": 16676,
+        "p95": 17581,
+        "p99": 17696,
+        "max": 18077
+      },
+      "completion_gaps_over_25ms": 0,
+      "fps_by_run": [
+        60.0019458574965,
+        60.004592874912575,
+        59.99944386207556
+      ],
+      "load_elapsed_us": {
+        "n": 9,
+        "median": 41,
+        "p95": 50,
+        "p99": 50,
+        "max": 50
+      },
+      "preparation_poll_elapsed_us": {
+        "n": 9,
+        "median": 47,
+        "p95": 63,
+        "p99": 63,
+        "max": 65
+      },
+      "activation_elapsed_us": {
+        "n": 9,
+        "median": 10,
+        "p95": 19,
+        "p99": 19,
+        "max": 22
+      },
+      "load_start_to_activation_us": {
+        "n": 9,
+        "median": 250,
+        "p95": 913,
+        "p99": 913,
+        "max": 1163
+      },
+      "retained_handoffs": 9,
+      "service_gap_max_us": {
+        "baseline": 1143,
+        "replacement": 1168,
+        "after": 1143
+      },
+      "usb_roundtrip_us": {
+        "baseline": {
+          "n": 601,
+          "median": 485.625,
+          "p95": 1266.583,
+          "p99": 1429.333,
+          "max": 1559.459
+        },
+        "replacement": {
+          "n": 682,
+          "median": 481.458,
+          "p95": 1312.417,
+          "p99": 1429.834,
+          "max": 1611.083
+        },
+        "after": {
+          "n": 301,
+          "median": 470.958,
+          "p95": 1280.584,
+          "p99": 1382.458,
+          "max": 1474.709
+        }
+      },
+      "usb_requests_acknowledged": 2036,
+      "errors": 0,
+      "frame_gap_by_phase_us": {
+        "baseline": {
+          "n": 720,
+          "median": 16676.0,
+          "p95": 17576,
+          "p99": 17702,
+          "max": 17761
+        },
+        "replacement": {
+          "n": 818,
+          "median": 16677.0,
+          "p95": 17582,
+          "p99": 17636,
+          "max": 18077
+        },
+        "after": {
+          "n": 389,
+          "median": 16676,
+          "p95": 17582,
+          "p99": 17692,
+          "max": 17761
+        }
+      }
+    }
+  }
+}

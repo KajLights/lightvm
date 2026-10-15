@@ -1,0 +1,179 @@
+{
+  "wamr": {
+    "size": {
+      "dram_data": 0,
+      "dram_bss": 0,
+      "dram_rodata": 0,
+      "dram_other": 0,
+      "used_dram": 0,
+      "dram_total": 0,
+      "used_dram_ratio": 0,
+      "dram_remain": 0,
+      "iram_vectors": 0,
+      "iram_text": 0,
+      "iram_other": 0,
+      "used_iram": 0,
+      "iram_total": 0,
+      "used_iram_ratio": 0,
+      "iram_remain": 0,
+      "diram_data": 7392,
+      "diram_bss": 29960,
+      "diram_text": 53894,
+      "diram_vectors": 0,
+      "diram_rodata": 0,
+      "diram_other": 0,
+      "diram_total": 321296,
+      "used_diram": 91246,
+      "used_diram_ratio": 0.2839935760171306,
+      "diram_remain": 230050,
+      "flash_code": 151728,
+      "flash_rodata": 38080,
+      "flash_other": 256,
+      "used_flash_non_ram": 190064,
+      "total_size": 251350
+    },
+    "artifacts": {
+      "component_device.bin": {
+        "bytes": 251504,
+        "sha256": "acf962261231edc635e86eee3ed3f30a17415062e2f818b01b022fd735acf337"
+      },
+      "component_device.elf": {
+        "bytes": 5074644,
+        "sha256": "27f9ddc3d147457a1c7cec9f40ae24bfc03fd7fcd8ea59ad50d2fdd4657a33a7"
+      },
+      "sdkconfig": {
+        "bytes": 47562,
+        "sha256": "ef26c03c6730ae1f4d72232c8b708aae562afa5323425081c7d73780632280af"
+      }
+    },
+    "command": [
+      "/tmp/lightvm-esp-deps/tools/python_env/idf5.5_py3.12_env/bin/python",
+      "/tmp/lightvm-esp-deps/esp-idf/tools/idf.py",
+      "-C",
+      "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device",
+      "-B",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/wamr-firmware",
+      "-D",
+      "CR_BACKEND=wamr",
+      "build"
+    ]
+  },
+  "native": {
+    "size": {
+      "dram_data": 0,
+      "dram_bss": 0,
+      "dram_rodata": 0,
+      "dram_other": 0,
+      "used_dram": 0,
+      "dram_total": 0,
+      "used_dram_ratio": 0,
+      "dram_remain": 0,
+      "iram_vectors": 0,
+      "iram_text": 0,
+      "iram_other": 0,
+      "used_iram": 0,
+      "iram_total": 0,
+      "used_iram_ratio": 0,
+      "iram_remain": 0,
+      "diram_data": 5272,
+      "diram_bss": 29848,
+      "diram_text": 53354,
+      "diram_vectors": 0,
+      "diram_rodata": 0,
+      "diram_other": 0,
+      "diram_total": 321296,
+      "used_diram": 88474,
+      "used_diram_ratio": 0.27536601762860413,
+      "diram_remain": 232822,
+      "flash_code": 92986,
+      "flash_rodata": 26040,
+      "flash_other": 256,
+      "used_flash_non_ram": 119282,
+      "total_size": 177908
+    },
+    "artifacts": {
+      "component_device.bin": {
+        "bytes": 178064,
+        "sha256": "2d9d8ac0839815d53bae1be0f413abb853f16862d997c6cf770778a51fd7b241"
+      },
+      "component_device.elf": {
+        "bytes": 3637380,
+        "sha256": "26aababa9255c361fcdd16d34826ddd5a13caab815b39575b06bfdc18e2d9c61"
+      },
+      "sdkconfig": {
+        "bytes": 40181,
+        "sha256": "bd4487161b6bf1b85966c564ebfc2868793fb7a66e3898c6e9f79c97cb71b205"
+      }
+    },
+    "command": [
+      "/tmp/lightvm-esp-deps/tools/python_env/idf5.5_py3.12_env/bin/python",
+      "/tmp/lightvm-esp-deps/esp-idf/tools/idf.py",
+      "-C",
+      "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device",
+      "-B",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-firmware",
+      "-D",
+      "CR_BACKEND=native",
+      "build"
+    ]
+  },
+  "typed": {
+    "size": {
+      "dram_data": 0,
+      "dram_bss": 0,
+      "dram_rodata": 0,
+      "dram_other": 0,
+      "used_dram": 0,
+      "dram_total": 0,
+      "used_dram_ratio": 0,
+      "dram_remain": 0,
+      "iram_vectors": 0,
+      "iram_text": 0,
+      "iram_other": 0,
+      "used_iram": 0,
+      "iram_total": 0,
+      "used_iram_ratio": 0,
+      "iram_remain": 0,
+      "diram_data": 5432,
+      "diram_bss": 29848,
+      "diram_text": 53362,
+      "diram_vectors": 0,
+      "diram_rodata": 0,
+      "diram_other": 0,
+      "diram_total": 321296,
+      "used_diram": 88642,
+      "used_diram_ratio": 0.2758888999551815,
+      "diram_remain": 232654,
+      "flash_code": 94708,
+      "flash_rodata": 25880,
+      "flash_other": 256,
+      "used_flash_non_ram": 120844,
+      "total_size": 179638
+    },
+    "artifacts": {
+      "component_device.bin": {
+        "bytes": 179792,
+        "sha256": "4cad739fa4f3fc605c25d901b0197cca0453898d669cfd584992feed4f1e5fb2"
+      },
+      "component_device.elf": {
+        "bytes": 3657032,
+        "sha256": "0d5dde26e17c659adf0c8fd716ab9c683e238b5f6bda27818b7ed87ca4ff82ce"
+      },
+      "sdkconfig": {
+        "bytes": 40181,
+        "sha256": "bd4487161b6bf1b85966c564ebfc2868793fb7a66e3898c6e9f79c97cb71b205"
+      }
+    },
+    "command": [
+      "/tmp/lightvm-esp-deps/tools/python_env/idf5.5_py3.12_env/bin/python",
+      "/tmp/lightvm-esp-deps/esp-idf/tools/idf.py",
+      "-C",
+      "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device",
+      "-B",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/typed-firmware",
+      "-D",
+      "CR_BACKEND=typed",
+      "build"
+    ]
+  }
+}

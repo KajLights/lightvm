@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "backend": "direct-native",
+  "target": "ESP32-C3 RV32IMC ILP32",
+  "compiler": "riscv32-esp-elf-gcc (crosstool-NG esp-14.2.0_20251107) 14.2.0",
+  "commands": [
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+      "--version"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+      "-march=rv32imc",
+      "-mabi=ilp32",
+      "-mcmodel=medany",
+      "-mno-relax",
+      "-msmall-data-limit=0",
+      "-std=c11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-ffreestanding",
+      "-fno-builtin",
+      "-fno-pic",
+      "-fno-pie",
+      "-fno-common",
+      "-fno-jump-tables",
+      "-fno-tree-loop-distribute-patterns",
+      "-fstack-usage",
+      "-fno-stack-protector",
+      "-fno-unwind-tables",
+      "-fno-asynchronous-unwind-tables",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-fvisibility=hidden",
+      "-DNATIVE_REVISION=1",
+      "-c",
+      "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device/native_entry.c",
+      "-o",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.o"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-nm",
+      "-u",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.o"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+      "-march=rv32imc",
+      "-mabi=ilp32",
+      "-mcmodel=medany",
+      "-mno-relax",
+      "-nostdlib",
+      "-nostartfiles",
+      "-static",
+      "-no-pie",
+      "-Wl,--no-relax,--gc-sections,--build-id=none",
+      "-Wl,-T,/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device/native.ld",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.o",
+      "-o",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-readelf",
+      "-rW",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-nm",
+      "-u",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-nm",
+      "-n",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-readelf",
+      "-hAW",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-objdump",
+      "-drw",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-readelf",
+      "-rW",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.o"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-objcopy",
+      "-O",
+      "binary",
+      "-j",
+      ".text",
+      "-j",
+      ".rodata",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.elf",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.bin"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+      "-march=rv32imc",
+      "-mabi=ilp32",
+      "-mcmodel=medany",
+      "-mno-relax",
+      "-msmall-data-limit=0",
+      "-std=c11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-ffreestanding",
+      "-fno-builtin",
+      "-fno-pic",
+      "-fno-pie",
+      "-fno-common",
+      "-fno-jump-tables",
+      "-fno-tree-loop-distribute-patterns",
+      "-fstack-usage",
+      "-fno-stack-protector",
+      "-fno-unwind-tables",
+      "-fno-asynchronous-unwind-tables",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-fvisibility=hidden",
+      "-DNATIVE_REVISION=2",
+      "-c",
+      "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device/native_entry.c",
+      "-o",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.o"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-nm",
+      "-u",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.o"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
+      "-march=rv32imc",
+      "-mabi=ilp32",
+      "-mcmodel=medany",
+      "-mno-relax",
+      "-nostdlib",
+      "-nostartfiles",
+      "-static",
+      "-no-pie",
+      "-Wl,--no-relax,--gc-sections,--build-id=none",
+      "-Wl,-T,/Users/kws/work/kajlights/lightvm/experiments/component-runtime/device/native.ld",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.o",
+      "-o",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-readelf",
+      "-rW",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-nm",
+      "-u",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-nm",
+      "-n",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-readelf",
+      "-hAW",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-objdump",
+      "-drw",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-readelf",
+      "-rW",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.o"
+    ],
+    [
+      "/tmp/lightvm-esp-deps/tools/tools/riscv32-esp-elf/esp-14.2.0_20251107/riscv32-esp-elf/bin/riscv32-esp-elf-objcopy",
+      "-O",
+      "binary",
+      "-j",
+      ".text",
+      "-j",
+      ".rodata",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.elf",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.bin"
+    ]
+  ],
+  "packages": [
+    {
+      "path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v1.crn",
+      "revision": 1,
+      "payload_bytes": 568,
+      "package_bytes": 632,
+      "sha256": "ef192189aa068a443ddecead8b08c31eaaeee0e0ae0f1930927bb5c21c2d0dae",
+      "payload_crc32": "42ce16ce",
+      "state_bytes": 40,
+      "stack_frames_bytes": {
+        "native_info": 0,
+        "native_init": 0,
+        "native_init_step": 0,
+        "native_begin": 0,
+        "native_step": 0,
+        "native_cancel": 0,
+        "native_entry": 0
+      },
+      "conservative_call_stack_bytes": 0,
+      "input_relocation_types": [
+        "R_RISCV_CALL_PLT",
+        "R_RISCV_PCREL_HI20",
+        "R_RISCV_PCREL_LO12_I"
+      ],
+      "undefined_symbols": [],
+      "final_relocations": []
+    },
+    {
+      "path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/native-artifacts/native-v2.crn",
+      "revision": 2,
+      "payload_bytes": 580,
+      "package_bytes": 644,
+      "sha256": "149c4558e9cf7259501dc0bc0127efa68085d80f235a55a1022c5ccb5cc84f7b",
+      "payload_crc32": "62de85cd",
+      "state_bytes": 40,
+      "stack_frames_bytes": {
+        "native_info": 0,
+        "native_init": 0,
+        "native_init_step": 0,
+        "native_begin": 0,
+        "native_step": 0,
+        "native_cancel": 0,
+        "native_entry": 0
+      },
+      "conservative_call_stack_bytes": 0,
+      "input_relocation_types": [
+        "R_RISCV_CALL_PLT",
+        "R_RISCV_PCREL_HI20",
+        "R_RISCV_PCREL_LO12_I"
+      ],
+      "undefined_symbols": [],
+      "final_relocations": []
+    }
+  ],
+  "trust": "audited producer; CRC/ABI do not sandbox arbitrary native code",
+  "loader_requirements": [
+    "CONFIG_ESP_SYSTEM_MEMPROT_FEATURE=n",
+    "MALLOC_CAP_EXEC | MALLOC_CAP_32BIT",
+    "fence.i"
+  ]
+}

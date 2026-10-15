@@ -1,0 +1,623 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-14T09:26:30.336744+00:00",
+  "scope": "host architecture prototypes; simulated peripheral, no MCU/DMA timing validation",
+  "environment": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13"
+  },
+  "expected_workload": {
+    "pixels": 300,
+    "seed": 305419896,
+    "frame_hashes": [
+      "28e71914",
+      "7e73067a",
+      "f1e1bdc6"
+    ]
+  },
+  "common_checks": [
+    "independent_instances",
+    "resumable_execution",
+    "native_buffer_alias",
+    "native_bulk_operation",
+    "async_output_retention",
+    "service_progress",
+    "replacement",
+    "failed_replacement_preserves_old",
+    "bounds_rejection",
+    "stale_view_rejection",
+    "runaway_bounded",
+    "admission_failure",
+    "malformed_artifact_rejected",
+    "cleanup"
+  ],
+  "backends": {
+    "wamr": {
+      "command": [
+        "/Users/kws/.local/share/mise/installs/python/3.12/bin/python3",
+        "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/wamr/run.py",
+        "--output",
+        "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/wamr.json"
+      ],
+      "log": "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/wamr.log",
+      "result_path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/wamr.json",
+      "returncode": 0,
+      "result": {
+        "schema_version": 1,
+        "backend": "wamr-aot",
+        "status": "passed",
+        "environment": {
+          "wamr_version": "2.4.5",
+          "interpreter_enabled": false,
+          "jit_enabled": false,
+          "output": "host simulated peripheral",
+          "service": "nonblocking POSIX socketpair, one byte per turn",
+          "system": "macOS-27.0.1-arm64-arm-64bit",
+          "architecture": "arm64",
+          "wamr_revision": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+          "wamrc": "wamrc 2.4.5",
+          "wasm_clang": "Homebrew clang version 22.1.8",
+          "wasm_linker": "LLD 20.1.8 (https://github.com/rust-lang/llvm-project.git e8a2ffcf322f45b8dce82c65ab27a3e2430a6b51)",
+          "native_compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+          "sanitizer": false
+        },
+        "workload": {
+          "pixels": 300,
+          "seed": 305419896,
+          "frame_hashes": [
+            "28e71914",
+            "7e73067a",
+            "f1e1bdc6"
+          ]
+        },
+        "checks": {
+          "independent_instances": true,
+          "resumable_execution": true,
+          "native_buffer_alias": true,
+          "native_bulk_operation": true,
+          "async_output_retention": true,
+          "service_progress": true,
+          "replacement": true,
+          "failed_replacement_preserves_old": true,
+          "bounds_rejection": true,
+          "stale_view_rejection": true,
+          "runaway_bounded": true,
+          "admission_failure": true,
+          "malformed_artifact_rejected": true,
+          "cleanup": true,
+          "cancellation": true,
+          "aot_only": true
+        },
+        "metrics": {
+          "timing_unit": "ns",
+          "load_total_ns": 449084,
+          "instantiate_total_ns": 11042,
+          "initialization_total_ns": 3043,
+          "activation_ns": 0,
+          "max_guest_dispatch_ns": 208,
+          "max_service_gap_ns": 43083,
+          "mean_frame_ns": 2492,
+          "max_frame_ns": 3750,
+          "benchmark_frames": 1000,
+          "guest_calls": 11259,
+          "service_messages": 256,
+          "service_messages_during_preparation": 14,
+          "preparation_steps": 14,
+          "peak_tracked_runtime_heap_bytes": 63236,
+          "loaded_module_and_runtime_heap_bytes": 1570,
+          "tracked_instance_bytes": 20032,
+          "linear_memory_bytes_per_instance": 6064,
+          "retained_old_instance_bytes": 20032,
+          "retained_output_buffer_bytes": 900,
+          "peak_instance_count": 3,
+          "peak_rgb_buffer_bytes": 2700,
+          "pixel_data_copies": 0,
+          "heap_bytes_after_cleanup": 0,
+          "aot_artifact_bytes": 4696,
+          "quantum_pixels": 32
+        },
+        "memory_accounting": {
+          "tracked_heap_definition": "requested allocator payload including linear memory; excludes headers and libc malloc overhead",
+          "peak_linear_allocation_bytes": 49152,
+          "linear_allocation_bytes_per_instance": 16384,
+          "peak_allocator_header_bytes_upper_bound": 408,
+          "host_page_bytes": 16384,
+          "simultaneous_artifact_staging_bytes": 9404,
+          "executable_mapping_bytes": null,
+          "native_stack_bytes": null,
+          "host_component_struct_bytes": 56
+        },
+        "observations": {
+          "arbitrary_guest_store_can_mutate_published_buffer": true,
+          "replacement_artifact_changes_seed_algorithm": true
+        },
+        "limitations": [
+          "Host experiment: no MCU, physical DMA, Wi-Fi, MQTT, flash writes, multicore or browser compiler tested.",
+          "Resumption uses explicit generated continuation state. Arbitrary uploaded AOT with uninstrumented loops is not preemptible or safe.",
+          "WAMR protects linear-memory bounds; object bounds and ownership depend on the trusted compiler/scheduler contract. An explicit bypass test mutates published storage using an in-range raw guest store, then restores it.",
+          "Native storage aliases WAMR-owned linear memory; retention pins the whole old instance. No general external-buffer mapping is demonstrated.",
+          "Loading and instantiation are synchronous native operations. Reported maxima are observations, not proven interruption bounds.",
+          "Tracked heap excludes mapped executable code, allocator overhead, host stack, socket buffers and process/SDK memory.",
+          "The manifest describes a trusted local artifact; this prototype does not authenticate hostile uploads."
+        ],
+        "artifacts": {
+          "wamr-guest.wasm": {
+            "sha256": "86449494ce17be006060cfa431c64da9420e7cbdfe16d1925f75fc4529167c54",
+            "bytes": 1779
+          },
+          "wamr-guest.aot": {
+            "sha256": "ea6dd80c6a2925b28fb2704c676444d56bdbf8e4b08e7024465c4a8463c0b59b",
+            "bytes": 4696
+          },
+          "wamr-replacement.wasm": {
+            "sha256": "1a930ee47eda226d54f3e17b2534d1082970c34cc3ad663866197eb866874947",
+            "bytes": 1792
+          },
+          "wamr-replacement.aot": {
+            "sha256": "26f28c529667ceae7e60e68eafccce117906d3ad8cebfdb2c3c6a66349e449d9",
+            "bytes": 4708
+          },
+          "wamr-manifest.json": {
+            "sha256": "8d450130ed416d5529cfc2973b7604a949026aa76b5ac327a8eeeb76ba610ffa",
+            "bytes": 366
+          },
+          "wamr-replacement-manifest.json": {
+            "sha256": "7a3b35de8925855cede90b3f73d31abaaf1dea8a63dcf6ee2832595836fed13a",
+            "bytes": 366
+          },
+          "wamr_probe": {
+            "sha256": "28319e7cd19b301577a0caad044a3882abb122ea11f28cf5cf1d784336fea2b0",
+            "bytes": 256968
+          }
+        }
+      },
+      "errors": [],
+      "status": "passed",
+      "runner_wall_seconds": 1.184266
+    },
+    "native": {
+      "command": [
+        "/Users/kws/.local/share/mise/installs/python/3.12/bin/python3",
+        "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/native/run.py",
+        "--output",
+        "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/native.json"
+      ],
+      "log": "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/native.log",
+      "result_path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/native.json",
+      "returncode": 0,
+      "result": {
+        "schema_version": 1,
+        "backend": "direct-native",
+        "status": "passed",
+        "environment": {
+          "system": "Darwin",
+          "machine": "arm64",
+          "python": "3.12.13",
+          "host_only": true,
+          "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+          "build_commands": [
+            [
+              "/usr/bin/cc",
+              "-std=c11",
+              "-O2",
+              "-Wall",
+              "-Wextra",
+              "-Werror",
+              "-fPIC",
+              "-fstack-usage",
+              "-fno-optimize-sibling-calls",
+              "-DNATIVE_REVISION=1",
+              "-c",
+              "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/native/component.c",
+              "-o",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/effect-v1.o"
+            ],
+            [
+              "/usr/bin/cc",
+              "-dynamiclib",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/effect-v1.o",
+              "-o",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/effect-v1.dylib"
+            ],
+            [
+              "/usr/bin/cc",
+              "-std=c11",
+              "-O2",
+              "-Wall",
+              "-Wextra",
+              "-Werror",
+              "-fPIC",
+              "-fstack-usage",
+              "-fno-optimize-sibling-calls",
+              "-DNATIVE_REVISION=2",
+              "-c",
+              "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/native/component.c",
+              "-o",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/effect-v2.o"
+            ],
+            [
+              "/usr/bin/cc",
+              "-dynamiclib",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/effect-v2.o",
+              "-o",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/effect-v2.dylib"
+            ],
+            [
+              "/usr/bin/cc",
+              "-std=c11",
+              "-O2",
+              "-Wall",
+              "-Wextra",
+              "-Werror",
+              "-fPIC",
+              "-fstack-usage",
+              "-fno-optimize-sibling-calls",
+              "-DNATIVE_REVISION=1",
+              "-c",
+              "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/native/core.c",
+              "-o",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/core.o"
+            ],
+            [
+              "/usr/bin/cc",
+              "-dynamiclib",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/core.o",
+              "-o",
+              "/Users/kws/work/kajlights/lightvm/build/component-runtime/native/core.dylib"
+            ]
+          ],
+          "artifacts": [
+            {
+              "path": "build/component-runtime/native/core.dylib",
+              "sha256": "bd7e3354f41f0bb73ad65605af65894f158d98fc389f7abd63e1c91f8c430a4c",
+              "file_bytes": 33512
+            },
+            {
+              "path": "build/component-runtime/native/effect-v1.dylib",
+              "sha256": "5563b70f0baecc1aeebe55ee8faeadbaa09bc990ea7d904e34aadc81d732d148",
+              "file_bytes": 17056
+            },
+            {
+              "path": "build/component-runtime/native/effect-v2.dylib",
+              "sha256": "da6c776981e5627e10f8e3b8b9c25837a99f36efc4b66000735e8141ab3151d2",
+              "file_bytes": 17056
+            }
+          ]
+        },
+        "workload": {
+          "pixels": 300,
+          "seed": 305419896,
+          "frame_hashes": [
+            "28e71914",
+            "7e73067a",
+            "f1e1bdc6"
+          ]
+        },
+        "checks": {
+          "incremental_initialization": true,
+          "native_bulk_operation": true,
+          "native_buffer_alias": true,
+          "resumable_execution": true,
+          "partial_frame_not_published": true,
+          "independent_instances": true,
+          "bounds_rejection": true,
+          "stale_view_rejection": true,
+          "failed_replacement_preserves_old": true,
+          "write_while_retained_rejected": true,
+          "preparation_allows_progress": true,
+          "buffer_rotation": true,
+          "replacement": true,
+          "module_unload_with_instances_rejected": true,
+          "async_output_retention": true,
+          "runaway_bounded": true,
+          "cancellation": true,
+          "admission_failure": true,
+          "allocation_failure": true,
+          "kernel_benchmark_correct": true,
+          "malformed_artifact_rejected": true,
+          "service_progress": true,
+          "cleanup": true
+        },
+        "metrics": {
+          "timing_units": "nanoseconds",
+          "lifecycle": {
+            "initial_validation_ns": 304375,
+            "initial_load_ns": 64071000,
+            "initial_instances_initialization_ns": 8668,
+            "failed_initialization_ns": 4291,
+            "replacement_validation_ns": 348541,
+            "replacement_load_ns": 64696667,
+            "replacement_initialization_ns": 4916,
+            "activation_and_old_teardown_ns": 10292
+          },
+          "kernel": {
+            "frames": 2000,
+            "pixels_per_frame": 300,
+            "wall_ns": 3247000,
+            "process_cpu_ns": 3242000,
+            "wall_ns_per_frame": 1623.5,
+            "cpu_ns_per_frame": 1621.0,
+            "maximum_step_ns": 6000,
+            "steps": 10000,
+            "includes": "C ABI dispatch, checks and clock reads; excludes Python dispatch"
+          },
+          "host_ctypes_step": {
+            "samples": 191,
+            "min_ns": 792,
+            "median_ns": 1125,
+            "p95_ns": 1416,
+            "max_ns": 4041
+          },
+          "mixed_scheduler_tick": {
+            "samples": 40,
+            "min_ns": 11375,
+            "median_ns": 19000.0,
+            "p95_ns": 393750,
+            "max_ns": 625958
+          },
+          "mixed_frame_gaps": {
+            "samples": 7,
+            "min_ns": 402625,
+            "median_ns": 441292,
+            "p95_ns": 710916,
+            "max_ns": 710916
+          },
+          "preparation_quantum": {
+            "samples": 5,
+            "min_ns": 1083,
+            "median_ns": 1333,
+            "p95_ns": 4750,
+            "max_ns": 4750
+          },
+          "communication_tick": {
+            "samples": 95,
+            "min_ns": 1250,
+            "median_ns": 5125,
+            "p95_ns": 20917,
+            "max_ns": 77208
+          },
+          "native_payload_memory": {
+            "admission_limit_bytes": 4096,
+            "peak_bytes": 3976,
+            "peak_allocations": 12,
+            "largest_requested_allocation_bytes": 900,
+            "state_bytes_per_instance": 40,
+            "rgb_bytes_per_instance": 900,
+            "guard_bytes_per_instance": 16,
+            "output_queue_capacity": 8,
+            "output_queue_bytes": 192,
+            "scope": "native payload reservations only; excludes Python, dylib mappings, host stacks and OS sockets",
+            "remaining_bytes_after_cleanup": 0,
+            "remaining_allocations_after_cleanup": 0
+          },
+          "output": {
+            "implementation": "simulated completion ticks, no physical peripheral",
+            "data_path_copies": 0,
+            "diagnostic_readback_copies": "excluded from data path; Python checks read native bytes",
+            "peak_retained_bytes": 900,
+            "peak_retained_allocations": 1,
+            "rotation_allocations": 1,
+            "rotation_bytes": 900,
+            "completed": 1
+          },
+          "communications": {
+            "implementation": "real local SOCK_DGRAM socketpair",
+            "sent": 156,
+            "received": 156,
+            "dropped_by_bounded_producer": 96,
+            "peak_outstanding": 32,
+            "maximum_messages_per_service_tick": 2
+          },
+          "continuation_cursor_prefix": [
+            17,
+            34,
+            51,
+            68,
+            85
+          ],
+          "runaway_work_per_step": [
+            64,
+            64,
+            64,
+            64,
+            64,
+            64,
+            64,
+            64
+          ],
+          "malformed_cases": {
+            "unsupported_abi": true,
+            "digest_mismatch": true,
+            "oversized_state": true,
+            "path_escape": true,
+            "undeclared_capability": true,
+            "invalid_executable": true,
+            "invalid_json": true
+          },
+          "compiler_stack_usage_bytes": {
+            "effect-v1": {
+              "native_info": 0,
+              "native_init": 0,
+              "native_init_step": 0,
+              "native_begin": 0,
+              "native_step": 0,
+              "native_cancel": 0
+            },
+            "effect-v2": {
+              "native_info": 0,
+              "native_init": 0,
+              "native_init_step": 0,
+              "native_begin": 0,
+              "native_step": 0,
+              "native_cancel": 0
+            },
+            "core": {
+              "core_hash": 0,
+              "core_fill": 0,
+              "core_dim": 0,
+              "core_benchmark": 144
+            }
+          },
+          "component_stack_policy_bytes": 512
+        },
+        "limitations": [
+          "Host-only C11 shared libraries on the recorded architecture; no MCU loader, flash write, DMA or device timing has been tested.",
+          "Native code is trusted output of an audited restricted producer. Manifest/digest/ABI checks are compatibility and corruption checks, not authentication or a verifier. Arbitrary native binaries can bypass checks, corrupt memory, run constructors or block indefinitely.",
+          "Bounds, lease, fuel and no-recursion checks are present in this hand-written reference component. Four language frontends and a compiler that enforces these rules are not implemented.",
+          "Scheduling is cooperative on a single worker. Every component loop has a bounded backedge; uncooperative native code and OS/dlopen calls cannot be preempted here. Measured maxima are observations, not hard real-time bounds.",
+          "Package validation and dlopen remain synchronous; initialization is incremental. Load stalls are measured separately, and uninterrupted service during loading is not established.",
+          "Native payload admission covers state, RGB allocations, stable guard metadata and a fixed output queue. Python objects, interpreter, mappings, SDK memory, host stacks, sockets and allocator overhead are outside that budget; largest free block and full-process peak RAM are not measured.",
+          "Compiler .su evidence checks static component stack frames against 512 bytes for a known nonrecursive leaf call graph; it excludes ctypes and resident-core stacks. It is not verification of arbitrary machine code.",
+          "The two initial effects share code and own separate RGB allocations. One additional admitted 900-byte RGB allocation permits the old effect to render during replacement preparation while output retains its earlier frame. No claim of continuous output from one buffer or composition without extra storage.",
+          "Output is simulated; socketpair traffic is real local I/O but does not exercise Wi-Fi, MQTT, commissioning, reconnects or protocol-stack replacement. There are no configured physical frame deadlines or deadline-miss claims.",
+          "Views and guards use single-worker ownership rules, not atomic multicore synchronization. Metadata must outlive all stale views; guard reclamation is explicit after views are discarded."
+        ]
+      },
+      "errors": [],
+      "status": "passed",
+      "runner_wall_seconds": 0.615283
+    },
+    "typed": {
+      "command": [
+        "/Users/kws/.local/share/mise/installs/python/3.12/bin/python3",
+        "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/typed/run.py",
+        "--output",
+        "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/typed.json"
+      ],
+      "log": "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/typed.log",
+      "result_path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/comparison-3009cosf/typed.json",
+      "returncode": 0,
+      "result": {
+        "schema_version": 1,
+        "backend": "typed-interpreter",
+        "status": "passed",
+        "environment": {
+          "platform": "macOS-27.0.1-arm64-arm-64bit",
+          "machine": "arm64",
+          "python": "3.12.13",
+          "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+          "command": [
+            "cc",
+            "-std=c11",
+            "-O2",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-pedantic",
+            "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/typed/vm.c",
+            "-o",
+            "/Users/kws/work/kajlights/lightvm/build/component-runtime/typed/typed-vm"
+          ],
+          "sanitizers": "none"
+        },
+        "workload": {
+          "pixels": 300,
+          "seed": 305419896,
+          "frame_hashes": [
+            "28e71914",
+            "7e73067a",
+            "f1e1bdc6"
+          ]
+        },
+        "checks": {
+          "independent_instances": true,
+          "resumable_execution": true,
+          "native_buffer_alias": true,
+          "native_bulk_operation": true,
+          "inflight_write_rejected": true,
+          "old_effect_runs_during_preparation": true,
+          "replacement": true,
+          "async_output_retention": true,
+          "stale_view_rejection": true,
+          "generation_reuse_rejected": true,
+          "generation_wrap_rejected": true,
+          "malformed_artifact_rejected": true,
+          "admission_failure": true,
+          "failed_replacement_preserves_old": true,
+          "bounds_rejection": true,
+          "guest_stale_view_fault": true,
+          "runaway_bounded": true,
+          "call_stack_overflow_rejected": true,
+          "call_stack_underflow_rejected": true,
+          "cancellation": true,
+          "service_progress": true,
+          "cleanup": true
+        },
+        "metrics": {
+          "timing_unit": "ns",
+          "workload_resume_wall_ns": 69160,
+          "workload_resume_calls": 594,
+          "workload_effect_frames": 6,
+          "resume_calls": 2644,
+          "resume_max_observed_ns": 541,
+          "load_validation_wall_ns": 1001,
+          "initialization_wall_ns": 709,
+          "activation_wall_ns": 125,
+          "validation_slice_max_observed_ns": 84,
+          "harness_wall_ns": 1604875,
+          "tracked_component_peak_bytes": 4992,
+          "replacement_coexistence_bytes": 4992,
+          "tracked_component_final_bytes": 0,
+          "largest_tracked_allocation_bytes": 924,
+          "tracked_allocations": 31,
+          "instance_metadata_bytes": 208,
+          "buffer_metadata_bytes": 24,
+          "artifact_bytes": 280,
+          "input_staging_stack_bytes": 32800,
+          "rgb_buffer_bytes": 900,
+          "replacement_peak_rgb_buffers": 4,
+          "retained_output_buffers": 1,
+          "pixel_data_copies": 0,
+          "instruction_quantum": 61,
+          "job_instruction_limit": 100000,
+          "service_messages": 2253,
+          "service_ticks": 2253
+        },
+        "limitations": [
+          "Host C11 prototype; no MCU build, physical LED, DMA, cache-coherency, flash-write, multicore or browser compiler validation.",
+          "The peripheral is a simulated deferred consumer holding and checking the same RGB allocation. Communications use real local AF_UNIX socketpair bytes, not Wi-Fi, USB, Matter or MQTT.",
+          "Safe points occur between every VM instruction; native bulk transforms, allocation, package copying and host file I/O remain synchronous. Measured maxima are observations, not worst-case timing proofs.",
+          "Timing uses monotonic wall-clock durations around resume calls, excluding service work. Host scheduling interference remains possible; harness timings must not be compared as interpreter throughput.",
+          "Tracked allocation figures cover program packages, instance continuations and native RGB buffers. They exclude host process memory, libc allocator headers, C stacks (including the 32,800-byte input-file staging array), socket buffers and executable text.",
+          "Artifact verification restricts opcodes, register classes, branch targets, capability/version fields and fixed memory limits; runtime enforces bounds, view generations, ownership and call/job limits. This is a research implementation, not a security-audited sandbox.",
+          "The program uses u32 operations and RGB8 views; four source-language frontends, dynamic objects, floating-point semantics, deadlines, state migration and persistent interrupted-install recovery are not implemented.",
+          "Preparation validation is incremental, but file staging and package allocation/copy are not. No arbitrary-load or native-call preemption guarantee is claimed."
+        ],
+        "artifacts": {
+          "bytecode": {
+            "path": "build/component-runtime/typed/effect.tvm",
+            "bytes": 280,
+            "sha256": "b384c84b99cd3ea5be54f11e41ee7419cbd627ff3d3444438e7ea85ede8ef3cf"
+          },
+          "replacement_bytecode": {
+            "path": "build/component-runtime/typed/replacement.tvm",
+            "bytes": 312,
+            "sha256": "8b5ecf44bb8978bb80eaabaaa5b39335c31a0b3ac60151a20542ae2aae8a9518"
+          },
+          "host_runtime": {
+            "path": "build/component-runtime/typed/typed-vm",
+            "bytes": 35272,
+            "sha256": "91b4563b177c2878386b4f1319497decdf7cff72b669a36dcc70d9aa6eed1dd6"
+          },
+          "runtime_source": {
+            "path": "experiments/component-runtime/typed/vm.c",
+            "bytes": 23379,
+            "sha256": "267380e2a0ab6ff8c9b57b0079a62411ae29a595aa80264953a86a96562b4fb6"
+          }
+        }
+      },
+      "errors": [],
+      "status": "passed",
+      "runner_wall_seconds": 0.241614
+    }
+  },
+  "limitations": [
+    "Backend timings have different harness boundaries; this report does not rank performance.",
+    "Tracked memory is not whole-process or whole-board memory; read each backend's exclusions.",
+    "Host correctness does not prove bounded loading, MCU performance, DMA safety, or Wi-Fi capacity.",
+    "The four source-language frontends and their compatibility semantics are not implemented here."
+  ],
+  "status": "passed",
+  "all_three_executed": true
+}

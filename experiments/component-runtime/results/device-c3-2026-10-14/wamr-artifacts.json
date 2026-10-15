@@ -1,0 +1,28 @@
+{
+  "backend": "wamr-aot",
+  "wamr_revision": "25bd7eb63e828e4bd242cc9b38d260b4b31c6605",
+  "compiler": "wamrc 2.4.5",
+  "target": "riscv32",
+  "abi": "ilp32",
+  "cpu_features": "+m,+c,-a,-f,-d",
+  "pixels": 200,
+  "buffer_bytes_per_instance": 600,
+  "quantum_pixels": 32,
+  "replacement_seed_xor": "13579bdf",
+  "artifacts": {
+    "v1.aot": {
+      "sha256": "f57690c26f14889689ba8d8e9accc9f127fa963d9bc217f0b456791b4376f800",
+      "bytes": 2072,
+      "aot_machine": 243,
+      "aot_elf_flags": 1,
+      "aot_arch": "riscv32"
+    },
+    "v2.aot": {
+      "sha256": "a47324bbdeb82c11a5680c4022d85ce40208413d2acebbe1d784876d1f883a9f",
+      "bytes": 2080,
+      "aot_machine": 243,
+      "aot_elf_flags": 1,
+      "aot_arch": "riscv32"
+    }
+  }
+}

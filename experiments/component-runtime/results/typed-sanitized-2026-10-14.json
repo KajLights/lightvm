@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "backend": "typed-interpreter",
+  "status": "passed",
+  "environment": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "python": "3.12.13",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "command": [
+      "cc",
+      "-std=c11",
+      "-O2",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-pedantic",
+      "-g",
+      "-fsanitize=address,undefined",
+      "-fno-omit-frame-pointer",
+      "/Users/kws/work/kajlights/lightvm/experiments/component-runtime/typed/vm.c",
+      "-o",
+      "/Users/kws/work/kajlights/lightvm/build/component-runtime/typed/typed-vm-sanitized"
+    ],
+    "sanitizers": "address,undefined"
+  },
+  "workload": {
+    "pixels": 300,
+    "seed": 305419896,
+    "frame_hashes": [
+      "28e71914",
+      "7e73067a",
+      "f1e1bdc6"
+    ]
+  },
+  "checks": {
+    "independent_instances": true,
+    "resumable_execution": true,
+    "native_buffer_alias": true,
+    "native_bulk_operation": true,
+    "inflight_write_rejected": true,
+    "old_effect_runs_during_preparation": true,
+    "replacement": true,
+    "async_output_retention": true,
+    "stale_view_rejection": true,
+    "generation_reuse_rejected": true,
+    "generation_wrap_rejected": true,
+    "malformed_artifact_rejected": true,
+    "admission_failure": true,
+    "failed_replacement_preserves_old": true,
+    "bounds_rejection": true,
+    "guest_stale_view_fault": true,
+    "runaway_bounded": true,
+    "call_stack_overflow_rejected": true,
+    "call_stack_underflow_rejected": true,
+    "cancellation": true,
+    "service_progress": true,
+    "cleanup": true
+  },
+  "metrics": {
+    "timing_unit": "ns",
+    "workload_resume_wall_ns": 245031,
+    "workload_resume_calls": 594,
+    "workload_effect_frames": 6,
+    "resume_calls": 2644,
+    "resume_max_observed_ns": 1000,
+    "load_validation_wall_ns": 72875,
+    "initialization_wall_ns": 47251,
+    "activation_wall_ns": 2791,
+    "validation_slice_max_observed_ns": 208,
+    "harness_wall_ns": 2255875,
+    "tracked_component_peak_bytes": 4992,
+    "replacement_coexistence_bytes": 4992,
+    "tracked_component_final_bytes": 0,
+    "largest_tracked_allocation_bytes": 924,
+    "tracked_allocations": 31,
+    "instance_metadata_bytes": 208,
+    "buffer_metadata_bytes": 24,
+    "artifact_bytes": 280,
+    "input_staging_stack_bytes": 32800,
+    "rgb_buffer_bytes": 900,
+    "replacement_peak_rgb_buffers": 4,
+    "retained_output_buffers": 1,
+    "pixel_data_copies": 0,
+    "instruction_quantum": 61,
+    "job_instruction_limit": 100000,
+    "service_messages": 2253,
+    "service_ticks": 2253
+  },
+  "limitations": [
+    "Host C11 prototype; no MCU build, physical LED, DMA, cache-coherency, flash-write, multicore or browser compiler validation.",
+    "The peripheral is a simulated deferred consumer holding and checking the same RGB allocation. Communications use real local AF_UNIX socketpair bytes, not Wi-Fi, USB, Matter or MQTT.",
+    "Safe points occur between every VM instruction; native bulk transforms, allocation, package copying and host file I/O remain synchronous. Measured maxima are observations, not worst-case timing proofs.",
+    "Timing uses monotonic wall-clock durations around resume calls, excluding service work. Host scheduling interference remains possible; harness timings must not be compared as interpreter throughput.",
+    "Tracked allocation figures cover program packages, instance continuations and native RGB buffers. They exclude host process memory, libc allocator headers, C stacks (including the 32,800-byte input-file staging array), socket buffers and executable text.",
+    "Artifact verification restricts opcodes, register classes, branch targets, capability/version fields and fixed memory limits; runtime enforces bounds, view generations, ownership and call/job limits. This is a research implementation, not a security-audited sandbox.",
+    "The program uses u32 operations and RGB8 views; four source-language frontends, dynamic objects, floating-point semantics, deadlines, state migration and persistent interrupted-install recovery are not implemented.",
+    "Preparation validation is incremental, but file staging and package allocation/copy are not. No arbitrary-load or native-call preemption guarantee is claimed."
+  ],
+  "artifacts": {
+    "bytecode": {
+      "path": "build/component-runtime/typed/effect.tvm",
+      "bytes": 280,
+      "sha256": "b384c84b99cd3ea5be54f11e41ee7419cbd627ff3d3444438e7ea85ede8ef3cf"
+    },
+    "replacement_bytecode": {
+      "path": "build/component-runtime/typed/replacement.tvm",
+      "bytes": 312,
+      "sha256": "8b5ecf44bb8978bb80eaabaaa5b39335c31a0b3ac60151a20542ae2aae8a9518"
+    },
+    "host_runtime": {
+      "path": "build/component-runtime/typed/typed-vm-sanitized",
+      "bytes": 145536,
+      "sha256": "3eae66cbdf8062040febea4c758b9977af777653dd0b39c05a808906ea08b4cc"
+    },
+    "runtime_source": {
+      "path": "experiments/component-runtime/typed/vm.c",
+      "bytes": 23379,
+      "sha256": "267380e2a0ab6ff8c9b57b0079a62411ae29a595aa80264953a86a96562b4fb6"
+    }
+  }
+}

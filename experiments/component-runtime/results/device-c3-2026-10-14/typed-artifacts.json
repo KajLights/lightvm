@@ -1,0 +1,17 @@
+{
+  "backend": "typed-interpreter",
+  "pixels": 200,
+  "v2_seed_xor": "13579bdf",
+  "artifacts": {
+    "v1": {
+      "path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/typed-artifacts/v1.tvm",
+      "bytes": 280,
+      "sha256": "b384c84b99cd3ea5be54f11e41ee7419cbd627ff3d3444438e7ea85ede8ef3cf"
+    },
+    "v2": {
+      "path": "/Users/kws/work/kajlights/lightvm/build/component-runtime/device/typed-artifacts/v2.tvm",
+      "bytes": 320,
+      "sha256": "91ce699896adc4bbbde4a039f7648df6f61c706b5c813aefe5af0d56b17b698b"
+    }
+  }
+}

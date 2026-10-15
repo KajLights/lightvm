@@ -1,0 +1,12 @@
+{
+  "status": "verified",
+  "full_flash_bytes": 4194304,
+  "backup_sha256": "31dc8f23a2338fc57ff1432925a7cbd53866514e169ae008dd4faeb1810b90fa",
+  "full_flash_verify_exit_code": 0,
+  "device_id": "esp32-d4f98d0449c0",
+  "board": "xiao_esp32c3",
+  "original_active_config_matches": true,
+  "original_saved_config_matches": true,
+  "original_mode_matches": true,
+  "mode": "idle"
+}

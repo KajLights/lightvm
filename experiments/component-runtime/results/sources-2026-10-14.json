@@ -1,0 +1,22 @@
+{
+  "hash_algorithm": "sha256",
+  "sources": {
+    "native/abi.h": "79bba711f50da5d676d3dcd95bb36eccf32834ca5715d35289e7bea36b4df01c",
+    "native/component.c": "f4d564bd532ccbe1bb0eab6fb1ec1562aab28a96c9327e472359312488b552f0",
+    "native/core.c": "4d6d99808812e2fd35cdd2bfd32cef8f8751a3ada6fcb879615f7a0053be540d",
+    "native/run.py": "6cd055b35106c691ca83cdc02906c3deca383d29b2f553f01161857d70a462dd",
+    "native/runtime.py": "bffaf0890e5a87ca12eaa2d400903d945647c89c38014129c91ff52af3db105f",
+    "native/test_native.py": "f2c83002ef76ad4869474a58c100459cf82692e41912a95fc0abea25c29e8acc",
+    "run.py": "ccb335eb29e4ce73d64b47cebb9a7f5fc6bd3e38b6dd052337424aeba290b9f6",
+    "test_coordinator.py": "e405854ebb4c5b5a34dcf8058c8b5201a338435070564e319fcf77371537744e",
+    "typed/assembler.py": "a22e6243d6d2cf9a9c3eb89a04064a130db85feb06d49ad505b506b2be54989e",
+    "typed/run.py": "c4deeb0060a23670b939368bbb0252aa94e50c93e6b9519588aca29cbd9d53e6",
+    "typed/test_typed.py": "e573921d94c0305f36d5bc4793103aaab95f0e2e86785fc30adf60dbaf92d8a7",
+    "typed/vm.c": "267380e2a0ab6ff8c9b57b0079a62411ae29a595aa80264953a86a96562b4fb6",
+    "wamr/CMakeLists.txt": "e81c2cd2b3e0a4b7b94b4fec76f5ef65c9940234f0355966c211f6747582a892",
+    "wamr/guest.c": "d317104555acfe60f00045178e2405a3700fa556899a9196a4c827708badd358",
+    "wamr/host.c": "b3d67808b38b832f6ec4115867e736651cc85723c8d180d8c2ff4afa0d560cac",
+    "wamr/run.py": "23c5fe1bdba39cc00f6480b6bddd4b587e3b063b1113b8c90dada156b451e81d",
+    "wamr/test_manifest.py": "0b6392e95d7a205aef9a94ded285884fb7052e577e3c1d51db150cc219156f04"
+  }
+}
