@@ -6,6 +6,10 @@ frozen at initialization. The previous decorators and fixed-step scheduler are
 removed. Stored LBC1/2 packages remain loadable; old source is not accepted by the
 public compiler. LBC1/3 packages must be recompiled.
 
+The [`layer/1` extension](composition.md) adds schema `lightvm.program/6`, native
+drawing and offscreen RGBA output. Scenes own physical presentation; existing
+RGB programs remain usable as opaque layers.
+
 ```sh
 python -m lightvm.compiler examples/animations/rainbow.py -o build/examples/rainbow.lbc
 python tools/client.py --port PORT --store-procedure rainbow build/examples/rainbow.lbc

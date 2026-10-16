@@ -22,6 +22,7 @@ static void bytes(Writer *w, const void *data, size_t size) {
 }
 static void literal(Writer *w, const char *s) { bytes(w, s, strlen(s)); }
 static void number(Writer *w, uint32_t n) { char s[16]; snprintf(s, sizeof(s), "%lu", (unsigned long)n); literal(w, s); }
+static void wide(Writer *w,uint64_t n){char s[24];snprintf(s,sizeof(s),"%llu",(unsigned long long)n);literal(w,s);}
 static void quoted(Writer *w, const char *s) {
     literal(w, "\"");
     while (*s) {
@@ -55,11 +56,49 @@ AppDevice *app_device(App *a,const char *id){
     for(unsigned i=0;i<a->device_count;i++)if(!strcmp(id,a->devices[i]->hardware.id))return a->devices[i];
     return NULL;
 }
+static void scene_state(Writer *w,const AppDevice *d){
+    const Scene *s=d->scene;
+    literal(w,"{\"revision\":");number(w,d->scene_revision);
+    literal(w,",\"active\":");literal(w,s?"true":"false");
+    if(s){
+        literal(w,",\"playing\":");literal(w,s->playing?"true":"false");
+        literal(w,",\"frames\":");number(w,s->frames);
+        literal(w,",\"composite_frames\":");number(w,s->composite_frames);
+        literal(w,",\"composite_us\":");wide(w,s->composite_us);
+        literal(w,",\"output_us\":");wide(w,s->output_us);
+        literal(w,",\"error\":");quoted(w,s->error);
+        literal(w,",\"layers\":[");
+        for(unsigned i=0;i<s->layer_count;i++){
+            const SceneLayer *l=&s->layers[i];const VmInstance *vm=&l->vm;
+            if(i)literal(w,",");
+            literal(w,"{\"id\":");quoted(w,l->id);
+            literal(w,",\"procedure\":");quoted(w,l->procedure);
+            literal(w,",\"generation\":");number(w,vm->generation);
+            literal(w,",\"opacity\":");number(w,l->opacity);
+            literal(w,",\"playing\":");literal(w,vm->playing?"true":"false");
+            literal(w,",\"faulted\":");literal(w,vm->control.faulted?"true":"false");
+            literal(w,",\"frames\":");number(w,vm->control.contribution_frame);
+            literal(w,",\"render_us\":");number(w,vm->render_us);
+            literal(w,",\"render_total_us\":");wide(w,vm->render_total_us);
+            literal(w,",\"native_draw_us\":");wide(w,vm->portable?vm->portable->native_draw_us:0);
+            literal(w,",\"error\":");quoted(w,vm->animation_error);
+            literal(w,"}");
+        }
+        literal(w,"]");
+    }
+    literal(w,"}");
+}
+static void clear_device_scene(AppDevice *d){
+    Scene *old=d->scene;d->scene=NULL;scene_destroy(old);
+}
+static void destroy_device(AppDevice **slot){
+    AppDevice *d=*slot;*slot=NULL;
+    if(!d)return;
+    clear_device_scene(d);vm_destroy(&d->vm);pixels_destroy(&d->pixels);platform_free(d);
+}
 static void empty_config(App *a) {
     hardware_destroy(&a->hardware);
-    for(unsigned i=0;i<a->device_count;i++){
-        vm_destroy(&a->devices[i]->vm);pixels_destroy(&a->devices[i]->pixels);platform_free(a->devices[i]);
-    }
+    for(unsigned i=0;i<a->device_count;i++)destroy_device(&a->devices[i]);
     platform_free(a->devices);a->devices=NULL;a->device_count=0;a->upload_device=&a->fallback;
     a->config_size=(uint32_t)strlen(EMPTY_CONFIG);memcpy(a->config_json,EMPTY_CONFIG,a->config_size);
 }
@@ -120,9 +159,7 @@ static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t
     /* Device identity, not array position, owns its running instance. */
     for(unsigned n=0;n<config->count;n++)for(unsigned i=0;i<a->device_count;i++)
         if(a->devices[i]&&same_device(&a->devices[i]->hardware,&config->devices[n])){next[n]=a->devices[i];a->devices[i]=NULL;break;}
-    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]){
-        vm_destroy(&a->devices[i]->vm);pixels_destroy(&a->devices[i]->pixels);platform_free(a->devices[i]);
-    }
+    for(unsigned i=0;i<a->device_count;i++)destroy_device(&a->devices[i]);
     platform_free(a->devices);a->devices=next;a->device_count=config->count;
     hardware_destroy(&a->hardware);a->hardware=*config;memset(config,0,sizeof(*config));config->default_device=-1;
     ++a->revision;
@@ -140,9 +177,7 @@ static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t
     for(unsigned i=0;i<a->device_count;i++)a->devices[i]->hardware=a->hardware.devices[i];
     memmove(a->config_json,data,size);a->config_size=size;a->upload_device=&a->fallback;return true;
 failed:
-    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]){
-        vm_destroy(&a->devices[i]->vm);pixels_destroy(&a->devices[i]->pixels);platform_free(a->devices[i]);a->devices[i]=NULL;
-    }
+    for(unsigned i=0;i<a->device_count;i++)destroy_device(&a->devices[i]);
     platform_free(a->devices);a->devices=NULL;a->device_count=0;empty_config(a);return false;
 }
 /* Package extents are immutable and pinned independently of catalogue names. */
@@ -159,13 +194,15 @@ static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const cha
         if(a->booting)startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,NULL,"replacement exceeds peak memory budget");
         return "replacement exceeds peak memory budget";
     }
-    vm_init(candidate,d->vm.target,d->vm.send,d->vm.transport);candidate->output=d->vm.output;candidate->generation=d->vm.generation+1;
+    vm_init(candidate,d->vm.target,d->vm.send,d->vm.transport);candidate->output=&d->pixels;candidate->generation=d->vm.generation+1;
     memcpy(candidate->slot,d->vm.slot,sizeof(candidate->slot));
     memcpy(candidate->device,d->vm.device,sizeof(candidate->device));
     const char *error=prepare_instance(a,candidate,entry,request,settings);
     if(!error&&play&&!candidate->target)error="slot has no configured output";
     bool was_playing=d->vm.playing,output_attempted=false,output_succeeded=false;
     if(!error&&play&&candidate->output){
+        if(d->scene)d->scene->command_active=true;
+        if(d->scene&&d->scene->pending){d->pixels.type->cancel(d->pixels.driver);d->scene->pending=false;}
         d->vm.playing=false;output_attempted=true;vm_output_cancel(&d->vm);
         PixelBuffer *output=candidate->output;const uint8_t *frame=control_frame(candidate);
         output_succeeded=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&output->type->show(output->driver,frame,output->count);
@@ -175,9 +212,11 @@ static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const cha
         if(a->booting)startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,candidate,error);
         if(output_attempted&&d->vm.control.output_valid&&d->vm.output)
             (void)d->vm.output->type->show(d->vm.output->driver,d->vm.output->rgb,d->vm.output->count);
+        if(d->scene)d->scene->command_active=false;
         d->vm.playing=was_playing;control_destroy(candidate);demo_free(candidate);return error;
     }
     if(output_succeeded){memcpy(candidate->output->rgb,control_frame(candidate),(size_t)candidate->control.count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
+    clear_device_scene(d);
     control_destroy(&d->vm);d->vm=*candidate;demo_free(candidate);vm_rebind(&d->vm);
     d->vm.playing=play;d->vm.last_frame=platform_time_us();d->vm.next_frame=d->vm.last_frame;
     if(name){strcpy(d->active_procedure,name);d->active_crc=entry->crc;}else{d->active_procedure[0]=0;d->active_crc=0;}
@@ -197,7 +236,10 @@ static bool activate(App *a,const char *name,uint16_t id,const char *action,cons
 static void service(void *context) {
     App *a=context;
     bool previous=a->command_active;a->command_active=true;
-    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]&&!runtime_owns(&a->devices[i]->vm))vm_tick_budget(&a->devices[i]->vm,64);
+    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]){
+        if(a->devices[i]->scene)scene_tick(a->devices[i]->scene,64);
+        else if(!runtime_owns(&a->devices[i]->vm))vm_tick_budget(&a->devices[i]->vm,64);
+    }
     if(a->service_io)a->service_io(a->service_context);
     a->command_active=previous;
     if(!previous&&a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
@@ -270,11 +312,18 @@ void app_tick(App *a) {
     }
     if (!a->network_pending) network_tick(&a->network,now);
     unsigned first=a->device_count?a->schedule_cursor++%a->device_count:0;
-    for(unsigned i=0;i<a->device_count;i++)vm_tick(&a->devices[(first+i)%a->device_count]->vm);
+    for(unsigned i=0;i<a->device_count;i++){
+        AppDevice *d=a->devices[(first+i)%a->device_count];
+        if(d->scene)scene_tick(d->scene,4096);else vm_tick(&d->vm);
+    }
 }
 static void resume_clock(App *a) {
     // Persistence can stall physical output; retain guest state and discard the gap.
-    for(unsigned i=0;i<a->device_count;i++){a->devices[i]->vm.last_frame=platform_time_us();a->devices[i]->vm.next_frame=a->devices[i]->vm.last_frame+FRAME_INTERVAL_US;}
+    for(unsigned i=0;i<a->device_count;i++){
+        AppDevice *d=a->devices[i];uint64_t now=platform_time_us();
+        d->vm.last_frame=now;d->vm.next_frame=now+FRAME_INTERVAL_US;
+        if(d->scene)for(unsigned n=0;n<d->scene->layer_count;n++){d->scene->layers[n].vm.last_frame=now;d->scene->layers[n].vm.next_frame=now+FRAME_INTERVAL_US;}
+    }
 }
 static void describe(App *a, uint16_t id) {
     Writer w={.app=a,.id=id};
@@ -303,16 +352,18 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"devices\":[");unsigned described=0;
     for(unsigned i=0;i<a->device_count;i++){
         AppDevice *d=a->devices[i];HardwareDevice *hw=&d->hardware;
+        VmInstance *vm=d->scene&&d->scene->layer_count?&d->scene->layers[0].vm:&d->vm;
         if(described++)literal(&w,",");
         literal(&w,"{\"id\":");quoted(&w,hw->id);literal(&w,",\"type\":");quoted(&w,hw->type);
-        literal(&w,",\"slot\":");quoted(&w,d->vm.slot);literal(&w,",\"pixels\":");number(&w,hw->pixels.count);
-        literal(&w,",\"ready\":");literal(&w,d->vm.ready?"true":"false");
-        literal(&w,",\"playing\":");literal(&w,d->vm.playing?"true":"false");
-        literal(&w,",\"frames\":");number(&w,d->vm.frame_count);
-        literal(&w,",\"render_us\":");number(&w,d->vm.render_us);
-        literal(&w,",\"show_us\":");number(&w,d->vm.show_us);
-        literal(&w,",\"active_procedure\":");quoted(&w,d->active_procedure);
-        literal(&w,",\"animation_error\":");quoted(&w,d->vm.animation_error);
+        literal(&w,",\"slot\":");quoted(&w,vm->slot);literal(&w,",\"pixels\":");number(&w,hw->pixels.count);
+        literal(&w,",\"ready\":");literal(&w,d->scene||vm->ready?"true":"false");
+        literal(&w,",\"playing\":");literal(&w,(d->scene?d->scene->playing:vm->playing)?"true":"false");
+        literal(&w,",\"frames\":");number(&w,d->scene?d->scene->frames:vm->frame_count);
+        literal(&w,",\"render_us\":");number(&w,vm->render_us);
+        literal(&w,",\"show_us\":");number(&w,d->scene?(d->scene->frames?(uint32_t)(d->scene->output_us/d->scene->frames):0):vm->show_us);
+        literal(&w,",\"active_procedure\":");quoted(&w,d->scene?"scene":d->active_procedure);
+        literal(&w,",\"animation_error\":");quoted(&w,d->scene?d->scene->error:vm->animation_error);
+        if(d->scene){literal(&w,",\"scene\":");scene_state(&w,d);}
         literal(&w,"}");
     }
     literal(&w,"]");
@@ -323,7 +374,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
     literal(&w,",\"upload_page_bytes\":"); number(&w,STORE_PAGE_BYTES);
     literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
-    literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"black_before_render\",\"alpha\":false,\"parameter_limit\":8,\"composition\":false,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
+    literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\",\"lightvm.program/6\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\",\"layer/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"black_before_render\",\"alpha\":true,\"native_drawing_api\":1,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"parameter_limit\":8,\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
@@ -364,6 +415,7 @@ static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
 static bool referenced(App *a,const char *name) {
     for(unsigned i=0;i<a->hardware.count;i++)if(!strcmp(a->hardware.devices[i].startup,name))return true;
     for(unsigned i=0;i<a->device_count;i++)if(!strcmp(a->devices[i]->active_procedure,name))return true;
+    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]->scene){Scene *s=a->devices[i]->scene;for(unsigned n=0;n<s->layer_count;n++)if(!strcmp(s->layers[n].procedure,name))return true;}
     const StoreEntry *entry=store_find(&a->store,STORE_CONFIG);
     if (entry) {
         // Reuse staging only when there is no pending transaction/candidate.
@@ -388,6 +440,123 @@ static void read_object(App *a,uint16_t id,const StoreEntry *entry) {
     }
     reply(a,id,STATUS_OK,(int32_t)entry->size,"object read");
 }
+static const char *prepare_layer(App *a,AppDevice *d,SceneLayer *layer,const Json *j,int object){
+    static const char *const fields[]={"id","procedure","settings","opacity",NULL};
+    if(!json_fields(j,object,fields)||
+       !json_string(j,json_get(j,object,"id"),layer->id,sizeof(layer->id))||!object_name_valid(layer->id)||
+       !json_string(j,json_get(j,object,"procedure"),layer->procedure,sizeof(layer->procedure))||!object_name_valid(layer->procedure))return "invalid scene layer";
+    uint32_t opacity=255;int alpha=json_get(j,object,"opacity");
+    if(alpha>=0&&(!json_u32(j,alpha,&opacity)||opacity>255))return "layer opacity must be 0..255";
+    layer->opacity=(uint8_t)opacity;
+    const StoreEntry *entry=store_find(&a->store,layer->procedure);
+    if(!entry||!strcmp(layer->procedure,STORE_CONFIG)||!strcmp(layer->procedure,STORE_NETWORK))return "layer procedure does not exist";
+    if(d->layer_generation==UINT32_MAX)return "layer generation exhausted";
+    vm_init(&layer->vm,&layer->target,vm_send,a);
+    layer->vm.generation=++d->layer_generation;
+    strcpy(layer->vm.device,d->hardware.id);strcpy(layer->vm.layer,layer->id);
+    layer->crc=entry->crc;
+    const char *error=prepare_instance(a,&layer->vm,entry,j,json_get(j,object,"settings"));
+    if(!error){layer->vm.playing=true;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame+FRAME_INTERVAL_US;}
+    return error;
+}
+static const char *prepare_scene(App *a,AppDevice *d,Scene **out){
+    *out=NULL;Json *j=platform_calloc(1,sizeof(*j));
+    if(!j)return "scene parser allocation failed";
+    static const char *const fields[]={"schema","layers",NULL};
+    const char *error="invalid scene document";
+    if(!json_parse(j,a->staging,a->expected)||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),"lightvm.scene/1"))goto done;
+    int layers=json_get(j,0,"layers");
+    if(layers<0||j->tokens[layers].type!=JSON_ARRAY||(unsigned)j->tokens[layers].children>SCENE_LAYER_LIMIT)goto done;
+    Scene *candidate=scene_create(&d->pixels,(unsigned)j->tokens[layers].children);
+    if(!candidate){error="scene exceeds memory budget";goto done;}
+    *out=candidate;error=NULL;unsigned n=0;
+    for(int t=layers+1;t<j->tokens[layers].next;t=j->tokens[t].next,n++){
+        error=prepare_layer(a,d,&candidate->layers[n],j,t);
+        if(error)break;
+        for(unsigned previous=0;previous<n;previous++)if(!strcmp(candidate->layers[previous].id,candidate->layers[n].id)){error="duplicate layer id";break;}
+        if(error)break;
+    }
+    if(!error)scene_prepare(candidate);
+done:platform_free(j);return error;
+}
+static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const char *op){
+    if(strncmp(op,"scene_",6))return false;
+    static const char *const fields[]={"op","device","expected_revision","expected_generation","layer","name","settings","opacity",NULL};
+    if(!json_fields(j,0,fields)){error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid scene fields");return true;}
+    if(!d->pixels.count){error_reply(a,id,STATUS_CONFIG,"unknown_device","configure a physical output first");return true;}
+    if(!strcmp(op,"scene_get")){
+        Writer w={.app=a,.id=id};scene_state(&w,d);flush(&w);reply(a,id,STATUS_OK,0,"scene state");return true;
+    }
+    if(!strcmp(op,"scene_snapshot")){
+        for(size_t offset=0;offset<(size_t)d->pixels.count*3;offset+=FRAME_LIMIT){size_t n=(size_t)d->pixels.count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,d->pixels.rgb+offset,n);}
+        Writer w={.app=a,.id=id};scene_state(&w,d);flush(&w);reply(a,id,STATUS_OK,0,"last presented scene frame");return true;
+    }
+    uint32_t revision;
+    if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=d->scene_revision||revision==UINT32_MAX){error_reply(a,id,STATUS_CONFIG,"stale_revision","expected scene revision must match");return true;}
+    if(!strcmp(op,"scene_apply")){
+        if(!a->staged||a->object_kind!=4||a->upload_owner!=a->source){error_reply(a,id,STATUS_CONFIG,"no_candidate","upload a scene document first");return true;}
+        Scene *candidate=NULL;const char *error=prepare_scene(a,d,&candidate);
+        if(error){scene_destroy(candidate);error_reply(a,id,STATUS_LOAD,"scene_preparation_failed",error);return true;}
+        clear_device_scene(d);vm_output_cancel(&d->vm);d->vm.output=NULL;control_destroy(&d->vm);d->vm.playing=false;d->vm.ready=false;
+        d->scene=candidate;candidate->revision=++d->scene_revision;d->active_procedure[0]=0;d->active_crc=0;
+        a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"scene applied in RAM");return true;
+    }
+    if(!strcmp(op,"scene_clear")){
+        clear_device_scene(d);d->vm.output=&d->pixels;++d->scene_revision;
+        pixels_clear(&d->pixels);pixels_show(&d->pixels);reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"scene removed");return true;
+    }
+    char layer_id[OBJECT_NAME_LIMIT+1];
+    if(!d->scene||!json_string(j,json_get(j,0,"layer"),layer_id,sizeof(layer_id))){error_reply(a,id,STATUS_CONFIG,"unknown_layer","scene layer is required");return true;}
+    Scene *s=d->scene;SceneLayer *layer=scene_layer(s,layer_id);
+    if(!layer){error_reply(a,id,STATUS_CONFIG,"unknown_layer","scene layer is not configured");return true;}
+    if(!strcmp(op,"scene_layer_opacity")){
+        uint32_t opacity;if(!json_u32(j,json_get(j,0,"opacity"),&opacity)||opacity>255){error_reply(a,id,STATUS_CONFIG,"invalid_opacity","layer opacity must be 0..255");return true;}
+        scene_invalidate(s);layer->opacity=(uint8_t)opacity;s->revision=++d->scene_revision;
+        reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"layer opacity updated");return true;
+    }
+    if(!strcmp(op,"scene_layer_remove")){
+        scene_remove_layer(s,(unsigned)(layer-s->layers));s->revision=++d->scene_revision;
+        reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"layer removed");return true;
+    }
+    if(!strcmp(op,"scene_layer_activate")){
+        uint32_t generation;char name[OBJECT_NAME_LIMIT+1];
+        if(!json_u32(j,json_get(j,0,"expected_generation"),&generation)||generation!=layer->vm.generation){error_reply(a,id,STATUS_CONFIG,"stale_generation","expected layer generation must match");return true;}
+        if(!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)){error_reply(a,id,STATUS_CONFIG,"invalid_name","procedure name required");return true;}
+        const StoreEntry *entry=store_find(&a->store,name);
+        SceneLayer *candidate=demo_calloc(1,sizeof(*candidate));
+        if(!entry||!candidate||d->layer_generation==UINT32_MAX){demo_free(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed","procedure missing or peak budget exceeded");return true;}
+        candidate->target.count=s->count;vm_init(&candidate->vm,&candidate->target,vm_send,a);candidate->vm.generation=++d->layer_generation;
+        strcpy(candidate->vm.device,d->hardware.id);strcpy(candidate->vm.layer,layer->id);
+        const char *error=prepare_instance(a,&candidate->vm,entry,j,json_get(j,0,"settings"));
+        if(error){control_destroy(&candidate->vm);demo_free(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);return true;}
+        scene_invalidate(s);control_destroy(&layer->vm);layer->vm=candidate->vm;layer->vm.target=&layer->target;vm_rebind(&layer->vm);
+        layer->vm.playing=true;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame;
+        strcpy(layer->procedure,name);layer->crc=entry->crc;demo_free(candidate);s->revision=++d->scene_revision;
+        reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"layer replaced; other layers retained");return true;
+    }
+    error_reply(a,id,STATUS_PROTOCOL,"unknown_operation","unknown scene operation");return true;
+}
+static bool scene_device_command(App *a,AppDevice *d,uint8_t command,uint16_t id,uint32_t delta){
+    Scene *s=d->scene;if(!s)return false;
+    if(command==CMD_STATUS){
+        char message[FRAME_LIMIT-8];const PlatformInfo *info=platform_info();
+        snprintf(message,sizeof(message),"api=1 protocol=1 platform=%.16s board=%.24s output=ws2812 ready=1 uploading=%u module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pixels=%lu frame_interval_us=%u mode=scene frames=%lu layers=%u animation_error=%.99s",info->platform,info->board,d->vm.uploading,MODULE_LIMIT,(unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,(unsigned long)s->count,FRAME_INTERVAL_US,(unsigned long)s->frames,s->layer_count,s->error[0]?s->error:"-");
+        reply(a,id,STATUS_OK,0,message);return true;
+    }
+    if(command==CMD_FRAME){
+        const char *error=scene_frame(s,delta);if(error){reply(a,id,STATUS_RUN,0,error);return true;}
+        for(size_t offset=0;offset<(size_t)s->count*3;offset+=FRAME_LIMIT){size_t n=(size_t)s->count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,s->output->rgb+offset,n);}
+        reply(a,id,STATUS_OK,(int32_t)s->count,"scene frame rendered");return true;
+    }
+    if(command==CMD_PLAY||command==CMD_STOP){
+        if(command==CMD_STOP)scene_invalidate(s);
+        scene_play(s,command==CMD_PLAY);
+        if(command==CMD_STOP){if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}pixels_clear(s->output);pixels_show(s->output);}
+        reply(a,id,STATUS_OK,0,command==CMD_PLAY?"scene resumed":"scene stopped");return true;
+    }
+    if(command==CMD_RESET){clear_device_scene(d);d->vm.output=&d->pixels;++d->scene_revision;pixels_clear(&d->pixels);pixels_show(&d->pixels);reply(a,id,STATUS_OK,0,"scene unloaded");return true;}
+    return false;
+}
 static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
     Arguments args;
     if (!arguments(p,size,&args)) { error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management JSON or fields"); return; }
@@ -396,6 +565,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_device","device is not configured");return;}
         if(args.command!=CMD_STATUS&&args.command!=CMD_PLAY&&args.command!=CMD_STOP&&args.command!=CMD_FRAME&&args.command!=CMD_RESET){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","unsupported device command");return;}
         if(args.delta_ms>1000){error_reply(a,id,STATUS_PROTOCOL,"invalid_delta","FRAME requires 0..1000 milliseconds");return;}
+        if(scene_device_command(a,d,(uint8_t)args.command,id,args.delta_ms))return;
         if(args.command==CMD_RESET){
             d->active_procedure[0]=0;d->active_crc=0;
             if(a->upload_owner&&a->upload_device==d&&d->vm.uploading){store_upload_cancel(&a->upload);a->upload_owner=0;d->vm.uploading=false;}
@@ -516,7 +686,7 @@ static bool object_begin(App *a,const uint8_t *p,size_t size) {
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) ||
         !json_string(&j,json_get(&j,0,"kind"),kind,sizeof(kind)) ||
         !json_u32(&j,json_get(&j,0,"size"),&expected) || !json_u32(&j,json_get(&j,0,"crc32"),&crc)) return false;
-    unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"procedure") ? 2u : !strcmp(kind,"network") ? 3u : 0u;
+    unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"procedure") ? 2u : !strcmp(kind,"network") ? 3u : !strcmp(kind,"scene") ? 4u : 0u;
     if (!object_kind || expected<(object_kind==2 ? 8u : 1u) || expected>(object_kind==2 ? MODULE_LIMIT : CONFIG_LIMIT)) return false;
     int n=json_get(&j,0,"name");
     if (object_kind==2 && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name))) return false;
@@ -563,7 +733,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         } else if (a->object_kind==3) {
             NetworkConfig config; char error[160];
             if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error))) { a->upload_owner=0; error_reply(a,id,STATUS_CONFIG,"invalid_network",error); return; }
-        } else {
+        } else if(a->object_kind==2) {
             const char * error=vm_validate_stored(&a->store,&a->upload.entry);
             if (error) { error_reply(a,id,STATUS_LOAD,"invalid_module",error); return; }
         }
@@ -598,7 +768,13 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         reply(a,id,error?(checksum_ok?STATUS_LOAD:STATUS_UPLOAD):STATUS_OK,0,error?error:"module loaded from flash");return;
     }
     if(type==CMD_RESET&&!size){a->upload_device->vm.uploading=false;a->uploading=false;a->staged=false;app_device(a,NULL)->active_procedure[0]=0;app_device(a,NULL)->active_crc=0;a->upload_owner=0;store_upload_cancel(&a->upload);}
-    vm_command(&app_device(a,NULL)->vm,type,id,p,size);
+    AppDevice *d=app_device(a,NULL);
+    if(d->scene){
+        if((type==CMD_FRAME&&size!=4)||(type!=CMD_FRAME&&size)){reply(a,id,STATUS_PROTOCOL,0,"invalid scene command payload");return;}
+        if(type==CMD_FRAME&&read_u32(p)>1000){reply(a,id,STATUS_PROTOCOL,0,"FRAME requires 0..1000 milliseconds");return;}
+        if(scene_device_command(a,d,type,id,type==CMD_FRAME?read_u32(p):0))return;
+    }
+    vm_command(&d->vm,type,id,p,size);
 
 }
 __attribute__((noinline)) static AppDevice *request_device(App *a,const uint8_t *p,size_t size){
@@ -611,7 +787,49 @@ __attribute__((noinline)) static AppDevice *request_device(App *a,const uint8_t 
 static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     AppDevice *d=request_device(a,p,size);
     if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_device","invalid request, unknown device or slot other than A");return;}
-    if(!control_manage(&d->vm,id,p,size))manage(a,id,p,size);
+    Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
+    if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
+    if(scene_manage(a,d,id,j,op)){platform_free(j);return;}
+    VmInstance *vm=&d->vm;int layer_token=json_get(j,0,"layer");
+    if(d->scene&&layer_token<0&&!strcmp(op,"program_snapshot")){
+        static const char *const fields[]={"op","slot","device",NULL};
+        if(!json_fields(j,0,fields)){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid snapshot fields");return;}
+        platform_free(j);
+        for(size_t offset=0;offset<(size_t)d->pixels.count*3;offset+=FRAME_LIMIT){size_t n=(size_t)d->pixels.count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,d->pixels.rgb+offset,n);}
+        Writer w={.app=a,.id=id};literal(&w,"{\"state\":");scene_state(&w,d);literal(&w,"}");flush(&w);
+        reply(a,id,STATUS_OK,0,"last presented scene frame");return;
+    }
+    if(layer_token>=0){
+        if(!json_string(j,layer_token,layer_id,sizeof(layer_id))){platform_free(j);error_reply(a,id,STATUS_CONFIG,"unknown_layer","invalid layer id");return;}
+        SceneLayer *l=scene_layer(d->scene,layer_id);
+        if(!l){platform_free(j);error_reply(a,id,STATUS_CONFIG,"unknown_layer","scene layer is not configured");return;}
+        vm=&l->vm;
+    }else if(d->scene&&d->scene->layer_count)vm=&d->scene->layers[0].vm;
+    bool read_only=!strcmp(op,"program_parameters_get")||!strcmp(op,"program_snapshot");
+    if(!strncmp(op,"program_",8)){
+        if(!read_only)scene_invalidate(d->scene);
+        platform_free(j);
+        if(!control_manage(vm,id,p,size))manage(a,id,p,size);
+        if(vm->generation>d->layer_generation)d->layer_generation=vm->generation;
+        if(!read_only)scene_invalidate(d->scene);
+        return;
+    }
+    if(layer_token>=0&&!strcmp(op,"device_command")){
+        uint32_t command,delta=0;
+        static const char *const fields[]={"op","slot","device","layer","command","delta_ms",NULL};
+        bool valid=json_fields(j,0,fields)&&json_u32(j,json_get(j,0,"command"),&command);
+        int dt=json_get(j,0,"delta_ms");if(dt>=0)valid=valid&&json_u32(j,dt,&delta);
+        valid=valid&&delta<=1000&&(command==CMD_STATUS||command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET||command==CMD_FRAME);
+        platform_free(j);
+        if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid layer command");return;}
+        if(command!=CMD_STATUS)scene_invalidate(d->scene);
+        uint8_t bytes[4];write_u32(bytes,delta);vm_command(vm,(uint8_t)command,id,command==CMD_FRAME?bytes:NULL,command==CMD_FRAME?4:0);
+        if(command==CMD_STOP&&vm->control.contribution_valid){memset(vm->control.committed,0,control_frame_bytes(vm));vm->control.contribution_frame++;}
+        if(vm->generation>d->layer_generation)d->layer_generation=vm->generation;
+        if(command!=CMD_STATUS)scene_invalidate(d->scene);
+        return;
+    }
+    platform_free(j);manage(a,id,p,size);
 }
 void app_command(void *context,uint8_t type,uint16_t id,const uint8_t *p,size_t size) {
     App *a=context; uint64_t previous=a->source; if (!a->source) a->source=1;

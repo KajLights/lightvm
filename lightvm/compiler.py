@@ -41,8 +41,8 @@ def compile_source(source, filename="<string>", target=None):
                 raise CompileError(f'target does not advertise program ABI {abi} and {manifest["schema"]}')
             if f'LBC1/{abi}' not in target.get('bytecode_formats', [target.get('bytecode_format')]):
                 raise CompileError(f'target does not advertise LBC1/{abi} bytecode')
-            if abi == 4 and 'animation/1' not in target.get('program_profiles', []):
-                raise CompileError('target does not advertise animation/1')
+            if abi == 4 and manifest['profile'] not in target.get('program_profiles', []):
+                raise CompileError('target does not advertise ' + manifest['profile'])
         return Compilation(bytecode, manifest)
     except (CompileError, SyntaxError, ValueError, OverflowError, RecursionError) as error:
         node = getattr(error, "node", None)

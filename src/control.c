@@ -29,13 +29,13 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
     static const char *const pixel_fields[]={"format",NULL};
     static const char *const param_fields[]={"name","type","default","minimum","maximum",NULL};
     if (size>CONTROL_MANIFEST_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,portable?portable_fields:fields) ||
-        !json_equal(&j,json_get(&j,0,"schema"),portable?"lightvm.program/5":"lightvm.program/3") ||
+        !json_equal(&j,json_get(&j,0,"schema"),portable?(portable->profile==2?"lightvm.program/6":"lightvm.program/5"):"lightvm.program/3") ||
         !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=(portable?4u:CONTROL_ABI_VERSION)) return false;
     if(portable){
         int settings=json_get(&j,0,"settings");
         static const char *const setting_fields[]={"name","type","register",NULL};
         static const char *const types[]={"","int","float","rgb8","bool"};
-        if(!json_equal(&j,json_get(&j,0,"profile"),"animation/1")||settings<0||j.tokens[settings].type!=JSON_ARRAY||j.tokens[settings].children!=(int)portable->nsettings)return false;
+        if(!json_equal(&j,json_get(&j,0,"profile"),portable->profile==2?"layer/1":"animation/1")||settings<0||j.tokens[settings].type!=JSON_ARRAY||j.tokens[settings].children!=(int)portable->nsettings)return false;
         unsigned n=0;
         for(int t=settings+1;t<j.tokens[settings].next;t=j.tokens[t].next,n++){
             uint32_t reg;
@@ -45,7 +45,7 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
         }
     }
     int pixels=json_get(&j,0,"pixels"),params=json_get(&j,0,"parameters");
-    if (!json_fields(&j,pixels,pixel_fields) || !json_equal(&j,json_get(&j,pixels,"format"),"rgb8")) return false;
+    if (!json_fields(&j,pixels,pixel_fields) || !json_equal(&j,json_get(&j,pixels,"format"),portable&&portable->profile==2?"rgba8-premul":"rgb8")) return false;
     if (params<0 || j.tokens[params].type!=JSON_ARRAY || j.tokens[params].children>(int)CONTROL_PARAMETER_LIMIT) return false;
     for (int t=params+1;t<j.tokens[params].next;t=j.tokens[t].next) {
         ControlParameter *p=&c->parameters[c->parameter_count++];
@@ -108,9 +108,10 @@ static const char *control_prepare_impl(VmInstance *a) {
     if (c->faulted) return "control program faulted; reactivate to recover";
     if (c->initialized) return NULL;
     if (!a->ready || !a->target || !a->target->count || a->target->count>PIXEL_CAPACITY) return "assigned pixel contribution is unavailable";
+    if(a->portable&&a->portable->profile==2&&a->output)return "transparent layers require a scene destination";
     if (!c->allocation) {
         c->count=a->target->count;
-        size_t rgb_bytes=(size_t)c->count*3;
+        size_t rgb_bytes=control_frame_bytes(a);
         c->buffer_bytes=rgb_bytes*2;
         if (a->output && !vm_heap_charge(rgb_bytes)) return "control output exceeds aggregate heap budget";
         c->output_charge=a->output ? rgb_bytes : 0;
@@ -191,6 +192,7 @@ const char *control_reset_program(VmInstance *a,const Json *request,int settings
     if(a->from_storage&&!vm_bind_storage(candidate,a->store,&a->code)){demo_free(candidate);return "package reference limit exceeded";}
     memcpy(candidate->slot,a->slot,sizeof(a->slot));
     memcpy(candidate->device,a->device,sizeof(a->device));
+    memcpy(candidate->layer,a->layer,sizeof(a->layer));
     if(!a->from_storage)candidate->memory=a->memory;
     const char *error=vm_load(candidate);
     if(!error){
@@ -253,8 +255,10 @@ static void describe(ControlWriter *w,bool with_parameters) {
     snprintf(b,sizeof(b),"{\"device\":\"%s\",\"slot\":\"%s\",\"generation\":%lu,\"parameter_revision\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
         a->device,a->slot,(unsigned long)a->generation,(unsigned long)c->parameter_revision,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
     text(w,b);
+    if(a->layer[0]){snprintf(b,sizeof(b),",\"layer\":\"%s\"",a->layer);text(w,b);}
     if(a->portable){
         Portable *p=a->portable;
+        snprintf(b,sizeof(b),",\"pixel_format\":\"%s\",\"render_total_us\":%" PRIu64 ",\"native_draw_us\":%" PRIu64 ",\"dispatch_count\":%" PRIu64 ",\"slice_count\":%" PRIu64,p->profile==2?"rgba8-premul":"rgb8",a->render_total_us,p->native_draw_us,p->dispatch_count,p->slice_count);text(w,b);
         snprintf(b,sizeof(b),",\"render_count\":%" PRIu64 ",\"active_wall_us\":%" PRIu64 ",\"continuation_bytes\":%zu",p->render_count,p->active_wall_us,c->continuation_bytes);text(w,b);
         snprintf(b,sizeof(b),",\"instance_context_bytes\":%zu,\"portable_context_bytes\":%zu,\"metadata_bytes\":%zu,\"state_bytes\":%zu,\"resource_payload_bytes\":%zu,\"register_bytes\":%zu,\"call_storage_bytes\":0,\"heap_used\":%zu,\"heap_peak\":%zu",
             sizeof(*a),sizeof(*p),p->metadata_bytes,p->state_bytes,p->payload_bytes,p->register_bytes,vm_heap_used(),vm_heap_peak());text(w,b);
@@ -297,10 +301,10 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     bool get=!strcmp(op,"program_parameters_get"),set=!strcmp(op,"program_parameters_set"),pause=!strcmp(op,"program_pause"),resume=!strcmp(op,"program_resume"),snapshot=!strcmp(op,"program_snapshot"),reset=!strcmp(op,"program_reset");
     if (!get && !set && !pause && !resume && !snapshot && !reset) return false;
     if (!a->ready || !a->control.enabled) { result(a,id,STATUS_RUN,"no control program loaded"); return true; }
-    static const char *const fields[]={"op","slot","device","expected_generation","expected_parameter_revision","values",NULL};
-    static const char *const read_fields[]={"op","slot","device",NULL};
-    static const char *const lifecycle_fields[]={"op","slot","device","expected_generation",NULL};
-    static const char *const reset_fields[]={"op","slot","device","expected_generation","settings",NULL};
+    static const char *const fields[]={"op","slot","device","layer","expected_generation","expected_parameter_revision","values",NULL};
+    static const char *const read_fields[]={"op","slot","device","layer",NULL};
+    static const char *const lifecycle_fields[]={"op","slot","device","layer","expected_generation",NULL};
+    static const char *const reset_fields[]={"op","slot","device","layer","expected_generation","settings",NULL};
     if (!json_fields(&j,0,(get || snapshot) ? read_fields : set ? fields : reset ? reset_fields : lifecycle_fields)) { result(a,id,STATUS_PROTOCOL,"invalid control management fields"); return true; }
     uint32_t generation,revision;
     if ((set || pause || resume || reset) && (!json_u32(&j,json_get(&j,0,"expected_generation"),&generation) || generation!=a->generation)) {
@@ -343,7 +347,8 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     }
     ControlWriter writer={.vm=a,.id=id}; ControlWriter *w=&writer;
     if (snapshot) {
-        if (c->output_valid && a->output) emit(a,id,RESP_PIXELS,a->output->rgb,(size_t)a->output->count*3);
+        if (a->output&&c->output_valid)emit(a,id,RESP_PIXELS,a->output->rgb,(size_t)a->output->count*3);
+        else if(c->contribution_valid)emit(a,id,RESP_PIXELS,c->committed,control_frame_bytes(a));
         text(w,"{\"state\":"); describe(w,false); text(w,"}");
     } else describe(w,true);
     flush(w);

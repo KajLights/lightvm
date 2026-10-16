@@ -16,8 +16,10 @@ arrays and the `@init` / `@render` callbacks. Caller arguments supply context,
 time, delta and pixels; settings are frozen at initialization.
 The current compiler emits LBC1/4 packages. Together they implement a limited part of the
 [portable bytecode architecture decision](docs/design/architecture-decision-portable-bytecode.md).
-Up to eight independent device slots run concurrently. Multiple languages,
-composition and a broader component system remain future work.
+Up to eight independent device slots run concurrently. Each output can also run
+a [native scene](docs/composition.md) with independent background and transparent
+foreground animations. Multiple languages and a broader component system remain
+future work.
 
 ## Repository layout
 

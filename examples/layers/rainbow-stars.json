@@ -1,0 +1,10 @@
+{
+  "schema": "lightvm.scene/1",
+  "layers": [
+    {"id": "bg", "procedure": "native_rainbow", "settings": {"duration": 3.3}},
+    {"id": "stars", "procedure": "native_stars", "settings": {
+      "capacity": 20, "duration": 2.0, "probability": 5.0,
+      "color": 16777215, "random_colors": false
+    }}
+  ]
+}

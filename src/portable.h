@@ -31,6 +31,7 @@ typedef struct Portable {
     char argument_error[33];
     PbcValue overrides[16]; uint32_t override_mask;
     uint64_t now_us,render_count,active_wall_us,random_state;
+    uint64_t native_draw_us,dispatch_count,slice_count;
     bool native_pending;
     bool initialized;
     _Alignas(4) uint8_t cache[256]; uint32_t cache_offset,cache_size;

@@ -22,6 +22,7 @@ typedef struct VmInstance {
     bool playing, output_pending;
     uint64_t output_started;
     uint32_t frame_count, render_us, show_us;
+    uint64_t render_cpu_us, render_total_us;
     uint64_t next_frame, last_frame;
     char animation_error[100];
     SendMessage send;
@@ -29,6 +30,7 @@ typedef struct VmInstance {
     PixelBuffer *target; // Assigned contribution dimensions; no hardware access in control_step.
     PixelBuffer *output; // Optional native presentation destination.
     char slot[33], device[33];
+    char layer[OBJECT_NAME_LIMIT+1];
     uint32_t generation;
     Control control;
 } VmInstance;

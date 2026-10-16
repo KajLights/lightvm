@@ -4,6 +4,10 @@ The proof-of-concept Python API has two decorators: `@init` and `@render`.
 The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/5`, with profile
 `animation/1`. It parses source without executing it.
 
+The opt-in [`layer/1` profile](composition.md) uses the same callbacks and frozen
+settings with transparent RGBA output, native drawing kernels and sprite batches.
+It emits schema `lightvm.program/6` within LBC1/4.
+
 ```python
 from lightvm import profile, setting, rgb, init, render
 profile("animation/1")

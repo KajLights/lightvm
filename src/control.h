@@ -33,6 +33,7 @@ const char * control_prepare(struct VmInstance *vm);
 const char * control_step(struct VmInstance *vm,uint32_t trigger,uint64_t delta);
 const char *control_playback_step(struct VmInstance *vm,uint64_t delta);
 const uint8_t *control_frame(struct VmInstance *vm);
+size_t control_frame_bytes(const struct VmInstance *vm);
 void control_presented(struct VmInstance *vm,bool success);
 const char *control_reset_program(struct VmInstance *vm,const Json *request,int settings);
 const char *control_settings(struct VmInstance *vm,const Json *request,int settings);

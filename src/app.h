@@ -4,6 +4,7 @@
 #include "vm.h"
 #include "store.h"
 #include "network.h"
+#include "scene.h"
 #if LIGHTVM_BOOT_SEQUENCE
 #include "boot_sequence.h"
 #endif
@@ -12,6 +13,9 @@ typedef struct {
     HardwareDevice hardware;
     VmInstance vm;
     PixelBuffer pixels;
+    Scene *scene;
+    uint32_t scene_revision;
+    uint32_t layer_generation;
     char active_procedure[OBJECT_NAME_LIMIT + 1];
     uint32_t active_crc;
 } AppDevice;

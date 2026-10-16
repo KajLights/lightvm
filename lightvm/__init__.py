@@ -37,7 +37,13 @@ def hash01(index: int, seed: int) -> float:
 
 
 def profile(name):
-    if name != "animation/1": raise ValueError("unsupported profile")
+    if name not in ("animation/1", "layer/1"): raise ValueError("unsupported profile")
+
+
+class SpriteBatch:
+    """Declaration marker for the compiled layer/1 native sprite resource."""
+    def __init__(self, capacity):
+        raise RuntimeError("SpriteBatch is provided by the compiled native runtime")
 
 
 def setting(default, *, minimum=None, maximum=None):

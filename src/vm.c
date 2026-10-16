@@ -30,7 +30,7 @@ static void stop_animation(VmInstance *a) {
             memset(a->output->rgb,0,n); a->control.output_valid=true;
             ++a->control.output_frame;
         } else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
-    } else if (!a->control.enabled) { pixels_clear(a->target); pixels_show(a->target); }
+    } else if (!a->control.enabled&&a->output) { pixels_clear(a->output); pixels_show(a->output); }
 }
 void vm_destroy(VmInstance *a) {
     stop_animation(a);
@@ -87,7 +87,7 @@ void control_presented(VmInstance *a,bool success) {
     else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed; retrying");
 }
 static void show_frame(VmInstance *a, uint64_t started, bool contribution, bool asynchronous) {
-    a->render_us=(uint32_t)(platform_time_us()-started);
+    if(!a->portable)a->render_us=(uint32_t)(platform_time_us()-started);
     uint64_t show_started=platform_time_us();
     bool success;
     if (contribution) {
@@ -189,8 +189,9 @@ static void frame_step_impl(VmInstance *a, uint16_t id, uint32_t delta_ms) {
     if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
     const uint8_t *bytes=a->control.enabled ?
         (a->output ? a->output->rgb : a->control.committed) : a->target->rgb;
-    for (size_t offset=0; offset<((size_t)a->target->count * 3); offset+=FRAME_LIMIT) {
-        size_t count=((size_t)a->target->count * 3)-offset;
+    size_t frame_bytes=a->control.enabled?control_frame_bytes(a):(size_t)a->target->count*3;
+    for (size_t offset=0; offset<frame_bytes; offset+=FRAME_LIMIT) {
+        size_t count=frame_bytes-offset;
         if (count>FRAME_LIMIT) count=FRAME_LIMIT;
         a->send(a->transport,RESP_PIXELS,id,bytes+offset,count);
     }

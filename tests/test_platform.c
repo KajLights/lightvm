@@ -18,6 +18,7 @@ static unsigned shows, allocations;
 static bool deny_allocation;
 static bool deny_show;
 static bool delayed_output, output_ready, output_failed;
+static bool cooperative_show, secondary_output_allowed;
 static const uint8_t *borrowed_output;
 static void *borrowed_driver;
 static size_t borrowed_count;
@@ -34,7 +35,7 @@ uint64_t platform_time_us(void) {
 static const BoardPin pins[]={{"GP16",16},{"GP17",17}};
 const BoardPin *platform_pins(size_t *count) { *count=2; return pins; }
 bool platform_pixels_open(const PixelConfig *config,void **driver) {
-    if (config->pin==17) return false;
+    if (config->pin==17&&!secondary_output_allowed) return false;
     PixelConfig *p=calloc(1,sizeof(*p)); if (!p) return false;
     *p=*config; *driver=p; return true;
 }
@@ -43,6 +44,7 @@ bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     CHECK(driver && count==((PixelConfig *)driver)->count);
     CHECK(count*3<=sizeof(displayed));
     if (deny_show) return false;
+    if(cooperative_show)runtime_checkpoint();
     memcpy(displayed,rgb,count*3); ++shows; return true;
 }
 bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
@@ -245,6 +247,7 @@ static void network_transactions(void) {
 }
 
 #include "portable_contract.inc"
+#include "scene_contract.inc"
 
 static unsigned service_calls;
 static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
@@ -488,5 +491,6 @@ int main(void) {
     session_destroy(&session); app_destroy(&app);
     network_transactions();
     portable_contract();
+    scene_contract();
     return 0;
 }
