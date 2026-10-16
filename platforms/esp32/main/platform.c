@@ -69,13 +69,26 @@ bool platform_pixels_open(const PixelConfig *config,void **driver) {
     Pixels *p=calloc(1,sizeof(*p)); if (!p) return false;
     atomic_init(&p->done,true);p->config=*config; p->wire=calloc(config->count,3);
     if (!p->wire) { platform_pixels_close(p); return false; }
-    const rmt_tx_channel_config_t rmt={
+    rmt_tx_channel_config_t rmt={
         .gpio_num=config->pin,.clk_src=RMT_CLK_SRC_DEFAULT,
         .resolution_hz=LIGHTVM_RMT_RESOLUTION_HZ,
         .mem_block_symbols=SOC_RMT_MEM_WORDS_PER_CHANNEL,
         .trans_queue_depth=1,.flags.with_dma=false
     };
-    if (rmt_new_tx_channel(&rmt,&p->channel)!=ESP_OK || lightvm_new_ws2812_encoder(&p->encoder)!=ESP_OK ) {
+    esp_err_t channel_error;
+#if defined(SOC_RMT_SUPPORT_DMA) && SOC_RMT_SUPPORT_DMA
+    // S3 has one DMA-capable TX channel. Prefer it, then retain ordinary
+    // asynchronous RMT for further outputs or constrained DMA resources.
+    rmt.flags.with_dma=true;rmt.mem_block_symbols=1024;
+    channel_error=rmt_new_tx_channel(&rmt,&p->channel);
+    if(channel_error==ESP_ERR_NOT_FOUND||channel_error==ESP_ERR_NOT_SUPPORTED||channel_error==ESP_ERR_NO_MEM){
+        rmt.flags.with_dma=false;rmt.mem_block_symbols=SOC_RMT_MEM_WORDS_PER_CHANNEL;
+        channel_error=rmt_new_tx_channel(&rmt,&p->channel);
+    }
+#else
+    channel_error=rmt_new_tx_channel(&rmt,&p->channel);
+#endif
+    if (channel_error!=ESP_OK || lightvm_new_ws2812_encoder(&p->encoder)!=ESP_OK ) {
         platform_pixels_close(p); return false;
     }
     const rmt_tx_event_callbacks_t callbacks={.on_trans_done=completed};

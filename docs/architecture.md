@@ -86,15 +86,25 @@ Every port implements [platform.h](../src/platform.h):
 | `platform_time_us()` | Monotonic 64-bit microseconds, advancing during idle waits and guest execution; used for deadlines and frame cadence |
 | `platform_pins()` | Advertise exposed, usable board pin names and aliases |
 | `platform_pixels_open/close/show` | Initialize/tear down a configured instance and submit complete packed RGB; return failures rather than abort |
+| `platform_pixels_submit/poll/cancel` | Submit autonomous output, poll for completion/fault, and synchronously release all borrowed references on cancellation |
 | `platform_storage_available/read/write/erase/sync` | Native bounded 512 KiB block store; 4 KiB erase and 256-byte program units; durable sync |
 | `platform_calloc`, `platform_realloc`, `platform_free` | Compatible C allocation family with `max_align_t` alignment, zeroed calloc storage, overflow checks, and failed realloc leaving its old allocation intact |
 
-The output backend must consume or copy RGB before returning. A DMA backend needs
-its own retained buffer because the core reuses the logical buffer on the next
-render. Native services must be ready before `session_init`, which mounts storage,
-validates saved configuration and initializes configured drivers with black output. `show_us` measures the output callback's duration; an asynchronous
-backend should document how that relates to physical transmission. Output failure
-stops playback with diagnostics; initialization failure leaves active hardware empty.
+Synchronous `show` consumes RGB before returning. Autonomous `submit` borrows an
+immutable RGB frame until `poll` returns complete/fault or `cancel` releases it.
+Pico/Pico W use PIO-paced DMA with retained wire-format SRAM, one DMA channel per
+output, FIFO/shift-register drain and a reset-low guard. Stalled DMA is aborted
+and the PIO is reset before retry. ESP32 uses asynchronous RMT, preferring DMA on
+capable chips and falling back to ordinary RMT when DMA resources are unavailable.
+The supported S3 has one DMA-capable RMT transmit channel; further outputs retain
+ordinary asynchronous RMT. C3/C6 use ordinary asynchronous RMT.
+
+Native services are ready before configuration initializes outputs with black
+pixels. `show_us` measures elapsed time until output completion is observed; it
+includes other rendering and polling delays for asynchronous output. It does not
+measure CPU occupancy or wire duration. Output failure retains the last completed
+snapshot and retries on later frames; initialization failure leaves active hardware
+empty. See the [hardware measurements](../experiments/pico-async-output/README.md).
 
 Allocation budget accounting, including headers, remains in `vm_allocator.c`.
 The port can select an appropriate allocator or memory pool without changing the

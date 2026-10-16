@@ -99,9 +99,13 @@ framing retains its historical `WASM` magic for client compatibility.
 
 ## Firmware builds
 
-Pico output uses PIO with DMA; ESP32 uses asynchronous RMT. Host and RP2040 use the root
+Pico and Pico W output use asynchronous PIO/DMA by default. ESP32 uses asynchronous
+RMT and prefers DMA on chips that support it, with ordinary RMT for additional
+outputs or unavailable DMA resources. Host and RP2040 use the root
 CMake project. ESP32 uses its SDK project. Resource budgets remain in board
 headers; bytecode contains no GPIO, controller or driver selection.
+See the [Pico hardware measurements and verification](experiments/pico-async-output/README.md)
+for output costs, memory use and the default DMA selection.
 
 For Pico/Pico W, use Pico SDK 1.5.1 and an Arm GNU embedded toolchain:
 
