@@ -2,7 +2,28 @@
 #include <math.h>
 #include <string.h>
 
-unsigned draw_stride(unsigned format) { return format == DRAW_RGBA ? 4u : 3u; }
+unsigned draw_stride(unsigned format) {
+    return format == DRAW_IMAGE_RGBWA ? 5u :
+        format == DRAW_RGBA || format == DRAW_IMAGE_RGBA || format == DRAW_IMAGE_RGBW ? 4u : 3u;
+}
+unsigned draw_channels(unsigned format) {
+    return format == DRAW_RGB || format == DRAW_IMAGE_RGB ? 7u :
+        format == DRAW_RGBA || format == DRAW_IMAGE_RGBA ? 23u :
+        format == DRAW_IMAGE_RGBW ? 15u : format == DRAW_IMAGE_RGBWA ? 31u : 0u;
+}
+int draw_channel(unsigned format, unsigned channel) {
+    if (channel > 4 || !(draw_channels(format) & (1u << channel))) return -1;
+    return channel == 4 && format != DRAW_IMAGE_RGBWA ? 3 : (int)channel;
+}
+size_t draw_batch_bytes(unsigned capacity, unsigned fields) {
+    size_t stride=(sizeof(DrawInstance)+fields*4u+7u)&~(size_t)7u;
+    return sizeof(DrawBatch) + (size_t)capacity * stride;
+}
+DrawInstance *draw_instance(DrawBatch *batch, unsigned slot, unsigned fields) {
+    size_t stride=(sizeof(DrawInstance)+fields*4u+7u)&~(size_t)7u;
+    return (DrawInstance *)((uint8_t *)(batch + 1) + (size_t)slot * stride);
+}
+uint32_t *draw_instance_fields(DrawInstance *instance) { return (uint32_t *)(instance + 1); }
 uint8_t draw_mul255(unsigned value, unsigned alpha) { return (uint8_t)((value * alpha + 127u) / 255u); }
 void draw_rgba(uint8_t *out, uint32_t color, unsigned alpha) {
     out[0] = draw_mul255(color >> 16, alpha);

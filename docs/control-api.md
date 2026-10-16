@@ -8,7 +8,9 @@ public compiler. LBC1/3 packages must be recompiled.
 
 The [`layer/1` extension](composition.md) adds schema `lightvm.program/6`, native
 drawing and offscreen RGBA output. Scenes own physical presentation; existing
-RGB programs remain usable as opaque layers.
+RGB programs remain usable as opaque layers. The
+[PixelArray/sprite extension](pixelarray-sprites.md) uses schema
+`lightvm.program/7` and advertises `native_drawing_api=2`.
 
 ```sh
 python -m lightvm.compiler examples/animations/rainbow.py -o build/examples/rainbow.lbc

@@ -7,6 +7,7 @@ import ast
 import json
 import math
 import struct
+from .sprite_compiler import SpriteCompiler, FEATURE_NATIVES
 from .bytecode import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE, FRAME, PARAM
 
 STAMP, REF, SETTING = 5, 6, 6
@@ -32,13 +33,14 @@ NATIVES = {
     'gradient_fill': (25, 0, (REF, C, C), 4),
     'palette_fill': (26, 0, (REF, REF, F, F), 4),
 }
+NATIVES.update(FEATURE_NATIVES)
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
-PUBLIC = {'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch',
+PUBLIC = {'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
 
 
-class PortableCompiler(Compiler):
+class PortableCompiler(SpriteCompiler, Compiler):
     def __init__(self, source):
         super().__init__(source, fuse=False)
         # Runtime arguments are flattened into typed input registers. Context
@@ -52,6 +54,7 @@ class PortableCompiler(Compiler):
         self.fields, self.caps, self.declarations, self.imports = {}, {}, {}, {}
         self.rights, self.depth = 0, 0
         self.profile_name = 'animation/1'
+        self.feature_setup()
         self.expressions.append((0, I, 0, 0, 0))
         count = len(self.expressions); self.expressions.append((1, I, 0, 0, 0))
         black = self.declarative(ast.Call(func=ast.Name(id='rgb'), args=[ast.Constant(value=0)]*3, keywords=[]))
@@ -78,6 +81,11 @@ class PortableCompiler(Compiler):
         if self.typ(reg) == C and typ == I: return self.native('color_int', [reg], None)
         if self.typ(reg) == I and typ == C: return self.native('int_color', [reg], None)
         return super().convert(reg, typ)
+
+    def colour_constant(self, value):
+        key = C, value
+        if key not in self.constants: self.constants[key] = self.reg(C, CONST, value)
+        return self.constants[key]
 
     def reg(self, typ, role=LOCAL, value=0):
         if len(self.regs) >= 4096:
@@ -146,10 +154,10 @@ class PortableCompiler(Compiler):
         return out
 
     def resource(self, node):
-        if self.capability(node) == 'pixels': return self.output, 3
+        if self.capability(node) == 'pixels': return self.output, self.resources[self.regs[self.output][2]][0]
         if isinstance(node, ast.Attribute) and self.capability(node.value) == 'ctx':
             reg = self.fields.get(node.attr)
-        elif isinstance(node, ast.Name): reg = self.env.get(node.id)
+        elif isinstance(node, ast.Name): reg = self.env.get(node.id, self.artwork.get(node.id))
         else: reg = None
         if reg is not None and self.typ(reg) == REF:
             return reg, self.resources[self.regs[reg][2]][0]
@@ -157,10 +165,12 @@ class PortableCompiler(Compiler):
 
     def check_write(self, ref, node):
         identity = self.regs[ref][2]
-        if self.resources[identity][0] in (9, 10) or not self.rights & (4 if identity == 0 else 1):
+        if self.resources[identity][0] in (9, 10) or self.resources[identity][5]&2 or not self.rights & (4 if identity == 0 else 1):
             self.fail(node, 'stage cannot mutate this resource')
 
     def expr(self, n):
+        feature = self.feature_expr(n)
+        if feature is not None: return feature
         if isinstance(n, ast.Attribute):
             cap = self.capability(n.value)
             if cap == 'ctx' and n.attr in self.fields: return self.fields[n.attr]
@@ -281,7 +291,7 @@ class PortableCompiler(Compiler):
         return super().expr(n)
 
     def element_type(self, kind):
-        return I if kind in (7, 8, 11) else C if kind == 10 else kind
+        return I if kind in (7, 8, 11) else C if kind in (3, 10, 12, 14, 15, 16, 17) else kind
 
     def random_call(self, name, node):
         args = list(node.args)
@@ -327,6 +337,8 @@ class PortableCompiler(Compiler):
 
     def assign_target(self, target, value, node):
         if isinstance(target, ast.Name): return self.assign(target.id, value, node)
+        if isinstance(target, ast.Attribute) and self.capability(target.value) == 'sprite':
+            return self.sprite_set(target.attr, value, node)
         if isinstance(target, ast.Attribute) and self.capability(target.value) == 'ctx':
             reg = self.fields.get(target.attr)
             if reg is None:
@@ -350,15 +362,8 @@ class PortableCompiler(Compiler):
         name = self.declaration_key(target)
         if self.stage != 0 or self.depth or self.call_stack or not name: self.fail(node, 'declare settings and arrays directly in @init')
         kind = self.imports.get(getattr(call.func, 'id', ''), '')
-        if kind == 'SpriteBatch':
-            if self.profile_name != 'layer/1' or len(call.args) != 1 or call.keywords: self.fail(node, 'SpriteBatch(capacity) requires layer/1')
-            length = self.declarative(call.args[0])
-            if self.expressions[length][1] != I: self.fail(node, 'sprite capacity must be an integer')
-            if name.startswith('ctx.') and name[4:] in self.fields or not name.startswith('ctx.') and name in self.env: self.fail(node, 'duplicate sprite binding')
-            reg = self.add_resource(name, 13, length, self.declarative(ast.Constant(value=0)))
-            if name.startswith('ctx.'): self.fields[name[4:]] = reg
-            else: self.env[name] = reg
-            return
+        if kind == 'PixelArray': return self.image_declaration(target, call, node)
+        if kind == 'SpriteBatch': return self.batch_declaration(target, call, node)
         if kind == 'setting':
             if len(call.args) != 1 or any(k.arg not in ('minimum', 'maximum') for k in call.keywords): self.fail(node, 'expected a default and optional minimum/maximum')
             external = name.removeprefix('ctx.')
@@ -407,7 +412,8 @@ class PortableCompiler(Compiler):
         for n in nodes:
             if isinstance(n, ast.Pass) or isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str): continue
             if isinstance(n, ast.Assign) and len(n.targets) == 1:
-                if isinstance(n.value, ast.Call) and self.imports.get(getattr(n.value.func, 'id', '')) in ('setting', 'array.array', 'SpriteBatch'):
+                if self.feature_assignment(n.targets[0], n.value, n): continue
+                if isinstance(n.value, ast.Call) and self.imports.get(getattr(n.value.func, 'id', '')) in ('setting', 'array.array', 'SpriteBatch', 'PixelArray'):
                     self.declaration(n.targets[0], n.value, n)
                 else: self.assign_target(n.targets[0], self.expr(n.value), n)
             elif isinstance(n, ast.AugAssign):
@@ -424,7 +430,7 @@ class PortableCompiler(Compiler):
                     self.assign_target(n.target, self.binary(n.op, saved, self.expr(n.value)), n)
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call):
                 call = n.value
-                if isinstance(call.func, ast.Attribute) and call.func.attr == 'fill' and self.capability(call.func.value) == 'pixels':
+                if isinstance(call.func, ast.Attribute) and call.func.attr == 'fill' and self.capability(call.func.value) == 'pixels' and self.resources[self.regs[self.output][2]][0] in (3,12):
                     ref, kind = self.resource(call.func.value); self.check_write(ref, n)
                     if len(call.args) != 1: self.fail(n, 'one positional argument required')
                     kws = {k.arg: k.value for k in call.keywords}
@@ -460,6 +466,9 @@ class PortableCompiler(Compiler):
                     out = returns[0][1] if returns else self.reg(self.typ(val))
                     if self.typ(out) != self.typ(val): self.fail(n, 'helper return type mismatch')
                     self.emit('MOV', out, val); returns.append((self.emit('JMP'), out))
+                elif self.sprite_context:
+                    if n.value is not None or self.sprite_context[2]=='init': self.fail(n, 'sprite render may only return without a value')
+                    self.sprite_returns.append(self.emit('JMP'))
                 elif self.stage == 0: self.fail(n, 'initialization must initialize all context fields')
                 elif n.value is None: self.emit('END')
                 else: self.fail(n, 'void entry cannot return a value')
@@ -473,6 +482,7 @@ class PortableCompiler(Compiler):
 
     def compile(self):
         marked = False
+        self.env = {}
         for n in self.tree.body:
             if isinstance(n, ast.Import):
                 for item in n.names:
@@ -489,6 +499,10 @@ class PortableCompiler(Compiler):
                     kind, length, fill, seed, stream, flags = self.resources[0]
                     self.resources[0] = (12, length, fill, seed, stream, flags)
                 marked = True
+            elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='PixelArray':
+                self.image_declaration(n.targets[0],n.value,n,module=True)
+            elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='Sprite':
+                self.sprite_definition(n.targets[0],n.value,n)
             elif isinstance(n, ast.FunctionDef):
                 if n.args.posonlyargs or n.args.kwonlyargs or n.args.vararg or n.args.kwarg or n.args.defaults or n.args.kw_defaults: self.fail(n, 'simple positional functions required')
                 if len({a.arg for a in n.args.args}) != len(n.args.args): self.fail(n, 'duplicate argument')
@@ -504,29 +518,34 @@ class PortableCompiler(Compiler):
         if not marked or 'render' not in self.funcs: raise CompileError('animation/1 requires a @render entry')
         functions = []
         for self.stage, role, self.rights in ((0, 'init', 9), (1, 'render', 13)):
+            self.descriptions = {k:v for k,v in self.descriptions.items() if k.startswith('ctx.')}
             start = len(self.code); fn = self.funcs.get(role); self.env = {}; self.writes = set(); self.caps = {}; self.declarations = {}
             if fn:
                 self.caps = {a.arg: cap for a, cap in zip(fn.args.args, ('ctx', 'runtime', 'pixels'))}
                 if any(a.arg in self.imports for a in fn.args.args): self.fail(fn, 'caller argument shadows an import')
                 self.statements(fn.body)
             self.emit('END')
+            if role=='render':
+                pending = bool(self.pending_batches)
+                self.finish_batches()
+                if pending: self.emit('END')
             functions.append((start, len(self.code), self.rights, 0, 0, 3))
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
         layer = self.profile_name == 'layer/1'
-        manifest = {'schema':'lightvm.program/6' if layer else 'lightvm.program/5','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul' if layer else 'rgb8'},'parameters':self.params,
+        manifest = {'schema':'lightvm.program/7' if self.feature_used else 'lightvm.program/6' if layer else 'lightvm.program/5','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul' if layer else 'rgb8'},'parameters':self.params,
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
-                             0, 1, 0, 0, 0, 0, 0, 0, 2 if layer else 1, len(metadata), 0, 0, 0, 0)
+                             0, 1, 0, 0, 0, 0, 0, 0, 2 if layer else 1, len(metadata), 2 if self.feature_used else 0, 0, 0, 0)
         raw = header + b''.join(struct.pack('<BBHI',t,role,0,v) for t,role,v in self.regs)
         raw += b''.join(struct.pack('<BBBBI',*ins) for ins in self.code)
         raw += b''.join(struct.pack('<I',c) for c in self.table)
         raw += b''.join(struct.pack('<6I',*fn) for fn in functions)
         raw += b''.join(struct.pack('<6I',*resource) for resource in self.resources)
         raw += b''.join(struct.pack('<BBHIII',op,typ,0,a,b,v) for op,typ,a,b,v in self.expressions)
-        raw += b''.join(struct.pack('<II4BI',binding,len(args),*(args+[0]*(4-len(args))),0) for binding,args in self.calls)
+        raw += b''.join(struct.pack('<II8B',binding,len(args),*(args+[0]*(8-len(args)))) for binding,args in self.calls)
         raw += b''.join(struct.pack('<4I',r,d,lo,hi) for _,r,d,lo,hi in self.settings)
         raw += metadata
         if len(raw) > 32768 or len(metadata) > 8192: raise CompileError('package limit exceeded')

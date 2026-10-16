@@ -18,8 +18,10 @@ The current compiler emits LBC1/4 packages. Together they implement a limited pa
 [portable bytecode architecture decision](docs/design/architecture-decision-portable-bytecode.md).
 Up to eight independent device slots run concurrently. Each output can also run
 a [native scene](docs/composition.md) with independent background and transparent
-foreground animations. Multiple languages and a broader component system remain
-future work.
+foreground animations. The [PixelArray and sprite SDK](docs/pixelarray-sprites.md)
+adds shared artwork, user-defined sprite callbacks, optional channels and native
+geometry/colour transforms. Multiple languages and a broader component system
+remain future work.
 
 ## Repository layout
 

@@ -41,9 +41,34 @@ def profile(name):
 
 
 class SpriteBatch:
-    """Declaration marker for the compiled layer/1 native sprite resource."""
-    def __init__(self, capacity):
+    """Bounded instances of a user-defined Sprite in the compiled runtime."""
+    def __init__(self, sprite, capacity):
         raise RuntimeError("SpriteBatch is provided by the compiled native runtime")
+
+
+class Sprite:
+    """Compile-time definition: init(s, runtime, ...), render(s, runtime, pixels)."""
+    def __init__(self, *, width, render, init=None):
+        raise RuntimeError("Sprite is provided by the compiled native runtime")
+
+
+class PixelArray:
+    """Managed uint8 image with an explicit rgb8/rgba8/rgbw8/rgbwa8 format."""
+    def __init__(self, data, *, format="rgba8", dtype="uint8", readonly=False):
+        raise RuntimeError("PixelArray is provided by the compiled native runtime")
+
+
+class Transform:
+    """Geometry description accepted by PixelArray.draw and s.transform."""
+    def __init__(self, translate=0.0, scale=1.0, origin=0.0):
+        self.translate, self.scale, self.origin = translate, scale, origin
+
+
+class ColorTransform:
+    """Colour description; hue is in degrees and the default is identity."""
+    def __init__(self, alpha=1.0, brightness=1.0, tint=0xffffff, hue=0.0, saturation=1.0):
+        self.alpha, self.brightness, self.tint = alpha, brightness, tint
+        self.hue, self.saturation = hue, saturation
 
 
 def setting(default, *, minimum=None, maximum=None):

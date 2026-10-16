@@ -6,7 +6,9 @@ The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/5`, with profile
 
 The opt-in [`layer/1` profile](composition.md) uses the same callbacks and frozen
 settings with transparent RGBA output, native drawing kernels and sprite batches.
-It emits schema `lightvm.program/6` within LBC1/4.
+It emits schema `lightvm.program/6` within LBC1/4. The
+[PixelArray and sprite SDK](pixelarray-sprites.md) uses schema `lightvm.program/7`
+and native drawing API 2 with either animation profile. SpriteBatch requires layer/1.
 
 ```python
 from lightvm import profile, setting, rgb, init, render
@@ -33,8 +35,9 @@ There are no implicit `time`, `delta`, `count`, `index` or `pixels` globals.
 
 `ctx` holds per-instance scalar fields and managed arrays. Declare fields directly
 in init, before using them. Their types and array bindings stay fixed. Render may
-change ordinary context fields and array elements. Module-level state and `global`
-are unsupported.
+change ordinary context fields and array elements. Mutable module-level state and `global`
+are unsupported; readonly PixelArray artwork and Sprite definitions may be
+declared at module scope.
 
 `runtime.time` is the pausable elapsed program time in seconds. `runtime.delta`
 is the actual elapsed time supplied for this render, also in seconds.
@@ -111,7 +114,8 @@ access to the caller objects. The subset supports scalar arithmetic, comparisons
 conditionals, `range(bound)` loops, break/continue, int/float and two-argument
 min/max. Numbers use signed wrapping i32, binary32 floats, bool and packed RGB8.
 General Python objects, arbitrary imports, exceptions and dynamic allocation are
-unsupported. Standard-library support is limited to the forms above.
+unsupported. Sprite, PixelArray, Transform and ColorTransform are statically
+compiled SDK descriptions rather than arbitrary Python objects. Standard-library support is limited to the forms above.
 
 ## Package and validation
 
@@ -122,8 +126,11 @@ three typed native values: pixel count, time and delta. Context and output stora
 are instance bindings. Init may write state and use randomness; render may also
 write output. Admission independently validates these rights and signatures.
 
-The current compiler emits LBC1/4, ABI 4, schema 5 and `animation/1`.
-All sample sources and generated test fixtures use this format.
+The compiler emits LBC1/4 and ABI 4. Basic animation/1 uses schema 5; basic
+layer/1 uses schema 6; the PixelArray/sprite extension uses schema 7. Header
+word 80 is zero for older packages and 2 for native drawing API 2; the remaining
+three trailing words remain zero. Extended native sites support eight arguments
+in the existing 16-byte record; older sites retain zero in their unused bytes.
 
 `render_count` counts successful calls including the initial frame. `program_us`
 tracks elapsed time; snapshots are passive. The fixed-step statistics and cycle

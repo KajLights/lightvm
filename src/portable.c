@@ -3,6 +3,7 @@
 #include "platform.h"
 #include "vm_allocator.h"
 #include "draw.h"
+#include "portable_draw.h"
 #include <math.h>
 #include <limits.h>
 #include <string.h>
@@ -11,7 +12,7 @@
  * their native caller; profile scheduling never lives in the interpreter. */
 enum { P_STAMP=5,P_REF=6,P_SETTING=6,P_LOAD=33,P_STORE,P_LEN,P_FILL,P_COPY,P_NATIVE };
 enum { WRITE_STATE=1,WRITE_FRAME=2,WRITE_OUTPUT=4,USE_RNG=8 };
-typedef struct { uint8_t result,argc,args[4],rights; } NativeSignature;
+typedef struct { uint8_t result,argc,args[8],rights; } NativeSignature;
 static const NativeSignature natives[]={
     {0,0,{0},0}, {P_STAMP,0,{0},0}, {T_FLOAT,1,{P_STAMP},0},
     {T_FLOAT,0,{0},USE_RNG}, {T_INT,3,{T_INT,T_INT,T_INT},USE_RNG},
@@ -30,6 +31,31 @@ static const NativeSignature natives[]={
     {T_INT,1,{P_REF},0},
     {0,3,{P_REF,T_COLOR,T_COLOR},WRITE_OUTPUT},
     {0,4,{P_REF,P_REF,T_FLOAT,T_FLOAT},WRITE_OUTPUT},
+    {T_BOOL,2,{P_REF,T_INT},0}, /* 27: channel query */
+    {0,5,{P_REF,T_INT,T_INT,T_INT,T_INT},0},
+    {0,4,{P_REF,T_FLOAT,T_INT,T_INT},0},
+    {0,4,{P_REF,T_FLOAT,T_INT,T_INT},0},
+    {0,4,{P_REF,P_REF,P_REF,T_INT},0},
+    {0,4,{P_REF,T_FLOAT,T_FLOAT,T_FLOAT},WRITE_STATE},
+    {0,6,{P_REF,T_FLOAT,T_FLOAT,T_COLOR,T_FLOAT,T_FLOAT},WRITE_STATE},
+    {0,5,{P_REF,T_COLOR,T_INT,T_INT,T_INT},0},
+    {0,2,{P_REF,P_REF},0},
+    {0,4,{P_REF,P_REF,T_INT,T_INT},0},
+    {T_INT,2,{P_REF,T_FLOAT},WRITE_STATE}, /* 37: reserve */
+    {T_INT,2,{P_REF,T_INT},0},
+    {0,2,{P_REF,T_INT},WRITE_STATE},
+    {T_INT,3,{P_REF,T_INT,T_INT},0},
+    {T_FLOAT,3,{P_REF,T_INT,T_INT},0},
+    {0,4,{P_REF,T_INT,T_INT,T_INT},WRITE_STATE},
+    {0,4,{P_REF,T_INT,T_INT,T_FLOAT},WRITE_STATE},
+    {T_FLOAT,3,{P_REF,T_INT,T_FLOAT},0},
+    {T_INT,1,{P_REF},0},
+    {T_BOOL,2,{P_REF,T_INT},0},
+    {T_FLOAT,3,{P_REF,T_INT,T_FLOAT},WRITE_STATE},
+    {0,3,{P_REF,T_COLOR,T_COLOR},0},
+    {0,3,{P_REF,T_FLOAT,T_FLOAT},0},
+    {0,4,{P_REF,P_REF,T_FLOAT,T_FLOAT},0},
+    {0,4,{P_REF,T_INT,T_COLOR,T_INT},0},
 };
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}
@@ -51,7 +77,7 @@ static bool table_read(Portable *p,unsigned base,unsigned index,unsigned count,u
 PbcFunction pbc_function(Portable *p,unsigned n){uint8_t q[24];table_read(p,p->functions_offset,n,p->nfunctions,24,q);return (PbcFunction){lbc_u32(q),lbc_u32(q+4),lbc_u32(q+8),lbc_u32(q+12),lbc_u32(q+16),lbc_u32(q+20)};}
 PbcResourceSpec pbc_spec(Portable *p,unsigned n){uint8_t q[24];table_read(p,p->specs_offset,n,p->nresources,24,q);return (PbcResourceSpec){lbc_u32(q),lbc_u32(q+4),lbc_u32(q+8),lbc_u32(q+12),lbc_u32(q+16),lbc_u32(q+20)};}
 PbcExpression pbc_expression(Portable *p,unsigned n){uint8_t q[16];table_read(p,p->expressions_offset,n,p->nexpressions,16,q);return (PbcExpression){q[0],q[1],(uint16_t)(q[2]|q[3]<<8),lbc_u32(q+4),lbc_u32(q+8),lbc_u32(q+12)};}
-PbcCall pbc_call(Portable *p,unsigned n){uint8_t q[16];table_read(p,p->calls_offset,n,p->ncalls,16,q);return (PbcCall){lbc_u32(q),lbc_u32(q+4),{q[8],q[9],q[10],q[11]},lbc_u32(q+12)};}
+PbcCall pbc_call(Portable *p,unsigned n){uint8_t q[16];table_read(p,p->calls_offset,n,p->ncalls,16,q);return (PbcCall){lbc_u32(q),lbc_u32(q+4),{q[8],q[9],q[10],q[11],q[12],q[13],q[14],q[15]}};}
 PbcSetting pbc_setting(Portable *p,unsigned n){uint8_t q[16];table_read(p,p->settings_offset,n,p->nsettings,16,q);return (PbcSetting){lbc_u32(q),lbc_u32(q+4),lbc_u32(q+8),lbc_u32(q+12)};}
 static bool finite_value(unsigned type,uint32_t value){
     return type==T_FLOAT ? (value&0x7f800000u)!=0x7f800000u :
@@ -69,8 +95,9 @@ static bool instruction(Portable *p,unsigned pc,uint8_t out[8]){
     }
     memcpy(out,p->cache+(offset-p->cache_offset),8);return true;
 }
-static unsigned element_type(unsigned kind){return kind==7||kind==8||kind==11?T_INT:kind==10||kind==DRAW_RGBA?T_COLOR:kind;}
+static unsigned element_type(unsigned kind){return kind==7||kind==8||kind==11?T_INT:kind==10||draw_channels(kind)?T_COLOR:kind;}
 static unsigned element_size(unsigned kind){
+    if(kind>=DRAW_IMAGE_RGB&&kind<=DRAW_IMAGE_RGBWA)return draw_stride(kind);
     switch(kind){case 1:case 2:case 11:case DRAW_RGBA:return 4;case 3:return 3;case 4:case 7:return 1;case 5:return 8;case 8:return 2;default:return 0;}
 }
 static int resource_id(const Portable *p,unsigned reg){
@@ -83,7 +110,7 @@ static bool can_write(const Portable *p,unsigned reg,unsigned rights){
 }
 static bool resource_write(const Portable *p,unsigned reg,unsigned rights){
     int id=resource_id(p,reg);
-    return id>=0 && element_size(pbc_spec((Portable*)p,id).kind) && (rights&(pbc_spec((Portable*)p,id).flags?WRITE_OUTPUT:WRITE_STATE));
+    return id>=0 && !(pbc_spec((Portable*)p,id).flags&2u) && element_size(pbc_spec((Portable*)p,id).kind) && (rights&(pbc_spec((Portable*)p,id).flags&1u?WRITE_OUTPUT:WRITE_STATE));
 }
 static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     uint8_t q[8];if(!instruction(p,pc,q))return false;
@@ -95,14 +122,15 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     if(op==JMP||op==JZ)return (op==JMP?!a:at==T_BOOL)&&!b&&!c&&d>=fn->first&&d<fn->end;
     if(op==P_STORE){int id=resource_id(p,a);return resource_write(p,a,fn->rights)&&bt==T_INT&&ct==element_type(pbc_spec((Portable*)p,id).kind)&&!d;}
     if(op==P_FILL){int id=resource_id(p,a);return resource_write(p,a,fn->rights)&&bt==element_type(pbc_spec((Portable*)p,id).kind)&&ct==T_INT&&pbc_type(p,d)==T_INT;}
-    if(op==P_COPY){int x=resource_id(p,a),y=resource_id(p,b);return resource_write(p,a,fn->rights)&&y>=0&&(!pbc_spec((Portable*)p,y).flags||(fn->rights&WRITE_OUTPUT))&&pbc_spec((Portable*)p,x).kind==(pbc_spec((Portable*)p,y).kind==10?3:pbc_spec((Portable*)p,y).kind)&&!c&&!d;}
+    if(op==P_COPY){int x=resource_id(p,a),y=resource_id(p,b);return resource_write(p,a,fn->rights)&&y>=0&&(!(pbc_spec((Portable*)p,y).flags&1u)||(fn->rights&WRITE_OUTPUT))&&pbc_spec((Portable*)p,x).kind==(pbc_spec((Portable*)p,y).kind==10?3:pbc_spec((Portable*)p,y).kind)&&!c&&!d;}
     if(op==P_NATIVE){
         if(b||c||d>=p->ncalls)return false;
         PbcCall site_value=pbc_call(p,d);const PbcCall *site=&site_value;if(!site->binding||site->binding>=sizeof(natives)/sizeof(*natives))return false;
         const NativeSignature *sig=&natives[site->binding];
-        if(site->reserved||site->argc!=sig->argc||(sig->rights&~fn->rights))return false;
-        for(unsigned n=0;n<4;n++)if(n<site->argc?pbc_type(p,site->args[n])!=sig->args[n]:site->args[n]!=0)return false;
-        if(site->binding>=18){
+        if(site->argc!=sig->argc||(sig->rights&~fn->rights))return false;
+        for(unsigned n=0;n<8;n++)if(n<site->argc?pbc_type(p,site->args[n])!=sig->args[n]:site->args[n]!=0)return false;
+        if(site->binding>=27){if(!p->drawing_api||!pbc_drawing_valid(p,site,fn->rights))return false;}
+        else if(site->binding>=18){
             int id=resource_id(p,site->args[0]);if(id<0)return false;
             PbcResourceSpec dst=pbc_spec(p,(unsigned)id);
             if(site->binding==21||site->binding==22||site->binding==24){
@@ -135,7 +163,7 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     case RGB:return at==T_COLOR&&bt==T_INT&&ct==T_INT&&pbc_type(p,d)==T_INT;
     case HSV:return at==T_COLOR&&bt==T_FLOAT&&ct==T_FLOAT&&pbc_type(p,d)==T_FLOAT;
     case HASH:return at==T_FLOAT&&bt==T_INT&&ct==T_INT&&!d;
-    case P_LOAD:{int id=resource_id(p,b);return id>=0&&(!pbc_spec((Portable*)p,id).flags||(fn->rights&WRITE_OUTPUT))&&pbc_spec((Portable*)p,id).kind!=9&&at==element_type(pbc_spec((Portable*)p,id).kind)&&ct==T_INT&&!d;}
+    case P_LOAD:{int id=resource_id(p,b);return id>=0&&(!(pbc_spec((Portable*)p,id).flags&1u)||(fn->rights&WRITE_OUTPUT))&&pbc_spec((Portable*)p,id).kind!=9&&at==element_type(pbc_spec((Portable*)p,id).kind)&&ct==T_INT&&!d;}
     case P_LEN:{int id=resource_id(p,b);return id>=0&&pbc_spec((Portable*)p,id).kind!=9&&at==T_INT&&!c&&!d;}
     default:return false;
     }
@@ -182,9 +210,10 @@ void pbc_destroy(Portable *p){if(p){demo_free(p->state);demo_free(p->metadata);d
 const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     *out=NULL;uint8_t h[96];
     if(size<96||size>32768||!read(context,0,h,96)||memcmp(h,"LBC1",4)||lbc_u32(h+4)!=4)return "invalid portable header";
-    for(unsigned n=80;n<96;n+=4)if(lbc_u32(h+n))return "reserved portable header field";
+    for(unsigned n=84;n<96;n+=4)if(lbc_u32(h+n))return "reserved portable header field";
     Portable *p=demo_calloc(1,sizeof(*p));if(!p)return "portable context exceeds memory budget";
-    p->read=read;p->context=context;p->size=(uint32_t)size;
+    p->read=read;p->context=context;p->size=(uint32_t)size;p->drawing_api=lbc_u32(h+80);
+    if(p->drawing_api&&p->drawing_api!=2){pbc_destroy(p);return "unsupported drawing API";}
     p->nregs=lbc_u32(h+8);p->ncode=lbc_u32(h+12);p->ncolors=lbc_u32(h+16);
     p->nfunctions=lbc_u32(h+20);p->nresources=lbc_u32(h+24);p->nexpressions=lbc_u32(h+28);
     p->ncalls=lbc_u32(h+32);p->nsettings=lbc_u32(h+36);
@@ -220,19 +249,19 @@ const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     }
     for(unsigned n=0;n<p->ncalls;n++){
         PbcCall item=pbc_call(p,n);const PbcCall *call=&item;
-        if(!call->binding||call->binding>=sizeof(natives)/sizeof(*natives)||call->reserved){error="invalid native binding";goto fail;}
+        if(!call->binding||call->binding>=sizeof(natives)/sizeof(*natives)){error="invalid native binding";goto fail;}
         const NativeSignature *sig=&natives[call->binding];
         if(call->argc!=sig->argc)goto fail;
-        for(unsigned k=0;k<4;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
+        for(unsigned k=0;k<8;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
     }
     error="invalid portable declarations";
     if(!valid_expressions(p))goto fail;
     for(unsigned n=0;n<p->nresources;n++){
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;
-        if(!s->kind||s->kind==6||s->kind>DRAW_SPRITES||s->flags>1||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
+        if(!s->kind||s->kind==6||s->kind>DRAW_STYLE||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||(!p->drawing_api&&s->kind>DRAW_SPRITES)||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
         if(pbc_expression((Portable*)p,s->length).type!=T_INT||pbc_expression((Portable*)p,s->seed).type!=T_INT||pbc_expression((Portable*)p,s->stream).type!=T_INT)goto fail;
         unsigned fill_type=pbc_expression((Portable*)p,s->fill).type;
-        if(s->kind!=9 && fill_type!=(s->kind==5||s->kind==10||s->kind==DRAW_SPRITES?T_INT:element_type(s->kind)))goto fail;
+        if(s->kind!=9 && fill_type!=(s->kind==5||s->kind==10||s->kind==DRAW_SPRITES||s->kind==DRAW_BATCH||s->kind==DRAW_STYLE?T_INT:element_type(s->kind)))goto fail;
     }
     unsigned previous=0;
     for(unsigned n=0;n<p->nfunctions;n++){
@@ -278,6 +307,12 @@ static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bind
 static bool store_value(PbcResource *r,unsigned index,PbcValue value){
     if(index>=r->count||r->sealed||!r->data)return false;
     uint8_t *at=r->data+index*element_size(r->kind);
+    if(r->kind>=DRAW_IMAGE_RGB&&r->kind<=DRAW_IMAGE_RGBWA){
+        if(value.u>0xffffff)return false;
+        memset(at,0,draw_stride(r->kind));at[0]=(uint8_t)(value.u>>16);at[1]=(uint8_t)(value.u>>8);at[2]=(uint8_t)value.u;
+        int alpha=draw_channel(r->kind,4);if(alpha>=0)at[alpha]=255;
+        return true;
+    }
     switch(r->kind){
     case 11:if(value.i<0)return false;/* Supported integer domain is signed i32. */
         /* fall through */
@@ -297,6 +332,8 @@ static bool load_value(Portable *p,PbcResource *r,unsigned index,PbcValue *value
     if(index>=r->count)return false;
     memset(value,0,sizeof(*value));
     if(r->kind==10){uint8_t q[4];if(!read_at(p,p->palette_offset+4*(r->random_state+index),q,4))return false;value->u=lbc_u32(q);return true;}
+    if(r->kind>=DRAW_IMAGE_RGB&&r->kind<=DRAW_IMAGE_RGBWA){uint8_t v[5];if(!pbc_image_read(p,r,index,v))return false;value->u=(uint32_t)v[0]<<16|(uint32_t)v[1]<<8|v[2];return true;}
+    if(!element_size(r->kind)||!r->data)return false;
     const uint8_t *at=r->data+index*element_size(r->kind);
     switch(r->kind){
     case 1:case 11:memcpy(&value->i,at,4);break;case 2:memcpy(&value->f,at,4);break;
@@ -326,6 +363,7 @@ const char *pbc_prepare(Portable *p,LbcBuffer *output){
     unsigned count=output?output->count:0;
     size_t resource_offset=(p->register_bytes+_Alignof(PbcResource)-1)&~(size_t)(_Alignof(PbcResource)-1);
     p->state_bytes=resource_offset+p->nresources*sizeof(PbcResource);
+    if(p->drawing_api)p->state_bytes=(p->state_bytes+7u)&~(size_t)7u;
     p->state=demo_calloc(1,p->state_bytes);if(!p->state)return "portable state exceeds memory budget";
     p->values=p->state;p->resources=(PbcResource*)(p->values+resource_offset);p->generation=output?output->generation:0;p->output=output;
     for(unsigned r=0;r<p->nregs;r++)pbc_set_value(p,r,(PbcValue){.u=pbc_initial(p,r)});
@@ -336,11 +374,26 @@ const char *pbc_prepare(Portable *p,LbcBuffer *output){
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;PbcResource *r=&p->resources[n];PbcValue length,fill,seed,stream;
         if(!evaluate(p,s->length,count,NULL,&length)||length.i<0||length.i>65535||!evaluate(p,s->fill,count,NULL,&fill))goto fail;
         r->kind=s->kind;r->count=(uint32_t)length.i;r->generation=p->generation;
-        if(s->flags){
+        if(s->flags&1u){
             if(!output||(s->kind!=3&&s->kind!=DRAW_RGBA)||r->count!=output->count)goto fail;
             r->data=output->data;continue;
         }
-        if(s->kind==DRAW_SPRITES){
+        if(s->kind==DRAW_BATCH||s->kind==DRAW_STYLE){
+            if(!r->count||r->count>65535||!evaluate(p,s->seed,count,NULL,&seed)||!evaluate(p,s->stream,count,NULL,&stream))goto fail;
+            if(s->kind==DRAW_BATCH&&(seed.u<8||seed.u>24||pbc_expression(p,s->stream).op!=0||(stream.u>>seed.u)))goto fail;
+            if(s->kind==DRAW_STYLE&&r->count!=1)goto fail;
+            r->random_state=seed.u;payload=(payload+7u)&~(size_t)7u;
+            size_t bytes=s->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,seed.u);
+            if(payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-payload)goto fail;
+            payload+=bytes;
+        }else if(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA){
+            if(!evaluate(p,s->seed,count,NULL,&seed)||!evaluate(p,s->stream,count,NULL,&stream)||seed.u>p->ncolors)goto fail;
+            size_t bytes=(size_t)r->count*draw_stride(s->kind);
+            if(stream.u&&((size_t)stream.u!=bytes||(bytes+2)/3>p->ncolors-seed.u))goto fail;
+            r->random_state=seed.u;r->sealed=s->flags==2;
+            if(r->sealed&&!stream.u)goto fail;
+            if(!r->sealed){if(payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-payload)goto fail;payload+=bytes;}
+        }else if(s->kind==DRAW_SPRITES){
             if(!count||!r->count||r->count>count){error="sprite capacity must be within pixel count";goto fail;}
             r->random_state=count;
             payload=(payload+_Alignof(DrawSprite)-1)&~(size_t)(_Alignof(DrawSprite)-1);
@@ -370,6 +423,13 @@ const char *pbc_prepare(Portable *p,LbcBuffer *output){
     p->payload_bytes=payload;uint8_t *cursor=(uint8_t*)p->state+p->state_bytes;p->state_bytes+=payload;
     for(unsigned n=0;n<p->nresources;n++){
         PbcResource *r=&p->resources[n];if(pbc_spec((Portable*)p,n).flags)continue;
+        if(r->kind==DRAW_BATCH||r->kind==DRAW_STYLE){cursor=(uint8_t*)(((uintptr_t)cursor+7u)&~(uintptr_t)7u);r->data=cursor;cursor+=r->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,r->random_state);continue;}
+        if(r->kind>=DRAW_IMAGE_RGB&&r->kind<=DRAW_IMAGE_RGBWA){
+            r->data=cursor;unsigned stride=draw_stride(r->kind);cursor+=(size_t)r->count*stride;PbcValue bytes;
+            if(!evaluate(p,pbc_spec(p,n).stream,count,NULL,&bytes))goto fail;
+            if(bytes.u){PbcResource source=*r;source.data=NULL;for(unsigned k=0;k<r->count;k++){uint8_t v[5];if(!pbc_image_read(p,&source,k,v))goto fail;for(unsigned c=0;c<5;c++){int at=draw_channel(r->kind,c);if(at>=0)r->data[(size_t)k*stride+at]=v[c];}if((k&31u)==31u)runtime_checkpoint();}}
+            continue;
+        }
         if(r->kind==DRAW_SPRITES){cursor=(uint8_t *)(((uintptr_t)cursor+_Alignof(DrawSprite)-1)&~(uintptr_t)(_Alignof(DrawSprite)-1));r->data=cursor;cursor+=draw_sprites_bytes(r->count,count);draw_sprites_init((DrawSprites *)r->data,r->count,count);continue;}
         if(!element_size(r->kind))continue;
         r->data=cursor;cursor+=r->count*element_size(r->kind);PbcValue fill;
@@ -500,8 +560,8 @@ static bool drawing_call(Portable *p,const PbcCall *site,const PbcValue a[4],Pbc
 /* Native signatures and permission checks above are shared for every binding.
  * Bodies below implement library versions, not compiler-specific AST behaviour. */
 static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
-    PbcValue a[4]={{0}};for(unsigned k=0;k<site->argc;k++)a[k]=pbc_value(p,site->args[k]);
-    if(site->binding>=18){uint64_t started=platform_time_us();bool ok=drawing_call(p,site,a,result);p->native_draw_us+=platform_time_us()-started;return ok;}
+    PbcValue a[8]={{0}};for(unsigned k=0;k<site->argc;k++)a[k]=pbc_value(p,site->args[k]);
+    if(site->binding>=18){uint64_t started=platform_time_us();bool ok=site->binding>=27?pbc_drawing_call(p,site,a,result):drawing_call(p,site,a,result);p->native_draw_us+=platform_time_us()-started;return ok;}
     switch(site->binding){
     case 1:result->stamp=p->now_us;return true;
     case 2:if(a[0].stamp>p->now_us)return false;result->f=(float)((p->now_us-a[0].stamp)/1000000.0);return true;

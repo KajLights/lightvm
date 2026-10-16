@@ -4,7 +4,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
-enum { DRAW_RGB = 3, DRAW_RGBA = 12, DRAW_SPRITES = 13 };
+enum { DRAW_RGB = 3, DRAW_RGBA = 12, DRAW_SPRITES = 13,
+       DRAW_IMAGE_RGB = 14, DRAW_IMAGE_RGBA, DRAW_IMAGE_RGBW, DRAW_IMAGE_RGBWA,
+       DRAW_BATCH, DRAW_STYLE };
+typedef struct { float translate, scale, origin, alpha, brightness; uint32_t tint; float hue, saturation; } DrawStyle;
+/* Generic instance storage. No placement, lifetime, fade or expiry policy. */
+typedef struct { uint64_t born, previous; uint32_t active; } DrawInstance;
+typedef struct { uint32_t active, reserved; } DrawBatch;
+size_t draw_batch_bytes(unsigned capacity, unsigned fields);
+DrawInstance *draw_instance(DrawBatch *, unsigned slot, unsigned fields);
+uint32_t *draw_instance_fields(DrawInstance *);
+unsigned draw_channels(unsigned format);
+int draw_channel(unsigned format, unsigned channel);
+/* Schema 6 compatibility only. New SpriteBatch declarations use DrawBatch. */
 typedef struct { uint32_t position, color; float age, lifetime; uint32_t active; } DrawSprite;
 typedef struct { uint32_t free_count, active_count; } DrawSprites;
 unsigned draw_stride(unsigned format);

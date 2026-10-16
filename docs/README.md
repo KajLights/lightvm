@@ -8,6 +8,7 @@ animation. The guides below describe the current implementation.
 - [Architecture and native ports](architecture.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Native drawing and scene composition](composition.md)
+- [PixelArray and user-defined sprites](pixelarray-sprites.md)
 - [Control API](control-api.md)
 - [Device configuration](configuration.md)
 - [Networking](networking.md)

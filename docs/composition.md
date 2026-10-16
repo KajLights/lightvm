@@ -9,60 +9,45 @@ per scene, subject to the shared VM memory budget.
 `examples/layers/` contains Color, Rainbow and Stars. Their `@init` / `@render`
 contract and frozen initialization settings match `animation/1`. The opt-in
 `profile("layer/1")` compiles to LBC1/4, ABI 4, schema `lightvm.program/6` and an
-offscreen `rgba8-premul` output. Older RGB programs retain their existing format
+offscreen `rgba8-premul` output. Programs using PixelArray or user-defined sprites emit schema `lightvm.program/7`.
+Older RGB programs retain their existing format
 and semantics, and can participate as opaque scene layers. Transparent programs
 must be deployed into a scene. Programs receive a destination from the engine;
 they cannot choose GPIOs or other layers.
 
-## Drawing in C
+## Drawing and user-defined sprites
+
+The [PixelArray and sprite SDK](pixelarray-sprites.md) provides image formats,
+channel operations, absolute alpha, native transforms and function-based sprite
+callbacks. `examples/layers/stars.py` is the complete three-pixel star example.
 
 ```python
-from lightvm import profile, setting, rgb, init, render, SpriteBatch
-profile("layer/1")
+# Star is a Sprite(width=3, init=star_init, render=star_render) definition.
+# In @init:
+ctx.stars = SpriteBatch(Star, capacity=20)
 
-@init
-def setup(ctx, runtime):
-    ctx.capacity = setting(20, minimum=1, maximum=runtime.pixel_count)
-    ctx.stars = SpriteBatch(ctx.capacity)
-
-@render
-def draw(ctx, runtime, pixels):
-    ctx.stars.advance(runtime.delta)
-    if ctx.stars.active < ctx.capacity:
-        ctx.stars.spawn(rgb(255, 255, 255), 2.0)
-    pixels.sprites(ctx.stars)
+# In @render, when the animation chooses to create a star:
+ctx.stars.spawn(position=position, duration=duration, color=color)
+ctx.stars.render(runtime, pixels)
 ```
 
-The source chooses when to spawn and supplies color/lifetime. C owns a fixed
-sprite pool, ages and expires records, finds vacant slots, selects an unoccupied
-pixel through the instance RNG, evaluates fades and paints the batch. Birth uses
-a swap/pop free-position pool, avoiding an interpreted scan of all LEDs.
-Rendering allocates no memory.
+The animation owns births, positions, colour, movement, lifetime and fading.
+The batch reserves bounded slots, runs each user initializer at spawn, and runs
+active user render callbacks in slot order. Callbacks compile to bytecode and
+participate in the VM's normal instruction budget and continuation. C implements
+generic instance storage, pixel sampling, colour transforms and blending; it has
+no star policy. There are no per-frame heap allocations.
 
-| Operation | Meaning |
-| --- | --- |
-| `pixels.fill(color, alpha=255)` | Replace the complete layer with a premultiplied color; alpha is an integer 0–255. |
-| `pixels.point(index, color, alpha=255)` | Source-over one point onto the current working layer. |
-| `pixels.gradient(first, last)` | Opaque linear gradient, including exact endpoint colors. |
-| `pixels.colorwheel(phase, stride)` | Opaque 256-unit color wheel at `phase + index * stride`, with wrapping. |
-| `pixels.palette(colors, phase, stride)` | Wrapped interpolation through a nonempty `array("I", [...])`; phase is in palette entries. |
-| `SpriteBatch(capacity)` | Init-only admission of 1…pixel_count one-pixel sprites. |
-| `batch.advance(delta)` | Add nonnegative seconds, expiring records whose age exceeds lifetime. |
-| `batch.spawn(color, lifetime)` | Spawn at a random free pixel; returns false when full. Lifetime must be positive. |
-| `batch.active` | Number of occupied records. |
-| `pixels.sprites(batch)` | Source-over the batch using `1 - sin(age/lifetime * pi/2)` alpha. |
+Legacy `pixels.fill`, `point`, `gradient`, `colorwheel` and `palette` operations
+remain available. Output surfaces use premultiplied RGBA, while mutable
+`PixelArray` images use straight channels so changing alpha never destroys their
+colour. Drawing converts and composites compatible formats in native kernels.
 
-Sprite batches are opaque managed resources; direct indexing is unavailable.
-They support one-pixel stars in this version, rather than arbitrary bitmap
-sprites. The Stars example advances expiry before spawning and attempts at most
-one birth per render. Its distribution and timing need not match the original
-monolithic Twinkle pixel-for-pixel. The original example remains available.
-
-Existing indexed RGB writes and range fill paint opaque pixels. Indexed reads
-return unpremultiplied RGB from the current working layer only. Every render
-starts transparent black. To paint opaque black, use `fill(rgb(0,0,0))`;
-`fill(rgb(0,0,0), alpha=0)` is transparent. No previous frame or lower layer is
-implicitly available to the guest.
+Existing indexed RGB writes and range fill paint opaque output pixels. Indexed
+reads return unpremultiplied RGB from the working layer only. Every layer render
+starts transparent black. `fill(rgb(0,0,0))` paints opaque black;
+`fill(rgb(0,0,0), alpha=0)` is transparent. Previous frames and lower layers are
+not implicitly visible to the guest.
 
 ## Blend and publication contract
 
@@ -85,7 +70,7 @@ mode in v1. Additional blend operators and linear-light blending remain future
 extensions.
 
 Each layer owns its context, settings, RNG, program clock, continuation and
-working/committed frames. Native kernels process at most 32 pixels or 8 sprites
+working/committed frames. Native kernels process at most 32 pixels or scan 8 instance slots
 per dispatch; the compositor processes 32 output pixels per slice. A compositor
 pass pins the committed contributions by deferring autonomous layer updates until
 that pass finishes. Management mutations invalidate an unfinished pass before
@@ -103,8 +88,9 @@ failure retains the current scene. Peak memory admission includes the candidate.
 Dense frame storage costs `8*N` bytes per RGBA layer (working + committed), plus
 `9*N` per scene (front, back, last presented). Two RGBA layers therefore use
 `25*N` frame bytes: 5,000 at 200 LEDs. Add VM/context/code-cache metadata and
-native driver storage. A sprite batch adds 8 header bytes, `2*N` free-index bytes,
-alignment padding and `20*capacity` record bytes. All VM allocations and the
+native driver storage. A generic sprite batch adds an 8-byte header and aligned instance records
+containing native clocks, an active flag and four bytes per scalar field. Each
+batch reuses one local RGBA canvas; immutable artwork stays in its package. All VM allocations and the
 scene's physical snapshot storage count toward the shared VM heap ceiling.
 Candidate preparation temporarily retains both old and new allocations.
 
@@ -146,7 +132,7 @@ committed RGBA (or RGB for legacy programs). `scene()` reports ordering,
 generations, opacity, physical frames, composite frames, cumulative compositor
 CPU time and output latency. Per-layer `program_parameters()` includes completed
 renders, cumulative render CPU, native draw CPU, dispatch and resume counts.
-`native_draw_us` measures the new SDK bindings 18–26; existing bulk fill/copy
+`native_draw_us` measures SDK bindings 18–51; existing bulk fill/copy
 instructions contribute to total render CPU only.
 Render CPU includes native kernels and excludes time spent servicing peers;
 output latency includes asynchronous transfer wait. These counters have distinct
@@ -154,9 +140,9 @@ denominators: a scene may reuse a layer contribution for several outputs.
 
 ## Management and compatibility
 
-Discovery advertises `scene_api=1`, `native_drawing_api=1`,
+Discovery advertises `scene_api=1`, `native_drawing_api=2`,
 `scene_layer_limit=8`, `layer_pixel_format="rgba8-premul"`, `alpha=true`,
-`composition=true`, schema 6 and `layer/1`. Target-aware compilation checks both
+`composition=true`, schemas 6/7 and `layer/1`. Target-aware compilation checks both
 profile and schema; old targets reject the new packages. Existing schema 5 RGB
 packages retain their ABI and pixel behavior.
 
@@ -167,16 +153,18 @@ The object upload protocol accepts kind `scene`. Operations are `scene_get`,
 The `layer` selector extends existing program controls and `device_command`.
 Full-scene writes replace every instance; use layer activation to retain peers.
 
-Native binding IDs 18–26 are respectively RGBA fill, RGBA point, colorwheel fill,
+Legacy native binding IDs 18–26 are respectively RGBA fill, RGBA point, colorwheel fill,
 sprite advance, sprite spawn, sprite draw, sprite active count, gradient fill and
 palette fill. Resource kind 12 is premultiplied RGBA; kind 13 is the bounded sprite
-pool. Typed calls enforce stage permissions, resource kind, bounds and generation.
+pool, retained for stored schema 6 packages. New source uses generic batch kind
+18 and PixelArray kinds 14–17; see the [SDK reference](pixelarray-sprites.md).
+Typed calls enforce stage permissions, resource kind, bounds and generation.
 There are no guest pointers or per-frame allocations.
 
 Scenes are RAM-only in v1. Saved hardware configuration and its single-procedure
 startup rules are unchanged; reboot restores that saved startup. The browser
-editor has no scene authoring interface yet. Persistent scenes, arbitrary bitmap
-sprites, new blend modes and A/B transitions are follow-on work.
+editor has no scene authoring interface yet. Persistent scenes, new blend modes, two-dimensional rotation and A/B
+transitions remain follow-on work.
 
 The [Pico W measurement](design/measurement-native-composition-pico-w.md) records
 the initial four-output throughput, CPU and memory checks.

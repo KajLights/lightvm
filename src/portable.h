@@ -8,7 +8,7 @@ typedef union { uint64_t stamp; uint32_t u; int32_t i; float f; } PbcValue;
 typedef struct { uint32_t first,end,rights,result,arg_start,arg_count; } PbcFunction;
 typedef struct { uint32_t kind,length,fill,seed,stream,flags; } PbcResourceSpec;
 typedef struct { uint8_t op,type; uint16_t reserved; uint32_t a,b,value; } PbcExpression;
-typedef struct { uint32_t binding,argc; uint8_t args[4]; uint32_t reserved; } PbcCall;
+typedef struct { uint32_t binding,argc; uint8_t args[8]; } PbcCall;
 typedef struct { uint32_t reg,initial,minimum,maximum; } PbcSetting;
 typedef struct {
     uint8_t *data; uint32_t count,kind,generation; bool sealed;
@@ -17,7 +17,7 @@ typedef struct {
 typedef struct Portable {
     LbcRead read; void *context;
     uint32_t size,nregs,ncode,ncolors,nfunctions,nresources,nexpressions,ncalls,nsettings;
-    uint32_t entries[2],profile;
+    uint32_t entries[2],profile,drawing_api;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
     uint8_t *metadata, *descriptors; uint16_t *register_offsets;
     uint32_t functions_offset,specs_offset,expressions_offset,calls_offset,settings_offset;

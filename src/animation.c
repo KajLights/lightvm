@@ -21,7 +21,7 @@ const char *animation_validate(Portable *p){
     }
     PbcResourceSpec output=pbc_spec(p,0);
     if(output.kind!=(p->profile==2?DRAW_RGBA:DRAW_RGB)||output.flags!=1||pbc_expression(p,output.length).op!=1)return "invalid animation output binding";
-    for(unsigned n=1;n<p->nresources;n++)if(pbc_spec(p,n).flags)return "unexpected animation output resource";
+    for(unsigned n=1;n<p->nresources;n++)if(pbc_spec(p,n).flags&1u)return "unexpected animation output resource";
     return NULL;
 }
 static const char *fault(VmInstance *a,const char *error){

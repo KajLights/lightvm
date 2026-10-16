@@ -11,7 +11,7 @@ sys.path[:0]=[str(ROOT),str(ROOT/'tools')]
 from client import Client,ProcessTransport,ProtocolError,FRAME,STOP,PLAY,RESET
 from lightvm.compiler import compile_source
 
-PREFIX='from lightvm import profile,setting,rgb,init,render,SpriteBatch\nprofile("layer/1")\n'
+PREFIX='from lightvm import profile,setting,rgb,init,render,SpriteBatch,Sprite,Transform,ColorTransform,PixelArray\nprofile("layer/1")\n'
 
 class CompositionTests(unittest.TestCase):
     def setUp(self):
@@ -21,8 +21,8 @@ class CompositionTests(unittest.TestCase):
             {'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':self.count}},
             {'id':'second','type':'ws2812b','config':{'pin':'GP17','count':self.count}}]})
     def tearDown(self): self.client.close()
-    def save(self,name,draw,setup=''):
-        source=PREFIX+('@init\ndef setup(ctx,runtime):\n'+setup if setup else '')+'@render\ndef draw(ctx,runtime,pixels):\n'+draw
+    def save(self,name,draw,setup='',definitions=''):
+        source=PREFIX+definitions+('@init\ndef setup(ctx,runtime):\n'+setup if setup else '')+'@render\ndef draw(ctx,runtime,pixels):\n'+draw
         artifact=compile_source(source)
         self.assertTrue(artifact.success,artifact.diagnostics)
         self.client.save_procedure(name,artifact.bytecode)
@@ -112,8 +112,9 @@ class CompositionTests(unittest.TestCase):
         self.assertEqual(self.client.scene_snapshot(device='lights')[1],before)
 
     def test_seeded_sprite_pool_births_expiry_and_native_alpha(self):
-        self.save('sprites',' ctx.stars.advance(runtime.delta)\n if runtime.delta>0.0: ctx.stars.spawn(rgb(255,255,255),1.0)\n pixels.sprites(ctx.stars)\n',
-                  ' ctx.stars=SpriteBatch(3)\n')
+        definition = 'def particle_init(s,runtime,position):\n s.position=position\ndef particle_render(s,runtime,pixels):\n if runtime.time>=1.0:\n  s.remove()\n  return\n pixels.fill(rgb(255,255,255))\n s.transform=Transform(translate=s.position)\n s.color=ColorTransform(alpha=1.0-runtime.time)\nParticle=Sprite(width=1,init=particle_init,render=particle_render)\n'
+        self.save('sprites',' if runtime.delta>0.0: ctx.stars.spawn(ctx.births%runtime.pixel_count)\n ctx.births+=1\n ctx.stars.render(runtime,pixels)\n',
+                  ' ctx.births=0\n ctx.stars=SpriteBatch(Particle,capacity=3)\n',definition)
         self.scene([{'id':'fg','procedure':'sprites'}])
         self.frame(100);first=self.layer('fg')
         self.assertEqual(sum(first[i+3]>0 for i in range(0,len(first),4)),1)
@@ -155,9 +156,9 @@ class CompositionTests(unittest.TestCase):
         self.client.activate('legacy',device='lights');self.assertEqual(self.client.status_fields()['mode'],'bytecode')
 
     def test_budget_rejection_and_stale_requests_are_atomic(self):
-        self.save('sprite',' pixels.sprites(ctx.stars)\n',' ctx.capacity=setting(3,minimum=1)\n ctx.stars=SpriteBatch(ctx.capacity)\n')
+        self.save('sprite',' ctx.stars.render(runtime,pixels)\n',' ctx.capacity=setting(3,minimum=1)\n ctx.stars=SpriteBatch(Particle,capacity=ctx.capacity)\n','def particle_render(s,runtime,pixels):\n pixels.fill(rgb(255,255,255))\nParticle=Sprite(width=1,render=particle_render)\n')
         self.scene([{'id':'fg','procedure':'sprite'}]);before=self.state('fg');heap=self.client.status_fields()['heap']
-        with self.assertRaises(ProtocolError):self.client.activate('sprite',device='lights',layer='fg',settings={'capacity':self.count+1})
+        with self.assertRaises(ProtocolError):self.client.activate('sprite',device='lights',layer='fg',settings={'capacity':65536})
         self.assertEqual(self.state('fg')['generation'],before['generation']);self.assertEqual(self.client.status_fields()['heap'],heap)
         revision=self.client.scene(device='lights')['revision']
         with self.assertRaises(ProtocolError):self.client.manage('scene_layer_opacity',device='lights',layer='fg',opacity=128,expected_revision=revision-1)
@@ -209,7 +210,7 @@ class CompositionTests(unittest.TestCase):
 
     def test_native_resource_kinds_are_validated_before_execution(self):
         for setup,draw in [(' ctx.data=array("I",[0])\n',' pixels.sprites(ctx.data)\n'),
-                           (' ctx.data=SpriteBatch(1)\n',' pixels.palette(ctx.data,0.0,1.0)\n')]:
+                           (' ctx.data=PixelArray(1)\n',' pixels.palette(ctx.data,0.0,1.0)\n')]:
             source='from array import array\n'+PREFIX+'@init\ndef setup(ctx,runtime):\n'+setup+'@render\ndef draw(ctx,runtime,pixels):\n'+draw
             artifact=compile_source(source);self.assertTrue(artifact.success,artifact.diagnostics)
             heap=self.client.status_fields()['heap']
