@@ -115,11 +115,15 @@ class MultiDeviceTests(unittest.TestCase):
         self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
 
     def test_more_than_eight_devices_and_no_aggregate_pixel_ceiling(self):
-        config = configuration(9, 200)
+        capacity = self.client.describe()['pixel_capacity']
+        count = min(capacity, max(200, capacity // 9 + 1))
+        # Each output obeys its board limit; only the aggregate exceeds it.
+        self.assertGreater(9 * count, capacity)
+        config = configuration(9, count)
         self.client.configure(config)
         self.assertEqual(len(self.client.describe()['devices']), 9)
         self.load('color', 'lights8')
-        self.assertEqual(len(self.client.snapshot(device='lights8')[1]), 600)
+        self.assertEqual(len(self.client.snapshot(device='lights8')[1]), count * 3)
         # Reordering device declarations must preserve identity and generation.
         before = self.client.program_parameters(device='lights8')
         config['devices'].reverse()
