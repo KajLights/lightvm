@@ -208,7 +208,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"STATUS takes no payload"); break; }
         const PlatformInfo *info=platform_info();
         char message[FRAME_LIMIT-8];
-        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s code_storage=%s frames=%lu render_us=%lu show_us=%lu control_abi=%u generation=%lu animation_error=%.99s",
+        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s code_storage=%s frames=%lu render_us=%lu show_us=%lu control_abi=%u generation=%lu animation_error=",
                  LIGHTVM_ANIMATION_API_VERSION,LIGHTVM_PROTOCOL_VERSION,
                  info->platform,info->board,info->output,
                  a->ready,a->uploading,(unsigned long)a->received,MODULE_LIMIT,
@@ -217,7 +217,11 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
                  (unsigned long)(a->target && a->target->count ? a->target->config.brightness : 0),FRAME_INTERVAL_US,
                  a->playing ? "bytecode" : "idle", a->ready ? (a->from_storage ? "flash" : "ram") : "none",
                  (unsigned long)a->frame_count,(unsigned long)a->render_us,
-                 (unsigned long)a->show_us,CONTROL_ABI_VERSION,(unsigned long)a->generation,a->animation_error[0] ? a->animation_error : "-");
+                 (unsigned long)a->show_us,CONTROL_ABI_VERSION,(unsigned long)a->generation);
+        const char *error=a->animation_error[0]?a->animation_error:"-";
+        size_t used=strlen(message),length=strlen(error);
+        if(length>=sizeof(message)-used)length=sizeof(message)-used-1;
+        memcpy(message+used,error,length);message[used+length]=0;
         reply(a,id,STATUS_OK,0,message); break;
     }
     case CMD_BEGIN: case CMD_CHUNK: case CMD_FINISH:
