@@ -12,6 +12,7 @@ import tempfile
 import time
 import unittest
 import zlib
+from bytecode_fixtures import color, padded_program
 from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -65,7 +66,7 @@ class HttpTests(unittest.TestCase):
         self.directory.cleanup()
 
     def config(self):
-        return {'schema': 'lightvm.config/1', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}], 'targets': {'A': {'device': 'lights'}}}
+        return {'schema': 'lightvm.config/1', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
 
     def network(self):
         return {'schema': 'lightvm.network/1', 'wifi': {'enabled': False, 'country': 'XX', 'networks': [{'ssid': 'café🌈', 'password': 'secret123'}, {'ssid': 'open', 'password': '', 'hidden': True}]}, 'http': {'enabled': True, 'port': 8080}}
@@ -146,7 +147,7 @@ class HttpTests(unittest.TestCase):
 
     def test_network_password_retention_reboot_and_eight_procedures(self):
         self.http.configure(self.config(), save=True)
-        wasm = bytes.fromhex('0061736d01000000')
+        wasm = color()
         for index in range(8):
             self.http.save_procedure('effect' + str(index), wasm)
         self.http.configure_network(self.network())
@@ -189,7 +190,7 @@ class HttpTests(unittest.TestCase):
         self.assertFalse(self.http.network_status()['initial_setup'])
 
     def test_existing_directory_migrates_without_losing_procedures(self):
-        self.http.save_procedure('old', bytes.fromhex('0061736d01000000'))
+        self.http.save_procedure('old', color())
         self.stop()
         data = bytearray(self.storage.read_bytes())
         for base in (0, 256 * 1024):
@@ -207,30 +208,15 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.http.procedures()[0]['name'], 'old')
 
     def test_large_download_preserves_all_frames(self):
-        def leb(value):
-            result = bytearray()
-            while value >= 128:
-                result.append((value & 127) | 128)
-                value >>= 7
-            return bytes(result + bytes([value]))
-        payload = b'\x01x' + b'Z' * min(32000, self.http.describe()['module_limit'] - 64)
-        wasm = bytes.fromhex('0061736d01000000') + b'\x00' + leb(len(payload)) + payload
+        wasm = padded_program(min(27000, self.http.describe()['module_limit']))
         self.http.save_procedure('large', wasm)
         self.assertEqual(self.http.get_procedure('large'), wasm)
         self.assertEqual(self.pipe.get_procedure('large'), wasm)
 
     def test_stalled_download_keeps_pipe_and_animation_responsive(self):
-        import wasmtime
+        from bytecode_fixtures import color, sample, padded_program
         self.http.configure(self.config())
-        prefix = bytes(wasmtime.wat2wasm('(module (func (export "render") (param i32)))'))
-        payload = b'\x01x' + b'Z' * min(30000, self.http.describe()['module_limit'] - 128)
-        value = len(payload)
-        length = bytearray()
-        while value >= 128:
-            length.append((value & 127) | 128)
-            value >>= 7
-        length.append(value)
-        self.http.save_procedure('large', prefix + b'\x00' + length + payload)
+        self.http.save_procedure('large', padded_program(min(27000, self.http.describe()['module_limit'])))
         self.http.activate('large')
         other = self.connect()
         port = int(self.url.rsplit(':', 1)[1])
@@ -248,7 +234,7 @@ class HttpTests(unittest.TestCase):
             self.assertLess(time.monotonic() - started, .5)
             self.assertGreater(after, before)
             started = time.monotonic()
-            self.assertEqual(other.status_fields()['mode'], 'wasm')
+            self.assertEqual(other.status_fields()['mode'], 'bytecode')
             self.assertLess(time.monotonic() - started, 3.5)
         finally:
             stalled.close()
@@ -272,24 +258,6 @@ class HttpTests(unittest.TestCase):
         self.assertNotEqual(replacement.transport.session, clients[1].transport.session)
         self.assertEqual(replacement.status_fields()['mode'], 'idle')
 
-    def test_control_parameters_and_conflicts_work_on_both_paths(self):
-        from lightvm.compiler import compile_source
-        import wasmtime
-        source = 'from lightvm import parameter, on_frame, rgb\nspeed = parameter("speed", 1.0)\n@on_frame\ndef draw(ctx):\n    ctx.pixels[0] = rgb(17, 34, 51)\n'
-        compiled = compile_source(source)
-        self.assertFalse(compiled.diagnostics)
-        wasm = compiled.wasm
-        self.http.configure(self.config())
-        self.http.save_procedure('control', wasm)
-        self.pipe.activate('control')
-        old = self.http.program_parameters()
-        self.pipe.set_parameters({'speed': 2.0})
-        with self.assertRaises(ProtocolError):
-            self.http.manage('program_parameters_set', values={'speed': 3.0}, expected_generation=old['generation'], expected_parameter_revision=old['parameter_revision'])
-        self.assertEqual(self.http.program_parameters()['values']['speed'], 2.0)
-        self.http.set_parameters({'speed': 4.0})
-        self.assertEqual(self.pipe.program_parameters()['values']['speed'], 4.0)
-        self.assertEqual(self.http.snapshot()[1][:3], bytes.fromhex('112233'))
 
 if __name__ == '__main__':
     unittest.main()

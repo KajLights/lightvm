@@ -1,0 +1,9 @@
+; Observe the output GPIO through the chip's input path. At 8 MHz, sample
+; around 500-625 ns after the rising edge, between zero/one pulse widths.
+.program output_monitor
+.wrap_target
+    wait 1 pin 0
+    nop [2]
+    in pins, 1
+    wait 0 pin 0
+.wrap

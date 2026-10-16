@@ -77,10 +77,10 @@ test("a timeout closes the connection instead of accepting a late upload reply",
 const root = fileURLToPath(new URL("../", import.meta.url));
 const receiver = process.env.LIGHTVM_RECEIVER || pathJoin(root, "build/host/lightvm");
 const python = pathJoin(root, "build/venv/bin/python");
-test("browser protocol uploads and plays a real animation on wasm3", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
+test("browser protocol uploads and plays a real animation on bytecode", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
   const directory = mkdtempSync(pathJoin(tmpdir(), "lightvm-editor-"));
-  const program = pathJoin(directory, "rainbow.wasm");
-  execFileSync(python, ["-m", "lightvm.compiler", "samples/python/rainbow.py", "-o", program], { cwd: root });
+  const program = pathJoin(directory, "rainbow.lbc");
+  execFileSync(python, ["-m", "lightvm.compiler", "examples/animations/rainbow.py", "-o", program], { cwd: root });
   const process = spawn(receiver, [], { stdio: ["pipe", "pipe", "pipe"] });
   const transport = {
     write: bytes => new Promise((resolve, reject) => process.stdin.write(bytes, error => error ? reject(error) : resolve())),
@@ -96,7 +96,7 @@ test("browser protocol uploads and plays a real animation on wasm3", { skip: !ex
     assert.equal(description.control_abi, 2);
     const config = Buffer.from(JSON.stringify({ schema: "lightvm.config/1", devices: [
       { id: "lights", type: "ws2812b", config: { pin: "GP16", count: 5 } },
-    ], targets: { A: { device: "lights" } } }));
+    ] }));
     await client.command(12, Buffer.from(JSON.stringify({ kind: "config", size: config.length, crc32: crc32(config) })));
     const chunk = Buffer.alloc(4 + config.length); config.copy(chunk, 4);
     await client.command(13, chunk); await client.command(14);
@@ -106,7 +106,7 @@ test("browser protocol uploads and plays a real animation on wasm3", { skip: !ex
     await client.upload(readFileSync(program), description.module_limit, value => progress.push(value));
     assert.equal(progress.at(-1), 1);
     assert.equal((await client.command(COMMAND.PLAY)).value, 5);
-    assert.equal((await client.status()).mode, "wasm");
+    assert.equal((await client.status()).mode, "bytecode");
     const snapshot = await client.manage("program_snapshot");
     assert.equal(snapshot.pixels.length, 15);
     await client.command(COMMAND.STOP);

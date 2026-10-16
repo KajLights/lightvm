@@ -1,5 +1,7 @@
 #include "app.h"
+#include "runtime.h"
 #include "json.h"
+#include "vm_allocator.h"
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
@@ -48,73 +50,188 @@ static void vm_send(void *context, uint8_t type, uint16_t id, const uint8_t *p, 
     }
     if (!a->booting) a->send(a->transport, type, id, p, size);
 }
+AppDevice *app_device(App *a,const char *id){
+    if(!id||!id[0])return a->hardware.default_device>=0&&a->device_count?a->devices[a->hardware.default_device]:&a->fallback;
+    for(unsigned i=0;i<a->device_count;i++)if(!strcmp(id,a->devices[i]->hardware.id))return a->devices[i];
+    return NULL;
+}
 static void empty_config(App *a) {
-    memset(&a->hardware, 0, sizeof(a->hardware));
-    a->config_size = (uint32_t)strlen(EMPTY_CONFIG);
-    memcpy(a->config_json, EMPTY_CONFIG, a->config_size);
-    a->vm.target = NULL; a->vm.output = NULL;
+    hardware_destroy(&a->hardware);
+    for(unsigned i=0;i<a->device_count;i++){
+        vm_destroy(&a->devices[i]->vm);pixels_destroy(&a->devices[i]->pixels);platform_free(a->devices[i]);
+    }
+    platform_free(a->devices);a->devices=NULL;a->device_count=0;a->upload_device=&a->fallback;
+    a->config_size=(uint32_t)strlen(EMPTY_CONFIG);memcpy(a->config_json,EMPTY_CONFIG,a->config_size);
+}
+/* Arguments refer to a byte span in the same JSON that hardware_parse checked.
+ * Keep token storage off the native stack while loading/preparing bytecode. */
+static Json *startup_arguments(const HardwareDevice *device,const void *data) {
+    if(!device->args_size)return NULL;
+    Json *j=platform_calloc(1,sizeof(*j));
+    if(j&&!json_parse(j,(const uint8_t *)data+device->args_offset,device->args_size)){
+        platform_free(j);return NULL;
+    }
+    return j;
+}
+static int argument_object(const Json *j) { return j&&j->tokens[0].children?0:-1; }
+static void startup_error(char *error,size_t capacity,const HardwareDevice *device,const VmInstance *candidate,const char *failure) {
+    const char *argument=candidate&&candidate->portable?candidate->portable->argument_error:"";
+    snprintf(error,capacity,"devices[%s].startup%s%s: %s",device->id,
+             argument[0]?".args.":"",argument,failure);
+}
+static const char *prepare_instance(App *a,VmInstance *candidate,const StoreEntry *entry,const Json *request,int args) {
+    const char *error=vm_bind_storage(candidate,&a->store,entry)?vm_load(candidate):"package reference limit exceeded";
+    if(!error)error=control_settings(candidate,request,args);
+    if(!error){candidate->ready=true;if(candidate->target)error=control_prepare(candidate);}
+    return error;
 }
 static bool config_validate(App *a, const void *data, uint32_t size, HardwareConfig *config, char *error, size_t capacity) {
-    if (!hardware_parse(data, size, config, error, capacity)) return false;
-    if (config->startup[0] && !store_find(&a->store, config->startup)) {
-        snprintf(error, capacity, "startup.procedure: stored procedure does not exist"); return false;
+    if(!hardware_parse(data,size,config,error,capacity))return false;
+    /* Boot admits hardware first, then attempts each invocation independently. */
+    for(unsigned i=0;!a->booting&&i<config->count;i++){
+        HardwareDevice *device=&config->devices[i];
+        if(!device->startup[0])continue;
+        const StoreEntry *entry=store_find(&a->store,device->startup);
+        if(!entry){
+            snprintf(error,capacity,"devices[%s].startup.procedure: stored procedure does not exist",device->id);
+            hardware_destroy(config);return false;
+        }
+        Json *args=startup_arguments(device,data);
+        VmInstance *candidate=demo_calloc(1,sizeof(*candidate));
+        PixelBuffer target={.count=device->pixels.count};
+        const char *failure=NULL;
+        if(!candidate||(device->args_size&&!args))failure="startup.args: allocation failed";
+        if(candidate)vm_init(candidate,&target,NULL,NULL);
+        if(!failure)failure=prepare_instance(a,candidate,entry,args,argument_object(args));
+        if(failure)startup_error(error,capacity,device,candidate,failure);
+        if(candidate){control_destroy(candidate);demo_free(candidate);}
+        platform_free(args);
+        if(failure){hardware_destroy(config);return false;}
     }
     return true;
 }
-static bool config_apply(App *a, const HardwareConfig *config, const void *data, uint32_t size) {
-    vm_destroy(&a->vm); a->vm.uploading = false;
-    a->active_procedure[0] = 0; a->active_crc = 0;
-    pixels_destroy(&a->pixels);
+static bool same_device(const HardwareDevice *a,const HardwareDevice *b){
+    return !strcmp(a->id,b->id)&&!strcmp(a->type,b->type)&&a->pixels.pin==b->pixels.pin&&a->pixels.count==b->pixels.count&&
+        a->pixels.brightness==b->pixels.brightness&&!strcmp(a->pixels.order,b->pixels.order);
+}
+static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t size){
+    AppDevice **next=platform_calloc(config->count,sizeof(*next));
+    if(config->count&&!next){hardware_destroy(config);return false;}
+    /* Device identity, not array position, owns its running instance. */
+    for(unsigned n=0;n<config->count;n++)for(unsigned i=0;i<a->device_count;i++)
+        if(a->devices[i]&&same_device(&a->devices[i]->hardware,&config->devices[n])){next[n]=a->devices[i];a->devices[i]=NULL;break;}
+    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]){
+        vm_destroy(&a->devices[i]->vm);pixels_destroy(&a->devices[i]->pixels);platform_free(a->devices[i]);
+    }
+    platform_free(a->devices);a->devices=next;a->device_count=config->count;
+    hardware_destroy(&a->hardware);a->hardware=*config;memset(config,0,sizeof(*config));config->default_device=-1;
     ++a->revision;
-    if (config->has_pixels && !pixels_init(&a->pixels, &config->pixels, device_type("ws2812b"))) {
-        empty_config(a); return false;
+    for(unsigned i=0;i<a->device_count;i++)if(!a->devices[i]){
+        AppDevice *d=platform_calloc(1,sizeof(*d));
+        if(!d){ /* Make partial construction safe for cleanup. */
+            for(unsigned n=i;n<a->device_count;n++)if(!a->devices[n])a->devices[n]=NULL;
+            goto failed;
+        }
+        a->devices[i]=d;d->hardware=a->hardware.devices[i];vm_init(&d->vm,NULL,vm_send,a);
+        strcpy(d->vm.device,d->hardware.id);
+        if(!pixels_init(&d->pixels,&d->hardware.pixels,device_type(d->hardware.type)))goto failed;
+        d->vm.target=&d->pixels;d->vm.output=&d->pixels;
     }
-    a->hardware = *config;
-    memmove(a->config_json, data, size); a->config_size = size;
-    a->vm.target = config->target_a ? &a->pixels : NULL;
-    a->vm.output = a->vm.target;
-    return true;
+    for(unsigned i=0;i<a->device_count;i++)a->devices[i]->hardware=a->hardware.devices[i];
+    memmove(a->config_json,data,size);a->config_size=size;a->upload_device=&a->fallback;return true;
+failed:
+    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]){
+        vm_destroy(&a->devices[i]->vm);pixels_destroy(&a->devices[i]->pixels);platform_free(a->devices[i]);a->devices[i]=NULL;
+    }
+    platform_free(a->devices);a->devices=NULL;a->device_count=0;empty_config(a);return false;
 }
-static bool activate(App *a, const char *name, uint16_t id, const char *action, const char *export_name, const char *slot) {
-    if (strcmp(slot,"A")) { error_reply(a,id,STATUS_CONFIG,"unsupported_slot","this runtime supports deployment slot A only"); return false; }
-    const StoreEntry *entry = store_find(&a->store, name);
-    if (!entry || !strcmp(name, STORE_CONFIG)) { error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); return false; }
-    if (strcmp(action,"play") && strcmp(action,"run")) { error_reply(a,id,STATUS_PROTOCOL,"invalid_action","action must be play or run"); return false; }
-    if (!strcmp(action,"play") && !a->vm.target) { error_reply(a,id,STATUS_CONFIG,"missing_target","target A has no configured output"); return false; }
-    vm_destroy(&a->vm); a->vm.uploading=false; a->active_procedure[0]=0; a->active_crc=0;
-    a->vm.expected=entry->size; a->vm.received=entry->size;
-    if (!store_read(&a->store,entry,0,a->vm.bytes,entry->size) || crc32_bytes(a->vm.bytes,entry->size)!=entry->crc) {
-        error_reply(a,id,STATUS_STORAGE,"read_failed","procedure read/checksum failed"); return false;
+/* Package extents are immutable and pinned independently of catalogue names. */
+static bool update_store(App *a,const char *name,const void *data,uint32_t size,bool remove) {
+    return remove?store_delete(&a->store,name):store_put(&a->store,name,data,size);
+}
+static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const char *name,bool play,const Json *request,int settings) {
+    if(d->vm.generation>=UINT32_MAX-1){
+        if(a->booting)startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,NULL,"program generation exhausted");
+        return "program generation exhausted";
     }
-    M3Result error=vm_load(&a->vm);
-    if (error) { vm_destroy(&a->vm); error_reply(a,id,STATUS_LOAD,"load_failed",error); return false; }
-    a->vm.ready=true; memcpy(a->vm.slot,slot,strlen(slot)+1);
-    memcpy(a->active_procedure,name,strlen(name)+1); a->active_crc=entry->crc;
-    vm_command(&a->vm,!strcmp(action,"play") ? CMD_PLAY : CMD_RUN,id,(const uint8_t *)export_name,
-               !strcmp(action,"run") ? strlen(export_name) : 0);
-    if (a->last_code) { vm_destroy(&a->vm); a->active_procedure[0]=0; a->active_crc=0; return false; }
-    return true;
+    VmInstance *candidate=demo_calloc(1,sizeof(*candidate));
+    if(!candidate){
+        if(a->booting)startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,NULL,"replacement exceeds peak memory budget");
+        return "replacement exceeds peak memory budget";
+    }
+    vm_init(candidate,d->vm.target,d->vm.send,d->vm.transport);candidate->output=d->vm.output;candidate->generation=d->vm.generation+1;
+    memcpy(candidate->slot,d->vm.slot,sizeof(candidate->slot));
+    memcpy(candidate->device,d->vm.device,sizeof(candidate->device));
+    const char *error=prepare_instance(a,candidate,entry,request,settings);
+    if(!error&&play&&!candidate->target)error="slot has no configured output";
+    bool was_playing=d->vm.playing,output_attempted=false,output_succeeded=false;
+    if(!error&&play&&candidate->output){
+        d->vm.playing=false;output_attempted=true;vm_output_cancel(&d->vm);
+        PixelBuffer *output=candidate->output;const uint8_t *frame=control_frame(candidate);
+        output_succeeded=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&output->type->show(output->driver,frame,output->count);
+        control_presented(candidate,output_succeeded);
+    }
+    if(error){
+        if(a->booting)startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,candidate,error);
+        if(output_attempted&&d->vm.control.output_valid&&d->vm.output)
+            (void)d->vm.output->type->show(d->vm.output->driver,d->vm.output->rgb,d->vm.output->count);
+        d->vm.playing=was_playing;control_destroy(candidate);demo_free(candidate);return error;
+    }
+    if(output_succeeded){memcpy(candidate->output->rgb,control_frame(candidate),(size_t)candidate->control.count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
+    control_destroy(&d->vm);d->vm=*candidate;demo_free(candidate);vm_rebind(&d->vm);
+    d->vm.playing=play;d->vm.last_frame=platform_time_us();d->vm.next_frame=d->vm.last_frame;
+    if(name){strcpy(d->active_procedure,name);d->active_crc=entry->crc;}else{d->active_procedure[0]=0;d->active_crc=0;}
+    return NULL;
+}
+static bool activate(App *a,const char *name,uint16_t id,const char *action,const char *export_name,const char *device,const Json *request,int settings) {
+    (void)export_name;
+    AppDevice *d=app_device(a,device);
+    if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_device","device is not configured");return false;}
+    const StoreEntry *entry=store_find(&a->store,name);
+    if(!entry||!strcmp(name,STORE_CONFIG)||!strcmp(name,STORE_NETWORK)){error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist");return false;}
+    if(strcmp(action,"play")){error_reply(a,id,STATUS_RUN,"invalid_action","animation profiles execute through PLAY/FRAME");return false;}
+    const char *error=install(a,d,entry,name,true,request,settings);
+    if(error){if(!a->booting)error_reply(a,id,STATUS_LOAD,"activation_failed",error);return false;}
+    reply(a,id,STATUS_OK,(int32_t)d->vm.control.count,"animation activated");return true;
+}
+static void service(void *context) {
+    App *a=context;
+    bool previous=a->command_active;a->command_active=true;
+    for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]&&!runtime_owns(&a->devices[i]->vm))vm_tick_budget(&a->devices[i]->vm,64);
+    if(a->service_io)a->service_io(a->service_context);
+    a->command_active=previous;
+    if(!previous&&a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
 }
 void app_init(App *a, SendMessage send, void *transport) {
-    memset(a,0,sizeof(*a)); a->connection_sequence=1; a->send=send; a->transport=transport;
+    memset(a,0,sizeof(*a)); a->connection_sequence=1; a->upload.pin=-1; a->send=send; a->transport=transport;
 #if LIGHTVM_BOOT_SEQUENCE
     (void)boot_sequence_init(&a->boot_sequence);
 #endif
     network_init(&a->network);
     a->network.recovery=LIGHTVM_POWER_RECOVERY && app_boot_sequence_triggered(a);
     platform_identity(a->device_id,sizeof(a->device_id),a->boot_id,sizeof(a->boot_id));
-    vm_init(&a->vm,NULL,vm_send,a); empty_config(a);
+    vm_init(&a->fallback.vm,NULL,vm_send,a);
+    empty_config(a);runtime_services(service,a);
     a->booting=true;
     if (!store_mount(&a->store)) snprintf(a->boot_error,sizeof(a->boot_error),"storage: no valid snapshot or read failure");
     const StoreEntry *config=store_find(&a->store,STORE_CONFIG);
     if (config) {
         HardwareConfig hardware;
         char error[160];
-        if (!store_read(&a->store,config,0,a->config_json,config->size)) snprintf(a->boot_error,sizeof(a->boot_error),"configuration read failed");
-        else if (!config_validate(a,a->config_json,config->size,&hardware,error,sizeof(error))) snprintf(a->boot_error,sizeof(a->boot_error),"%s",error);
+        if (!store_read(&a->store,config,0,a->config_json,config->size)) { snprintf(a->boot_error,sizeof(a->boot_error),"configuration read failed"); empty_config(a); }
+        else if (!config_validate(a,a->config_json,config->size,&hardware,error,sizeof(error))) { snprintf(a->boot_error,sizeof(a->boot_error),"%s",error); empty_config(a); }
         else if (!config_apply(a,&hardware,a->config_json,config->size)) snprintf(a->boot_error,sizeof(a->boot_error),"native device initialization failed");
-        else if (hardware.startup[0] && !a->network.recovery) (void)activate(a,hardware.startup,0,"play","","A");
-        if (a->boot_error[0]) { vm_destroy(&a->vm); pixels_destroy(&a->pixels); empty_config(a); }
+        else if(!a->network.recovery) {
+            for(unsigned i=0;i<a->hardware.count;i++){
+                HardwareDevice *d=&a->hardware.devices[i];
+                if(!d->startup[0])continue;
+                Json *args=startup_arguments(d,a->config_json);
+                if(d->args_size&&!args)startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"args: allocation failed");
+                else if(!store_find(&a->store,d->startup))startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"procedure: stored procedure does not exist");
+                else (void)activate(a,d->startup,0,"play","",d->id,args,argument_object(args));
+                platform_free(args);
+            }
+        }
     }
     const StoreEntry *saved_network=store_find(&a->store,STORE_NETWORK);
     if (saved_network) {
@@ -128,7 +245,11 @@ void app_init(App *a, SendMessage send, void *transport) {
     }
     a->booting=false;
 }
-void app_destroy(App *a) { vm_destroy(&a->vm); pixels_destroy(&a->pixels); }
+void app_destroy(App *a) {
+    runtime_services(NULL,NULL);
+    store_upload_cancel(&a->upload);
+    empty_config(a);vm_destroy(&a->fallback.vm);
+}
 bool app_boot_sequence_triggered(const App *a) {
 #if LIGHTVM_BOOT_SEQUENCE
     return a->boot_sequence.triggered;
@@ -148,11 +269,12 @@ void app_tick(App *a) {
         memset(&a->pending_network,0,sizeof(a->pending_network));
     }
     if (!a->network_pending) network_tick(&a->network,now);
-    vm_tick(&a->vm);
+    unsigned first=a->device_count?a->schedule_cursor++%a->device_count:0;
+    for(unsigned i=0;i<a->device_count;i++)vm_tick(&a->devices[(first+i)%a->device_count]->vm);
 }
 static void resume_clock(App *a) {
     // Persistence can stall physical output; retain guest state and discard the gap.
-    a->vm.last_frame=platform_time_us(); a->vm.next_frame=a->vm.last_frame+FRAME_INTERVAL_US;
+    for(unsigned i=0;i<a->device_count;i++){a->devices[i]->vm.last_frame=platform_time_us();a->devices[i]->vm.next_frame=a->devices[i]->vm.last_frame+FRAME_INTERVAL_US;}
 }
 static void describe(App *a, uint16_t id) {
     Writer w={.app=a,.id=id};
@@ -171,16 +293,37 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"error\":"); quoted(&w,a->boot_sequence.error); literal(&w,"}");
 #endif
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
+    literal(&w,",\"bytecode_format\":\"LBC1/2\"");
     literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
     literal(&w,",\"board\":"); quoted(&w,info->board);
-    literal(&w,",\"device_types\":[{\"type\":\"ws2812b\",\"max_instances\":1,\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}],\"pins\":[");
+    literal(&w,",\"device_types\":[{\"type\":\"ws2812b\",\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}],\"pins\":[");
     size_t count; const BoardPin *pins=platform_pins(&count);
     for (size_t i=0;i<count;++i) { if (i) literal(&w,","); quoted(&w,pins[i].name); }
     literal(&w,"],\"pixel_capacity\":"); number(&w,PIXEL_CAPACITY);
+    literal(&w,",\"devices\":[");unsigned described=0;
+    for(unsigned i=0;i<a->device_count;i++){
+        AppDevice *d=a->devices[i];HardwareDevice *hw=&d->hardware;
+        if(described++)literal(&w,",");
+        literal(&w,"{\"id\":");quoted(&w,hw->id);literal(&w,",\"type\":");quoted(&w,hw->type);
+        literal(&w,",\"slot\":");quoted(&w,d->vm.slot);literal(&w,",\"pixels\":");number(&w,hw->pixels.count);
+        literal(&w,",\"ready\":");literal(&w,d->vm.ready?"true":"false");
+        literal(&w,",\"playing\":");literal(&w,d->vm.playing?"true":"false");
+        literal(&w,",\"frames\":");number(&w,d->vm.frame_count);
+        literal(&w,",\"render_us\":");number(&w,d->vm.render_us);
+        literal(&w,",\"show_us\":");number(&w,d->vm.show_us);
+        literal(&w,",\"active_procedure\":");quoted(&w,d->active_procedure);
+        literal(&w,",\"animation_error\":");quoted(&w,d->vm.animation_error);
+        literal(&w,"}");
+    }
+    literal(&w,"]");
     literal(&w,",\"config_limit\":"); number(&w,CONFIG_LIMIT);
     literal(&w,",\"module_limit\":"); number(&w,MODULE_LIMIT);
+    literal(&w,",\"instance_context_bytes\":"); number(&w,sizeof(VmInstance));
+    literal(&w,",\"app_context_bytes\":"); number(&w,sizeof(App));
+    literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
+    literal(&w,",\"upload_page_bytes\":"); number(&w,STORE_PAGE_BYTES);
     literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
-    literal(&w,",\"program_schemas\":[\"lightvm.program/3\"],\"slots\":[\"A\"],\"slot_binding\":\"deployment\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"black_before_step\",\"alpha\":false,\"parameter_limit\":8,\"composition\":false,\"program_generation\":"); number(&w,a->vm.generation);
+    literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"black_before_render\",\"alpha\":false,\"parameter_limit\":8,\"composition\":false,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
@@ -188,31 +331,39 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"catalog_revision\":"); number(&w,a->store.generation);
     literal(&w,",\"active_revision\":"); number(&w,a->revision);
     literal(&w,",\"saved_revision\":"); number(&w,a->store.config_revision);
-    literal(&w,",\"active_procedure\":"); quoted(&w,a->active_procedure);
-    literal(&w,",\"active_crc32\":"); number(&w,a->active_crc);
+    literal(&w,",\"active_procedure\":"); quoted(&w,app_device(a,NULL)->active_procedure);
+    literal(&w,",\"active_crc32\":"); number(&w,app_device(a,NULL)->active_crc);
     literal(&w,",\"boot_error\":"); quoted(&w,a->boot_error);
-    literal(&w,",\"animation_error\":"); quoted(&w,a->vm.animation_error);
+    literal(&w,",\"animation_error\":"); quoted(&w,app_device(a,NULL)->vm.animation_error);
     literal(&w,",\"target\":\"A\",\"uploading\":"); literal(&w,a->uploading ? "true" : "false");
     literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"capabilities");
 }
-typedef struct { char op[33],name[33],action[16],export_name[64],slot[33]; uint32_t revision,saved_revision; bool has_revision,has_saved_revision; } Arguments;
+typedef struct { char op[33],name[33],action[16],export_name[64],slot[33],device[33]; uint32_t revision,saved_revision,command,delta_ms; bool has_revision,has_saved_revision; } Arguments;
 static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
     Json j;
     memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->export_name,"run",4); memcpy(args->slot,"A",2);
-    static const char *const fields[]={"op","name","action","export","slot","expected_revision","expected_saved_revision",NULL};
+    static const char *const fields[]={"op","name","action","export","slot","device","expected_revision","expected_saved_revision","settings","command","delta_ms",NULL};
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) || !json_string(&j,json_get(&j,0,"op"),args->op,sizeof(args->op))) return false;
+    if(json_get(&j,0,"settings")>=0&&strcmp(args->op,"procedure_activate"))return false;
     int name=json_get(&j,0,"name"),action=json_get(&j,0,"action"),ex=json_get(&j,0,"export");
     if (name>=0 && (!json_string(&j,name,args->name,sizeof(args->name)) || !object_name_valid(args->name))) return false;
     if (action>=0 && !json_string(&j,action,args->action,sizeof(args->action))) return false;
     if (ex>=0 && !json_string(&j,ex,args->export_name,sizeof(args->export_name))) return false;
     int slot=json_get(&j,0,"slot");
     if (slot>=0 && !json_string(&j,slot,args->slot,sizeof(args->slot))) return false;
+    int command=json_get(&j,0,"command"),delta=json_get(&j,0,"delta_ms");
+    if(command>=0&&!json_u32(&j,command,&args->command))return false;
+    if(delta>=0&&!json_u32(&j,delta,&args->delta_ms))return false;
+    if(strcmp(args->slot,"A"))return false;
+    int device=json_get(&j,0,"device");
+    if(device>=0&&(!json_string(&j,device,args->device,sizeof(args->device))||!object_name_valid(args->device)))return false;
     int revision=json_get(&j,0,"expected_revision"),saved=json_get(&j,0,"expected_saved_revision");
     args->has_revision=revision>=0; args->has_saved_revision=saved>=0;
     return (!args->has_revision || json_u32(&j,revision,&args->revision)) && (!args->has_saved_revision || json_u32(&j,saved,&args->saved_revision));
 }
 static bool referenced(App *a,const char *name) {
-    if (!strcmp(a->hardware.startup,name) || !strcmp(a->active_procedure,name)) return true;
+    for(unsigned i=0;i<a->hardware.count;i++)if(!strcmp(a->hardware.devices[i].startup,name))return true;
+    for(unsigned i=0;i<a->device_count;i++)if(!strcmp(a->devices[i]->active_procedure,name))return true;
     const StoreEntry *entry=store_find(&a->store,STORE_CONFIG);
     if (entry) {
         // Reuse staging only when there is no pending transaction/candidate.
@@ -221,7 +372,10 @@ static bool referenced(App *a,const char *name) {
         HardwareConfig hardware; char error[160];
         bool valid=store_read(&a->store,entry,0,data,entry->size) && hardware_parse(data,entry->size,&hardware,error,sizeof(error));
         platform_free(data);
-        if (!valid || !strcmp(hardware.startup,name)) return true;
+        if(!valid)return true;
+        bool found=false;
+        for(unsigned i=0;i<hardware.count;i++)if(!strcmp(hardware.devices[i].startup,name))found=true;
+        hardware_destroy(&hardware);if(found)return true;
     }
     return false;
 }
@@ -235,9 +389,20 @@ static void read_object(App *a,uint16_t id,const StoreEntry *entry) {
     reply(a,id,STATUS_OK,(int32_t)entry->size,"object read");
 }
 static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
-    if (control_manage(&a->vm,id,p,size)) return;
     Arguments args;
     if (!arguments(p,size,&args)) { error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management JSON or fields"); return; }
+    if(!strcmp(args.op,"device_command")){
+        AppDevice *d=app_device(a,args.device);
+        if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_device","device is not configured");return;}
+        if(args.command!=CMD_STATUS&&args.command!=CMD_PLAY&&args.command!=CMD_STOP&&args.command!=CMD_FRAME&&args.command!=CMD_RESET){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","unsupported device command");return;}
+        if(args.delta_ms>1000){error_reply(a,id,STATUS_PROTOCOL,"invalid_delta","FRAME requires 0..1000 milliseconds");return;}
+        if(args.command==CMD_RESET){
+            d->active_procedure[0]=0;d->active_crc=0;
+            if(a->upload_owner&&a->upload_device==d&&d->vm.uploading){store_upload_cancel(&a->upload);a->upload_owner=0;d->vm.uploading=false;}
+        }
+        uint8_t delta[4];write_u32(delta,args.delta_ms);
+        vm_command(&d->vm,(uint8_t)args.command,id,args.command==CMD_FRAME?delta:NULL,args.command==CMD_FRAME?4:0);return;
+    }
     if (!strcmp(args.op,"session_close")) { app_disconnect(a,a->source); reply(a,id,STATUS_OK,0,"session closed; playback retained"); return; }
     if (!strcmp(args.op,"describe")) { describe(a,id); return; }
     if (!strcmp(args.op,"network_get")) {
@@ -269,7 +434,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         if (!strcmp(args.op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return; }
         if (!args.has_revision || args.revision!=a->store.network_revision || a->network_pending) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }
         char data[4096]; size_t count=network_json(&config,true,data,sizeof(data));
-        bool ok=count && store_put(&a->store,STORE_NETWORK,data,(uint32_t)count); resume_clock(a);
+        bool ok=count && update_store(a,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
         memset(data,0,sizeof(data));
         if (!ok) { error_reply(a,id,STATUS_STORAGE,"save_failed","network save failed; active settings retained"); return; }
         a->network.saved_valid=true; a->network_error[0]=0;
@@ -302,17 +467,17 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         if (!entry) error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); else read_object(a,id,entry);
         return;
     }
-    if (!strcmp(args.op,"procedure_activate") && a->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","finish or cancel the transient upload first"); return; }
-    if (!strcmp(args.op,"procedure_activate")) { (void)activate(a,args.name,id,args.action,args.export_name,args.slot); return; }
+    if (!strcmp(args.op,"procedure_activate") && a->upload_device->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","finish or cancel the transient upload first"); return; }
+    if (!strcmp(args.op,"procedure_activate")) { Json request;if(!json_parse(&request,p,size))return;(void)activate(a,args.name,id,args.action,args.export_name,args.device,&request,json_get(&request,0,"settings")); return; }
     if (!strcmp(args.op,"config_validate") || !strcmp(args.op,"config_apply")) {
         if (!a->staged || a->object_kind!=1 || a->upload_owner!=a->source) { error_reply(a,id,STATUS_CONFIG,"no_candidate","upload and finish a configuration first"); return; }
         HardwareConfig config; char error[160];
         if (!config_validate(a,a->staging,a->expected,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
-        if (!strcmp(args.op,"config_validate")) { reply(a,id,STATUS_OK,0,"configuration valid"); return; }
-        if (!args.has_revision || args.revision!=a->revision || a->revision==UINT32_MAX) { error_reply(a,id,STATUS_CONFIG,"stale_revision","expected active revision is required and must match"); return; }
+        if (!strcmp(args.op,"config_validate")) { hardware_destroy(&config); reply(a,id,STATUS_OK,0,"configuration valid"); return; }
+        if (!args.has_revision || args.revision!=a->revision || a->revision==UINT32_MAX) { hardware_destroy(&config); error_reply(a,id,STATUS_CONFIG,"stale_revision","expected active revision is required and must match"); return; }
         if (!config_apply(a,&config,a->staging,a->expected)) { error_reply(a,id,STATUS_CONFIG,"initialization_failed","native device initialization failed; active configuration is empty"); return; }
         a->boot_error[0]=0; a->staged=false; a->upload_owner=0;
-        reply(a,id,STATUS_OK,(int32_t)a->revision,"configuration applied in RAM; playback stopped"); return;
+        reply(a,id,STATUS_OK,(int32_t)a->revision,"configuration applied in RAM; unchanged devices retained"); return;
     }
     if (!strcmp(args.op,"config_save")) {
         if (!args.has_revision || args.revision!=a->revision || !args.has_saved_revision || args.saved_revision!=a->store.config_revision) {
@@ -320,7 +485,8 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         }
         HardwareConfig config; char error[160];
         if (!config_validate(a,a->config_json,a->config_size,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
-        bool ok=store_put(&a->store,STORE_CONFIG,a->config_json,a->config_size); resume_clock(a);
+        hardware_destroy(&config);
+        bool ok=store_put_config(&a->store,a->config_json,a->config_size); resume_clock(a);
         if (!ok) error_reply(a,id,STATUS_STORAGE,"save_failed","storage unavailable, full or write failed");
         else reply(a,id,STATUS_OK,(int32_t)a->store.config_revision,"configuration saved");
         return;
@@ -330,12 +496,12 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         bool ok;
         if (!strcmp(args.op,"procedure_save")) {
             if (!a->staged || a->object_kind!=2 || a->upload_owner!=a->source || strcmp(args.name,a->object_name)) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","upload and finish this named procedure first"); return; }
-            ok=store_put(&a->store,args.name,a->staging,a->expected);
-            if (ok) { a->staged=false; a->upload_owner=0; }
+            ok=store_publish(&a->store,&a->upload.entry);
+            if (ok) { a->staged=false; a->upload_owner=0; store_upload_cancel(&a->upload); }
         } else {
             if (!store_find(&a->store,args.name)) { error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); return; }
             if (referenced(a,args.name)) { error_reply(a,id,STATUS_STORAGE,"referenced","procedure is referenced by active/saved configuration or runtime"); return; }
-            ok=store_delete(&a->store,args.name);
+            ok=update_store(a,args.name,NULL,0,true);
         }
         resume_clock(a);
         if (!ok) error_reply(a,id,STATUS_STORAGE,"save_failed","storage unavailable, full or write failed");
@@ -355,6 +521,8 @@ static bool object_begin(App *a,const uint8_t *p,size_t size) {
     int n=json_get(&j,0,"name");
     if (object_kind==2 && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name))) return false;
     if (object_kind!=2 && n>=0) return false;
+    if(object_kind==2&&!store_upload_begin(&a->store,&a->upload,name,expected,crc))return false;
+    if(object_kind!=2)store_upload_cancel(&a->upload);
     a->object_kind=object_kind; a->expected=expected; a->expected_crc=crc; a->received=0;
     memcpy(a->object_name,name,sizeof(name)); a->uploading=true; a->staged=false;
     a->upload_deadline=platform_time_us()+30000000u; return true;
@@ -364,9 +532,8 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     if (a->upload_owner && a->upload_owner!=a->source && (type==CMD_BEGIN || type==CMD_OBJECT_BEGIN || type==CMD_CHUNK || type==CMD_FINISH || type==CMD_OBJECT_CHUNK || type==CMD_OBJECT_FINISH || type==CMD_OBJECT_CANCEL)) {
         error_reply(a,id,STATUS_BUSY,"upload_busy","upload belongs to another session"); return;
     }
-    if (type==CMD_MANAGE) { manage(a,id,p,size); return; }
     if (type==CMD_OBJECT_BEGIN) {
-        if (a->uploading || a->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","another upload is in progress; cancel it first"); return; }
+        if (a->uploading || a->upload_device->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","another upload is in progress; cancel it first"); return; }
         if (!object_begin(a,p,size)) error_reply(a,id,STATUS_UPLOAD,"invalid_upload","invalid object upload metadata or size");
         else { a->upload_owner=a->source; reply(a,id,STATUS_OK,0,"object upload started"); }
         return;
@@ -374,57 +541,108 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     if (type==CMD_OBJECT_CHUNK) {
         if (!a->uploading || size<=4) { error_reply(a,id,STATUS_UPLOAD,"no_upload","no upload or empty chunk"); return; }
         uint32_t offset=read_u32(p); size_t n=size-4;
-        if (offset<=a->received && n<=a->received-offset && !memcmp(a->staging+offset,p+4,n)) {
-            a->upload_deadline=platform_time_us()+30000000u; reply(a,id,STATUS_OK,(int32_t)a->received,"duplicate chunk"); return;
+        if(a->object_kind==2){
+            if(!store_upload_chunk(&a->upload,offset,p+4,n)){error_reply(a,id,STATUS_UPLOAD,"invalid_chunk","unexpected chunk or flash write failure");return;}
+            a->received=a->upload.received;
+        }else{
+            if(offset<=a->received&&n<=a->received-offset&&!memcmp(a->staging+offset,p+4,n)){reply(a,id,STATUS_OK,(int32_t)a->received,"duplicate chunk");return;}
+            if(offset!=a->received||n>a->expected-a->received){error_reply(a,id,STATUS_UPLOAD,"invalid_offset","unexpected chunk offset or size");return;}
+            memcpy(a->staging+offset,p+4,n);a->received+=(uint32_t)n;
         }
-        if (offset!=a->received || n>a->expected-a->received) { error_reply(a,id,STATUS_UPLOAD,"invalid_offset","unexpected chunk offset or size"); return; }
-        memcpy(a->staging+offset,p+4,n); a->received+=(uint32_t)n; a->upload_deadline=platform_time_us()+30000000u;
+        a->upload_deadline=platform_time_us()+30000000u;
         reply(a,id,STATUS_OK,(int32_t)a->received,"chunk accepted"); return;
     }
     if (type==CMD_OBJECT_FINISH) {
         if (size || !a->uploading || a->received!=a->expected) { error_reply(a,id,STATUS_UPLOAD,"incomplete_upload","object upload incomplete"); return; }
         a->uploading=false;
-        if (crc32_bytes(a->staging,a->expected)!=a->expected_crc) { error_reply(a,id,STATUS_UPLOAD,"checksum_mismatch","object checksum mismatch"); return; }
+        if (a->object_kind==2?!store_upload_finish(&a->upload):crc32_bytes(a->staging,a->expected)!=a->expected_crc) { error_reply(a,id,STATUS_UPLOAD,"checksum_mismatch","object checksum mismatch"); return; }
         if (a->object_kind==1) {
             HardwareConfig config; char error[160];
             if (!hardware_parse(a->staging,a->expected,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
+            hardware_destroy(&config);
         } else if (a->object_kind==3) {
             NetworkConfig config; char error[160];
             if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error))) { a->upload_owner=0; error_reply(a,id,STATUS_CONFIG,"invalid_network",error); return; }
         } else {
-            M3Result error=vm_validate(a->staging,a->expected);
+            const char * error=vm_validate_stored(&a->store,&a->upload.entry);
             if (error) { error_reply(a,id,STATUS_LOAD,"invalid_module",error); return; }
         }
         a->staged=true; a->upload_deadline=platform_time_us()+30000000u; reply(a,id,STATUS_OK,(int32_t)a->expected,"object staged; not saved or activated"); return;
     }
     if (type==CMD_OBJECT_CANCEL) {
         if (size) { error_reply(a,id,STATUS_PROTOCOL,"invalid_request","cancel takes no payload"); return; }
-        a->uploading=false; a->staged=false; a->vm.uploading=false; a->upload_owner=0; reply(a,id,STATUS_OK,0,"object upload cancelled"); return;
+        a->uploading=false; a->staged=false; a->upload_device->vm.uploading=false; a->upload_owner=0; store_upload_cancel(&a->upload); reply(a,id,STATUS_OK,0,"object upload cancelled"); return;
     }
-    if (type==CMD_BEGIN && (a->uploading || a->staged || a->vm.uploading)) { error_reply(a,id,STATUS_BUSY,"upload_busy","an object upload is in progress"); return; }
-    if (type==CMD_BEGIN && size==8 && read_u32(p)>=8 && read_u32(p)<=MODULE_LIMIT) { a->active_procedure[0]=0; a->active_crc=0; }
-    if (type==CMD_RESET && !size) { a->uploading=false; a->staged=false; a->active_procedure[0]=0; a->active_crc=0; }
-    vm_command(&a->vm,type,id,p,size);
-    if (type==CMD_BEGIN && a->last_code==STATUS_OK) a->upload_owner=a->source;
-    if ((type==CMD_CHUNK || type==CMD_BEGIN) && a->vm.uploading && a->upload_owner==a->source) a->upload_deadline=platform_time_us()+30000000u;
-    if (type==CMD_FINISH && !a->vm.uploading) a->upload_owner=0;
-    if (type==CMD_RESET && !size) a->upload_owner=0;
+    if(type==CMD_BEGIN){
+        if(a->uploading||a->staged||a->upload_device->vm.uploading){error_reply(a,id,STATUS_BUSY,"upload_busy","an upload is in progress");return;}
+        if(size<8||size>8+OBJECT_NAME_LIMIT||read_u32(p)<8||read_u32(p)>MODULE_LIMIT){reply(a,id,STATUS_UPLOAD,0,"invalid module size or device identifier");return;}
+        char device[OBJECT_NAME_LIMIT+1]={0};memcpy(device,p+8,size-8);
+        if(size>8&&(!object_name_valid(device)||strlen(device)!=size-8)){reply(a,id,STATUS_CONFIG,0,"invalid device identifier");return;}
+        AppDevice *destination=app_device(a,device);
+        if(!destination){reply(a,id,STATUS_CONFIG,0,"unknown device");return;}
+        if(!store_upload_begin(&a->store,&a->upload,"",read_u32(p),read_u32(p+4))){reply(a,id,STATUS_STORAGE,0,"no flash extent available for upload");return;}
+        a->upload_device=destination;
+        a->upload_device->vm.uploading=true;a->upload_owner=a->source;a->upload_deadline=platform_time_us()+30000000u;
+        reply(a,id,STATUS_OK,0,"flash upload started; active program retained");return;
+    }
+    if(type==CMD_CHUNK){
+        if(!a->upload_device->vm.uploading||size<=4||!store_upload_chunk(&a->upload,read_u32(p),p+4,size-4)){reply(a,id,STATUS_UPLOAD,0,"invalid upload chunk or flash write failure");return;}
+        a->upload_deadline=platform_time_us()+30000000u;reply(a,id,STATUS_OK,(int32_t)a->upload.received,"chunk accepted");return;
+    }
+    if(type==CMD_FINISH){
+        if(size||!a->upload_device->vm.uploading||a->upload.received!=a->upload.entry.size){reply(a,id,STATUS_UPLOAD,0,"upload incomplete");return;}
+        const char *error=NULL;bool checksum_ok=false;
+        if(!store_upload_finish(&a->upload))error="module checksum or flash write failure";
+        else {checksum_ok=true;error=install(a,a->upload_device,&a->upload.entry,NULL,false,NULL,-1);}
+        a->upload_device->vm.uploading=false;a->upload_owner=0;store_upload_cancel(&a->upload);
+        reply(a,id,error?(checksum_ok?STATUS_LOAD:STATUS_UPLOAD):STATUS_OK,0,error?error:"module loaded from flash");return;
+    }
+    if(type==CMD_RESET&&!size){a->upload_device->vm.uploading=false;a->uploading=false;a->staged=false;app_device(a,NULL)->active_procedure[0]=0;app_device(a,NULL)->active_crc=0;a->upload_owner=0;store_upload_cancel(&a->upload);}
+    vm_command(&app_device(a,NULL)->vm,type,id,p,size);
+
+}
+__attribute__((noinline)) static AppDevice *request_device(App *a,const uint8_t *p,size_t size){
+    Json j;char device[OBJECT_NAME_LIMIT+1]="";if(!json_parse(&j,p,size))return NULL;
+    int slot=json_get(&j,0,"slot");if(slot>=0&&!json_equal(&j,slot,"A"))return NULL;
+    int token=json_get(&j,0,"device");
+    if(token>=0&&(!json_string(&j,token,device,sizeof(device))||!object_name_valid(device)))return NULL;
+    return app_device(a,device);
+}
+static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
+    AppDevice *d=request_device(a,p,size);
+    if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_device","invalid request, unknown device or slot other than A");return;}
+    if(!control_manage(&d->vm,id,p,size))manage(a,id,p,size);
 }
 void app_command(void *context,uint8_t type,uint16_t id,const uint8_t *p,size_t size) {
     App *a=context; uint64_t previous=a->source; if (!a->source) a->source=1;
-    command_impl(a,type,id,p,size); if (!a->uploading && !a->staged && !a->vm.uploading) a->upload_owner=0; a->source=previous;
+    if(a->command_active){a->source=previous;return;}
+    a->command_active=true;
+    // Keep the large JSON-parser frames of these paths out of each other's
+    // call chains; reset/activation also validate a separate program manifest.
+    if(type==CMD_MANAGE)manage_dispatch(a,id,p,size);
+    else command_impl(a,type,id,p,size);
+    if (!a->uploading && !a->staged && !a->upload_device->vm.uploading) a->upload_owner=0;
+    a->command_active=false;
+    if(a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
+    a->source=previous;
 }
 void app_dispatch(App *a,uint64_t source,SendMessage send,void *transport,uint8_t type,uint16_t id,const uint8_t *p,size_t size) {
+    if(a->command_active){send_status(send,transport,id,STATUS_BUSY,0,"engine command in progress");return;}
+    a->command_active=true;
     SendMessage previous_send=a->send; void *previous_transport=a->transport; uint64_t previous_source=a->source;
     a->send=send; a->transport=transport; a->source=source;
-    command_impl(a,type,id,p,size);
-    if (!a->uploading && !a->staged && !a->vm.uploading) a->upload_owner=0;
+    if(type==CMD_MANAGE)manage_dispatch(a,id,p,size);
+    else command_impl(a,type,id,p,size);
+    if (!a->uploading && !a->staged && !a->upload_device->vm.uploading) a->upload_owner=0;
+    a->command_active=false;
+    if(a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
     a->send=previous_send; a->transport=previous_transport; a->source=previous_source;
 }
 void app_disconnect(App *a,uint64_t source) {
     if (!source || a->upload_owner!=source) return;
+    if(a->command_active){a->disconnect_pending=true;return;}
     a->upload_owner=0; a->uploading=false; a->staged=false;
-    if (a->vm.uploading) { a->vm.uploading=false; vm_destroy(&a->vm); }
+    a->upload_device->vm.uploading=false;store_upload_cancel(&a->upload);
     memset(a->staging,0,sizeof(a->staging));
 }
 void app_reply_delivered(App *a,uint64_t source) {

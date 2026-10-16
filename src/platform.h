@@ -28,7 +28,12 @@ typedef struct {
 const BoardPin *platform_pins(size_t *count);
 bool platform_pixels_open(const PixelConfig *config, void **driver);
 void platform_pixels_close(void *driver);
-// Consume/copy the complete packed RGB frame before returning.
+// Synchronous management convenience. Autonomous output uses submit/poll below.
+// submit borrows immutable RGB until poll returns 1 (complete) or -1 (fault).
+// cancel synchronously releases all references before returning.
+bool platform_pixels_submit(void *,const uint8_t *,size_t);
+int platform_pixels_poll(void *);
+void platform_pixels_cancel(void *);
 bool platform_pixels_show(void *driver, const uint8_t *rgb, size_t count);
 
 // Native bounded block storage. Writes require erased bytes; sync is durable.
@@ -48,7 +53,7 @@ bool platform_boot_storage_erase(uint32_t offset, size_t size);
 bool platform_boot_storage_sync(void);
 #endif
 
-// Compatible, aligned C allocation semantics. All wasm3 allocations use these
+// Compatible, aligned C allocation semantics. All interpreter allocations use these
 // hooks through the shared budget accounting. A port may choose a memory pool.
 void *platform_calloc(size_t count, size_t size);
 void *platform_realloc(void *memory, size_t size);

@@ -4,10 +4,21 @@ import { useRuntime } from './runtime';
 import type { HardwareConfig, NetworkConfig } from './types';
 import { EMPTY_CONFIG } from './types';
 
+function object(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+function parseArguments(value: string): Record<string, number | boolean> | null {
+  try {
+    const args = JSON.parse(value);
+    return object(args) && Object.values(args).every(item => typeof item === 'boolean' || (typeof item === 'number' && Number.isFinite(item))) ? args as Record<string, number | boolean> : null;
+  } catch { return null; }
+}
 function parseConfig(value: string): HardwareConfig | null {
   try {
     const result = JSON.parse(value);
-    return result?.schema === 'lightvm.config/1' && Array.isArray(result.devices) ? result : null;
+    if (!object(result) || result.schema !== 'lightvm.config/1' || !Array.isArray(result.devices) || Object.keys(result).some(key => key !== 'schema' && key !== 'devices')) return null;
+    return result.devices.every(item => object(item) && typeof item.id === 'string' && item.type === 'ws2812b' && object(item.config) && typeof item.config.pin === 'string' && typeof item.config.count === 'number' &&
+      (item.startup === undefined || (object(item.startup) && typeof item.startup.procedure === 'string' && (item.startup.args === undefined || object(item.startup.args))))) ? result as unknown as HardwareConfig : null;
   } catch { return null; }
 }
 function Hardware() {
@@ -15,81 +26,83 @@ function Hardware() {
   const [text, setText] = useState(() => JSON.stringify(device.config || EMPTY_CONFIG, null, 2));
   const [base, setBase] = useState(() => ({ active_revision: device.configRevision, saved_revision: device.savedRevision, boot_id: device.description?.boot_id }));
   const [dirty, setDirty] = useState(false);
-  const [startup, setStartup] = useState('');
+  // Keep incomplete argument JSON visible while the configuration retains its last valid value.
+  const [argumentDrafts, setArgumentDrafts] = useState<Record<number, string>>({});
   useEffect(() => {
     if (!device.config || dirty) return;
-    setText(JSON.stringify(device.config, null, 2));
+    setText(JSON.stringify(device.config, null, 2)); setArgumentDrafts({});
     setBase({ active_revision: device.configRevision, saved_revision: device.savedRevision, boot_id: device.description?.boot_id });
-    setStartup(device.config.startup?.procedure || '');
   }, [device.config, device.configRevision, device.savedRevision, device.description?.boot_id, dirty]);
-  const draft = useMemo(() => parseConfig(text), [text]), output = draft?.devices?.[0];
+  const draft = useMemo(() => parseConfig(text), [text]);
+  const invalidArguments = Object.values(argumentDrafts).some(value => !parseArguments(value));
   const stale = dirty && (base.active_revision !== device.configRevision || base.saved_revision !== device.savedRevision || base.boot_id !== device.description?.boot_id);
-  const canApply = Boolean(device.selectedPath && draft && !busy && !stale);
+  const canApply = Boolean(device.selectedPath && draft && !invalidArguments && !busy && !stale);
   function update(config: HardwareConfig) { setText(JSON.stringify(config, null, 2)); setDirty(true); }
-  function setOutput(change: (item: HardwareConfig['devices'][number]) => void) {
+  function setOutput(index: number, change: (item: HardwareConfig['devices'][number]) => void) {
     if (!draft) return;
     const next = structuredClone(draft);
-    if (!next.devices.length) return;
-    const previous = next.devices[0].id;
-    change(next.devices[0]);
-    if (next.targets?.A?.device === previous) next.targets.A.device = next.devices[0].id;
-    update(next);
+    change(next.devices[index]); update(next);
   }
-  function toggleOutput(enabled: boolean) {
+  function addOutput() {
     if (!draft) return;
     const next = structuredClone(draft);
-    if (enabled) {
-      const id = 'lights';
-      next.devices = [{ id, type: 'ws2812b', config: { pin: device.description?.pins[0] || '', count: Math.min(100, device.description?.pixel_capacity || 100), order: 'GRB', brightness_limit: 255 } }];
-      next.targets = { A: { device: id } };
-    } else { next.devices = []; next.targets = {}; next.startup = null; setStartup(''); }
+    let id = 'lights', suffix = 2;
+    while (next.devices.some(item => item.id === id)) id = 'lights' + suffix++;
+    const pin = device.description?.pins.find(pin => !next.devices.some(item => item.config.pin === pin)) || '';
+    next.devices.push({ id, type: 'ws2812b', config: { pin, count: Math.min(100, device.description?.pixel_capacity || 100), order: 'GRB', brightness_limit: 255 } });
     update(next);
   }
-  function bind(enabled: boolean) {
-    if (!draft || !output) return;
-    const next = structuredClone(draft);
-    next.targets = enabled ? { A: { device: output.id } } : {};
-    if (!enabled) { next.startup = null; setStartup(''); }
-    update(next);
-  }
-  function selectStartup(value: string) {
-    setStartup(value);
+  function removeOutput(index: number) {
     if (!draft) return;
-    const next = structuredClone(draft);
-    next.startup = value ? { procedure: value, target: 'A' } : null;
+    const next = structuredClone(draft); next.devices.splice(index, 1);
+    setArgumentDrafts(current => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value])));
     update(next);
+  }
+  function selectStartup(index: number, value: string) {
+    setArgumentDrafts(current => { const next = { ...current }; delete next[index]; return next; });
+    setOutput(index, item => { if (value) item.startup = { procedure: value }; else delete item.startup; });
+  }
+  function editArguments(index: number, value: string) {
+    setArgumentDrafts(current => ({ ...current, [index]: value })); setDirty(true);
+    const args = parseArguments(value);
+    if (args) setOutput(index, item => { if (item.startup) item.startup.args = args; });
   }
   function reload() {
     if (!device.config) return;
-    setDirty(false); setText(JSON.stringify(device.config, null, 2));
+    setDirty(false); setText(JSON.stringify(device.config, null, 2)); setArgumentDrafts({});
     setBase({ active_revision: device.configRevision, saved_revision: device.savedRevision, boot_id: device.description?.boot_id });
-    setStartup(device.config.startup?.procedure || '');
     dispatch(activityActions.notice(''));
   }
   async function submit(options: { save?: boolean; validate?: boolean }) {
-    if (!draft) { dispatch(activityActions.notice('Enter valid lightvm.config/1 JSON before continuing.')); return; }
+    if (!draft || invalidArguments) { dispatch(activityActions.notice('Enter valid configuration and startup arguments before continuing.')); return; }
     const success = await devices.configure(draft, base, options);
     if (success && !options.validate) setDirty(false);
   }
   return <section className="card config-card"><div className="card-heading"><div><p className="eyebrow">OUTPUT &amp; STARTUP</p><h2>Set up the lights</h2></div><button id="config-refresh" className="quiet small" disabled={!device.selectedPath || busy} onClick={() => void devices.run('Refreshing configuration', async client => devices.readConfig(devices.require(client)))}>Refresh</button></div>
-    <p className="muted">Choose the pin and pixel count for this board. Bind the output to slot A to run animations.</p>
+    <p className="muted">Configure each output and choose the animation it runs on reboot.</p>
     {stale && <div className="stale-banner" role="alert">Device configuration changed while you were editing. Review the latest values before saving. <button className="quiet small" onClick={reload}>Load device values</button></div>}
+    {!draft && <p role="alert">Enter valid lightvm.config/1 JSON with schema and devices. Startup belongs inside each device.</p>}
     <fieldset id="config-fields" disabled={!device.selectedPath || busy}>
-      <label className="checkbox-label"><input id="output-enabled" type="checkbox" checked={Boolean(output)} disabled={!draft} onChange={event => toggleOutput(event.target.checked)} /> Enable WS2812B output</label>
-      {output && <div className="form-grid">
-        <label htmlFor="config-device-id">Output name<input id="config-device-id" value={output.id} onChange={event => setOutput(item => { item.id = event.target.value; })} autoComplete="off" /></label>
-        <label htmlFor="config-pin">Data pin<select id="config-pin" value={output.config.pin} onChange={event => setOutput(item => { item.config.pin = event.target.value; })}>{!device.description?.pins.includes(output.config.pin) && <option value={output.config.pin}>{output.config.pin || 'Select pin'}</option>}{device.description?.pins.map(pin => <option key={pin} value={pin}>{pin}</option>)}</select></label>
-        <label htmlFor="config-count">Pixel count<input id="config-count" type="number" min="1" max={device.description?.pixel_capacity} value={output.config.count} onChange={event => setOutput(item => { item.config.count = Number(event.target.value); })} /></label>
-        <label htmlFor="config-order">Colour order<select id="config-order" value={output.config.order || 'GRB'} onChange={event => setOutput(item => { item.config.order = event.target.value; })}>{['GRB', 'RGB', 'BRG', 'RBG', 'GBR', 'BGR'].map(order => <option key={order}>{order}</option>)}</select></label>
-        <label htmlFor="config-brightness">Brightness limit (0–255)<input id="config-brightness" type="number" min="0" max="255" value={output.config.brightness_limit ?? 255} onChange={event => setOutput(item => { item.config.brightness_limit = Number(event.target.value); })} /></label>
-        <label className="checkbox-label output-binding"><input id="config-bind" type="checkbox" checked={draft?.targets?.A?.device === output.id} onChange={event => bind(event.target.checked)} /> Bind this output to slot A</label>
-      </div>}
-      <div className="divider" /><h3>On startup</h3><p className="muted">Pick a saved program to run when this device reboots.</p>
-      <label htmlFor="startup-procedure">Startup program</label><select id="startup-procedure" value={startup} disabled={!output || !draft?.targets?.A || !device.description?.storage_available} onChange={event => selectStartup(event.target.value)}><option value="">Stay idle on reboot</option>{device.procedures.map(procedure => <option key={procedure.name} value={procedure.name}>{procedure.name + ' · ' + procedure.size + ' bytes'}</option>)}</select>
+      {draft?.devices.map((output, index) => <fieldset className="output-config" aria-label={'Output ' + (index + 1)} key={index}>
+        <legend>{output.id || 'Unnamed output'}</legend>
+        <div className="form-grid">
+          <label htmlFor={'config-device-id-' + index}>Output name<input id={'config-device-id-' + index} value={output.id} onChange={event => setOutput(index, item => { item.id = event.target.value; })} autoComplete="off" /></label>
+          <label htmlFor={'config-pin-' + index}>Data pin<select id={'config-pin-' + index} value={output.config.pin} onChange={event => setOutput(index, item => { item.config.pin = event.target.value; })}>{!device.description?.pins.includes(output.config.pin) && <option value={output.config.pin}>{output.config.pin || 'Select pin'}</option>}{device.description?.pins.map(pin => <option key={pin} value={pin}>{pin}</option>)}</select></label>
+          <label htmlFor={'config-count-' + index}>Pixel count<input id={'config-count-' + index} type="number" min="1" max={device.description?.pixel_capacity} value={output.config.count} onChange={event => setOutput(index, item => { item.config.count = Number(event.target.value); })} /></label>
+          <label htmlFor={'config-order-' + index}>Colour order<select id={'config-order-' + index} value={output.config.order || 'GRB'} onChange={event => setOutput(index, item => { item.config.order = event.target.value; })}>{['GRB', 'RGB', 'BRG', 'RBG', 'GBR', 'BGR'].map(order => <option key={order}>{order}</option>)}</select></label>
+          <label htmlFor={'config-brightness-' + index}>Brightness limit (0–255)<input id={'config-brightness-' + index} type="number" min="0" max="255" value={output.config.brightness_limit ?? 255} onChange={event => setOutput(index, item => { item.config.brightness_limit = Number(event.target.value); })} /></label>
+        </div>
+        <label htmlFor={'startup-procedure-' + index}>Startup program</label><select id={'startup-procedure-' + index} value={output.startup?.procedure || ''} disabled={!device.description?.storage_available} onChange={event => selectStartup(index, event.target.value)}><option value="">Stay idle on reboot</option>{output.startup && !device.procedures.some(item => item.name === output.startup?.procedure) && <option value={output.startup.procedure}>{output.startup.procedure + ' (unavailable)'}</option>}{device.procedures.map(procedure => <option key={procedure.name} value={procedure.name}>{procedure.name + ' · ' + procedure.size + ' bytes'}</option>)}</select>
+        {output.startup && <><label htmlFor={'startup-args-' + index}>Startup arguments (JSON)</label><textarea id={'startup-args-' + index} className="config-code" spellCheck={false} value={argumentDrafts[index] ?? JSON.stringify(output.startup.args || {}, null, 2)} aria-invalid={argumentDrafts[index] !== undefined && !parseArguments(argumentDrafts[index])} onChange={event => editArguments(index, event.target.value)} />
+          {argumentDrafts[index] !== undefined && !parseArguments(argumentDrafts[index]) && <p role="alert">Arguments must be a JSON object with numeric or boolean values.</p>}
+          <p className="helper">Arguments are passed when the animation initializes. Omitted arguments use its defaults.</p></>}
+        <button className="quiet small" onClick={() => removeOutput(index)}>Remove output</button>
+      </fieldset>)}
+      <button id="output-add" className="quiet" disabled={!draft} onClick={addOutput}>Add WS2812B output</button>
       <div className="form-actions"><button id="config-validate" className="quiet" disabled={!canApply} onClick={() => void submit({ validate: true })}>Validate</button><button id="config-apply" className="secondary" disabled={!canApply} onClick={() => void submit({})}>Apply in RAM</button><button id="config-save" className="primary" disabled={!canApply || !device.description?.storage_available} onClick={() => void submit({ save: true })}>Apply &amp; save for reboot</button></div>
     </fieldset>
-    <p className="helper">Applying output or startup configuration stops playback. Saving makes it available after reboot.</p>
-    <details className="advanced-config"><summary>Advanced JSON configuration</summary><label htmlFor="config-json">Device configuration JSON</label><textarea id="config-json" className="config-code" spellCheck={false} value={text} onChange={event => { setText(event.target.value); setDirty(true); }} /><p className="helper">The form and JSON editor update the same draft. Validation happens on the device.</p></details>
+    <p className="helper">Unchanged hardware keeps playing when configuration is applied. Startup changes take effect after saving and rebooting.</p>
+    <details className="advanced-config"><summary>Advanced JSON configuration</summary><label htmlFor="config-json">Device configuration JSON</label><textarea id="config-json" className="config-code" spellCheck={false} value={text} onChange={event => { setText(event.target.value); setArgumentDrafts({}); setDirty(true); }} /><p className="helper">The form and JSON editor update the same draft. Procedure arguments are validated on the device.</p></details>
   </section>;
 }
 

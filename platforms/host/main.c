@@ -36,6 +36,12 @@ static void output_message(void *context, uint8_t type, uint16_t id,
     write_frame(output_bytes, context, type, id, payload, size);
     fflush(context);
 }
+static void service_io(void *context) {
+    (void)context;
+#if LIGHTVM_HTTP
+    host_http_poll();
+#endif
+}
 int main(int argc, char **argv) {
     const char *storage=NULL,*listen_address=NULL; unsigned port=0;
     for (int i=1;i<argc;i++) {
@@ -63,6 +69,7 @@ int main(int argc, char **argv) {
     if (listen_address && !network.listening) { fprintf(stderr,"Cannot listen for HTTP\n"); app_destroy(&app); host_storage_close(); return 1; }
     app.network.driver.context=&network; app.network.driver.configure=configure_network;
 #endif
+    app.service_io=service_io;
     bool stdin_open=true;
     for (;;) {
         app_tick(&app);
@@ -80,8 +87,8 @@ int main(int argc, char **argv) {
         host_http_poll();
 #endif
         if (!ready || !stdin_open) continue;
-        uint8_t byte;
-        ssize_t size = read(STDIN_FILENO, &byte, 1);
+        uint8_t input_bytes[256];
+        ssize_t size = read(STDIN_FILENO, input_bytes, sizeof(input_bytes));
         if (size<=0) {
             session_destroy(&session); stdin_open=false;
 #if LIGHTVM_HTTP
@@ -91,7 +98,7 @@ int main(int argc, char **argv) {
 #endif
             continue;
         }
-        session_feed(&session, &byte, 1); app_reply_delivered(&app,1);
+        session_feed(&session, input_bytes, (size_t)size); app_reply_delivered(&app,1);
     }
     session_destroy(&session);
 #if LIGHTVM_HTTP

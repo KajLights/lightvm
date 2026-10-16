@@ -162,13 +162,14 @@ export class DeviceService {
     const procedures = await client.json('procedure_list');
     if (client === this.client) this.store.dispatch(deviceActions.procedures(procedures));
   }
-  async readParameters(client: LightVMClient) {
+  async readParameters(client: LightVMClient, background = false) {
+    const current = () => client === this.client && (!background || !this.store.getState().activity.operation);
     try {
       const parameters = await client.json('program_parameters_get');
-      if (client === this.client) this.store.dispatch(deviceActions.parameters(serializable(parameters)));
+      if (current()) this.store.dispatch(deviceActions.parameters(serializable(parameters)));
     } catch (error) {
       if (client.closed || !('code' in (error as object)) || (error as { code: number }).code !== 4) throw error;
-      if (client === this.client) this.store.dispatch(deviceActions.parameters(null));
+      if (current()) this.store.dispatch(deviceActions.parameters(null));
     }
   }
   async refresh(client = this.client) {
@@ -198,6 +199,7 @@ export class DeviceService {
           const status = await connection.client.json('network_status');
           if (connection.client === this.client) this.store.dispatch(deviceActions.networkStatus(status));
         }
+        if (!this.store.getState().activity.operation) await this.readParameters(connection.client, true);
       }
     } catch (error) { if (!this.store.getState().activity.operation) this.store.dispatch(activityActions.notice((error as Error).message)); }
     finally { this.polling = false; }
@@ -210,7 +212,7 @@ export class DeviceService {
         await this.readConfig(connection); await this.readParameters(connection);
         this.store.dispatch(editorActions.targetChanged());
       }
-      this.log(options.validate ? 'Configuration is valid.' : 'Output configuration applied; playback stopped.', 'success');
+      this.log(options.validate ? 'Configuration is valid.' : 'Output configuration applied; unchanged devices keep playing.', 'success');
     });
   }
   configureNetwork(config: NetworkConfig, revision: number) {

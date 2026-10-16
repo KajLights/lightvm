@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runtime } from './runtime';
@@ -7,8 +7,8 @@ import { createAppStore, deviceActions } from './store';
 import type { Description, HardwareConfig, NetworkConfig } from './types';
 
 const description: Description = {
-  device_id: 'test-device', boot_id: 'boot-1', board: 'Test board', control_abi: 2,
-  program_schemas: ['lightvm.program/3'], module_limit: 65536, config_limit: 4096,
+  device_id: 'test-device', boot_id: 'boot-1', board: 'Test board', control_abi: 4,
+  program_schemas: ['lightvm.program/5'], module_limit: 32768, config_limit: 8192,
   pixel_capacity: 100, pins: ['GPIO2'], slots: ['A'], storage_available: true,
   wifi_supported: true, wifi_ap_supported: true, http_supported: true, active_revision: 1, saved_revision: 1,
   catalog_revision: 0, network_revision: 1, active_procedure: '',
@@ -17,7 +17,6 @@ function hardware(count: number): HardwareConfig {
   return {
     schema: 'lightvm.config/1',
     devices: [{ id: 'lights', type: 'ws2812b', config: { pin: 'GPIO2', count } }],
-    targets: { A: { device: 'lights' } }, startup: null,
   };
 }
 function network(port: number): NetworkConfig {
@@ -45,6 +44,80 @@ describe('configuration drafts', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load device values' }));
     expect(count).toHaveValue(12);
     expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeEnabled();
+  });
+
+  it('edits each startup independently and submits constructor arguments', async () => {
+    const store = readyStore(), config = hardware(5);
+    config.devices[0].startup = { procedure: 'rainbow', args: { duration: 3.3 } };
+    config.devices.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { procedure: 'color', args: { color: 0x123456, random_color: false } } });
+    store.dispatch(deviceActions.configuration({ config, revision: 1, savedRevision: 1 }));
+    store.dispatch(deviceActions.procedures([{ name: 'rainbow', size: 100, crc32: 1 }, { name: 'color', size: 100, crc32: 2 }]));
+    const configure = vi.spyOn(runtime.devices, 'configure').mockResolvedValue(false);
+    render(<Provider store={store}><Configure /></Provider>);
+    const first = within(screen.getByRole('group', { name: 'Output 1' }));
+    const second = within(screen.getByRole('group', { name: 'Output 2' }));
+    fireEvent.change(first.getByLabelText('Output name'), { target: { value: 'ceiling' } });
+    fireEvent.change(first.getByLabelText('Startup arguments (JSON)'), { target: { value: '{"duration": 6.6}' } });
+    expect(second.getByLabelText('Startup program')).toHaveValue('color');
+    expect(JSON.parse((second.getByLabelText('Startup arguments (JSON)') as HTMLTextAreaElement).value)).toEqual(config.devices[1].startup!.args);
+    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
+    await waitFor(() => expect(configure).toHaveBeenCalledWith({ schema: 'lightvm.config/1', devices: [
+      { ...config.devices[0], id: 'ceiling', startup: { procedure: 'rainbow', args: { duration: 6.6 } } }, config.devices[1],
+    ] }, expect.objectContaining({ active_revision: 1, saved_revision: 1 }), { save: true }));
+    fireEvent.change(first.getByLabelText('Startup program'), { target: { value: 'color' } });
+    expect(first.getByLabelText('Startup arguments (JSON)')).toHaveValue('{}');
+    fireEvent.change(first.getByLabelText('Startup program'), { target: { value: '' } });
+    const json = JSON.parse((screen.getByLabelText('Device configuration JSON') as HTMLTextAreaElement).value);
+    expect(json.devices[0]).not.toHaveProperty('startup');
+    expect(json.devices[1]).toEqual(config.devices[1]);
+    expect(screen.queryByLabelText('Bind this output to slot A')).toBeNull();
+  });
+
+  it('keeps incomplete arguments visible and blocks submitting them', () => {
+    const store = readyStore(), config = hardware(5);
+    config.devices[0].startup = { procedure: 'rainbow', args: { duration: 3.3 } };
+    store.dispatch(deviceActions.configuration({ config, revision: 1, savedRevision: 1 }));
+    render(<Provider store={store}><Configure /></Provider>);
+    const args = screen.getByLabelText('Startup arguments (JSON)');
+    for (const value of ['{', 'null', '[]', '{"duration":"fast"}']) {
+      fireEvent.change(args, { target: { value } });
+      expect(args).toHaveValue(value);
+      expect(args).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByRole('button', { name: 'Validate' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeDisabled();
+    }
+    act(() => { store.dispatch(deviceActions.configuration({ config: hardware(12), revision: 2, savedRevision: 2 })); });
+    expect(args).toHaveValue('{"duration":"fast"}');
+    fireEvent.change(args, { target: { value: '{}' } });
+    expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Load device values' }));
+    expect(screen.queryByLabelText('Startup arguments (JSON)')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeEnabled();
+  });
+
+  it('synchronizes full JSON edits and preserves other devices when removing an output', () => {
+    const store = readyStore(), config = hardware(5);
+    config.devices[0].startup = { procedure: 'rainbow', args: { duration: 3.3 } };
+    config.devices.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { procedure: 'rainbow', args: { duration: 9 } } });
+    render(<Provider store={store}><Configure /></Provider>);
+    const editor = screen.getByLabelText('Device configuration JSON') as HTMLTextAreaElement;
+    fireEvent.change(editor, { target: { value: JSON.stringify(config) } });
+    expect(screen.getAllByLabelText('Startup program').map(node => (node as HTMLSelectElement).value)).toEqual(['rainbow', 'rainbow']);
+    const second = within(screen.getByRole('group', { name: 'Output 2' }));
+    fireEvent.change(second.getByLabelText('Startup arguments (JSON)'), { target: { value: '{' } });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Output 1' })).getByRole('button', { name: 'Remove output' }));
+    expect(JSON.parse(editor.value).devices).toEqual([config.devices[1]]);
+    expect(screen.getByLabelText('Startup arguments (JSON)')).toHaveValue('{');
+    fireEvent.change(screen.getByLabelText('Startup arguments (JSON)'), { target: { value: '{"duration": 10}' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add WS2812B output' }));
+    const next = JSON.parse(editor.value);
+    expect(next.devices[0].startup.args).toEqual({ duration: 10 });
+    expect(next.devices[1].id).toBe('lights');
+    expect(next.devices[1]).not.toHaveProperty('startup');
+    expect(next).not.toHaveProperty('targets');
+    fireEvent.change(editor, { target: { value: JSON.stringify({ ...config, targets: {} }) } });
+    expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Startup belongs inside each device');
   });
 
   it('keeps a network draft and blocks saving when its revision changes', () => {

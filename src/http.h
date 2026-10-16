@@ -27,7 +27,7 @@ typedef struct {
     HttpRequest queue[HTTP_QUEUE],active; unsigned head,count;
     uint8_t response[HTTP_RESPONSE_LIMIT]; size_t used,sent;
     char header[512]; size_t header_size,header_sent;
-    bool sending,closing,overflow; uint64_t deadline,reply_source;
+    bool sending,closing,overflow,executing; uint64_t deadline,reply_source;
 } Http;
 void http_init(Http *,App *);
 // All operations below run on the engine owner. Native ingress queues cross threads.

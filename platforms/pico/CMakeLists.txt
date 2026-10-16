@@ -6,9 +6,9 @@ if(LIGHTVM_WIFI AND NOT PICO_BOARD STREQUAL "pico_w")
 endif()
 pico_sdk_init()
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform.c")
+    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c")
 target_compile_definitions(lightvm PRIVATE PICO_STACK_SIZE=16384)
-target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand hardware_pio hardware_flash hardware_sync)
+target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand hardware_pio hardware_dma hardware_flash hardware_sync)
 pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/ws2812.pio")
 # SDK 1.5.1's ROM-v1 double shim is licensed for Pico devices only.
 # Use the compiler runtime so firmware avoids that restricted component.

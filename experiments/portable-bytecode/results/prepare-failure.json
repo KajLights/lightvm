@@ -1,0 +1,45 @@
+{
+  "before": {
+    "event": "hello",
+    "platform": "esp32c3",
+    "pixels": 200,
+    "gpio": 3,
+    "brightness": 16,
+    "cpu_mhz": 160,
+    "revision": 26,
+    "flash_mapped": true,
+    "package_bytes": 328
+  },
+  "rejection": "{'event': 'rejected', 'reason': 'prepare'}",
+  "after": {
+    "event": "hello",
+    "platform": "esp32c3",
+    "pixels": 200,
+    "gpio": 3,
+    "brightness": 16,
+    "cpu_mhz": 160,
+    "revision": 26,
+    "flash_mapped": true,
+    "package_bytes": 328
+  },
+  "stats": {
+    "event": "stats",
+    "mode": "bytecode",
+    "frames": 2,
+    "samples": 2,
+    "render_mean_us": 1287.0,
+    "slice_max_us": 225,
+    "output_gap_max_us": 10558,
+    "service_gap_max_us": 45000,
+    "missed_ticks": 4,
+    "errors": 0,
+    "verified_outputs": 1,
+    "free_heap": 297540,
+    "min_free_heap": 296204,
+    "heap_total": 323080,
+    "instance_bytes": 548,
+    "effect_bytes": 636,
+    "pixel_bytes": 600,
+    "revision": 26
+  }
+}

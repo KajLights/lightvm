@@ -54,3 +54,9 @@ bool pixels_set_hsv(PixelBuffer *p, uint32_t index, uint32_t hue, uint32_t satur
 bool pixels_show(PixelBuffer *p) {
     return !p || !p->count || (p->driver && p->type->show(p->driver, p->rgb, p->count));
 }
+
+/* Synchronous ports and test fixtures can use these defaults. Hardware ports
+ * override all three to retain their native transfer until completion. */
+__attribute__((weak)) bool platform_pixels_submit(void *p,const uint8_t *rgb,size_t count) { return platform_pixels_show(p,rgb,count); }
+__attribute__((weak)) int platform_pixels_poll(void *p) { (void)p;return 1; }
+__attribute__((weak)) void platform_pixels_cancel(void *p) { (void)p; }

@@ -77,7 +77,7 @@ runs at a time; switching retains both station and AP credentials. An omitted
 mode selects `station` for compatibility with existing configurations.
 
 For standalone operation, save a configuration such as
-[`examples/network-ap.json`](../examples/network-ap.json):
+[`examples/config/network-ap.json`](../examples/config/network-ap.json):
 
 ```json
 {
@@ -113,7 +113,7 @@ portal. Open the hosted editor before joining the AP, or build and serve it on
 localhost following [the editor instructions](web-editor.md#run-locally).
 Visit Develop while online if source compilation will be needed: its external
 compiler/editor assets must already be loaded, and offline caching is not
-guaranteed. Stored programs and precompiled WASM can be managed through the API
+guaranteed. Stored programs and precompiled bytecode can be managed through the API
 without those compiler assets. The optional [power-cycle recovery policy](boot-sequence.md#recovery-access-point)
 forces a temporary open AP after three short boots while retaining saved settings.
 Recovery buttons and automatic AP fallback after station failures are deferred.
@@ -144,7 +144,7 @@ python tools/client.py --port PORT --no-reset --network network.json
 python tools/client.py --port PORT --no-reset --network-status
 python tools/client.py --url http://DEVICE_IP --describe
 python tools/client.py --url http://DEVICE_IP --get-config
-python tools/client.py --url http://DEVICE_IP --store-procedure rainbow rainbow.wasm
+python tools/client.py --url http://DEVICE_IP --store-procedure rainbow rainbow.lbc
 python tools/client.py --url http://DEVICE_IP --activate rainbow
 python tools/client.py --url http://DEVICE_IP --set-parameters '{"speed":0.3}'
 ```
@@ -295,7 +295,7 @@ to repeat it. A successful save may have occurred even when its reply was lost.
 ## Verification
 
 Host C tests cover ownership, expiry, parser rejection, snapshot interruption and
-radio policy using a fake asynchronous radio. Python tests exercise real wasm3
+radio policy using a fake asynchronous radio. Python tests exercise real bytecode interpreter
 through concurrent pipes and HTTP, including large and stalled downloads,
 credentials, reboot/migration and parameter conflicts. Browser tests verify path
 identity/selection and forbid automatic replay after a lost HTTP response.

@@ -12,7 +12,7 @@ import sys
 import tempfile
 import time
 import unittest
-import wasmtime
+from bytecode_fixtures import color, sample, padded_program
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
@@ -114,20 +114,17 @@ class PowerRecoveryTests(unittest.TestCase):
             self.assertNotEqual(status['state'], 'reconfiguring')
             self.assertEqual(client.describe()['network_revision'], 2)
         # The same HTTP session still provides library management and discovery.
-        self.http.save_procedure('empty', bytes.fromhex('0061736d01000000'))
-        self.assertEqual(self.pipe.get_procedure('empty'), bytes.fromhex('0061736d01000000'))
+        self.http.save_procedure('empty', color())
+        self.assertEqual(self.pipe.get_procedure('empty'), color())
         with self.http_transport.opener.open(self.url + '/api/v1/devices') as response:
             self.assertEqual(json.load(response)['schema'], 'lightvm.discovery/1')
 
     def test_saved_startup_is_idle_in_recovery_and_can_be_activated_manually(self):
-        module = bytes(wasmtime.wat2wasm('''(module
-          (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-          (func (export "render") (param i32)
-            i32.const 1 i32.const 2 i32.const 3 call $rgb))'''))
+        module = color()
         self.http.save_procedure('startup', module)
         config = {'schema': 'lightvm.config/1', 'devices': [
-            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}},
-        ], 'targets': {'A': {'device': 'lights'}}, 'startup': {'procedure': 'startup', 'target': 'A'}}
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'procedure': 'startup'}},
+        ]}
         self.http.configure(config, save=True)
         snapshot = self.storage.read_bytes()
         self.restart()

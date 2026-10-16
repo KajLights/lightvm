@@ -118,7 +118,14 @@ void host_storage_close(void) {
     boot_storage_fd=-1;
 #endif
 }
-bool platform_storage_available(void) { return storage_fd>=0; }
+bool platform_storage_available(void) {
+    if(storage_fd>=0)return true;
+    char path[]="/tmp/lightvm-flash-XXXXXX";storage_fd=mkstemp(path);
+    if(storage_fd<0)return false;
+    unlink(path);uint8_t erased[4096];memset(erased,255,sizeof(erased));
+    for(uint32_t at=0;at<STORAGE_BYTES;at+=sizeof(erased))if(!io_bytes(true,at,erased,sizeof(erased))){host_storage_close();return false;}
+    return true;
+}
 bool platform_storage_read(uint32_t offset,void *bytes,size_t size) { return io_bytes(false,offset,bytes,size); }
 bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {
     if (offset%256 || size%256) return false;

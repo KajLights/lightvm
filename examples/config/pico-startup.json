@@ -1,0 +1,21 @@
+{
+  "schema": "lightvm.config/1",
+  "devices": [
+    {
+      "id": "lights",
+      "type": "ws2812b",
+      "config": {
+        "pin": "GP16",
+        "count": 100,
+        "order": "GRB",
+        "brightness_limit": 32
+      },
+      "startup": {
+        "procedure": "rainbow",
+        "args": {
+          "duration": 3.3
+        }
+      }
+    }
+  ]
+}

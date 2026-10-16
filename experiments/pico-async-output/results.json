@@ -1,0 +1,607 @@
+{
+  "date": "2026-10-16",
+  "baseline_commit": "2e5f9d749cac806ce5f3a37c5d62e398418168ac",
+  "board": "pico_w",
+  "clock_hz": 125000000,
+  "pico_sdk": "1.5.1",
+  "compiler": "Arm GNU 13.2.Rel1",
+  "build_type": "Release",
+  "features": [
+    "wifi",
+    "http",
+    "boot_sequence"
+  ],
+  "configuration": {
+    "schema": "lightvm.config/1",
+    "devices": [
+      {
+        "id": "lights",
+        "type": "ws2812b",
+        "config": {
+          "pin": "GP16",
+          "count": 200,
+          "order": "GRB",
+          "brightness_limit": 100
+        },
+        "startup": {
+          "procedure": "rainbow",
+          "args": {
+            "duration": 3.3
+          }
+        }
+      },
+      {
+        "id": "lights2",
+        "type": "ws2812b",
+        "config": {
+          "pin": "GP17",
+          "count": 200,
+          "order": "GRB",
+          "brightness_limit": 255
+        },
+        "startup": {
+          "procedure": "rainbow",
+          "args": {
+            "duration": 0.5
+          }
+        }
+      },
+      {
+        "id": "twinkle_warm",
+        "type": "ws2812b",
+        "config": {
+          "pin": "GP15",
+          "count": 200,
+          "order": "GRB",
+          "brightness_limit": 100
+        },
+        "startup": {
+          "procedure": "twinkle",
+          "args": {
+            "color": 16728064,
+            "random_background": false,
+            "brightness": 0.03,
+            "twinkle_color": 16765056,
+            "random_stars": false,
+            "duration": 1.2,
+            "probability": 5.0,
+            "max_stars": 8
+          }
+        }
+      },
+      {
+        "id": "twinkle_cool",
+        "type": "ws2812b",
+        "config": {
+          "pin": "GP27",
+          "count": 200,
+          "order": "GRB",
+          "brightness_limit": 100
+        },
+        "startup": {
+          "procedure": "twinkle",
+          "args": {
+            "color": 4160,
+            "random_background": false,
+            "brightness": 0.08,
+            "twinkle_color": 8441855,
+            "random_stars": true,
+            "duration": 3.5,
+            "probability": 12.0,
+            "max_stars": 40
+          }
+        }
+      }
+    ]
+  },
+  "baseline": {
+    "four": {
+      "duration_s": 29.9929085005424,
+      "devices": {
+        "lights": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 398,
+          "fps": 13.269803426793453,
+          "render_us_median": 13038,
+          "show_us_median": 6336
+        },
+        "lights2": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 398,
+          "fps": 13.269803426793453,
+          "render_us_median": 12990,
+          "show_us_median": 6317
+        },
+        "twinkle_warm": {
+          "procedure": "twinkle",
+          "pixels": 200,
+          "frames": 398,
+          "fps": 13.269803426793453,
+          "render_us_median": 5759,
+          "show_us_median": 6335
+        },
+        "twinkle_cool": {
+          "procedure": "twinkle",
+          "pixels": 200,
+          "frames": 274,
+          "fps": 9.135492811410568,
+          "render_us_median": 16797,
+          "show_us_median": 6329
+        }
+      },
+      "vm_heap_bytes": 14260,
+      "query_ms_median": 35.658499982673675,
+      "query_ms_max": 86.86641597887501,
+      "same_boot": true
+    },
+    "two_rainbows": {
+      "duration_s": 29.993378061975818,
+      "devices": {
+        "lights": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 749,
+          "fps": 24.972178807346367,
+          "render_us_median": 13022,
+          "show_us_median": 6335
+        },
+        "lights2": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 749,
+          "fps": 24.972178807346367,
+          "render_us_median": 13116,
+          "show_us_median": 6319
+        }
+      },
+      "vm_heap_bytes": 14260,
+      "query_ms_median": 18.822000012733042,
+      "query_ms_max": 45.14399997424334,
+      "same_boot": true
+    },
+    "one_rainbow": {
+      "duration_s": 29.995017874985933,
+      "devices": {
+        "lights": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 1455,
+          "fps": 48.50805577326839,
+          "render_us_median": 13071,
+          "show_us_median": 6336
+        }
+      },
+      "vm_heap_bytes": 14260,
+      "query_ms_median": 16.900125017855316,
+      "query_ms_max": 26.9272499717772,
+      "same_boot": true
+    }
+  },
+  "prototype": {
+    "four": {
+      "duration_s": 30.011244207969867,
+      "devices": {
+        "lights": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 527,
+          "fps": 17.560085025066986,
+          "render_us_median": 12971,
+          "show_us_median": 50989
+        },
+        "lights2": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 530,
+          "fps": 17.660047558416515,
+          "render_us_median": 12932,
+          "show_us_median": 42501
+        },
+        "twinkle_warm": {
+          "procedure": "twinkle",
+          "pixels": 200,
+          "frames": 535,
+          "fps": 17.826651780665728,
+          "render_us_median": 4180,
+          "show_us_median": 51243
+        },
+        "twinkle_cool": {
+          "procedure": "twinkle",
+          "pixels": 200,
+          "frames": 426,
+          "fps": 14.194679735632896,
+          "render_us_median": 19159,
+          "show_us_median": 34000
+        }
+      },
+      "vm_heap_bytes": 14260,
+      "query_ms_median": 24.3250000057742,
+      "query_ms_max": 50.438207981642336,
+      "same_boot": true
+    },
+    "two_rainbows": {
+      "duration_s": 29.999065854004584,
+      "devices": {
+        "lights": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 962,
+          "fps": 32.06766519603417,
+          "render_us_median": 12938,
+          "show_us_median": 17712
+        },
+        "lights2": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 989,
+          "fps": 32.967693221286694,
+          "render_us_median": 13166,
+          "show_us_median": 17639
+        }
+      },
+      "vm_heap_bytes": 14260,
+      "query_ms_median": 14.423832995817065,
+      "query_ms_max": 19.492666993755847,
+      "same_boot": true
+    },
+    "one_rainbow": {
+      "duration_s": 30.004898500512354,
+      "devices": {
+        "lights": {
+          "procedure": "rainbow",
+          "pixels": 200,
+          "frames": 1463,
+          "fps": 48.75870518192282,
+          "render_us_median": 13050,
+          "show_us_median": 7547
+        }
+      },
+      "vm_heap_bytes": 14260,
+      "query_ms_median": 12.891166028566658,
+      "query_ms_max": 19.881249987520278,
+      "same_boot": true
+    }
+  },
+  "production_four": {
+    "duration_s": 30.004480187548324,
+    "devices": {
+      "lights": {
+        "procedure": "rainbow",
+        "pixels": 200,
+        "frames": 524,
+        "fps": 17.464058591405188,
+        "render_us_median": 13071,
+        "show_us_median": 43283
+      },
+      "lights2": {
+        "procedure": "rainbow",
+        "pixels": 200,
+        "frames": 530,
+        "fps": 17.664028727947994,
+        "render_us_median": 13036,
+        "show_us_median": 42169
+      },
+      "twinkle_warm": {
+        "procedure": "twinkle",
+        "pixels": 200,
+        "frames": 535,
+        "fps": 17.83067050840033,
+        "render_us_median": 3943,
+        "show_us_median": 53481
+      },
+      "twinkle_cool": {
+        "procedure": "twinkle",
+        "pixels": 200,
+        "frames": 416,
+        "fps": 13.86459613363465,
+        "render_us_median": 19117,
+        "show_us_median": 34033
+      }
+    },
+    "vm_heap_bytes": 14260,
+    "query_ms_median": 18.98770802654326,
+    "query_ms_max": 41.26466700108722,
+    "same_boot": true
+  },
+  "production_probe": [
+    {
+      "clock_hz": 125000000,
+      "dma_driver_bytes": 64,
+      "blocking_driver_bytes": 28,
+      "staging_bytes_per_200_pixels": 800
+    },
+    {
+      "capture_pin": 16,
+      "order": "RGB",
+      "brightness": 0,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "RBG",
+      "brightness": 0,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "GRB",
+      "brightness": 0,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "GBR",
+      "brightness": 0,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "BRG",
+      "brightness": 0,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "BGR",
+      "brightness": 0,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "RGB",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "RBG",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "GRB",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "GBR",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "BRG",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 16,
+      "order": "BGR",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "RGB",
+      "brightness": 255,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "RBG",
+      "brightness": 255,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "GRB",
+      "brightness": 255,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "GBR",
+      "brightness": 255,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "BRG",
+      "brightness": 255,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "BGR",
+      "brightness": 255,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 17,
+      "order": "GRB",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 15,
+      "order": "GRB",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "capture_pin": 27,
+      "order": "GRB",
+      "brightness": 100,
+      "pixels": 200,
+      "timeout": false,
+      "passed": true
+    },
+    {
+      "benchmark": "blocking",
+      "devices": 1,
+      "pixels_each": 200,
+      "samples": 40,
+      "submit_us_median": 6301,
+      "wall_us_median": 6301,
+      "background_iterations_median": 0
+    },
+    {
+      "benchmark": "dma",
+      "devices": 1,
+      "pixels_each": 200,
+      "samples": 40,
+      "submit_us_median": 200,
+      "wall_us_median": 6499,
+      "background_iterations_median": 7856
+    },
+    {
+      "benchmark": "blocking",
+      "devices": 2,
+      "pixels_each": 200,
+      "samples": 40,
+      "submit_us_median": 12601,
+      "wall_us_median": 12601,
+      "background_iterations_median": 0
+    },
+    {
+      "benchmark": "dma",
+      "devices": 2,
+      "pixels_each": 200,
+      "samples": 40,
+      "submit_us_median": 399,
+      "wall_us_median": 6699,
+      "background_iterations_median": 4573
+    },
+    {
+      "benchmark": "blocking",
+      "devices": 4,
+      "pixels_each": 200,
+      "samples": 40,
+      "submit_us_median": 25201,
+      "wall_us_median": 25201,
+      "background_iterations_median": 0
+    },
+    {
+      "benchmark": "dma",
+      "devices": 4,
+      "pixels_each": 200,
+      "samples": 40,
+      "submit_us_median": 798,
+      "wall_us_median": 7098,
+      "background_iterations_median": 2569
+    },
+    {
+      "lifecycle_iterations": 64,
+      "invalid_count_busy_rejection_close_reopen_dma_exhaustion": true
+    },
+    {
+      "stalled_dma_timeout_cancel_retry_and_late_poll": true
+    },
+    {
+      "done": true,
+      "passed": true
+    }
+  ],
+  "production_checks": {
+    "passed": true,
+    "reconfigure_cycles": 8,
+    "held_frame_sha256": "ec85063b2ffe8e2cb5388b2c4e0f8e21e723c659324a263bee655975085346e2",
+    "pause_peer_reset_isolation": true,
+    "synchronous_manual_frame": true,
+    "flash_upload_with_live_peer_output": true,
+    "vm_heap_bytes": 14260,
+    "same_boot": true,
+    "saved_configuration_and_program_bytes_unchanged": true
+  },
+  "builds_passed": [
+    "pico",
+    "pico_w",
+    "xiao_esp32c3",
+    "xiao_esp32c6",
+    "xiao_esp32s3"
+  ],
+  "host_tests": {
+    "native_contracts_passed": 6,
+    "python_tests_passed": 73,
+    "note": "58 initial tests; 12 HTTP tests rerun with loopback access; 3 recovery tests rerun with current recovery-enabled receiver and loopback access."
+  },
+  "cost": {
+    "extra_payload_bytes_per_200_pixel_output": 836,
+    "extra_payload_bytes_four_outputs": 3344,
+    "driver_bytes": 64,
+    "old_driver_bytes": 28,
+    "staging_bytes_per_pixel": 4,
+    "dma_channels_per_output": 1,
+    "extra_firmware_text_bytes": 1960,
+    "extra_static_ram_bytes": 0,
+    "vm_heap_bytes": 14260,
+    "allocator_overhead_included": false
+  },
+  "deployment": {
+    "attached_pico": "standard production-pico-w/lightvm.uf2, all four animations restored",
+    "installer_package": "build/pico-async-output/web-firmware",
+    "installer_workflow": ".github/workflows/pages.yml builds the standard board targets",
+    "artifact_scope": "Recorded hashes identify local hardware-test and package-validation builds."
+  },
+  "source_sha256": {
+    "platforms/pico/pixels.c": "aa98d7ea674d5c290ddcebb3991603ba3b5de6849a3fd5dd9eb7b72641ec8dbd",
+    "platforms/pico/CMakeLists.txt": "282803446b9292a16f8fd5ef2cde053835abe164ec1e5fb73addcfcc6d9e8a62",
+    "platforms/esp32/main/platform.c": "43a6fefe7a1ad8f5a241b2ae62eeaec50bfdfcd96b5165f9ea18d9b4a0bb608c"
+  },
+  "firmware_sha256": {
+    "production-pico-w/lightvm.uf2": "87ac6247679c635be2cf52818d023a0cd319f4cce050df331f04e94e5a728ffa",
+    "production-pico/lightvm.uf2": "82dc34367194197c330bf466aac7b86052ec2054c228d2d5e24f03fb6647a2bd",
+    "web-firmware/xiao_esp32s3/lightvm.bin": "0dc1161c8b700f0a3213cd487e047f052829b4f57af9deef0f72c4a192555b56",
+    "web-firmware/xiao_esp32c3/lightvm.bin": "7def98933c2daf3ade34e2b9c390bc99f4e9255089a2b151e2300c0b39a702a0",
+    "web-firmware/xiao_esp32c6/lightvm.bin": "d4b8d63c2d34c132f40bdaf14e64e20e9d24a096b6107106509f0928f57ef856"
+  },
+  "browser_checks": {
+    "ui_tests_passed": 17,
+    "protocol_tests_passed": 12,
+    "production_build": "passed"
+  }
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the same 100-pixel rainbow WASM on host, Pico and XIAO boards."""
+"""Compare the same 100-pixel rainbow bytecode on host, Pico and XIAO boards."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -8,7 +8,9 @@ from pathlib import Path
 import statistics
 import time
 
-import wasmtime
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lightvm.compiler import compile_source
 
 from client import FRAME, PLAY, RESET, STATUS, STOP, Client, ProcessTransport, ProtocolError, SerialTransport
 
@@ -38,10 +40,12 @@ def measure(client, board, pin, pixels, samples, seconds):
         "schema": "lightvm.config/1",
         "devices": [{"id": "benchmark", "type": "ws2812b", "config": {
             "pin": pin, "count": pixels, "order": "GRB", "brightness_limit": 32}}],
-        "targets": {"A": {"device": "benchmark"}},
     }
-    source = (ROOT / "samples/rainbow.wat").read_text()
-    module = bytes(wasmtime.wat2wasm(source))
+    source = (ROOT / "examples/animations/rainbow.py").read_text()
+    artifact = compile_source(source)
+    if not artifact.success:
+        raise ValueError(artifact.diagnostics)
+    module = artifact.bytecode
     try:
         client.configure(config)
         client.upload(module)
@@ -63,7 +67,7 @@ def measure(client, board, pin, pixels, samples, seconds):
         end_before = time.monotonic()
         end = client.status_fields()
         end_after = time.monotonic()
-        if end["mode"] != "wasm" or end["animation_error"] != "-":
+        if end["mode"] != "bytecode" or end["animation_error"] != "-":
             raise ProtocolError(f"playback stopped: {end['animation_error']}")
         elapsed = (end_before + end_after - start_before - start_after) / 2
         frames = int(end["frames"]) - int(start["frames"])
@@ -77,8 +81,8 @@ def measure(client, board, pin, pixels, samples, seconds):
             "pin": pin,
             "pixels": pixels,
             "brightness_limit": 32,
-            "workload": "samples/rainbow.wat",
-            "wasm_sha256": hashlib.sha256(module).hexdigest(),
+            "workload": "examples/animations/rainbow.py",
+            "bytecode_sha256": hashlib.sha256(module).hexdigest(),
             "frame_interval_us": int(end["frame_interval_us"]),
             "samples": samples,
             "render_us_median": statistics.median(render_us),
@@ -119,7 +123,7 @@ def main():
                          args.pixels, args.samples, args.seconds)
     finally:
         client.close()
-    print(f"{result['board']}: {result['pixels']} pixels, rainbow WASM, "
+    print(f"{result['board']}: {result['pixels']} pixels, rainbow bytecode, "
           f"render median/p95 {result['render_us_median']}/{result['render_us_p95']} us, "
           f"output median/p95 {result['show_us_median']}/{result['show_us_p95']} us, "
           f"autonomous {result['playback_fps']} fps, peak heap {result['heap_peak_bytes']} B")

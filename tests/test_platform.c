@@ -2,6 +2,7 @@
 #include "session.h"
 #include "pixels.h"
 #include "vm_allocator.h"
+#include "runtime.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,12 @@ static uint64_t clock_now, clock_step;
 static unsigned shows, allocations;
 static bool deny_allocation;
 static bool deny_show;
+static bool delayed_output, output_ready, output_failed;
+static const uint8_t *borrowed_output;
+static void *borrowed_driver;
+static size_t borrowed_count;
+static uint32_t borrowed_crc;
+static unsigned cancelled_outputs;
 static uint8_t displayed[PIXEL_BYTES];
 static const PlatformInfo info = {"test", "virtual", "capture", -1, 7};
 const PlatformInfo *platform_info(void) { return &info; }
@@ -31,12 +38,30 @@ bool platform_pixels_open(const PixelConfig *config,void **driver) {
     PixelConfig *p=calloc(1,sizeof(*p)); if (!p) return false;
     *p=*config; *driver=p; return true;
 }
-void platform_pixels_close(void *driver) { free(driver); }
+void platform_pixels_close(void *driver) { CHECK(driver!=borrowed_driver);free(driver); }
 bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     CHECK(driver && count==((PixelConfig *)driver)->count);
     CHECK(count*3<=sizeof(displayed));
     if (deny_show) return false;
     memcpy(displayed,rgb,count*3); ++shows; return true;
+}
+bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
+    CHECK(!borrowed_output);
+    if(!delayed_output)return platform_pixels_show(driver,rgb,count);
+    borrowed_output=rgb;borrowed_driver=driver;borrowed_count=count;
+    borrowed_crc=crc32_bytes(rgb,count*3);return true;
+}
+int platform_pixels_poll(void *driver) {
+    if(!borrowed_output)return 1;
+    CHECK(driver==borrowed_driver&&crc32_bytes(borrowed_output,borrowed_count*3)==borrowed_crc);
+    if(!output_ready&&!output_failed)return 0;
+    bool ok=!output_failed&&platform_pixels_show(driver,borrowed_output,borrowed_count);
+    borrowed_output=NULL;borrowed_driver=NULL;return ok?1:-1;
+}
+void platform_pixels_cancel(void *driver) {
+    if(!borrowed_output)return;
+    CHECK(driver==borrowed_driver&&crc32_bytes(borrowed_output,borrowed_count*3)==borrowed_crc);
+    borrowed_output=NULL;borrowed_driver=NULL;cancelled_outputs++;
 }
 static uint8_t flash[STORAGE_BYTES], baseline[STORAGE_BYTES];
 static bool storage_available;
@@ -88,7 +113,21 @@ static void storage_faults(void) {
         CHECK(store_find(&recovered,STORE_NETWORK) && recovered.network_revision==1);
         if (!ok) ++interrupted;
     }
-    CHECK(interrupted>60);
+    CHECK(interrupted>8 && interrupted<20);
+    // Configuration publication remains atomic without a separate boot selector.
+    for(int point=0;point<30;point++){
+        memcpy(flash,baseline,sizeof(flash));CHECK(store_mount(&s));
+        fail_after=point;(void)store_put_config(&s,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG));fail_after=-1;
+        Store recovered;CHECK(store_mount(&recovered));
+        CHECK(recovered.config_revision==1||recovered.config_revision==2);
+        CHECK(store_find(&recovered,"effect")&&store_find(&recovered,STORE_NETWORK));
+        for(unsigned i=736;i<800;i++)CHECK(flash[(unsigned)recovered.bank*STORE_BANK_BYTES+i]==0);
+    }
+    // Abandoning the very first payload leaves a blank, usable catalogue.
+    memset(flash,255,sizeof(flash));CHECK(store_mount(&s));StoreUpload upload={.pin=-1};
+    CHECK(store_upload_begin(&s,&upload,"incomplete",300,0));
+    CHECK(store_upload_chunk(&upload,0,baseline,256));store_upload_cancel(&upload);
+    CHECK(store_mount(&s)&&!s.count&&s.bank==-1);
     storage_available=false;
 }
 void *platform_calloc(size_t count, size_t size) {
@@ -135,123 +174,19 @@ static void command(Session *session, uint8_t type, const uint8_t *bytes, size_t
 }
 static void upload(Session *session, Capture *reply, const uint8_t *wasm, size_t size) {
     uint8_t begin[8], chunk[FRAME_LIMIT];
-    CHECK(size + 4 <= sizeof(chunk));
     write_u32(begin, (uint32_t)size);
     write_u32(begin + 4, crc32_bytes(wasm, size));
     command(session, CMD_BEGIN, begin, sizeof(begin));
     CHECK(reply->code == STATUS_OK);
-    write_u32(chunk, 0);
-    memcpy(chunk + 4, wasm, size);
-    command(session, CMD_CHUNK, chunk, size + 4);
-    CHECK(reply->code == STATUS_OK);
+    for(size_t at=0;at<size;) {
+        size_t n=size-at;if(n>FRAME_LIMIT-4)n=FRAME_LIMIT-4;
+        write_u32(chunk,(uint32_t)at);memcpy(chunk+4,wasm+at,n);
+        command(session,CMD_CHUNK,chunk,n+4);CHECK(reply->code==STATUS_OK);at+=n;
+    }
     command(session, CMD_FINISH, NULL, 0);
 }
 
-// (module (import "led" "rgb" (func $rgb (param i32 i32 i32)))
-//   (func (export "render") (param i32)
-//     i32.const 255 i32.const 128 i32.const 0 call $rgb))
-static const uint8_t render_wasm[] = {
-    0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00,0x01,0x0b,0x02,0x60,0x03,0x7f,
-    0x7f,0x7f,0x00,0x60,0x01,0x7f,0x00,0x02,0x0b,0x01,0x03,0x6c,0x65,0x64,
-    0x03,0x72,0x67,0x62,0x00,0x00,0x03,0x02,0x01,0x01,0x07,0x0a,0x01,0x06,
-    0x72,0x65,0x6e,0x64,0x65,0x72,0x00,0x01,0x0a,0x0e,0x01,0x0c,0x00,0x41,
-    0xff,0x01,0x41,0x80,0x01,0x41,0x00,0x10,0x00,0x0b
-};
-// (module (func (export "run") (loop $again br $again)))
-static const uint8_t loop_wasm[] = {
-    0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00,0x01,0x04,0x01,0x60,0x00,0x00,
-    0x03,0x02,0x01,0x00,0x07,0x07,0x01,0x03,0x72,0x75,0x6e,0x00,0x00,0x0a,
-    0x09,0x01,0x07,0x00,0x03,0x40,0x0c,0x00,0x0b,0x0b
-};
-
-// Original control-ABI-2 fixture. WAT and manifest are included for auditability.
-// (module
-//   (import "lightvm.control.v2" "resource" (func $resource (param i32) (result i32)))
-//   (import "lightvm.control.v2" "write" (func $write (param i32 i64 i32)))
-//   (func (export "control_step") (param $trigger i32) (param $time i64) (param $delta i64) (result i32)
-//     (call $write (call $resource (i32.const 0)) (i64.const 0)
-//       (i32.wrap_i64 (i64.div_s (local.get $delta) (i64.const 1000))))
-//     (i32.const 0)))
-// {"schema":"lightvm.program/3","abi":2,"pixels":{"format":"rgb8"},"parameters":[]}
-static const uint8_t control_wasm[] = {
-    0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00,0x01,0x13,0x03,0x60,0x01,0x7f,
-    0x01,0x7f,0x60,0x03,0x7f,0x7e,0x7f,0x00,0x60,0x03,0x7f,0x7e,0x7e,0x01,
-    0x7f,0x02,0x3a,0x02,0x12,0x6c,0x69,0x67,0x68,0x74,0x76,0x6d,0x2e,0x63,
-    0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x2e,0x76,0x32,0x08,0x72,0x65,0x73,0x6f,
-    0x75,0x72,0x63,0x65,0x00,0x00,0x12,0x6c,0x69,0x67,0x68,0x74,0x76,0x6d,
-    0x2e,0x63,0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x2e,0x76,0x32,0x05,0x77,0x72,
-    0x69,0x74,0x65,0x00,0x01,0x03,0x02,0x01,0x02,0x07,0x10,0x01,0x0c,0x63,
-    0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x5f,0x73,0x74,0x65,0x70,0x00,0x02,0x0a,
-    0x15,0x01,0x13,0x00,0x41,0x00,0x10,0x00,0x42,0x00,0x20,0x02,0x42,0xe8,
-    0x07,0x7f,0xa7,0x10,0x01,0x41,0x00,0x0b,0x00,0x34,0x04,0x6e,0x61,0x6d,
-    0x65,0x01,0x12,0x02,0x00,0x08,0x72,0x65,0x73,0x6f,0x75,0x72,0x63,0x65,
-    0x01,0x05,0x77,0x72,0x69,0x74,0x65,0x02,0x19,0x01,0x02,0x03,0x00,0x07,
-    0x74,0x72,0x69,0x67,0x67,0x65,0x72,0x01,0x04,0x74,0x69,0x6d,0x65,0x02,
-    0x05,0x64,0x65,0x6c,0x74,0x61,0x00,0x61,0x0f,0x6c,0x69,0x67,0x68,0x74,
-    0x76,0x6d,0x2e,0x70,0x72,0x6f,0x67,0x72,0x61,0x6d,0x7b,0x22,0x73,0x63,
-    0x68,0x65,0x6d,0x61,0x22,0x3a,0x22,0x6c,0x69,0x67,0x68,0x74,0x76,0x6d,
-    0x2e,0x70,0x72,0x6f,0x67,0x72,0x61,0x6d,0x2f,0x33,0x22,0x2c,0x22,0x61,
-    0x62,0x69,0x22,0x3a,0x32,0x2c,0x22,0x70,0x69,0x78,0x65,0x6c,0x73,0x22,
-    0x3a,0x7b,0x22,0x66,0x6f,0x72,0x6d,0x61,0x74,0x22,0x3a,0x22,0x72,0x67,
-    0x62,0x38,0x22,0x7d,0x2c,0x22,0x70,0x61,0x72,0x61,0x6d,0x65,0x74,0x65,
-    0x72,0x73,0x22,0x3a,0x5b,0x5d,0x7d,
-};
-
-// Original control-ABI-2 fixture. WAT and manifest are included for auditability.
-// (module
-//   (import "lightvm.control.v2" "resource" (func $resource (param i32) (result i32)))
-//   (import "lightvm.control.v2" "count" (func $count (param i32) (result i64)))
-//   (import "lightvm.control.v2" "write" (func $write (param i32 i64 i32)))
-//   (import "lightvm.control.v2" "param_int" (func $param (param i32) (result i64)))
-//   (global $handle (mut i32) (i32.const 0))
-//   (global $phase (mut i64) (i64.const 0))
-//   (func (export "control_step") (param $trigger i32) (param $time i64) (param $delta i64) (result i32)
-//     (if (i32.eqz (local.get $trigger))
-//       (then (global.set $handle (call $resource (i32.const 0))))
-//       (else
-//         (global.set $phase (i64.add (global.get $phase) (i64.const 1)))
-//         (call $write (global.get $handle)
-//           (i64.sub (call $count (global.get $handle)) (i64.const 1))
-//           (i32.wrap_i64 (i64.add (global.get $phase)
-//             (i64.add (i64.div_s (local.get $delta) (i64.const 1000)) (call $param (i32.const 0))))))))
-//     (i32.const 0)))
-// {"schema":"lightvm.program/3","abi":2,"pixels":{"format":"rgb8"},"parameters":[{"name":"seed","type":"int","default":4}]}
-static const uint8_t slot_wasm[] = {
-    0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00,0x01,0x18,0x04,0x60,0x01,0x7f,
-    0x01,0x7f,0x60,0x01,0x7f,0x01,0x7e,0x60,0x03,0x7f,0x7e,0x7f,0x00,0x60,
-    0x03,0x7f,0x7e,0x7e,0x01,0x7f,0x02,0x74,0x04,0x12,0x6c,0x69,0x67,0x68,
-    0x74,0x76,0x6d,0x2e,0x63,0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x2e,0x76,0x32,
-    0x08,0x72,0x65,0x73,0x6f,0x75,0x72,0x63,0x65,0x00,0x00,0x12,0x6c,0x69,
-    0x67,0x68,0x74,0x76,0x6d,0x2e,0x63,0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x2e,
-    0x76,0x32,0x05,0x63,0x6f,0x75,0x6e,0x74,0x00,0x01,0x12,0x6c,0x69,0x67,
-    0x68,0x74,0x76,0x6d,0x2e,0x63,0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x2e,0x76,
-    0x32,0x05,0x77,0x72,0x69,0x74,0x65,0x00,0x02,0x12,0x6c,0x69,0x67,0x68,
-    0x74,0x76,0x6d,0x2e,0x63,0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x2e,0x76,0x32,
-    0x09,0x70,0x61,0x72,0x61,0x6d,0x5f,0x69,0x6e,0x74,0x00,0x01,0x03,0x02,
-    0x01,0x03,0x06,0x0b,0x02,0x7f,0x01,0x41,0x00,0x0b,0x7e,0x01,0x42,0x00,
-    0x0b,0x07,0x10,0x01,0x0c,0x63,0x6f,0x6e,0x74,0x72,0x6f,0x6c,0x5f,0x73,
-    0x74,0x65,0x70,0x00,0x04,0x0a,0x34,0x01,0x32,0x00,0x20,0x00,0x45,0x04,
-    0x40,0x41,0x00,0x10,0x00,0x24,0x00,0x05,0x23,0x01,0x42,0x01,0x7c,0x24,
-    0x01,0x23,0x00,0x23,0x00,0x10,0x01,0x42,0x01,0x7d,0x23,0x01,0x20,0x02,
-    0x42,0xe8,0x07,0x7f,0x41,0x00,0x10,0x03,0x7c,0x7c,0xa7,0x10,0x02,0x0b,
-    0x41,0x00,0x0b,0x00,0x54,0x04,0x6e,0x61,0x6d,0x65,0x01,0x20,0x04,0x00,
-    0x08,0x72,0x65,0x73,0x6f,0x75,0x72,0x63,0x65,0x01,0x05,0x63,0x6f,0x75,
-    0x6e,0x74,0x02,0x05,0x77,0x72,0x69,0x74,0x65,0x03,0x05,0x70,0x61,0x72,
-    0x61,0x6d,0x02,0x19,0x01,0x04,0x03,0x00,0x07,0x74,0x72,0x69,0x67,0x67,
-    0x65,0x72,0x01,0x04,0x74,0x69,0x6d,0x65,0x02,0x05,0x64,0x65,0x6c,0x74,
-    0x61,0x07,0x10,0x02,0x00,0x06,0x68,0x61,0x6e,0x64,0x6c,0x65,0x01,0x05,
-    0x70,0x68,0x61,0x73,0x65,0x00,0x89,0x01,0x0f,0x6c,0x69,0x67,0x68,0x74,
-    0x76,0x6d,0x2e,0x70,0x72,0x6f,0x67,0x72,0x61,0x6d,0x7b,0x22,0x73,0x63,
-    0x68,0x65,0x6d,0x61,0x22,0x3a,0x22,0x6c,0x69,0x67,0x68,0x74,0x76,0x6d,
-    0x2e,0x70,0x72,0x6f,0x67,0x72,0x61,0x6d,0x2f,0x33,0x22,0x2c,0x22,0x61,
-    0x62,0x69,0x22,0x3a,0x32,0x2c,0x22,0x70,0x69,0x78,0x65,0x6c,0x73,0x22,
-    0x3a,0x7b,0x22,0x66,0x6f,0x72,0x6d,0x61,0x74,0x22,0x3a,0x22,0x72,0x67,
-    0x62,0x38,0x22,0x7d,0x2c,0x22,0x70,0x61,0x72,0x61,0x6d,0x65,0x74,0x65,
-    0x72,0x73,0x22,0x3a,0x5b,0x7b,0x22,0x6e,0x61,0x6d,0x65,0x22,0x3a,0x22,
-    0x73,0x65,0x65,0x64,0x22,0x2c,0x22,0x74,0x79,0x70,0x65,0x22,0x3a,0x22,
-    0x69,0x6e,0x74,0x22,0x2c,0x22,0x64,0x65,0x66,0x61,0x75,0x6c,0x74,0x22,
-    0x3a,0x34,0x7d,0x5d,0x7d,
-};
+#include "bytecode_fixtures.h"
 
 void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) { snprintf(device,capacity,"test-device"); snprintf(boot,boot_capacity,"test-boot"); }
 
@@ -309,8 +244,14 @@ static void network_transactions(void) {
     session_destroy(&session); app_destroy(&app);
 }
 
+#include "portable_contract.inc"
+
+static unsigned service_calls;
+static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
+static void disconnect_service(void *context) { App *a=context;app_disconnect(a,a->upload_owner); }
+
 int main(void) {
-    storage_faults();
+    storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
     static App app;
     static Session session;
     Capture reply = {.marker = 0x12345678u};
@@ -330,14 +271,14 @@ int main(void) {
     command(&other,CMD_STATUS,NULL,0); CHECK(other_reply.code==STATUS_OK && other_reply.id==42);
     command(&other,CMD_OBJECT_CANCEL,NULL,0); CHECK(other_reply.code==STATUS_BUSY && app.upload_owner==1);
     command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_BUSY);
-    session_destroy(&session); CHECK(!app.vm.uploading && !app.upload_owner);
+    session_destroy(&session); CHECK(!app_device(&app,NULL)->vm.uploading && !app.upload_owner);
     session_init(&session,&app,1,capture,&reply);
     command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_OK && app.upload_owner==2);
-    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app.vm.uploading); clock_now=0;
+    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app_device(&app,NULL)->vm.uploading); clock_now=0;
     command(&session,CMD_RESET,NULL,0);
 
     char config[400], metadata[120];
-    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}],\"targets\":{\"A\":{\"device\":\"lights\"}}}",PIXEL_COUNT);
+    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}]}",PIXEL_COUNT);
     int metadata_size=snprintf(metadata,sizeof(metadata),"{\"kind\":\"config\",\"size\":%d,\"crc32\":%lu}",config_size,(unsigned long)crc32_bytes((const uint8_t *)config,(size_t)config_size));
     command(&session,CMD_OBJECT_BEGIN,(const uint8_t *)metadata,(size_t)metadata_size);
     CHECK(reply.code==STATUS_OK);
@@ -359,8 +300,8 @@ int main(void) {
     command(&session, 10, NULL, 0);
     CHECK(reply.code == STATUS_PROTOCOL && !strcmp(reply.message, "unknown command"));
     CHECK(shows == 1);
-    upload(&session, &reply, render_wasm, sizeof(render_wasm));
-    CHECK(reply.code == STATUS_OK && allocations > 0 && vm_heap_used() > 0);
+    upload(&session, &reply, render_lbc, sizeof(render_lbc));
+    CHECK(reply.code == STATUS_OK && vm_heap_used() > 0);
     command(&session, CMD_PLAY, NULL, 0);
     CHECK(reply.code == STATUS_OK);
     unsigned playback_shows = shows;
@@ -384,27 +325,39 @@ int main(void) {
     }
     CHECK(!memcmp(displayed, reply.snapshot, PIXEL_BYTES));
 
-    upload(&session, &reply, loop_wasm, sizeof(loop_wasm));
-    CHECK(reply.code == STATUS_OK);
-    clock_step = RUN_TIMEOUT_US / 4 + 1;
-    command(&session, CMD_RUN, NULL, 0);
-    CHECK(reply.code == STATUS_LIMIT && strstr(reply.message, "deadline"));
-    clock_step = 0;
+    command(&session,CMD_PLAY,NULL,0);CHECK(reply.code==STATUS_OK);
+    unsigned live_frames=app_device(&app,NULL)->vm.frame_count;uint32_t generation=app_device(&app,NULL)->vm.generation;
+    app.service_io=advance_service;upload(&session, &reply, fault_lbc, sizeof(fault_lbc));app.service_io=NULL;
+    CHECK(reply.code == STATUS_LOAD && app_device(&app,NULL)->vm.ready); /* failed preparation retains old instance */
+    CHECK(app_device(&app,NULL)->vm.generation==generation&&app_device(&app,NULL)->vm.playing&&app_device(&app,NULL)->vm.frame_count>live_frames&&service_calls>0);
+    // A native link-loss callback may arrive at a flash checkpoint; cancellation
+    // waits for the serialized command to release its upload workspace.
+    write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
+    command(&session,CMD_BEGIN,begin,sizeof(begin));CHECK(reply.code==STATUS_OK);
+    app.service_io=disconnect_service;app.service_context=&app;
+    uint8_t interrupted[260]={0};memcpy(interrupted+4,render_lbc,100);
+    command(&session,CMD_CHUNK,interrupted,104);app.service_io=NULL;app.service_context=NULL;
+    CHECK(!app.upload_owner&&!app.upload.active&&app.upload.pin==-1&&!app_device(&app,NULL)->vm.uploading&&app_device(&app,NULL)->vm.ready);
+    vm_destroy(&app_device(&app,NULL)->vm);vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);
+    app_device(&app,NULL)->vm.memory=fault_lbc;app_device(&app,NULL)->vm.expected=sizeof(fault_lbc);CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
+    command(&session, CMD_FRAME, delta, sizeof(delta));
+    CHECK(reply.code == STATUS_RUN);
     command(&session, CMD_RESET, NULL, 0);
     CHECK(reply.code == STATUS_OK && vm_heap_used() == 0);
     deny_allocation = true;
-    upload(&session, &reply, render_wasm, sizeof(render_wasm));
-    CHECK(reply.code == STATUS_LOAD && vm_heap_used() == 0);
+    write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
+    command(&session,CMD_BEGIN,begin,sizeof(begin));
+    CHECK(reply.code == STATUS_STORAGE && !app.upload_owner && vm_heap_used() == 0);
     deny_allocation = false;
-    upload(&session, &reply, render_wasm, sizeof(render_wasm));
+    upload(&session, &reply, render_lbc, sizeof(render_lbc));
     CHECK(reply.code == STATUS_OK);
     // Control steps allocate only during preparation. The output buffer is
     // charged alongside interpreter/history/staging storage in the same budget.
-    upload(&session,&reply,control_wasm,sizeof(control_wasm));
-    CHECK(reply.code==STATUS_OK && app.vm.control.enabled);
+    upload(&session,&reply,control_lbc,sizeof(control_lbc));
+    CHECK(reply.code==STATUS_OK && app_device(&app,NULL)->vm.control.enabled);
     reply.snapshot_size=0; write_u32(delta,1);
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_OK);
-    CHECK(app.vm.control.output_charge==PIXEL_BYTES);
+    CHECK(app_device(&app,NULL)->vm.control.output_charge==PIXEL_BYTES);
     unsigned control_allocations=allocations;
     deny_allocation=true;
     for (unsigned i=0;i<100;++i) {
@@ -413,25 +366,26 @@ int main(void) {
     }
     CHECK(allocations==control_allocations);
     command(&session,CMD_PLAY,NULL,0); CHECK(reply.code==STATUS_OK);
-    uint64_t before_time=app.vm.control.program_us;
+    uint64_t before_time=app_device(&app,NULL)->vm.control.program_us;
     clock_now+=1500123u;
     app_tick(&app);
-    CHECK(app.vm.control.program_us-before_time==1500123u);
+    CHECK(app_device(&app,NULL)->vm.control.program_us-before_time==1500123u);
     CHECK(displayed[0]==0 && displayed[1]==5 && displayed[2]==220);
-    uint32_t before_frame=app.vm.control.output_frame;
+    uint32_t before_frame=app_device(&app,NULL)->vm.control.output_frame;
     deny_show=true; reply.snapshot_size=0; write_u32(delta,7);
     command(&session,CMD_FRAME,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_RUN && app.vm.control.faulted && !app.vm.playing);
-    CHECK(app.vm.control.output_frame==before_frame);
-    CHECK(displayed[2]==220 && app.pixels.rgb[2]==220);
-    CHECK(app.vm.control.committed[2]==7); // successful batch survives driver failure
+    CHECK(reply.code==STATUS_RUN && !app_device(&app,NULL)->vm.control.faulted && app_device(&app,NULL)->vm.playing);
+    CHECK(app_device(&app,NULL)->vm.control.output_frame==before_frame);
+    CHECK(displayed[2]==220 && app_device(&app,NULL)->pixels.rgb[2]==220);
+    CHECK(app_device(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
     deny_show=false; deny_allocation=false;
     command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==0);
     // Allocation failure during control preparation leaves management usable.
-    upload(&session,&reply,control_wasm,sizeof(control_wasm)); CHECK(reply.code==STATUS_OK);
+    vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);app_device(&app,NULL)->vm.memory=control_lbc;app_device(&app,NULL)->vm.expected=sizeof(control_lbc);
+    CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
     deny_allocation=true; reply.snapshot_size=0;
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_RUN);
-    CHECK(app.vm.control.output_charge==0);
+    CHECK(app_device(&app,NULL)->vm.control.output_charge==0);
     deny_allocation=false;
     // Admission also rejects an output reservation when the aggregate budget
     // is already occupied; it does not raise the limit or lose that accounting.
@@ -454,8 +408,8 @@ int main(void) {
     static VmInstance one,two;
     Capture first_reply={.marker=0x12345678u}, second_reply={.marker=0x12345678u};
     vm_init(&one,&first,capture,&first_reply); vm_init(&two,&second,capture,&second_reply);
-    memcpy(one.bytes,render_wasm,sizeof(render_wasm)); one.expected=sizeof(render_wasm);
-    memcpy(two.bytes,render_wasm,sizeof(render_wasm)); two.expected=sizeof(render_wasm);
+    one.memory=render_lbc; one.expected=sizeof(render_lbc);
+    two.memory=render_lbc; two.expected=sizeof(render_lbc);
     CHECK(!vm_load(&one) && !vm_load(&two)); one.ready=true; two.ready=true;
     vm_command(&one,CMD_FRAME,42,delta,sizeof(delta));
     CHECK(first_reply.code==STATUS_OK && first_reply.value==3 && second.rgb[0]==0);
@@ -472,21 +426,26 @@ int main(void) {
     CHECK(vm_heap_used()==0);
 
     // One identical artifact renders into arbitrary assigned canvases, with no
-    // physical driver. State, clock, parameters and RGB frames are private.
+    // physical driver. State, clock, settings and RGB frames are private.
     uint8_t canvas_one[9], canvas_two[21];
     memset(canvas_one,99,sizeof(canvas_one)); memset(canvas_two,99,sizeof(canvas_two));
     PixelBuffer offscreen_one={.rgb=canvas_one,.count=3}, offscreen_two={.rgb=canvas_two,.count=7};
     vm_init(&one,&offscreen_one,capture,&first_reply); vm_init(&two,&offscreen_two,capture,&second_reply);
     memcpy(one.slot,"A",2); memcpy(two.slot,"B",2);
-    memcpy(one.bytes,slot_wasm,sizeof(slot_wasm)); one.expected=sizeof(slot_wasm);
-    memcpy(two.bytes,slot_wasm,sizeof(slot_wasm)); two.expected=sizeof(slot_wasm);
+    one.memory=slot_lbc; one.expected=sizeof(slot_lbc);
+    two.memory=slot_lbc; two.expected=sizeof(slot_lbc);
     CHECK(!vm_load(&one) && !vm_load(&two)); one.ready=true; two.ready=true;
     unsigned offscreen_shows=shows;
+    Json settings;
+    const char *first_settings="{\"seed\":7}", *second_settings="{\"seed\":11}";
+    CHECK(json_parse(&settings,(const uint8_t *)first_settings,strlen(first_settings)));
+    CHECK(!control_settings(&one,&settings,0));
+    CHECK(json_parse(&settings,(const uint8_t *)second_settings,strlen(second_settings)));
+    CHECK(!control_settings(&two,&settings,0));
     CHECK(!control_prepare(&one) && !control_prepare(&two));
     CHECK(one.control.count==3 && two.control.count==7);
     CHECK(!one.output && !two.output && !one.control.output_charge && !two.control.output_charge);
     CHECK(one.control.allocation!=two.control.allocation);
-    one.control.parameters[0].value.integer=7; two.control.parameters[0].value.integer=11;
     allocation_count=allocations; deny_allocation=true;
     CHECK(!control_step(&one,1,5000) && !control_step(&two,1,9000));
     CHECK(one.control.committed[8]==13 && two.control.committed[20]==21);
@@ -503,15 +462,31 @@ int main(void) {
     vm_destroy(&one); CHECK(two.ready && vm_heap_used()>0);
     vm_destroy(&two); CHECK(vm_heap_used()==0 && shows==offscreen_shows);
 
+    // Stored execution reads flash, not the resident upload array. The running
+    // version remains pinned in flash through repeated catalogue replacements.
+    storage_available=true;memset(flash,255,sizeof(flash));Store stored;CHECK(store_mount(&stored));
+    CHECK(store_put(&stored,"bytecode",slot_lbc,sizeof(slot_lbc)));
+    const StoreEntry *entry=store_find(&stored,"bytecode");CHECK(entry);
+    vm_init(&one,&offscreen_one,capture,&first_reply);
+    CHECK(vm_bind_storage(&one,&stored,entry));
+    CHECK(!vm_load(&one));one.ready=true;CHECK(!control_prepare(&one));
+    CHECK(!control_step(&one,1,5000));CHECK(one.control.committed[8]==10);
+    uint32_t pinned=one.code.offset;
+    for(unsigned k=0;k<20;k++)CHECK(store_put(&stored,"bytecode",render_lbc,sizeof(render_lbc)));
+    CHECK(one.from_storage && one.code.offset==pinned);
+    CHECK(!control_step(&one,1,7000));
+    CHECK(one.control.committed[8]==13);vm_destroy(&one);storage_available=false;
+
     // Initialization failure changes the active revision and leaves no driver.
     clock_now=0; app_init(&app,capture,&reply); session_init(&session,&app,1,capture,&reply);
     memcpy(app.staging,config,(size_t)config_size);
     char *pin=strstr((char *)app.staging,"GP16"); CHECK(pin); pin[3]='7';
     app.expected=(uint32_t)config_size; app.object_kind=1; app.staged=true; app.upload_owner=1;
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));
-    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app.pixels.driver && !app.vm.target);
+    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app_device(&app,NULL)->pixels.driver && !app_device(&app,NULL)->vm.target);
     CHECK(strstr(reply.message,"initialization failed"));
     session_destroy(&session); app_destroy(&app);
     network_transactions();
+    portable_contract();
     return 0;
 }

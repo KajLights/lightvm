@@ -1,11 +1,19 @@
 # Multi-platform engine and native ports
 
-The [portable bytecode architecture decision](../documents/architecture-decision-portable-bytecode.md)
+> The implementation now uses the [portable bytecode control profile](control-api.md).
+> The WASM-specific loader, guest imports and memory limits described below are
+> historical. Current storage, cooperative servicing and asynchronous output
+> contracts are documented in [control-api.md](control-api.md) and
+> [configuration.md](configuration.md); the historical contracts below are not
+> the current driver or upload specification.
+
+
+The [portable bytecode architecture decision](design/architecture-decision-portable-bytecode.md)
 selects the next runtime direction: multiple source-language frontends compile
 off-device to portable typed bytecode, interpreted directly from flash with
 bounded contexts and native buffer views. It records the staged animation API,
 numeric policy, memory ownership, live replacement and open design choices.
-The [component runtime requirements](../documents/architecture-request-component-runtime.md)
+The [component runtime requirements](design/architecture-request-component-runtime.md)
 cover concurrent effects, independent live updates, communications plugins,
 multicore execution and hardware offload. The contracts below describe the
 current WASM implementation and earlier proposals, not the new bytecode ABI.
@@ -46,22 +54,23 @@ evidence separately from build success.
 
 The core contains no GPIO, PIO, USB, POSIX or RTOS calls, nor platform-selection
 branches. `pixels.c` always stores packed logical RGB and delegates physical output.
-All animation effects run as WASM procedures. All ports start from saved JSON
-configuration and an optional named startup WASM; otherwise they stay idle.
+Animation effects run as bytecode procedures. All ports start from saved JSON
+configuration; each device can name a startup procedure and supply initialization
+arguments. Devices without startup remain idle.
 The shared snapshot store delegates bounded block I/O to native ports.
 See [configuration and persistence](configuration.md).
 
 `src/config.h` includes the selected `LIGHTVM_BOARD_CONFIG` header and supplies
 portable defaults. Board headers must contain constants and portable declarations,
 without SDK includes. Adjustable engine constants are `PIXEL_CAPACITY`, `MODULE_LIMIT`,
-`VM_HEAP_LIMIT`, `VM_STACK_SIZE`, `OUTPUT_LIMIT`, `RUN_TIMEOUT_US` and
+`VM_HEAP_LIMIT`, `VM_STACK_SIZE`, `OUTPUT_LIMIT` and
 `FRAME_INTERVAL_US`. Compile the core and entry point with the same header.
 Native pin tables describe exposed capabilities; peripheral selection, count,
 brightness and order belong to runtime JSON.
 Current wasm3 builds enforce one 64 KiB linear-memory page and a function stack
 height of 128; these interpreter limits are common to the present ports.
 
-The proposed [build profiles](../documents/feature-proposal-build-profiles.md)
+The proposed [build profiles](design/feature-proposal-build-profiles.md)
 separate each instance's selected drivers, services, storage layout and budgets
 from its board's physical capabilities. HTTP, MQTT and OTA should be optional
 build components, with dependencies and capacity validated for the selected
@@ -77,15 +86,25 @@ Every port implements [platform.h](../src/platform.h):
 | `platform_time_us()` | Monotonic 64-bit microseconds, advancing during idle waits and guest execution; used for deadlines and frame cadence |
 | `platform_pins()` | Advertise exposed, usable board pin names and aliases |
 | `platform_pixels_open/close/show` | Initialize/tear down a configured instance and submit complete packed RGB; return failures rather than abort |
+| `platform_pixels_submit/poll/cancel` | Submit autonomous output, poll for completion/fault, and synchronously release all borrowed references on cancellation |
 | `platform_storage_available/read/write/erase/sync` | Native bounded 512 KiB block store; 4 KiB erase and 256-byte program units; durable sync |
 | `platform_calloc`, `platform_realloc`, `platform_free` | Compatible C allocation family with `max_align_t` alignment, zeroed calloc storage, overflow checks, and failed realloc leaving its old allocation intact |
 
-The output backend must consume or copy RGB before returning. A DMA backend needs
-its own retained buffer because the core reuses the logical buffer on the next
-render. Native services must be ready before `session_init`, which mounts storage,
-validates saved configuration and initializes configured drivers with black output. `show_us` measures the output callback's duration; an asynchronous
-backend should document how that relates to physical transmission. Output failure
-stops playback with diagnostics; initialization failure leaves active hardware empty.
+Synchronous `show` consumes RGB before returning. Autonomous `submit` borrows an
+immutable RGB frame until `poll` returns complete/fault or `cancel` releases it.
+Pico/Pico W use PIO-paced DMA with retained wire-format SRAM, one DMA channel per
+output, FIFO/shift-register drain and a reset-low guard. Stalled DMA is aborted
+and the PIO is reset before retry. ESP32 uses asynchronous RMT, preferring DMA on
+capable chips and falling back to ordinary RMT when DMA resources are unavailable.
+The supported S3 has one DMA-capable RMT transmit channel; further outputs retain
+ordinary asynchronous RMT. C3/C6 use ordinary asynchronous RMT.
+
+Native services are ready before configuration initializes outputs with black
+pixels. `show_us` measures elapsed time until output completion is observed; it
+includes other rendering and polling delays for asynchronous output. It does not
+measure CPU occupancy or wire duration. Output failure retains the last completed
+snapshot and retries on later frames; initialization failure leaves active hardware
+empty. See the [hardware measurements](../experiments/pico-async-output/README.md).
 
 Allocation budget accounting, including headers, remains in `vm_allocator.c`.
 The port can select an appropriate allocator or memory pool without changing the
@@ -141,7 +160,7 @@ must be serialized; neither several concurrent Sessions nor reentrant callbacks
 are supported. Future ESP32/RTOS network callbacks should enqueue commands for one
 engine task. They must not invoke wasm3, mutate its module, change the RGB buffer
 or enter the command handler concurrently. Reply/output callbacks must not reenter
-the engine. Native blocking writes are outside the cooperative guest deadline.
+the engine. Native blocking writes use their own transport deadlines.
 
 Matter/MQTT lighting controls should feed a shared controller-state API when that
 API is implemented. Vendor networking imports should not become prerequisites for
@@ -159,7 +178,7 @@ and contributions for subsequent scene/A/B composition.
 
 ## Proposed control model
 
-The [control API and execution model](../documents/feature-proposal-control-api.md)
+The [control API and execution model](design/feature-proposal-control-api.md)
 defines LightVM's next guest contract independently, with documented picolights
 lineage. It separates resources/capabilities, properties/samples, actions/jobs,
 events/triggers, tasks and clocks. Pixelblaze compatibility is a frontend or
@@ -176,7 +195,7 @@ roll back earlier commits or general guest state.
 New resources declare snapshot/readback semantics, publication, units, ownership
 and lifecycle. Addressable RGB frame steps start black; effects redraw their
 current output from animation state. Alpha transparency and
-[scene composition](../documents/feature-proposal-animation-composition.md)
+[scene composition](design/feature-proposal-animation-composition.md)
 will be designed separately. Completed scenes may later feed an A/B mixer,
 subject to jointly advertised limits. Native brightness applies once after final
 mixing. Ordinary actuators initially have an exclusive writer. The legacy adapter
@@ -184,7 +203,7 @@ keeps API v1's black-at-frame-start and callback/delta rules. General control
 contexts, event records and task continuation layouts remain proposed; no
 GPIO/ADC/PWM/servo support is implied by the current driver registry.
 
-The [device proposal](../documents/feature-proposal-device-support.md) describes
+The [device proposal](design/feature-proposal-device-support.md) describes
 definitions, native driver servicing and resource planning. Aggregate admission
 must include event queues, tasks, subscriptions, timers, jobs, continuation state
 and pixel buffers in addition to interpreter and native port storage. Layered
@@ -239,8 +258,8 @@ wasm3's intentional type aliasing is compiled with `-fno-strict-aliasing` on all
 GNU/Clang native ports. No architecture branches enter the shared engine.
 
 `app_main` owns one session on a 16 KiB native stack and yields every millisecond,
-including under continuous input. The shared 500 ms guest deadline remains
-cooperative; native compilation/output and SDK stacks are outside its budget.
+including under continuous input. Guest execution uses bounded instruction
+slices that yield and resume, without an instruction cutoff or timed watchdog.
 The port supplies `esp_timer_get_time`, ordinary C allocators, USB Serial/JTAG
 and synchronous RMT output. PSRAM, radio stacks and automatic light sleep are
 not enabled. USB pins are rejected as strip outputs. Native driver failures

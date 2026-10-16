@@ -1,6 +1,14 @@
 import type { AppStore } from './store';
 import { activityActions, DRAFT_KEY, editorActions } from './store';
-import type { Compilation } from './types';
+import type { Compilation, Description, Manifest } from './types';
+
+export function supportsProgram(target: Description, manifest: Manifest) {
+  const abis = target.program_abis ?? [target.control_abi];
+  const formats = target.bytecode_formats ?? [target.bytecode_format];
+  return abis.includes(manifest.abi) && formats.includes(`LBC1/${manifest.abi}`) &&
+    target.program_schemas.includes(manifest.schema ?? `lightvm.program/${manifest.abi + 1}`) &&
+    (manifest.abi !== 4 || Boolean(target.program_profiles?.includes('animation/1')));
+}
 
 export function assetUrl(name: string) { return new URL(name, new URL(import.meta.env.BASE_URL, document.baseURI)).href; }
 
@@ -15,7 +23,7 @@ export class Compiler {
   constructor(private store: AppStore) {}
   start() {
     if (this.worker) return;
-    this.store.dispatch(editorActions.compiler({ status: 'loading', message: 'Loading Python and the WebAssembly assembler…' }));
+    this.store.dispatch(editorActions.compiler({ status: 'loading', message: 'Loading Python…' }));
     try {
       this.worker = new Worker(assetUrl('compiler-worker.mjs'), { type: 'module' });
       this.initializationDeadline = setTimeout(() => this.fail('Compiler download timed out. Check your internet connection and retry.'), 60000);
@@ -33,7 +41,7 @@ export class Compiler {
           if (data.type === 'failed') { this.fail(data.message); return; }
           const editor = this.store.getState().editor;
           this.artifact = data.diagnostics.length ? null : { ...data, source: editor.source };
-          this.store.dispatch(editorActions.compiled({ revision: data.id, bytes: data.wasm.length, manifest: data.manifest, diagnostics: data.diagnostics }));
+          this.store.dispatch(editorActions.compiled({ revision: data.id, bytes: data.bytecode.length, manifest: data.manifest, diagnostics: data.diagnostics }));
         }
       };
     } catch (error) { this.fail((error as Error).message); return; }

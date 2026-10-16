@@ -10,8 +10,7 @@ With Wi-Fi and HTTP also enabled, its trigger activates the recovery policy belo
 Count power-ons **1, 2, 3**. Turn the device off again before five seconds on the
 first two boots; on the third, the detector's flag becomes true. Each power-on
 must reach the durable counter write to register. There is no five-second delay
-in startup. Saved configuration and programs start normally unless AP recovery
-is supported and triggered on this boot.
+in startup. Saved configuration and programs start normally, including during AP recovery.
 
 The counter increments early in application initialization, saturating at three.
 After five seconds from detector initialization, the first application tick at
@@ -37,9 +36,8 @@ On the third short boot, Pico W and the XIAO ESP32 ports enter a temporary **ope
 existing AP/DHCP/discovery implementation, channel 1 and worldwide radio country
 `XX`. Recovery overrides saved disabled networking, station credentials, AP
 name/password and HTTP port only for the runtime; saved values remain intact.
-The hardware configuration and stored procedures still load, while the saved
-startup procedure is kept idle. You can activate a stored program manually
-through USB or HTTP during recovery.
+The hardware configuration and all saved startup procedures load and run as
+normal. Recovery changes networking only; it does not suppress animations.
 
 The recovery AP remains for the entire boot. Clearing the journal counter after
 five seconds does not end recovery. Network commits save settings for the next
@@ -50,7 +48,7 @@ actual recovery mode/port with `recovery:true`. The editor explains the override
 and offers **Save network for next boot**.
 
 Keep the recovery boot powered for at least five seconds before restarting to
-resume the saved network and startup program. Restarting sooner, or a failed
+resume the saved network settings. Restarting sooner, or a failed
 counter clear, can trigger recovery again. Time while powered off does not clear
 the counter. No network, hardware configuration or procedure is erased on entry.
 There is no new build switch or guest reset command: the policy is enabled by the
@@ -126,8 +124,8 @@ re-enabling it can resume that counter. Full-chip erase also erases the journal.
 rollover, corrupt pages, every-byte interrupted first writes and injected read,
 program, erase, verification and synchronization failures. Protocol integration
 tests exercise real host process restarts, flag retention, guest reset, unavailable
-metadata, detector-only startup and byte-for-byte snapshot preservation. Recovery
-integration tests exercise idle startup, manual activation, HTTP/USB management,
+metadata, detector-only startup and byte-for-byte snapshot preservation. Historical recovery
+integration tests cover the previous idle-startup policy, manual activation, HTTP/USB management,
 credential retention, next-boot saves and normal restart after counter clear. CI builds
 both feature settings across the maintained native ports. Cross-builds establish
 build compatibility; physical power-switch timing still needs hardware validation.
