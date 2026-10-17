@@ -268,24 +268,24 @@ performed; interrupted-write recovery was verified with the simulated backend.
 ## Simultaneous device test
 
 Keep the existing physical Rainbow animation on GP16, then run five additional
-physical GPIO devices (Color, Pattern, Chase, Wipe and Twinkle):
+physical GPIO devices (Color, Pattern, Rainbow Sprite, Sweep and Stars):
 
 ```sh
 python tools/smoke_multi_device.py --port PORT --reference build/host/lightvm \
-  --pixels 100 --seconds 60 --keep-running
+  --pixels 100 --seconds 60
 ```
 
 The test checks host parity at supplied render deltas, six independent output
 clocks, stable aggregate VM heap and per-device pause/resume. Saved configuration
-and the procedure library remain unchanged. Without `--keep-running`, removing
-the test devices preserves the original instance and clock. Check the tool's GPIO
+and the procedure library remain unchanged. The six outputs are left running in
+RAM after the test; reboot restores the saved configuration. Check the tool's GPIO
 assignments against actual wiring before using it on hardware.
 
 Use device IDs for upload, activation, status, frame, stop, pause/resume and
 snapshot operations:
 
 ```sh
-python tools/client.py --port PORT --device desk build/examples/wipe.lbc --animate
+python tools/client.py --port PORT --device desk build/examples/sweep.lbc --animate
 python tools/client.py --port PORT --device desk --parameters
 python tools/client.py --port PORT --device desk --pause
 ```

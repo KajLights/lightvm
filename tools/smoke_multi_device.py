@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 from lightvm.compiler import compile_source
 from client import Client, ProcessTransport, SerialTransport, FRAME, PLAY
 
-EFFECTS = ('color', 'pattern', 'rainbow_sprite', 'wipe', 'stars')
+EFFECTS = ('color', 'pattern', 'rainbow_sprite', 'sweep', 'stars')
 
 
 def check(condition, message):
@@ -107,7 +107,7 @@ def run(client, reference, count, seconds, output):
         elapsed = time.monotonic() - started
         report['average_fps'] = {device: round((previous[device]['output_frame']-state['output_frame'])/elapsed, 2)
                                  for device, state in initial.items()}
-        check(previous['wipe']['render_count'] > initial['wipe']['render_count'] + 1, 'Wipe did not continue rendering')
+        check(previous['sweep']['render_count'] > initial['sweep']['render_count'] + 1, 'Sweep did not continue rendering')
         client.pause_program(device='pattern')
         paused = client.program_parameters(device='pattern')['program_us']
         rainbow_frame = client.program_parameters(device=primary)['output_frame']

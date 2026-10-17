@@ -5,7 +5,13 @@
     "mode": "ap",
     "country": "XX",
     "networks": [],
-    "ap": { "ssid": "", "password": "replace-this-password" }
+    "ap": {
+      "ssid": "",
+      "password": "replace-this-password"
+    }
   },
-  "http": { "enabled": true, "port": 80 }
+  "http": {
+    "enabled": true,
+    "port": 80
+  }
 }

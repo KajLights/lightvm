@@ -15,7 +15,7 @@ from test_configuration import config
 
 PREFIX='from lightvm import profile,setting,rgb,init,render\nprofile("animation/1")\n'
 NAMES=tuple(path.stem for path in sorted((ROOT/'examples/animations').glob('*.py')))
-REPLAY_NAMES=('color','pattern','wipe','rainbow')
+REPLAY_NAMES=('color','pattern','rainbow')
 def source(name):
     path=ROOT/'examples/animations'/f'{name}.py'
     return path.read_text().replace('random.seed()', 'random.seed(1)')
@@ -105,19 +105,6 @@ def draw(state, clock, output):
         self.assertEqual(self.frame(1000),bytes([3,10,10])*5)
         self.assertEqual(self.frame(0),bytes([4,0,10])*5)
         self.assertEqual(self.client.program_parameters()['program_us'],1_033_000)
-
-    def test_wipe_uses_elapsed_time_at_varied_frame_rates(self):
-        self.client.configure(config(51))
-        frames=[]
-        for schedule in ([407],[10]*40+[7],[123,284]):
-            self.client.upload(program(source('wipe')))
-            for ms in schedule: frame=self.frame(ms)
-            frames.append(frame)
-            self.assertEqual(self.client.program_parameters()['program_us'],407000)
-        self.assertEqual(frames[0],frames[1]);self.assertEqual(frames[1],frames[2])
-        self.reset({'speed':0.0})
-        frame=self.frame()
-        self.assertEqual(self.frame(1000),frame)
 
     def test_settings_are_frozen_until_explicit_reinitialization(self):
         self.client.upload(program('from array import array\n'+PREFIX+'''@init
@@ -212,13 +199,13 @@ def draw(ctx,runtime,pixels):
 
     def test_old_binary_version_and_forged_entry_permissions_rejected(self):
         for patch in ('version','rights','reserved'):
-            data=bytearray(sample('wipe'))
+            data=bytearray(sample('pattern'))
             regs,code,colors=struct.unpack_from('<3I',data,8)
             if patch=='version': struct.pack_into('<I',data,4,3)
             elif patch=='reserved': struct.pack_into('<I',data,48,1)
             else: struct.pack_into('<I',data,96+regs*8+code*8+colors*4+8,13)
             with self.assertRaises(ProtocolError): self.client.upload(data)
-        self.client.upload(sample('wipe'));self.assertEqual(len(self.frame()),15)
+        self.client.upload(sample('pattern'));self.assertEqual(len(self.frame()),15)
     def test_immutable_package_growth_does_not_grow_resident_ram(self):
         data = sample('color')
         self.client.upload(data)
@@ -250,7 +237,7 @@ def draw(ctx,runtime,pixels):
 
     def test_live_reset_preserves_shared_upload_transaction(self):
         self.client.upload(sample('color'))
-        data=sample('wipe')
+        data=sample('pattern')
         self.client.require_ok(self.client.command(BEGIN,struct.pack('<II',len(data),zlib.crc32(data))))
         self.client.require_ok(self.client.command(CHUNK,bytes(4)+data[:100]))
         self.reset()
@@ -271,7 +258,7 @@ def draw(ctx,runtime,pixels):
         with self.assertRaises(ProtocolError):self.client.activate('paint',settings={'seed':-1})
         self.assertEqual(self.client.program_parameters()['generation'],generation)
         self.assertEqual(self.client.snapshot()[1],before)
-        self.client.save_procedure('other',sample('wipe'))
+        self.client.save_procedure('other',sample('pattern'))
         self.client.delete_procedure('other')
         self.reset()
         self.assertEqual(self.frame(),before)

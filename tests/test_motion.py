@@ -193,6 +193,32 @@ def draw(ctx,runtime,pixels):
         with self.assertRaises(ProtocolError):
             self.client.save_procedure('forged', forged)
 
+    def test_batch_nearest_sampling_scales_a_solid_brush(self):
+        self.load('''def paint(s,runtime,pixels):
+ pixels.fill(rgb(255,0,0))
+ s.transform=Transform(translate=2.0,scale=5.0)
+Brush=Sprite(width=1,render=paint)
+@init
+def setup(ctx,runtime):
+ ctx.brush=SpriteBatch(Brush,capacity=1)
+ ctx.brush.spawn()
+@render
+def draw(ctx,runtime,pixels):
+ ctx.brush.render(runtime,pixels,sampling="nearest")
+''')
+        self.assertEqual(self.frame(),bytes([255,0,0,255])*5+bytes(62*4))
+        invalid=PREFIX+'''def paint(s,runtime,pixels): pass
+Brush=Sprite(width=1,render=paint)
+@init
+def setup(ctx,runtime):
+ ctx.brush=SpriteBatch(Brush,capacity=1)
+ ctx.brush.spawn()
+@render
+def draw(ctx,runtime,pixels):
+ ctx.brush.render(runtime,pixels,sampling="cubic")
+'''
+        self.assertFalse(compile_source(invalid).success)
+
     def test_wrap_rejects_oversized_images_and_unknown_modes(self):
         with self.assertRaises(ProtocolError):
             self.load('''@init

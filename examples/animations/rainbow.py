@@ -1,9 +1,18 @@
 """Rainbow gradient with a repeating duration-based colour cycle.
 
+Modes (initialization settings):
+  scale=1.0: one spatial colour wheel across the strip (default).
+  scale=0.0: a uniform colour that cycles over time; larger values repeat the wheel.
+  random_color=True: choose the initial hue randomly once (default).
+  random_color=False: start from color's hue, for example color=rgb(255, 0, 0).
+duration is seconds per colour cycle, default 60.0. This paints the whole strip;
+rainbow_sprite.py demonstrates a smaller moving image over transparency.
 """
 import random
 
-from lightvm import profile, setting, rgb, init, render, pico_colorwheel, hue_degrees, colorwheel
+from lightvm import (
+    profile, setting, init, render, rgb, pico_colorwheel, hue_degrees, colorwheel,
+)
 
 profile("animation/1")
 
@@ -13,12 +22,12 @@ def setup(ctx, runtime):
     ctx.duration = setting(60.0, minimum=0.001)
     ctx.scale = setting(1.0, minimum=0.0)
 
-    color = setting(rgb(255, 0, 0))
-    random_color = setting(True)
+    ctx.color = setting(rgb(255, 0, 0))
+    ctx.random_color = setting(True)
 
     random.seed()
-    chosen_color = color
-    if random_color:
+    chosen_color = ctx.color
+    if ctx.random_color:
         hue_index = random.randint(0, 359)
         chosen_color = pico_colorwheel(hue_index)
 

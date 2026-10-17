@@ -1,0 +1,42 @@
+{
+  "schema": "lightvm.scene/1",
+  "layers": [
+    {
+      "id": "background",
+      "procedure": "color",
+      "settings": {
+        "color": 1056816,
+        "random_color": false
+      }
+    },
+    {
+      "id": "red_eye",
+      "procedure": "sweep",
+      "blend": "screen",
+      "settings": {
+        "eye_count": 1,
+        "rainbow_eyes": false,
+        "color": 16711680,
+        "eye_width": 24,
+        "duration": 2.0,
+        "trail_seconds": 0.6,
+        "samples": 8
+      }
+    },
+    {
+      "id": "blue_eye",
+      "procedure": "sweep",
+      "blend": "add",
+      "settings": {
+        "eye_count": 1,
+        "rainbow_eyes": false,
+        "color": 255,
+        "eye_width": 24,
+        "duration": 2.0,
+        "phase": 1.0,
+        "trail_seconds": 0.6,
+        "samples": 8
+      }
+    }
+  ]
+}

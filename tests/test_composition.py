@@ -53,6 +53,56 @@ class CompositionTests(unittest.TestCase):
         self.client.layer_opacity('fg',255,device='lights')
         self.assertEqual(self.frame()[:3],bytes([192,0,0]))
 
+    def test_layer_blend_modes_alpha_and_opacity(self):
+        self.save('base',' pixels.fill(rgb(80,120,160))\n')
+        self.save('paint',' pixels.fill(rgb(200,100,50),alpha=ctx.alpha)\n',
+                  ' ctx.alpha=setting(128,minimum=0,maximum=255)\n')
+        mul=lambda v,a:(v*a+127)//255
+        self.assertEqual(self.client.describe()['scene_blend_modes'],['over','add','screen','multiply'])
+        for mode in ('over','add','screen','multiply'):
+            for alpha in (0,128,255):
+                for opacity in (0,128,255):
+                    with self.subTest(mode=mode,alpha=alpha,opacity=opacity):
+                        self.scene([{'id':'bg','procedure':'base'},
+                                    {'id':'fg','procedure':'paint','blend':mode,'opacity':opacity,'settings':{'alpha':alpha}}])
+                        a=mul(alpha,opacity)
+                        expected=[]
+                        for lower,channel in zip((80,120,160),(200,100,50)):
+                            paint=mul(mul(channel,alpha),opacity)
+                            value=(paint+mul(lower,255-a) if mode=='over' else
+                                   min(255,lower+paint) if mode=='add' else
+                                   255-mul(255-lower,255-paint) if mode=='screen' else
+                                   mul(lower,255-a+paint))
+                            expected.append(value)
+                        self.assertEqual(self.frame(),bytes(expected)*self.count)
+                        self.assertEqual(self.client.scene(device='lights')['layers'][1]['blend'],mode)
+
+    def test_blend_update_retains_clocks_and_invalid_modes_are_atomic(self):
+        self.save('base',' pixels.fill(rgb(100,0,0))\n')
+        self.save('paint',' pixels.fill(rgb(100,0,0))\n')
+        self.scene([{'id':'bg','procedure':'base'},{'id':'fg','procedure':'paint'}])
+        self.assertEqual(self.frame()[:3],bytes([100,0,0]))
+        before=self.state('fg'); heap=self.client.status_fields()['heap']
+        self.client.layer_blend('fg','add',device='lights')
+        self.assertEqual(self.frame()[:3],bytes([200,0,0]))
+        after=self.state('fg')
+        self.assertEqual(after['generation'],before['generation'])
+        self.assertEqual(after['program_us'],before['program_us'])
+        revision=self.client.scene(device='lights')['revision']
+        for mode in ('unknown','',None,True,2):
+            with self.subTest(mode=mode),self.assertRaises(ProtocolError):
+                self.client.layer_blend('fg',mode,device='lights')
+            self.assertEqual(self.client.scene(device='lights')['revision'],revision)
+            with self.assertRaises(ProtocolError):
+                self.scene([{'id':'fg','procedure':'paint','blend':mode}])
+            self.assertEqual(self.client.scene(device='lights')['revision'],revision)
+            self.assertEqual(self.client.status_fields()['heap'],heap)
+            self.assertEqual(self.frame()[:3],bytes([200,0,0]))
+        with self.assertRaises(ProtocolError):
+            self.client.manage('scene_layer_blend',device='lights',layer='fg',blend='over',expected_revision=revision-1)
+        self.client.activate('paint',device='lights',layer='fg')
+        self.assertEqual(self.client.scene(device='lights')['layers'][1]['blend'],'add')
+
     def test_native_gradients_palette_and_colorwheel(self):
         self.save('gradient',' pixels.gradient(rgb(255,0,0),rgb(0,0,255))\n')
         self.scene([{'id':'bg','procedure':'gradient'}])

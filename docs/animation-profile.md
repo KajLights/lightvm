@@ -164,8 +164,9 @@ fields have been removed. FRAME keeps its existing wire range of 0..1000 ms;
 autonomous playback supplies its complete elapsed delta without clamping it.
 
 Tests compile the six Python examples in `examples/animations/`.
-An independent Python caller checks Color, Pattern, Wipe, and Rainbow output.
-Sprite tests check Stars and Rainbow Sprite, including transparency, clocks, and movement.
+An independent Python caller checks Color, Pattern, and Rainbow output.
+Sprite tests check Stars, Rainbow Sprite and Sweep, including transparency,
+clocks, movement, retained wipe modes and frame-independent sampled trails.
 The suite also checks seeded random ranges, arrays, variable frame rates, frozen settings,
 fault publication, and native continuation/ownership. Hardware measurements below describe the previous API;
 they are historical evidence, not measurements of LBC1/4.
@@ -233,7 +234,8 @@ workspace. The 16 KiB reservation still requires hardware high-water verificatio
 
 ## Pico W simultaneous-device verification (2026-10-15)
 
-These historical measurements use the earlier example set. Chase and Twinkle have since been removed.
+These historical measurements use the earlier example set. Chase and Wipe are
+now Sweep modes; Stars replaces the former Twinkle source example.
 
 On Pico W `E6614103E7236D37`, the GP16 physical output retained the original
 200-pixel Rainbow at brightness 100/255. Five additional named `virtual_rgb`
@@ -259,7 +261,7 @@ These figures exclude static App/transport memory, native drivers and stacks.
 
 Rainbow alone measured approximately 47.6 fps in the short baseline sample.
 That historical run used the former one-shot Wipe, with a one-second update
-interval; it held its output after approximately 51 seconds. Wipe now repeats,
+interval; it held its output after approximately 51 seconds. Sweep's wipe mode repeats,
 so the recorded average includes a hold that no longer occurs. That workload therefore
 does not establish six simultaneous 60 fps outputs. No device faulted. Saved
 configuration and the procedure library were unchanged; the extra devices were

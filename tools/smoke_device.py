@@ -44,9 +44,9 @@ def smoke(client, board, reference):
                 client.reset_program(settings={'color':0x123456,'random_color':False})
                 client.require_ok(client.command(FRAME,bytes(4)))
                 check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'settings restart failed')
-            if source.stem=='wipe':
+            if source.stem=='sweep':
                 state=client.program_parameters()
-                check(state['render_count']>1,'Wipe did not keep rendering')
+                check(state['render_count']>1,'Sweep did not keep rendering')
         # Use Rainbow to test autonomous playback and pause/resume.
         rainbow=compile_source((ROOT/'examples/animations/rainbow.py').read_text(),target=info)
         check(rainbow.success,str(rainbow.diagnostics));client.upload(rainbow.bytecode)
@@ -61,7 +61,7 @@ def smoke(client, board, reference):
         while client.program_parameters()['program_us']<=paused:
             check(time.monotonic()<deadline,'resume failed')
             time.sleep(.02)
-        print('Six effects, identical bytecode/pixels, controls, snapshots, playback and pause/resume passed.')
+        print('All effects, identical bytecode/pixels, controls, snapshots, playback and pause/resume passed.')
     finally:
         client.command(STOP);client.command(RESET);client.configure(original)
     check(client.status_fields()['heap']=='0','RESET leaked interpreter memory')

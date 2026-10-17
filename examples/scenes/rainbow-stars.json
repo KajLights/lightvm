@@ -1,10 +1,24 @@
 {
   "schema": "lightvm.scene/1",
   "layers": [
-    {"id": "bg", "procedure": "rainbow", "settings": {"duration": 3.3, "random_color": false}},
-    {"id": "stars", "procedure": "stars", "settings": {
-      "capacity": 20, "duration": 2.0, "probability": 5.0,
-      "color": 16777215, "random_colors": false
-    }}
+    {
+      "id": "bg",
+      "procedure": "rainbow",
+      "settings": {
+        "duration": 3.3,
+        "random_color": false
+      }
+    },
+    {
+      "id": "stars",
+      "procedure": "stars",
+      "settings": {
+        "capacity": 20,
+        "duration": 2.0,
+        "probability": 5.0,
+        "color": 16777215,
+        "random_colors": false
+      }
+    }
   ]
 }

@@ -26,7 +26,7 @@ class MultiDeviceTests(unittest.TestCase):
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', ROOT / 'build/host/lightvm')))
         self.client.configure(configuration())
         self.effects = {}
-        for name in ('rainbow', 'color', 'pattern', 'rainbow_sprite', 'wipe', 'stars'):
+        for name in ('rainbow', 'color', 'pattern', 'rainbow_sprite', 'sweep', 'stars'):
             result = compile_source((ROOT / 'examples/animations' / f'{name}.py').read_text())
             self.assertTrue(result.success, result.diagnostics)
             self.effects[name] = result.bytecode
@@ -46,7 +46,7 @@ class MultiDeviceTests(unittest.TestCase):
             self.assertEqual(state['device'], slot)
             self.assertEqual(len(self.client.snapshot(device=slot)[1]), 51)
             self.assertEqual(self.client.status_fields(device=slot)['code_storage'], 'flash')
-        self.client.reset_program(settings={'speed': 1.0}, device='lights4')
+        self.client.reset_program(settings={'duration': 17.0}, device='lights4')
         for slot in [f'lights{i}' for i in range(6)]:
             self.client.require_ok(self.client.command(PLAY, device=slot))
         start = {slot: self.client.program_parameters(device=slot) for slot in [f'lights{i}' for i in range(6)]}

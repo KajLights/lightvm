@@ -437,6 +437,11 @@ class Client:
         return self.manage('scene_layer_remove', layer=layer, expected_revision=revision,
                            **({'device':device} if device is not None else {}))
 
+    def layer_blend(self, layer, blend, device=None):
+        revision = self.scene(device=device)['revision']
+        return self.manage('scene_layer_blend', layer=layer, blend=blend, expected_revision=revision,
+                           **({'device':device} if device is not None else {}))
+
     def clear_scene(self, device=None):
         revision = self.scene(device=device)['revision']
         return self.manage('scene_clear', expected_revision=revision, **({'device':device} if device is not None else {}))
@@ -475,6 +480,7 @@ def main():
     action.add_argument("--scene-snapshot", action="store_true")
     action.add_argument("--clear-scene", action="store_true")
     action.add_argument("--layer-opacity", type=int, metavar="U8")
+    action.add_argument("--layer-blend", choices=("over", "add", "screen", "multiply"))
     action.add_argument("--remove-layer", action="store_true")
     parser.add_argument("--slot", choices=("A",), help="the device’s only slot, A")
     parser.add_argument("--device", help="configured device ID for upload, activation and controls")
@@ -505,9 +511,9 @@ def main():
     management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
                   args.activate or args.cancel_upload or args.parameters or args.set_parameters is not None or
-                  args.pause or args.resume or args.snapshot or args.scene or args.get_scene or args.scene_snapshot or args.clear_scene or args.layer_opacity is not None or args.remove_layer)
-    if (args.layer_opacity is not None or args.remove_layer) and not args.layer:
-        parser.error('--layer is required for a layer opacity update or removal')
+                  args.pause or args.resume or args.snapshot or args.scene or args.get_scene or args.scene_snapshot or args.clear_scene or args.layer_opacity is not None or args.layer_blend or args.remove_layer)
+    if (args.layer_opacity is not None or args.layer_blend or args.remove_layer) and not args.layer:
+        parser.error('--layer is required for a layer update or removal')
     if management and args.module is not None and not args.store_procedure:
         parser.error("module argument only applies to --store-procedure or legacy execution")
     if args.no_reset and not args.port:
@@ -540,6 +546,8 @@ def main():
                 client.clear_scene(device=args.device)
             elif args.layer_opacity is not None:
                 client.layer_opacity(args.layer,args.layer_opacity,device=args.device)
+            elif args.layer_blend:
+                client.layer_blend(args.layer,args.layer_blend,device=args.device)
             elif args.remove_layer:
                 client.remove_layer(args.layer,device=args.device)
             elif args.network or args.validate_network:

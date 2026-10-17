@@ -279,17 +279,19 @@ class SpriteCompiler:
             self.code[jump][4]=len(self.code)
             return out
         if method=='render':
-            args=self.arguments(call,('runtime','pixels','overflow'),{'overflow':'clip'})
+            args=self.arguments(call,('runtime','pixels','overflow','sampling'),{'overflow':'clip','sampling':'linear'})
             if self.capability(args['runtime'])!='runtime':self.fail(call,'batch.render(runtime, pixels) expected')
             dst,kind=self.resource(args['pixels']);self.check_write(dst,call)
             if kind not in (3,12,14,15,16,17):self.fail(call,'batch destination must be pixels')
             binding=self.overflow(args['overflow'])
-            jump=self.emit('JMP');self.pending_batches.append((jump,len(self.code),batch,dst,self.inputs['time'],dict(self.env),dict(self.caps),dict(self.inputs),self.output,binding))
+            sampling=args['sampling']
+            if not isinstance(sampling,ast.Constant) or sampling.value not in ('linear','nearest'):self.fail(call,'sampling must be linear or nearest')
+            jump=self.emit('JMP');self.pending_batches.append((jump,len(self.code),batch,dst,self.inputs['time'],dict(self.env),dict(self.caps),dict(self.inputs),self.output,binding,int(sampling.value=='linear')))
             return -1
         self.fail(call,'SpriteBatch supports spawn(), render() and active')
 
     def finish_batches(self):
-        for jump,back,batch,dst,now,env,caps,inputs,output,binding in self.pending_batches:
+        for jump,back,batch,dst,now,env,caps,inputs,output,binding,sampling in self.pending_batches:
             if not batch['initialized']:raise CompileError('sprite init needs a spawn call to establish its field types')
             self.env,self.caps,self.inputs,self.output=env,caps,inputs,output
             self.code[jump][4]=len(self.code)
@@ -304,7 +306,7 @@ class SpriteCompiler:
             geometry=[self.sprite_get("__draw_"+k,None) for k in GEOMETRY];color=[self.sprite_get("__draw_"+k,None) for k in COLOR]
             self.sprite_context=None
             style=self.set_style(geometry,color,None)
-            self.feature_native(binding,[dst,scratch,style,self.literal(1)],None)
+            self.feature_native(binding,[dst,scratch,style,self.literal(sampling)],None)
             self.code[skip][4]=len(self.code)
             self.emit('IADD',slot,slot,self.literal(1));self.emit('JMP',imm=head)
             self.code[leave][4]=len(self.code);self.emit('JMP',imm=back)

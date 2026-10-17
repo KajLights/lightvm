@@ -65,9 +65,24 @@ result.channel = mul(src.channel, o) + mul(dst.channel, 255-a)
 Global layer opacity applies once to the completed layer, after overlapping
 points/sprites have blended within it. Alpha zero reveals the moving background;
 opaque black covers it. The compositor emits RGB8; physical brightness limiting
-and wire order run once, after composition. Source-over is the supported blend
-mode in v1. Additional blend operators and linear-light blending remain future
-extensions.
+and wire order run once, after composition. Each scene layer accepts optional
+`blend`: `over` (default), `add`, `screen`, or `multiply`. It applies to the
+completed layer, after its sprites have combined. Modes operate on the same
+encoded 8-bit values; there is no gamma/linear-light conversion.
+
+For opaque destination channel `d`, premultiplied source channel
+`p = mul(src.channel, opacity)` and effective alpha `a = mul(src.alpha, opacity)`:
+
+| Mode | Result channel |
+| --- | --- |
+| `over` | `p + mul(d, 255-a)` |
+| `add` | `min(255, d+p)` |
+| `screen` | `255 - mul(255-d, 255-p)` |
+| `multiply` | `mul(d, 255-a+p)` |
+
+Zero alpha or opacity leaves the lower scene unchanged in every mode. Multiply
+is useful over an existing background; its result over black remains black.
+Group blending and individually blended eyes can produce different results.
 
 Each layer owns its context, settings, RNG, program clock, continuation and
 working/committed frames. Native kernels process at most 32 pixels or scan 8 instance slots
@@ -93,6 +108,9 @@ containing native clocks, an active flag and four bytes per scalar field. Each
 batch reuses one local RGBA canvas; immutable artwork stays in its package. All VM allocations and the
 scene's physical snapshot storage count toward the shared VM heap ceiling.
 Candidate preparation temporarily retains both old and new allocations.
+Use a [Sweep](motion.md#shared-sweep-animation) batch for inexpensive eyes sharing
+one blend mode. Separate single-eye layers provide independent controls and
+blending, at the cost of another `8*N` frame bytes and a VM context per layer.
 
 ## Using the client
 
@@ -112,6 +130,7 @@ python tools/client.py --port PORT --device lights --layer stars --pause
 python tools/client.py --port PORT --device lights --layer bg --activate color
 python tools/client.py --port PORT --device lights --layer stars --resume
 python tools/client.py --port PORT --device lights --layer stars --layer-opacity 128
+python tools/client.py --port PORT --device lights --layer stars --layer-blend screen
 python tools/client.py --port PORT --device lights --scene-snapshot
 ```
 
@@ -121,6 +140,8 @@ replaces one layer. `reset_program(settings=..., layer=...)` creates a new
 instance of that layer's program; frozen settings require this explicit restart.
 `pause_program` retains the contribution and excludes paused time; resume retains
 state. Layer `STOP` clears its contribution and suspends it; `RESET` unloads it.
+`Client.layer_blend(layer, mode, device=...)` changes the blend without restarting
+the animation or its peers. Procedure replacement retains layer opacity and blend.
 `remove_layer` releases its resources. Root PLAY/STOP controls the entire scene;
 root STOP clears physical output while retaining layer state and desired play
 flags. Root FRAME advances all layers by its explicit delta and composites once.
@@ -143,13 +164,15 @@ denominators: a scene may reuse a layer contribution for several outputs.
 Discovery advertises `scene_api=1`, `native_drawing_api=4`,
 `scene_layer_limit=8`, `layer_pixel_format="rgba8-premul"`, `alpha=true`,
 `composition=true`, schema 10 and the single source profile `animation/1`.
+`scene_blend_modes` lists `over`, `add`, `screen` and `multiply`. Older scene
+documents omit `blend` and retain their source-over behavior.
 Target-aware compilation checks both profile and schema. Old targets reject new packages.
 Stored schema 5–9 packages retain their ABI and pixel behavior. The loader accepts their
 old profile bindings for compatibility; these are not additional source profiles.
 
 The object upload protocol accepts kind `scene`. Operations are `scene_get`,
 `scene_snapshot`, `scene_apply`, `scene_clear`, `scene_layer_activate`,
-`scene_layer_opacity` and `scene_layer_remove`. Writes require
+`scene_layer_opacity`, `scene_layer_blend` and `scene_layer_remove`. Writes require
 `expected_revision`; activation additionally requires `expected_generation`.
 The `layer` selector extends existing program controls and `device_command`.
 Full-scene writes replace every instance; use layer activation to retain peers.
@@ -164,7 +187,7 @@ There are no guest pointers or per-frame allocations.
 
 Scenes are RAM-only in v1. Saved hardware configuration and its single-procedure
 startup rules are unchanged; reboot restores that saved startup. The browser
-editor has no scene authoring interface yet. Persistent scenes, new blend modes, two-dimensional rotation and A/B
+editor has no scene authoring interface yet. Persistent scenes, linear-light blending, two-dimensional rotation and A/B
 transitions remain follow-on work.
 
 The [Pico W measurement](design/measurement-native-composition-pico-w.md) records

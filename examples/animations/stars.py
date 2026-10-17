@@ -2,11 +2,21 @@
 
 The animation chooses births, positions, colours and lifetimes. Sprite callbacks
 own expiry and fading; native kernels draw and transform the shared artwork.
+
+Modes (initialization settings):
+  random_colors=True: give each new star a random hue (default).
+  random_colors=False: tint every star with color, default rgb(255, 255, 255).
+  duration: seconds from birth to complete fade, default 2.0.
+  probability: birth attempts per second, default 2.0. Each render tests
+    probability * delta and can spawn at most one star. capacity limits the
+    number of concurrent stars.
+Run directly over black, or layer these transparent stars over any background.
 """
 import random
+
 from lightvm import (
-    profile, setting, rgb, init, render, Sprite, SpriteBatch, PixelArray,
-    Transform, ColorTransform, pico_colorwheel,
+    profile, setting, init, render, rgb, pico_colorwheel,
+    Sprite, SpriteBatch, PixelArray, Transform, ColorTransform,
 )
 
 profile("animation/1")

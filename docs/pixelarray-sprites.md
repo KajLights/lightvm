@@ -141,7 +141,7 @@ once. It returns false when full, without invoking init or replacing an instance
 count; memory admission sets the practical limit. There is no placement policy or
 collision avoidance: overlapping instances are allowed.
 
-`render(runtime, pixels, overflow="clip")` visits active slots in stable order.
+`render(runtime, pixels, overflow="clip", sampling="linear")` visits active slots in stable order.
 Use `overflow="wrap"` for periodic destination drawing. Each sprite gets a
 cleared local RGBA canvas of the definition's width, reused after composition.
 Its `runtime.time` is seconds since spawn, starting at zero; `runtime.delta` is
@@ -149,6 +149,8 @@ seconds since its previous callback (or since spawn for the first callback).
 Native integer
 microsecond clocks avoid subtracting two large f32 program times. Its
 `runtime.pixel_count` and `pixels.count` are the local canvas width.
+`sampling="nearest"` preserves a solid pixel brush when scaling; `linear`
+remains the default. Both sampling choices use the existing native drawing API.
 
 Sprite fields are independent scalar state (i32, f32, RGB, bool). Create them
 unconditionally in the initializer and keep their types fixed across spawn sites.

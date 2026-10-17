@@ -11,6 +11,10 @@ typedef struct { float translate, scale, origin, alpha, brightness; uint32_t tin
 /* Generic instance storage. No placement, lifetime, fade or expiry policy. */
 typedef struct { uint64_t born, previous; uint32_t active; } DrawInstance;
 typedef struct { uint32_t active, reserved; } DrawBatch;
+typedef enum { DRAW_BLEND_OVER, DRAW_BLEND_ADD, DRAW_BLEND_SCREEN, DRAW_BLEND_MULTIPLY, DRAW_BLEND_COUNT } DrawBlend;
+const char *draw_blend_name(DrawBlend);
+/* Scene blending over an opaque destination; input is premultiplied RGBA. */
+void draw_blend(uint8_t *dst, const uint8_t *src, unsigned opacity, DrawBlend);
 size_t draw_batch_bytes(unsigned capacity, unsigned fields);
 DrawInstance *draw_instance(DrawBatch *, unsigned slot, unsigned fields);
 uint32_t *draw_instance_fields(DrawInstance *);

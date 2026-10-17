@@ -5,7 +5,7 @@
 typedef struct {
     char id[OBJECT_NAME_LIMIT+1], procedure[OBJECT_NAME_LIMIT+1];
     uint32_t crc, sampled_frame;
-    uint8_t opacity;
+    uint8_t opacity, blend;
     PixelBuffer target;
     VmInstance vm;
 } SceneLayer;

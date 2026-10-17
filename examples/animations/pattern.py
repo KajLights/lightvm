@@ -1,9 +1,15 @@
 """A supplied RGB pattern, stretched to fit the strip by default.
+
+Modes (initialization settings):
+  to_fit=True: stretch the complete pattern across the strip (default).
+  to_fit=False: repeat its original pixels without stretching.
+Edit ctx.pattern's RGB entries below to supply different artwork.
 """
-import random
 from array import array
 
-from lightvm import profile, setting, rgb, init, render, pico_colorwheel
+from lightvm import (
+    profile, setting, init, render, rgb,
+)
 
 profile("animation/1")
 
@@ -12,7 +18,6 @@ profile("animation/1")
 def setup(ctx, runtime):
     ctx.to_fit = setting(True)
 
-    random.seed()
     ctx.pattern = array("I", [rgb(255, 0, 0), rgb(0, 255, 0), rgb(0, 0, 255)])
 
 

@@ -2,6 +2,7 @@
 #include "runtime.h"
 #include "json.h"
 #include "vm_allocator.h"
+#include "draw.h"
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
@@ -75,6 +76,7 @@ static void scene_state(Writer *w,const AppDevice *d){
             literal(w,",\"procedure\":");quoted(w,l->procedure);
             literal(w,",\"generation\":");number(w,vm->generation);
             literal(w,",\"opacity\":");number(w,l->opacity);
+            literal(w,",\"blend\":");quoted(w,draw_blend_name((DrawBlend)l->blend));
             literal(w,",\"playing\":");literal(w,vm->playing?"true":"false");
             literal(w,",\"faulted\":");literal(w,vm->control.faulted?"true":"false");
             literal(w,",\"frames\":");number(w,vm->control.contribution_frame);
@@ -376,6 +378,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
     literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\",\"lightvm.program/6\",\"lightvm.program/7\",\"lightvm.program/8\",\"lightvm.program/9\",\"lightvm.program/10\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"parameter_limit\":8,\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
+    literal(&w,",\"scene_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
     literal(&w,",\"free_bytes\":"); number(&w,a->store.available ? store_free_bytes(&a->store) : 0);
@@ -440,14 +443,20 @@ static void read_object(App *a,uint16_t id,const StoreEntry *entry) {
     }
     reply(a,id,STATUS_OK,(int32_t)entry->size,"object read");
 }
+static bool layer_blend(const Json *j,int token,uint8_t *mode){
+    for(unsigned n=0;n<DRAW_BLEND_COUNT;n++)if(json_equal(j,token,draw_blend_name((DrawBlend)n))){*mode=(uint8_t)n;return true;}
+    return false;
+}
 static const char *prepare_layer(App *a,AppDevice *d,SceneLayer *layer,const Json *j,int object){
-    static const char *const fields[]={"id","procedure","settings","opacity",NULL};
+    static const char *const fields[]={"id","procedure","settings","opacity","blend",NULL};
     if(!json_fields(j,object,fields)||
        !json_string(j,json_get(j,object,"id"),layer->id,sizeof(layer->id))||!object_name_valid(layer->id)||
        !json_string(j,json_get(j,object,"procedure"),layer->procedure,sizeof(layer->procedure))||!object_name_valid(layer->procedure))return "invalid scene layer";
     uint32_t opacity=255;int alpha=json_get(j,object,"opacity");
     if(alpha>=0&&(!json_u32(j,alpha,&opacity)||opacity>255))return "layer opacity must be 0..255";
     layer->opacity=(uint8_t)opacity;
+    int blend=json_get(j,object,"blend");
+    if(blend>=0&&!layer_blend(j,blend,&layer->blend))return "layer blend must be over, add, screen or multiply";
     const StoreEntry *entry=store_find(&a->store,layer->procedure);
     if(!entry||!strcmp(layer->procedure,STORE_CONFIG)||!strcmp(layer->procedure,STORE_NETWORK))return "layer procedure does not exist";
     if(d->layer_generation==UINT32_MAX)return "layer generation exhausted";
@@ -481,7 +490,7 @@ done:platform_free(j);return error;
 }
 static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const char *op){
     if(strncmp(op,"scene_",6))return false;
-    static const char *const fields[]={"op","device","expected_revision","expected_generation","layer","name","settings","opacity",NULL};
+    static const char *const fields[]={"op","device","expected_revision","expected_generation","layer","name","settings","opacity","blend",NULL};
     if(!json_fields(j,0,fields)){error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid scene fields");return true;}
     if(!d->pixels.count){error_reply(a,id,STATUS_CONFIG,"unknown_device","configure a physical output first");return true;}
     if(!strcmp(op,"scene_get")){
@@ -509,6 +518,12 @@ static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const cha
     if(!d->scene||!json_string(j,json_get(j,0,"layer"),layer_id,sizeof(layer_id))){error_reply(a,id,STATUS_CONFIG,"unknown_layer","scene layer is required");return true;}
     Scene *s=d->scene;SceneLayer *layer=scene_layer(s,layer_id);
     if(!layer){error_reply(a,id,STATUS_CONFIG,"unknown_layer","scene layer is not configured");return true;}
+    if(!strcmp(op,"scene_layer_blend")){
+        uint8_t blend;
+        if(!layer_blend(j,json_get(j,0,"blend"),&blend)){error_reply(a,id,STATUS_CONFIG,"invalid_blend","layer blend must be over, add, screen or multiply");return true;}
+        scene_invalidate(s);layer->blend=blend;s->revision=++d->scene_revision;
+        reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"layer blend updated");return true;
+    }
     if(!strcmp(op,"scene_layer_opacity")){
         uint32_t opacity;if(!json_u32(j,json_get(j,0,"opacity"),&opacity)||opacity>255){error_reply(a,id,STATUS_CONFIG,"invalid_opacity","layer opacity must be 0..255");return true;}
         scene_invalidate(s);layer->opacity=(uint8_t)opacity;s->revision=++d->scene_revision;

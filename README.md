@@ -70,10 +70,15 @@ directory to exercise the 175-pixel, 16 KiB program-budget profile.
 
 ## Compile, save and run on a device
 
-The examples are Color, Pattern, Rainbow, Wipe, Stars, and Rainbow Sprite. The source
+The examples are Color, Pattern, Rainbow, Stars, Rainbow Sprite, and Sweep. The source
 API initializes context once and renders each frame using the actual elapsed delta.
 Rainbow paints the full strip. Rainbow Sprite demonstrates a moving 15-pixel image.
 Stars supplies the transparent foreground for a twinkle effect over any background.
+[Sweep](docs/motion.md#shared-sweep-animation) uses one sprite definition for
+moving eyes, chase, inward wipes and timed trails. Run multiple eyes in one batch
+to share frames, or use one eye per layer with independently selected blending.
+Each source's opening comments describe its settings and modes; wipe is a Sweep
+preset rather than a separate animation.
 
 Each effect has one source in `examples/animations/`, shared by the editor, build tools and
 current animation tests. `examples/animations/rainbow.py` is the picolights gradient with a
@@ -180,8 +185,9 @@ loopback sockets. The tests preserve the existing driver/storage/configuration
 contracts and use bytecode fixtures in place of WASM fixtures. They cover
 admission, cooperative execution, faults, buffer ownership, parameter conflicts,
 snapshots, procedure replacement, bank rotation and startup persistence. Effect
-replay executes Color, Pattern, Wipe, and Rainbow through an independent Python caller
-harness. Sprite tests check Stars and Rainbow Sprite, including transparency and motion.
+replay executes Color, Pattern, and Rainbow through an independent Python caller
+harness. Sprite tests check Stars, Rainbow Sprite and Sweep, including transparency,
+motion, frame-independent trails and bounded memory. Scene tests cover each layer blend mode.
 Rainbow permits one channel level for f32 arithmetic. See the animation profile for measured
 memory, including contexts and replacement peaks.
 

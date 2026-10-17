@@ -2,8 +2,8 @@ import rainbow from '../../examples/animations/rainbow.py?raw';
 import stars from '../../examples/animations/stars.py?raw';
 import color from '../../examples/animations/color.py?raw';
 import pattern from '../../examples/animations/pattern.py?raw';
-import wipe from '../../examples/animations/wipe.py?raw';
 import rainbowSprite from '../../examples/animations/rainbow_sprite.py?raw';
+import sweep from '../../examples/animations/sweep.py?raw';
 
 export const EXAMPLES = [
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
@@ -14,10 +14,10 @@ export const EXAMPLES = [
     description: 'A steady colour across the whole strip.' },
   { id: 'pattern', filename: 'pattern.py', label: 'pattern.py', source: pattern,
     description: 'A steady colour pattern, stretched to fit the strip by default.' },
-  { id: 'wipe', filename: 'wipe.py', label: 'wipe.py', source: wipe,
-    description: 'Fills from both ends towards the centre, then clears and repeats. At the default speed, 200 pixels fill in about 2 seconds.' },
   { id: 'rainbow_sprite', filename: 'rainbow_sprite.py', label: 'rainbow_sprite.py', source: rainbowSprite,
     description: 'A 15-pixel rainbow moves between the strip ends with smooth turns and transparent edges. Requires at least 15 pixels.' },
+  { id: 'sweep', filename: 'sweep.py', label: 'sweep.py', source: sweep,
+    description: 'Configurable eyes: loop, bounce, chase or inward wipe. Retain swept paint, or add timed trails with trail_seconds and samples. One eye can also run in its own scene layer.' },
 ];
 
 export const DEFAULT_EXAMPLE = EXAMPLES[0];

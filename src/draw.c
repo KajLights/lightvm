@@ -36,6 +36,22 @@ void draw_over(uint8_t *dst, const uint8_t *src, unsigned opacity) {
     for (unsigned c = 0; c < 4; ++c)
         dst[c] = (uint8_t)(draw_mul255(src[c], opacity) + draw_mul255(dst[c], 255u - alpha));
 }
+const char *draw_blend_name(DrawBlend mode) {
+    static const char *const names[]={"over","add","screen","multiply"};
+    return mode<DRAW_BLEND_COUNT?names[mode]:"over";
+}
+void draw_blend(uint8_t *dst,const uint8_t *src,unsigned opacity,DrawBlend mode) {
+    if(mode==DRAW_BLEND_OVER){draw_over(dst,src,opacity);return;}
+    unsigned alpha=draw_mul255(src[3],opacity);
+    for(unsigned c=0;c<3;c++){
+        unsigned paint=draw_mul255(src[c],opacity),value;
+        if(mode==DRAW_BLEND_ADD){value=dst[c]+paint;if(value>255)value=255;}
+        else if(mode==DRAW_BLEND_SCREEN)value=255u-draw_mul255(255u-dst[c],255u-paint);
+        else value=draw_mul255(dst[c],255u-alpha+paint);
+        dst[c]=(uint8_t)value;
+    }
+    dst[3]=255;
+}
 uint32_t draw_colorwheel(float hue) {
     hue = fmodf(hue, 256.0f);
     if (hue < 0) hue += 256.0f;

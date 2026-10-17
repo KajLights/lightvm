@@ -29,7 +29,7 @@ The first visit to Develop loads the pinned Pyodide assets, and the
 CodeMirror editor uses a pinned CDN asset. Internet access is initially needed;
 offline operation is not guaranteed. Source is checked 220 ms after an edit. Only
 the current successful compilation can be uploaded or downloaded. Errors link
-back to the affected line. The six original examples and the canonical compiler
+back to the affected line. The canonical examples and compiler
 sources are packaged with the static build. Python source is parsed and never run by the
 compiler. Only the compiled bytecode is sent to a device.
 
@@ -117,9 +117,11 @@ initialization settings and playback controls. The initial `rainbow.py` is selec
 the dropdown and uses the same canonical source as its example. It preserves the
 original picolights Rainbow's default 60-second cycle, adjustable with its existing
 duration setting. Existing stored programs are not replaced when firmware or
-examples change. Chase accumulates colour from one end (about four seconds for
-200 pixels) and keeps running with the strip solid; Wipe fills from both ends
-(about two seconds), then clears and repeats. Animations have no automatic stop
+examples change. Sweep supports moving eyes, retained chase/wipe and sampled
+trails through its initialization settings; wipe is one of its documented modes.
+Each example's opening comments describe the available modes and settings;
+see also [motion](motion.md#shared-sweep-animation).
+Animations have no automatic stop
 condition. The local draft is saved in browser storage and can be downloaded as
 .py. Compiled .lbc can also be downloaded. **Upload & run** requires slot A to
 be configured; it replaces the transient resident program and does not persist it.
