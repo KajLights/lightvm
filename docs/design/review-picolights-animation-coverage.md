@@ -182,7 +182,8 @@ history.
 
 At the time of this review, the replay suite compared against copies of the
 earlier LightVM Python examples. Those copies and their tests have since been
-removed. Current replay tests execute the six shared sources in `examples/animations/`.
+removed. Current replay tests execute Color, Pattern, Wipe, and Rainbow from `examples/animations/`.
+Sprite tests cover Stars and Rainbow Sprite from the same directory.
 
 | Example | Difference from the original picolights implementation |
 |---|---|

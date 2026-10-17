@@ -1,5 +1,6 @@
 """Native drawing, alpha semantics and independent scene instances."""
 import os
+import json
 from pathlib import Path
 import struct
 import sys
@@ -11,7 +12,7 @@ sys.path[:0]=[str(ROOT),str(ROOT/'tools')]
 from client import Client,ProcessTransport,ProtocolError,FRAME,STOP,PLAY,RESET
 from lightvm.compiler import compile_source
 
-PREFIX='from lightvm import profile,setting,rgb,init,render,SpriteBatch,Sprite,Transform,ColorTransform,PixelArray\nprofile("layer/1")\n'
+PREFIX='from lightvm import profile,setting,rgb,init,render,SpriteBatch,Sprite,Transform,ColorTransform,PixelArray\nprofile("animation/1")\n'
 
 class CompositionTests(unittest.TestCase):
     def setUp(self):
@@ -132,7 +133,7 @@ class CompositionTests(unittest.TestCase):
         self.assertGreater(self.state('fg')['dispatch_count'],0)
 
     def test_identical_sprite_program_has_independent_state_on_two_devices(self):
-        source=(ROOT/'examples/layers/stars.py').read_text().replace('random.seed()','random.seed(17)')
+        source=(ROOT/'examples/animations/stars.py').read_text().replace('random.seed()','random.seed(17)')
         artifact=compile_source(source);self.assertTrue(artifact.success,artifact.diagnostics)
         self.client.save_procedure('stars',artifact.bytecode)
         for device in ('lights','second'):self.scene([{'id':'fg','procedure':'stars','settings':{'capacity':3,'probability':20.0}}],device)
@@ -143,15 +144,67 @@ class CompositionTests(unittest.TestCase):
         self.assertNotEqual(self.state('fg','lights')['program_us'],self.state('fg','second')['program_us'])
         self.assertNotEqual(self.layer('fg','lights'),self.layer('fg','second'))
 
-    def test_rgb_programs_remain_opaque_and_transparent_profile_is_negotiated(self):
+    def test_one_profile_supports_direct_playback_and_transparent_layers(self):
+        target=self.client.describe()
+        self.assertEqual(target['program_profiles'],['animation/1'])
+        self.save('blue',' pixels.fill(rgb(0,0,255))\n')
+        self.save('point',' pixels[0]=rgb(255,0,0)\n')
+        self.client.activate('point',device='lights')
+        self.client.require_ok(self.client.command(STOP,device='lights'))
+        self.assertEqual(self.frame(),bytes([255,0,0])+bytes((self.count-1)*3))
+        self.scene([{'id':'bg','procedure':'blue'},{'id':'fg','procedure':'point'}])
+        self.assertEqual(self.frame(),bytes([255,0,0])+bytes([0,0,255])*(self.count-1))
+        self.assertEqual(self.layer('fg'),bytes([255,0,0,255])+bytes((self.count-1)*4))
+        source=PREFIX+'@render\ndef draw(ctx,runtime,pixels): pass\n'
+        self.assertTrue(compile_source(source,target=target).success)
+        old={**target,'program_schemas':[s for s in target['program_schemas'] if s!='lightvm.program/10']}
+        self.assertFalse(compile_source(source,target=old).success)
+        self.assertFalse(compile_source(source.replace('animation/1','layer/1')).success)
+
+    def test_frames_start_blank_and_black_paint_is_explicit(self):
+        self.save('blue',' pixels.fill(rgb(0,0,255))\n')
+        self.save('moving',' pixels[int(runtime.time*10.0)]=rgb(255,0,0)\n')
+        self.scene([{'id':'bg','procedure':'blue'},{'id':'fg','procedure':'moving'}])
+        self.assertEqual(self.frame(),bytes([255,0,0])+bytes([0,0,255])*(self.count-1))
+        self.assertEqual(self.frame(100),bytes([0,0,255,255,0,0])+bytes([0,0,255])*(self.count-2))
+        self.save('black',' pixels.fill(rgb(0,0,0))\n pixels.clear(start=1,stop=pixels.count)\n')
+        self.scene([{'id':'bg','procedure':'blue'},{'id':'fg','procedure':'black'}])
+        self.assertEqual(self.frame(),bytes(3)+bytes([0,0,255])*(self.count-1))
+        self.assertEqual(self.layer('fg'),bytes([0,0,0,255])+bytes((self.count-1)*4))
+        self.save('blank',' pixels.fill(rgb(255,0,0))\n pixels.clear()\n')
+        self.scene([{'id':'bg','procedure':'blue'},{'id':'fg','procedure':'blank'}])
+        self.assertEqual(self.frame(),bytes([0,0,255])*self.count)
+
+    def test_partial_transparency_matches_direct_and_single_layer_output(self):
+        self.save('fading',' pixels.point(1,rgb(255,0,0),128)\n')
+        self.client.activate('fading',device='lights')
+        self.client.require_ok(self.client.command(STOP,device='lights'))
+        expected=bytes([0,0,0,128,0,0])+bytes((self.count-2)*3)
+        self.assertEqual(self.frame(),expected)
+        self.assertEqual(self.client.snapshot(device='lights')[1],expected)
+        self.scene([{'id':'fg','procedure':'fading'}])
+        self.assertEqual(self.frame(),expected)
+        self.assertEqual(self.layer('fg'),bytes(4)+bytes([128,0,0,128])+bytes((self.count-2)*4))
+
+    def test_stored_rgb_and_layer_packages_keep_their_original_behavior(self):
         source='from lightvm import profile,rgb,render\nprofile("animation/1")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(0,0,255))\n'
-        artifact=compile_source(source);self.client.save_procedure('legacy',artifact.bytecode)
+        artifact=compile_source(source)
+        for binding,profile,schema,format in ((1,'animation/1',5,'rgb8'),(2,'layer/1',6,'rgba8-premul')):
+            raw=bytearray(artifact.bytecode)
+            size=struct.unpack_from('<I',raw,76)[0]
+            manifest={**artifact.manifest,'schema':f'lightvm.program/{schema}','profile':profile,'pixels':{'format':format}}
+            metadata=json.dumps(manifest,separators=(',',':')).encode()
+            raw[-size:]=metadata
+            struct.pack_into('<II',raw,72,binding,len(metadata))
+            nregs,ncode,ncolors,nfunctions=struct.unpack_from('<4I',raw,8)
+            resources=96+nregs*8+ncode*8+ncolors*4+nfunctions*24
+            struct.pack_into('<I',raw,resources,3 if binding==1 else 12)
+            self.client.save_procedure('legacy' if binding==1 else 'legacy_layer',raw)
+        self.scene([{'id':'bg','procedure':'legacy_layer'}])
+        self.assertEqual(self.frame(),bytes([0,0,255])*self.count)
         self.save('point',' pixels.point(0,rgb(255,255,255),128)\n')
         self.scene([{'id':'bg','procedure':'legacy'},{'id':'fg','procedure':'point'}])
         self.assertEqual(self.frame(),bytes([128,128,255])+bytes([0,0,255])*(self.count-1))
-        source=PREFIX+'@render\ndef draw(ctx,runtime,pixels): pass\n'
-        target=self.client.describe();self.assertTrue(compile_source(source,target=target).success)
-        self.assertFalse(compile_source(source,target={**target,'program_profiles':['animation/1']}).success)
         self.client.clear_scene(device='lights')
         self.client.activate('legacy',device='lights');self.assertEqual(self.client.status_fields()['mode'],'bytecode')
 

@@ -1,16 +1,14 @@
 # Animation profile
 
 The proof-of-concept Python API has two decorators: `@init` and `@render`.
-The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/5`, with profile
+The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/10`, with profile
 `animation/1`. It parses source without executing it.
 
-The opt-in [`layer/1` profile](composition.md) uses the same callbacks and frozen
-settings with transparent RGBA output, native drawing kernels and sprite batches.
-It emits schema `lightvm.program/6` within LBC1/4. The
-[PixelArray and sprite SDK](pixelarray-sprites.md) uses schema `lightvm.program/7`
-and native drawing API 2 with either animation profile. Periodic drawing uses
-schema 8 and drawing API 3. [Optimized pixel loops](pixel-maps.md) use schema 9
-and drawing API 4. SpriteBatch requires layer/1.
+There is one source profile. Every animation can run alone or as a [scene layer](composition.md).
+Each frame starts blank. Unpainted pixels let lower layers remain visible.
+Ordinary colour writes paint solid pixels. Alpha is optional for effects that need partial transparency.
+The same profile supports native drawing, [PixelArray and sprites](pixelarray-sprites.md),
+periodic drawing, and [optimized pixel loops](pixel-maps.md).
 
 ```python
 from lightvm import profile, setting, rgb, init, render
@@ -46,7 +44,25 @@ is the actual elapsed time supplied for this render, also in seconds.
 `runtime.pixel_count` is available during initialization and rendering.
 Runtime properties are read-only. `pixels.count` describes the output buffer.
 Pixels support indexed reads/writes and `fill(color, start=0, stop=pixels.count)`;
-stop is exclusive. Each render starts with black working pixels.
+stop is exclusive. Each render starts with transparent working pixels.
+
+Use `pixels.clear()` to remove all paint during a render. A normal render does not need this call.
+Use `pixels.clear(start=first, stop=last)` to remove paint from a range.
+Use `pixels.fill(rgb(0, 0, 0))` to paint solid black and cover lower layers.
+Do not use a black fill to make an array blank. Use `clear()` instead.
+
+An owned `PixelArray` retains its contents between frames. Use `image.clear()` before drawing a new image when necessary.
+New arrays start with zero channels. The default array format supports transparency without an explicit alpha argument.
+For example:
+
+```python
+ctx.image.clear()
+ctx.image[3] = rgb(255, 64, 0)
+pixels.draw(ctx.image)
+```
+
+Direct playback displays the animation over black. A scene displays it over the lower layers.
+The animation code is the same in both cases.
 
 Preparation calls init at time/delta zero, then renders the initial frame at zero.
 Each subsequent render runs once with the supplied delta. A zero-delta render is
@@ -132,23 +148,26 @@ three typed native values: pixel count, time and delta. Context and output stora
 are instance bindings. Init may write state and use randomness; render may also
 write output. Admission independently validates these rights and signatures.
 
-The compiler emits LBC1/4 and ABI 4. Basic animation/1 uses schema 5; basic
-layer/1 uses schema 6; the PixelArray/sprite extension uses schema 7, or schema 8
-with periodic drawing. Optimized pixel loops use schema 9. Header word 80 is zero
-for older packages, 2 for native drawing API 2, 3 for periodic drawing, or 4 for
-compiler-generated pixel maps; the remaining
-three trailing words remain zero. Extended native sites support eight arguments
-in the existing 16-byte record; older sites retain zero in their unused bytes.
+All new programs use schema 10, profile binding 3, and premultiplied RGBA output.
+The public profile name remains `animation/1`. Targets must advertise schema 10 before accepting new programs.
+Older firmware rejects these packages instead of using the previous RGB rules.
+Stored packages with profile bindings 1 and 2 retain their original behavior.
+The compiler no longer accepts `layer/1` source declarations.
+
+Header word 80 identifies the drawing API. Zero selects basic operations, 2 adds images and sprites,
+3 adds periodic drawing, and 4 adds compiler-generated pixel maps.
+The remaining three trailing words stay zero. Extended native sites support eight arguments in each 16-byte record.
 
 `render_count` counts successful calls including the initial frame. `program_us`
 tracks elapsed time; snapshots are passive. The fixed-step statistics and cycle
 fields have been removed. FRAME keeps its existing wire range of 0..1000 ms;
 autonomous playback supplies its complete elapsed delta without clamping it.
 
-Tests compile the six Python examples in `examples/animations/`, compare their output
-against a Python caller harness, exercise seeded random ranges and checked arrays,
-and verify variable frame rates, frozen settings, fault publication and native
-continuation/ownership. Hardware measurements below describe the previous API;
+Tests compile the six Python examples in `examples/animations/`.
+An independent Python caller checks Color, Pattern, Wipe, and Rainbow output.
+Sprite tests check Stars and Rainbow Sprite, including transparency, clocks, and movement.
+The suite also checks seeded random ranges, arrays, variable frame rates, frozen settings,
+fault publication, and native continuation/ownership. Hardware measurements below describe the previous API;
 they are historical evidence, not measurements of LBC1/4.
 
 ## Historical measurements (LBC1/3, before this API change)
@@ -213,6 +232,8 @@ execution and defers upload cancellation until the current command releases its
 workspace. The 16 KiB reservation still requires hardware high-water verification.
 
 ## Pico W simultaneous-device verification (2026-10-15)
+
+These historical measurements use the earlier example set. Chase and Twinkle have since been removed.
 
 On Pico W `E6614103E7236D37`, the GP16 physical output retained the original
 200-pixel Rainbow at brightness 100/255. Five additional named `virtual_rgb`

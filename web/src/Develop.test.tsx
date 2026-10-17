@@ -32,7 +32,8 @@ describe('editor examples and playback status', () => {
     expect(screen.getByLabelText('Animation Python source')).toHaveValue(originalRainbow);
     expect(document.querySelector('#example-description')).toHaveTextContent('60 seconds');
 
-    expect(screen.getAllByRole('option', { name: /rainbow/i })).toHaveLength(1);
+    expect(screen.getAllByRole('option', { name: 'rainbow.py' })).toHaveLength(1);
+    expect(screen.getByRole('option', { name: 'rainbow_sprite.py' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Animation Python source'), { target: { value: originalRainbow + '\n# custom edit' } });
     expect(screen.getByLabelText('Load example')).toHaveValue('');

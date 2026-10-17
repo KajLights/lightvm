@@ -37,7 +37,7 @@ def hash01(index: int, seed: int) -> float:
 
 
 def profile(name):
-    if name not in ("animation/1", "layer/1"): raise ValueError("unsupported profile")
+    if name != "animation/1": raise ValueError("unsupported profile; use animation/1")
 
 
 class SpriteBatch:

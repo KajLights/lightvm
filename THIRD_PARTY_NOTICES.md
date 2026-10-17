@@ -42,16 +42,16 @@ the SDK's ROM-assisted implementation.
 ## Python animation frontend and example provenance
 
 The compiler and native interpreter are LightVM implementations under the
-repository MIT license. The six current `examples/animations/` effects are faithful
-ports of Kaj's supplied picolights algorithms, with the accepted lifecycle,
-timing and bounded Twinkle corrections documented in
+repository MIT license. Color, Pattern, Wipe, and Rainbow in `examples/animations/`
+are ports of Kaj's supplied picolights algorithms, with the accepted lifecycle and
+timing changes documented in
 [the animation API](docs/animation-profile.md). The source reference is Kaj's
 picolights repository, commit `f6480b4845b2ba3af4fbf0ffb1f398d362dda772`.
+Stars and Rainbow Sprite are LightVM examples of sprite drawing and motion under the same MIT license.
 The six files in `examples/animations/` are the only maintained sample implementations;
 the editor, tools and tests all use them directly.
 
-The GPL-marked `picolights/easing.py` is not included. Twinkle's sine-out curve
-is implemented directly from its mathematical equation; no easing implementation
+The GPL-marked `picolights/easing.py` is not included. No easing implementation
 is copied. Rainbow's colourwheel compatibility follows the published
 [CircuitPython rainbowio definition](https://github.com/adafruit/circuitpython/blob/main/shared-module/rainbowio/__init__.c);
 LightVM implements the arithmetic locally rather than linking that module.

@@ -33,7 +33,7 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
         if len(source.encode()) > 65536:
             raise CompileError("source exceeds 64 KiB")
         # Older targets execute the same source through the ordinary loop path.
-        bulk = optimize and (target is None or 'lightvm.program/9' in target.get('program_schemas', []))
+        bulk = optimize and (target is None or target.get('native_drawing_api', 0) >= 4)
         bytecode, manifest = PortableCompiler(source, optimize=bulk).compile()
         if target is not None:
             if len(bytecode) > target.get("module_limit", 32768):
@@ -45,6 +45,9 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
                 raise CompileError(f'target does not advertise LBC1/{abi} bytecode')
             if abi == 4 and manifest['profile'] not in target.get('program_profiles', []):
                 raise CompileError('target does not advertise ' + manifest['profile'])
+            drawing_api = int.from_bytes(bytecode[80:84], 'little')
+            if abi == 4 and drawing_api > target.get('native_drawing_api', 0):
+                raise CompileError(f'target does not advertise native drawing API {drawing_api}')
         return Compilation(bytecode, manifest)
     except (CompileError, SyntaxError, ValueError, OverflowError, RecursionError) as error:
         node = getattr(error, "node", None)

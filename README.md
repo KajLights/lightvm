@@ -14,6 +14,9 @@ pixel memory. Procedures can be replaced independently of firmware.
 The [animation profile](docs/animation-profile.md) defines persistent buffers,
 arrays and the `@init` / `@render` callbacks. Caller arguments supply context,
 time, delta and pixels; settings are frozen at initialization.
+Every animation can run alone or as a scene layer. Frames start transparent.
+Ordinary colour writes paint solid pixels; alpha is optional. Use `clear()` to remove paint
+from an array, and `fill(rgb(0, 0, 0))` when solid black is required.
 The current compiler emits LBC1/4 packages. Together they implement a limited part of the
 [portable bytecode architecture decision](docs/design/architecture-decision-portable-bytecode.md).
 Up to eight independent device slots run concurrently. Each output can also run
@@ -24,10 +27,10 @@ geometry/colour transforms. Multiple languages and a broader component system
 remain future work.
 
 [Motion helpers](docs/motion.md) add compiled easing, bounce progress, fitting
-bounds and periodic drawing. The [15-pixel rainbow sprite](examples/layers/rainbow_sprite.py)
+bounds and periodic drawing. The [15-pixel rainbow sprite](examples/animations/rainbow_sprite.py)
 cycles hue in 10 seconds and traverses the strip in 20 seconds per direction.
 The compiler accelerates [independent pixel loops](docs/pixel-maps.md) through a
-generic bulk backend; the layer rainbow no longer needs a specialized fill call.
+generic bulk backend; Rainbow uses ordinary pixel expressions.
 
 ## Repository layout
 
@@ -35,6 +38,7 @@ generic bulk backend; the layer rainbow no longer needs a specialized fill call.
   decisions, proposals and historical reviews in [`docs/design/`](docs/design/).
 - [`examples/animations/`](examples/animations/): the six canonical Python effects,
   shared by the editor, tools and tests.
+- [`examples/scenes/`](examples/scenes/): combinations of those animations on one output.
 - [`examples/config/`](examples/config/): board startup and network configuration
   examples.
 - [`experiments/`](experiments/): historical implementations and measurement records.
@@ -66,8 +70,10 @@ directory to exercise the 175-pixel, 16 KiB program-budget profile.
 
 ## Compile, save and run on a device
 
-The samples preserve color, pattern, chase, wipe, twinkle and rainbow. The source
+The examples are Color, Pattern, Rainbow, Wipe, Stars, and Rainbow Sprite. The source
 API initializes context once and renders each frame using the actual elapsed delta.
+Rainbow paints the full strip. Rainbow Sprite demonstrates a moving 15-pixel image.
+Stars supplies the transparent foreground for a twinkle effect over any background.
 
 Each effect has one source in `examples/animations/`, shared by the editor, build tools and
 current animation tests. `examples/animations/rainbow.py` is the picolights gradient with a
@@ -174,10 +180,9 @@ loopback sockets. The tests preserve the existing driver/storage/configuration
 contracts and use bytecode fixtures in place of WASM fixtures. They cover
 admission, cooperative execution, faults, buffer ownership, parameter conflicts,
 snapshots, procedure replacement, bank rotation and startup persistence. Effect
-replay executes the same six sample sources through an independent Python caller
-harness. There are no historical sample copies or compatibility test suites.
-Rainbow/Twinkle permit
-one channel level for f32 arithmetic. See the animation profile for measured
+replay executes Color, Pattern, Wipe, and Rainbow through an independent Python caller
+harness. Sprite tests check Stars and Rainbow Sprite, including transparency and motion.
+Rainbow permits one channel level for f32 arithmetic. See the animation profile for measured
 memory, including contexts and replacement peaks.
 
 Measure the current Rainbow on a device with:

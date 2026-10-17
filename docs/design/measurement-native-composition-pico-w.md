@@ -54,7 +54,7 @@ its CRC on every poll/cancel; it verifies immutable fronts, coherent sliced
 composition, allocation-free rendering, transfer failure recovery and cancellation
 before destruction. The suite also runs under the 175-pixel host resource profile.
 
-To reproduce, compile/store `examples/layers/{color,rainbow,stars}.py` and use
+To reproduce, compile/store `examples/animations/{color,rainbow,stars}.py` and use
 the [scene client API](../composition.md#using-the-client) on four configured
 outputs. Compare `scene()["frames"]` over a timed interval. For render CPU, divide
 the change in `render_total_us` by the change in `render_count` for each selected

@@ -62,7 +62,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         self.expressions.append((0, I, 0, 0, 0))
         count = len(self.expressions); self.expressions.append((1, I, 0, 0, 0))
         black = self.declarative(ast.Call(func=ast.Name(id='rgb'), args=[ast.Constant(value=0)]*3, keywords=[]))
-        self.output = self.add_resource('__pixels', 3, count, black)
+        self.output = self.add_resource('__pixels', 12, count, black)
 
     def capability(self, node):
         return self.caps.get(node.id) if isinstance(node, ast.Name) else None
@@ -221,17 +221,16 @@ class PortableCompiler(SpriteCompiler, Compiler):
             if module == 'math' and n.func.attr == 'sin':
                 if n.keywords: self.fail(n, 'math.sin takes one positional argument')
                 return self.native('sin', [self.expr(a) for a in n.args], n)
-            if self.profile_name == 'layer/1':
-                method = n.func.attr
-                if self.capability(n.func.value) == 'pixels' and method in ('point', 'sprites', 'colorwheel', 'gradient', 'palette'):
-                    if n.keywords: self.fail(n, 'native drawing takes positional arguments')
-                    args = [self.output] + [self.expr(a) for a in n.args]
-                    if method == 'point' and len(args) == 3: args.append(self.literal(255))
-                    return self.native({'point':'rgba_point', 'sprites':'sprites_draw', 'colorwheel':'colorwheel_fill', 'gradient':'gradient_fill', 'palette':'palette_fill'}[method], args, n)
-                if method in ('advance', 'spawn'):
-                    ref, kind = self.resource(n.func.value)
-                    if kind != 13 or n.keywords: self.fail(n, 'SpriteBatch method required')
-                    return self.native('sprites_' + method, [ref] + [self.expr(a) for a in n.args], n)
+            method = n.func.attr
+            if self.capability(n.func.value) == 'pixels' and method in ('point', 'sprites', 'colorwheel', 'gradient', 'palette'):
+                if n.keywords: self.fail(n, 'native drawing takes positional arguments')
+                args = [self.output] + [self.expr(a) for a in n.args]
+                if method == 'point' and len(args) == 3: args.append(self.literal(255))
+                return self.native({'point':'rgba_point', 'sprites':'sprites_draw', 'colorwheel':'colorwheel_fill', 'gradient':'gradient_fill', 'palette':'palette_fill'}[method], args, n)
+            if method in ('advance', 'spawn'):
+                ref, kind = self.resource(n.func.value)
+                if kind != 13 or n.keywords: self.fail(n, 'SpriteBatch method required')
+                return self.native('sprites_' + method, [ref] + [self.expr(a) for a in n.args], n)
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
             r = self.truth(self.expr(n.operand))
             out = self.reg(B); self.emit('EQ', out, r, self.literal(False)); return out
@@ -475,7 +474,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                     if len(call.args) != 1: self.fail(n, 'one positional argument required')
                     kws = {k.arg: k.value for k in call.keywords}
                     if 'alpha' in kws:
-                        if self.profile_name != 'layer/1' or len(kws) != len(call.keywords) or set(kws) != {'alpha'}: self.fail(n, 'alpha fill requires layer/1 and covers the whole surface')
+                        if len(kws) != len(call.keywords) or set(kws) != {'alpha'}: self.fail(n, 'alpha fill covers the whole surface')
                         self.native('rgba_fill', [ref, self.expr(call.args[0]), self.expr(kws['alpha'])], n)
                         continue
                     if len(kws) != len(call.keywords) or set(kws) - {'start', 'stop'}: self.fail(n, 'invalid fill range')
@@ -574,11 +573,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 if n.level or any(a.name not in allowed or a.asname for a in n.names): self.fail(n, 'unsupported import; animation decorators are @init and @render')
                 for item in n.names: self.imports[item.name] = item.name if n.module == 'lightvm' else n.module + '.' + item.name
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'profile':
-                if self.imports.get('profile') != 'profile' or marked or n.value.keywords or len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or n.value.args[0].value not in ('animation/1','layer/1'): self.fail(n, 'expected one animation/1 or layer/1 profile declaration')
+                if self.imports.get('profile') != 'profile' or marked or n.value.keywords or len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or n.value.args[0].value != 'animation/1': self.fail(n, 'expected one animation/1 profile declaration')
                 self.profile_name = n.value.args[0].value
-                if self.profile_name == 'layer/1':
-                    kind, length, fill, seed, stream, flags = self.resources[0]
-                    self.resources[0] = (12, length, fill, seed, stream, flags)
                 marked = True
             elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='PixelArray':
                 self.image_declaration(n.targets[0],n.value,n,module=True)
@@ -614,13 +610,12 @@ class PortableCompiler(SpriteCompiler, Compiler):
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
-        layer = self.profile_name == 'layer/1'
         drawing_api = 4 if self.map_used else 3 if self.wrap_used else 2 if self.feature_used else 0
-        manifest = {'schema':'lightvm.program/9' if self.map_used else 'lightvm.program/8' if self.wrap_used else 'lightvm.program/7' if self.feature_used else 'lightvm.program/6' if layer else 'lightvm.program/5','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul' if layer else 'rgb8'},'parameters':self.params,
+        manifest = {'schema':'lightvm.program/10','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},'parameters':self.params,
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
-                             0, 1, 0, 0, 0, 0, 0, 0, 2 if layer else 1, len(metadata), drawing_api, 0, 0, 0)
+                             0, 1, 0, 0, 0, 0, 0, 0, 3, len(metadata), drawing_api, 0, 0, 0)
         raw = header + b''.join(struct.pack('<BBHI',t,role,0,v) for t,role,v in self.regs)
         raw += b''.join(struct.pack('<BBBBI',*ins) for ins in self.code)
         raw += b''.join(struct.pack('<I',c) for c in self.table)

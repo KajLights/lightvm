@@ -17,6 +17,8 @@ typedef struct {
 typedef struct Portable {
     LbcRead read; void *context;
     uint32_t size,nregs,ncode,ncolors,nfunctions,nresources,nexpressions,ncalls,nsettings;
+    /* Bindings 1/2 retain stored RGB/layer semantics. Binding 3 is the
+       unified animation/1 source profile with transparent output. */
     uint32_t entries[2],profile,drawing_api;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
     uint8_t *metadata, *descriptors; uint16_t *register_offsets;

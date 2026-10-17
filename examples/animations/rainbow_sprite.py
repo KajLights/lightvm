@@ -10,7 +10,7 @@ from lightvm import (
 from lightvm.motion import repeat, pingpong, lerp, fit_start, fit_end
 from lightvm.easing import smoothstep
 
-profile("layer/1")
+profile("animation/1")
 
 
 def rainbow_init(s, runtime, first, last, color_duration, travel_duration):

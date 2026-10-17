@@ -11,7 +11,7 @@ from client import Client, ProcessTransport, ProtocolError, FRAME, STOP
 from lightvm.compiler import compile_source
 
 PREFIX = '''from lightvm import profile, init, render, rgb, setting, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform
-profile("layer/1")
+profile("animation/1")
 '''
 
 
@@ -101,9 +101,43 @@ def draw(ctx,runtime,pixels):
             self.client.save_procedure('invalid',result.bytecode)
             with self.assertRaises(ProtocolError):
                 self.client.configure_scene([{'id':'fg','procedure':'invalid'}],device='lights')
-        for method in ('set_alpha(0.5)','set_channel("r",1)','fill(rgb(0,0,0))'):
+        for method in ('set_alpha(0.5)','set_channel("r",1)','fill(rgb(0,0,0))','clear()'):
             result=compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n ART.'+method+'\n')
             self.assertFalse(result.success)
+
+    def test_clear_removes_paint_from_persistent_images(self):
+        self.load('''@init
+def setup(ctx,runtime):
+ ctx.image=PixelArray(67)
+@render
+def draw(ctx,runtime,pixels):
+ ctx.image.clear()
+ ctx.image[int(runtime.time*10.0)]=rgb(255,0,0)
+ pixels.draw(ctx.image)
+''')
+        self.assertEqual(self.frame(),bytes([255,0,0,255])+bytes(66*4))
+        self.assertEqual(self.frame(100),bytes(4)+bytes([255,0,0,255])+bytes(65*4))
+
+    def test_clear_resets_all_channels_and_checks_ranges(self):
+        for format,stride in (('rgb8',3),('rgba8',4),('rgbw8',4),('rgbwa8',5)):
+            with self.subTest(format=format):
+                data=[255]*(3*stride)
+                self.load(f'''@init
+def setup(ctx,runtime):
+ ctx.image=PixelArray({data},format="{format}")
+@render
+def draw(ctx,runtime,pixels):
+ ctx.image.clear(start=1,stop=2)
+ pixels.draw(ctx.image)
+''')
+                middle=bytes([0,0,0,0 if 'a' in format else 255])
+                self.assertEqual(self.frame()[:12],bytes([255]*4)+middle+bytes([255]*4))
+        for args in ('start=-1','start=2,stop=1','stop=68'):
+            result=compile_source(PREFIX+'@render\ndef draw(ctx,runtime,pixels):\n pixels.clear('+args+')\n')
+            self.assertTrue(result.success,result.diagnostics)
+            self.client.save_procedure('invalid_clear',result.bytecode)
+            with self.assertRaises(ProtocolError):
+                self.client.configure_scene([{'id':'fg','procedure':'invalid_clear'}],device='lights')
 
     def test_draw_clipping_fractional_sampling_scale_origin_and_tint(self):
         self.load('''ART=PixelArray([255,255,255,255],readonly=True)
@@ -256,7 +290,7 @@ def draw(ctx,runtime,pixels):
 ''')
         target=self.client.describe()
         self.assertEqual(target['native_drawing_api'],4)
-        self.assertEqual(result.manifest['schema'],'lightvm.program/7')
+        self.assertEqual(result.manifest['schema'],'lightvm.program/10')
         old={**target,'program_schemas':['lightvm.program/6']}
         self.assertFalse(compile_source(PREFIX+'@init\ndef setup(ctx,runtime):\n ctx.image=PixelArray(1)\n@render\ndef draw(ctx,runtime,pixels): pass\n',target=old).success)
         # Forge the destination of image_draw to the readonly source. Admission

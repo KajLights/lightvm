@@ -7,7 +7,7 @@
 #include <string.h>
 
 const char *animation_validate(Portable *p){
-    if((p->profile!=1&&p->profile!=2)||p->nregs<3||p->nfunctions!=2||!p->nresources)return "unsupported animation profile";
+    if((p->profile!=1&&p->profile!=2&&p->profile!=3)||p->nregs<3||p->nfunctions!=2||!p->nresources)return "unsupported animation profile";
     const unsigned types[3]={T_INT,T_FLOAT,T_FLOAT};
     for(unsigned r=0;r<p->nregs;r++){
         if(r<3){if(pbc_role(p,r)!=R_INPUT||pbc_type(p,r)!=types[r]||pbc_initial(p,r))return "invalid runtime argument binding";}
@@ -20,7 +20,7 @@ const char *animation_validate(Portable *p){
         if(fn.rights!=rights[n]||fn.result||fn.arg_start||fn.arg_count!=3)return "invalid animation entry signature";
     }
     PbcResourceSpec output=pbc_spec(p,0);
-    if(output.kind!=(p->profile==2?DRAW_RGBA:DRAW_RGB)||output.flags!=1||pbc_expression(p,output.length).op!=1)return "invalid animation output binding";
+    if(output.kind!=(p->profile>=2?DRAW_RGBA:DRAW_RGB)||output.flags!=1||pbc_expression(p,output.length).op!=1)return "invalid animation output binding";
     for(unsigned n=1;n<p->nresources;n++)if(pbc_spec(p,n).flags&1u)return "unexpected animation output resource";
     return NULL;
 }
@@ -106,4 +106,12 @@ const char *control_playback_step(VmInstance *a,uint64_t delta){
     return a->portable?animation_advance(a,delta,false):control_step(a,1,delta);
 }
 const uint8_t *control_frame(VmInstance *a){return a->control.committed;}
-size_t control_frame_bytes(const VmInstance *a){return (size_t)a->control.count*(a->portable&&a->portable->profile==2?4u:3u);}
+const uint8_t *control_output_frame(VmInstance *a){
+    const uint8_t *frame=control_frame(a);
+    if(!a->control.presentation)return frame;
+    /* Premultiplied RGB gives the animation over black. Keep this separate
+       frame stable until the physical driver releases it. */
+    for(unsigned i=0;i<a->control.count;i++)memcpy(a->control.presentation+(size_t)i*3,frame+(size_t)i*4,3);
+    return a->control.presentation;
+}
+size_t control_frame_bytes(const VmInstance *a){return (size_t)a->control.count*(a->portable&&a->portable->profile>=2?4u:3u);}

@@ -113,7 +113,6 @@ class SpriteCompiler:
         self.feature_used=True
 
     def batch_declaration(self,target,call,node):
-        if self.profile_name!='layer/1':self.fail(node,'SpriteBatch requires layer/1')
         args=self.arguments(call,('sprite','capacity'))
         definition=self.sprite_definitions.get(getattr(args['sprite'],'id',''))
         if not definition:self.fail(node,'SpriteBatch requires a user-defined Sprite and capacity')
@@ -168,6 +167,10 @@ class SpriteCompiler:
 
     def image_call(self,call,ref,kind):
         method=call.func.attr
+        if method=='clear':
+            self.check_write(ref,call)
+            _,start,stop=self.image_range(call,ref,())
+            return self.feature_native('image_fill',[ref,self.colour_constant(0),self.literal(0),start,stop],call)
         if method=='has_channel':
             args=self.arguments(call,('channel',));return self.feature_native('channel_has',[ref,self.channel(args['channel'])],call)
         if method in ('set_channel','set_alpha','multiply_alpha'):

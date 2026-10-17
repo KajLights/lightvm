@@ -1,11 +1,11 @@
 # PixelArray and user-defined sprites
 
 The Python frontend parses these declarations without executing Python source.
-Programs using them emit `lightvm.program/7`, LBC1/4, execution ABI 4 and drawing
-API 2. Wrapped drawing emits schema 8 and drawing API 3. Optimized pixel loops
-emit schema 9 and drawing API 4; see [pixel maps](pixel-maps.md). Target-aware compilation
-checks the required schema. Existing schema 5/6/7/8 packages remain loadable, including the original stored
-one-pixel sprite implementation. New SpriteBatch source uses the general API.
+All programs use `animation/1`, `lightvm.program/10`, LBC1/4, and execution ABI 4.
+Images and sprites use drawing API 2. Wrapped drawing uses API 3.
+Optimized pixel loops use API 4; see [pixel maps](pixel-maps.md).
+Target-aware compilation checks the required schema. Stored schema 5–9 packages remain loadable.
+New SpriteBatch source uses the general API.
 
 ## Images and channels
 
@@ -31,6 +31,11 @@ zero alpha where present. Sizes and layouts are fixed. `image.count` and
 `len(image)` return pixels, not bytes. Indexed reads return packed RGB; indexed
 writes replace RGB, set alpha to 255 where present and clear white.
 
+The default format supports transparent blank pixels. Ordinary drawing paints solid colours without an alpha argument.
+Use `image.clear()` to make a persistent image blank before drawing it again.
+Use `image.fill(rgb(0,0,0))` only when solid black is the intended paint.
+Images without an alpha channel clear to black because their format cannot store transparency.
+
 Readonly literal artwork may be declared at module scope. It is packed in the
 pinned program package and read directly there, without per-instance image RAM.
 Mutable arrays are declared directly in @init and allocated during admission.
@@ -38,6 +43,7 @@ All arrays and scratch canvases count towards the existing resource/heap limits.
 
 | Operation | Contract |
 | --- | --- |
+| `image.clear(start=0, stop=image.count)` | Set all channels in the range to zero. Pixels become blank in formats with alpha. |
 | `image.has_channel("w")` | Query this array's format, independently of physical hardware. Valid channel literals are `r`, `g`, `b`, `w`, `a`. |
 | `image.set_channel("g", 64, start=0, stop=image.count)` | Replace a byte channel; preserve every other channel. Values are 0–255. An absent channel faults. |
 | `image.set_alpha(0.5, start=0, stop=image.count)` | Replace alpha absolutely, using normalized 0–1 opacity. Repeated calls do not compound. An absent alpha channel faults. |
@@ -95,7 +101,7 @@ and seam filtering. Wrapping scans at most 32 destination pixels per dispatch.
 
 ## Sprite definitions and batches
 
-See [the Stars example](../examples/layers/stars.py) for a complete animation.
+See [the Stars example](../examples/animations/stars.py) for a complete animation.
 
 ```python
 def star_init(s, runtime, position, duration):

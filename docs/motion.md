@@ -96,30 +96,30 @@ exit or lifetime condition is satisfied, or let it return later.
 
 ## Rainbow sprite example
 
-[`rainbow_sprite.py`](../examples/layers/rainbow_sprite.py) draws 15 local HSV
+[`rainbow_sprite.py`](../examples/animations/rainbow_sprite.py) draws 15 local HSV
 samples in a guest pixel loop, rotates hue through 360 degrees every 10 seconds,
 and moves between fitting edges in 20 seconds per leg. On 200 LEDs it starts at
 0, reaches 185 at 20 seconds and returns at 40 seconds. The source adapts to any
 destination of at least 15 pixels. No native kernel chooses its colours, motion,
 durations or reversal policy.
 
-Compile, store and apply its scene to an already configured output:
+Compile, store, and activate it on an already configured output:
 
 ```sh
-python -m lightvm.compiler examples/layers/rainbow_sprite.py -o build/examples/rainbow_sprite.lbc
+python -m lightvm.compiler examples/animations/rainbow_sprite.py -o build/examples/rainbow_sprite.lbc
 python tools/client.py --port PORT --store-procedure rainbow_sprite build/examples/rainbow_sprite.lbc
-python tools/client.py --port PORT --device lights --scene examples/layers/rainbow-sprite.json
+python tools/client.py --port PORT --device lights --activate rainbow_sprite
 ```
 
-The scene's `color_duration` and `travel_duration` settings default to 10.0 and
+The animation's `color_duration` and `travel_duration` settings default to 10.0 and
 20.0 seconds. These frozen settings take effect when the instance is created.
 
 ## Compatibility
 
 Scalar helpers use existing instructions and need no new runtime API. Ordinary
-PixelArray/sprite programs retain schema 7 and drawing API 2. Wrapped drawing
-adds native binding 52 and emits `lightvm.program/8` with drawing API 3 in header
-word 80. Optimized [pixel loops](pixel-maps.md) use schema 9 and drawing API 4.
-Discovery advertises schemas 5–9 and `native_drawing_api=4`; target-aware
-compilation rejects targets without schema 8 support. The loader retains schema
-5/6/7/8 packages and rejects binding 52 in an API 2 package.
+All new programs use `animation/1` and schema 10. PixelArray and sprites use drawing API 2.
+Wrapped drawing adds native binding 52 and drawing API 3 in header word 80.
+Optimized [pixel loops](pixel-maps.md) use drawing API 4.
+Discovery advertises schema 10 and `native_drawing_api=4`.
+Target-aware compilation rejects targets without schema 10 support.
+The loader retains stored schema 5–9 packages and rejects binding 52 in an API 2 package.

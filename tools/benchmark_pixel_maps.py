@@ -28,12 +28,12 @@ def main():
     parser.add_argument('--output',type=Path)
     args=parser.parse_args()
     if min(args.pixels,args.frames,args.rounds)<1:parser.error('counts must be positive')
-    rainbow=(ROOT/'examples/layers/rainbow.py').read_text()
-    native=rainbow[:rainbow.index('    stride =')]+'''    pixels.colorwheel(phase, ctx.scale * 255.0 / runtime.pixel_count)
+    rainbow=(ROOT/'examples/animations/rainbow.py').read_text().replace('random.seed()','random.seed(1)')
+    native=rainbow[:rainbow.index('    for i in range(pixels.count):')]+'''    pixels.colorwheel(start_hue, spatial_scale)
 '''
-    sprite=(ROOT/'examples/layers/rainbow_sprite.py').read_text()
+    sprite=(ROOT/'examples/animations/rainbow_sprite.py').read_text()
     nonlinear='''from lightvm import profile,render,hsv
-profile("layer/1")
+profile("animation/1")
 @render
 def draw(ctx,runtime,pixels):
  phase=runtime.time%1.0
@@ -51,7 +51,7 @@ def draw(ctx,runtime,pixels):
             'variants':{}}
     try:
         target=client.describe()
-        if 'lightvm.program/9' not in target['program_schemas']:raise RuntimeError('build the receiver with pixel-map support first')
+        if 'lightvm.program/10' not in target['program_schemas'] or target.get('native_drawing_api',0)<4:raise RuntimeError('build the receiver with current animation and pixel-map support first')
         client.configure({'schema':'lightvm.config/1','devices':[{
             'id':'benchmark','type':'ws2812b','config':{'pin':'GP16','count':args.pixels}}]})
         expected={}

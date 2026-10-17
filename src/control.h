@@ -23,7 +23,7 @@ typedef struct {
     uint32_t manifest_offset, manifest_size;
     uint64_t program_us;
     uint8_t parameter_registers[CONTROL_PARAMETER_LIMIT];
-    uint8_t *allocation, *committed, *working;
+    uint8_t *allocation, *committed, *working, *presentation;
     size_t buffer_bytes, output_charge;
     void *continuation; size_t continuation_bytes;
 } Control;
@@ -33,6 +33,7 @@ const char * control_prepare(struct VmInstance *vm);
 const char * control_step(struct VmInstance *vm,uint32_t trigger,uint64_t delta);
 const char *control_playback_step(struct VmInstance *vm,uint64_t delta);
 const uint8_t *control_frame(struct VmInstance *vm);
+const uint8_t *control_output_frame(struct VmInstance *vm);
 size_t control_frame_bytes(const struct VmInstance *vm);
 void control_presented(struct VmInstance *vm,bool success);
 const char *control_reset_program(struct VmInstance *vm,const Json *request,int settings);

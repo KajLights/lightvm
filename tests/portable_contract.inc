@@ -38,7 +38,7 @@ static void portable_contract(void){
     PbcValue map_args[3]={{.i=67},{.f=1},{.f=1}};
     deny_allocation=true;CHECK(pbc_invoke(p,p->entries[1],map_args,3));portable_finish(p,1);deny_allocation=false;
     CHECK(allocations==map_allocations&&p->dispatch_count-map_dispatches<32);
-    for(unsigned i=0;i<67;i++)CHECK(p->resources[0].data[i*3]==i&&p->resources[0].data[i*3+1]==0);
+    for(unsigned i=0;i<67;i++)CHECK(p->resources[0].data[i*4]==i&&p->resources[0].data[i*4+1]==0&&p->resources[0].data[i*4+3]==255);
     vm_destroy(&map_vm);CHECK(vm_heap_used()==0);
 
     uint8_t canvas_bytes[9]={0};PixelBuffer canvas={.rgb=canvas_bytes,.count=3};
@@ -69,6 +69,12 @@ static void portable_contract(void){
     PixelBuffer physical={0};PixelConfig config={16,3,255,"RGB"};
     CHECK(pixels_init(&physical,&config,device_type("ws2812b")));
     portable_load(&vm,&physical,&reply,counter_lbc,sizeof(counter_lbc));
+    // A passive device snapshot remains RGB before the first presentation.
+    static const char physical_snapshot[]="{\"op\":\"program_snapshot\"}";
+    reply.snapshot_size=0;
+    CHECK(control_manage(&vm,77,(const uint8_t *)physical_snapshot,strlen(physical_snapshot)));
+    CHECK(reply.code==STATUS_OK&&reply.snapshot_size==9);
+    CHECK(!memcmp(reply.snapshot,physical.rgb,9)&&!vm.control.output_valid);
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(displayed[0]==1);
     deny_show=true;uint8_t delta[4];write_u32(delta,20);reply.snapshot_size=0;
     vm_command(&vm,CMD_FRAME,77,delta,sizeof(delta));
@@ -83,7 +89,7 @@ static void portable_contract(void){
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(reply.code==STATUS_OK);
     delayed_output=true;output_ready=false;output_failed=false;clock_now+=20000;
     uint32_t output_frame=vm.control.output_frame;vm_tick(&vm);
-    CHECK(vm.output_pending&&vm.view.sealed&&borrowed_output==control_frame(&vm));
+    CHECK(vm.output_pending&&vm.view.sealed&&borrowed_output==vm.control.presentation);
     CHECK(vm.portable->render_count==2);
     CHECK(vm.control.output_frame==output_frame&&displayed[0]==1);
     uint64_t ticks=vm.portable->render_count;

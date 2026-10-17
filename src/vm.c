@@ -94,7 +94,7 @@ static void show_frame(VmInstance *a, uint64_t started, bool contribution, bool 
         // Each device presents its own complete RGB frame and retains an
         // independent committed contribution.
         if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
-        const uint8_t *frame=control_frame(a);
+        const uint8_t *frame=control_output_frame(a);
         if(asynchronous){
             if(a->output->driver&&a->output->type->submit(a->output->driver,frame,a->control.count)){
                 a->output_pending=true;a->view.sealed=true;a->output_started=show_started;return;
@@ -121,7 +121,7 @@ static bool complete_output(VmInstance *a) {
         if(!status)return false;
         a->view.sealed=false;a->output_pending=false;
         if(status<0){a->output->type->cancel(a->output->driver);control_presented(a,false);return false;}
-        memcpy(a->output->rgb,control_frame(a),(size_t)a->control.count*3);
+        memcpy(a->output->rgb,a->control.presentation?a->control.presentation:control_frame(a),(size_t)a->control.count*3);
         control_presented(a,true);a->control.output_valid=true;a->control.output_frame++;a->frame_count++;
         a->show_us=(uint32_t)(platform_time_us()-a->output_started);
     }
@@ -189,7 +189,7 @@ static void frame_step_impl(VmInstance *a, uint16_t id, uint32_t delta_ms) {
     if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
     const uint8_t *bytes=a->control.enabled ?
         (a->output ? a->output->rgb : a->control.committed) : a->target->rgb;
-    size_t frame_bytes=a->control.enabled?control_frame_bytes(a):(size_t)a->target->count*3;
+    size_t frame_bytes=a->control.enabled&&!a->output?control_frame_bytes(a):(size_t)a->target->count*3;
     for (size_t offset=0; offset<frame_bytes; offset+=FRAME_LIMIT) {
         size_t count=frame_bytes-offset;
         if (count>FRAME_LIMIT) count=FRAME_LIMIT;

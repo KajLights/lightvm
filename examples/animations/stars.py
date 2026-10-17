@@ -9,7 +9,7 @@ from lightvm import (
     Transform, ColorTransform, pico_colorwheel,
 )
 
-profile("layer/1")
+profile("animation/1")
 
 STAR_IMAGE = PixelArray([
      64,  64,  64, 255,

@@ -6,20 +6,19 @@ uses exactly the same foreground. Replacing the background retains the stars'
 state, clock, random sequence and contribution. Up to eight layers are admitted
 per scene, subject to the shared VM memory budget.
 
-`examples/layers/` contains Color, Rainbow and Stars. Their `@init` / `@render`
-contract and frozen initialization settings match `animation/1`. The opt-in
-`profile("layer/1")` compiles to LBC1/4, ABI 4, schema `lightvm.program/6` and an
-offscreen `rgba8-premul` output. Programs using PixelArray or user-defined sprites emit schema `lightvm.program/7`.
-Older RGB programs retain their existing format
-and semantics, and can participate as opaque scene layers. Transparent programs
-must be deployed into a scene. Programs receive a destination from the engine;
-they cannot choose GPIOs or other layers.
+All animations use `profile("animation/1")`. The single `examples/animations/`
+directory supplies examples for both direct playback and scene composition.
+New programs use LBC1/4, ABI 4, schema `lightvm.program/10`, and `rgba8-premul` output.
+Every animation can run directly on a device or inside a scene.
+Direct playback shows the animation over black. A scene combines it with lower layers.
+Programs receive a destination from the engine. They cannot choose GPIOs or other layers.
+Stored RGB programs retain their original behavior and can act as opaque scene layers.
 
 ## Drawing and user-defined sprites
 
 The [PixelArray and sprite SDK](pixelarray-sprites.md) provides image formats,
 channel operations, absolute alpha, native transforms and function-based sprite
-callbacks. `examples/layers/stars.py` is the complete three-pixel star example.
+callbacks. `examples/animations/stars.py` is the complete three-pixel star example.
 
 ```python
 # Star is a Sprite(width=3, init=star_init, render=star_render) definition.
@@ -45,8 +44,9 @@ colour. Drawing converts and composites compatible formats in native kernels.
 
 Existing indexed RGB writes and range fill paint opaque output pixels. Indexed
 reads return unpremultiplied RGB from the working layer only. Every layer render
-starts transparent black. `fill(rgb(0,0,0))` paints opaque black;
-`fill(rgb(0,0,0), alpha=0)` is transparent. Previous frames and lower layers are
+starts transparent black. `clear()` removes paint. `fill(rgb(0,0,0))` paints opaque black.
+Ordinary drawing needs no alpha argument. Effects can specify alpha when partial transparency is necessary.
+Previous frames and lower layers are
 not implicitly visible to the guest.
 
 ## Blend and publication contract
@@ -96,20 +96,20 @@ Candidate preparation temporarily retains both old and new allocations.
 
 ## Using the client
 
-Compile and store the three layer examples:
+Compile and store Color, Rainbow, and Stars from the shared animation directory:
 
 ```sh
-python -m lightvm.compiler examples/layers/color.py -o build/color.lbc
-python -m lightvm.compiler examples/layers/rainbow.py -o build/rainbow.lbc
-python -m lightvm.compiler examples/layers/stars.py -o build/stars.lbc
-python tools/client.py --port PORT --store-procedure native_color build/color.lbc
-python tools/client.py --port PORT --store-procedure native_rainbow build/rainbow.lbc
-python tools/client.py --port PORT --store-procedure native_stars build/stars.lbc
-python tools/client.py --port PORT --device lights --scene examples/layers/rainbow-stars.json
+python -m lightvm.compiler examples/animations/color.py -o build/color.lbc
+python -m lightvm.compiler examples/animations/rainbow.py -o build/rainbow.lbc
+python -m lightvm.compiler examples/animations/stars.py -o build/stars.lbc
+python tools/client.py --port PORT --store-procedure color build/color.lbc
+python tools/client.py --port PORT --store-procedure rainbow build/rainbow.lbc
+python tools/client.py --port PORT --store-procedure stars build/stars.lbc
+python tools/client.py --port PORT --device lights --scene examples/scenes/rainbow-stars.json
 python tools/client.py --port PORT --device lights --get-scene
 python tools/client.py --port PORT --device lights --layer stars --parameters
 python tools/client.py --port PORT --device lights --layer stars --pause
-python tools/client.py --port PORT --device lights --layer bg --activate native_color
+python tools/client.py --port PORT --device lights --layer bg --activate color
 python tools/client.py --port PORT --device lights --layer stars --resume
 python tools/client.py --port PORT --device lights --layer stars --layer-opacity 128
 python tools/client.py --port PORT --device lights --scene-snapshot
@@ -142,9 +142,10 @@ denominators: a scene may reuse a layer contribution for several outputs.
 
 Discovery advertises `scene_api=1`, `native_drawing_api=4`,
 `scene_layer_limit=8`, `layer_pixel_format="rgba8-premul"`, `alpha=true`,
-`composition=true`, schemas 6/7/8/9 and `layer/1`. Target-aware compilation checks both
-profile and schema; old targets reject the new packages. Existing schema 5 RGB
-packages retain their ABI and pixel behavior.
+`composition=true`, schema 10 and the single source profile `animation/1`.
+Target-aware compilation checks both profile and schema. Old targets reject new packages.
+Stored schema 5–9 packages retain their ABI and pixel behavior. The loader accepts their
+old profile bindings for compatibility; these are not additional source profiles.
 
 The object upload protocol accepts kind `scene`. Operations are `scene_get`,
 `scene_snapshot`, `scene_apply`, `scene_clear`, `scene_layer_activate`,

@@ -15,7 +15,7 @@ from lightvm.compiler import compile_source
 from client import Client, ProcessTransport, ProtocolError, BEGIN, CHUNK, FINISH, FRAME, PLAY, RESET
 
 
-def configuration(number=6, count=8):
+def configuration(number=6, count=17):
     return {'schema': 'lightvm.config/1', 'devices': [
         {'id': f'lights{i}', 'type': 'ws2812b', 'config': {'pin': f'GP{i}', 'count': count}}
         for i in range(number)]}
@@ -26,7 +26,7 @@ class MultiDeviceTests(unittest.TestCase):
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', ROOT / 'build/host/lightvm')))
         self.client.configure(configuration())
         self.effects = {}
-        for name in ('rainbow', 'color', 'pattern', 'chase', 'wipe', 'twinkle'):
+        for name in ('rainbow', 'color', 'pattern', 'rainbow_sprite', 'wipe', 'stars'):
             result = compile_source((ROOT / 'examples/animations' / f'{name}.py').read_text())
             self.assertTrue(result.success, result.diagnostics)
             self.effects[name] = result.bytecode
@@ -44,7 +44,7 @@ class MultiDeviceTests(unittest.TestCase):
             state = self.client.program_parameters(device=slot)
             self.assertEqual(state['slot'], 'A')
             self.assertEqual(state['device'], slot)
-            self.assertEqual(len(self.client.snapshot(device=slot)[1]), 24)
+            self.assertEqual(len(self.client.snapshot(device=slot)[1]), 51)
             self.assertEqual(self.client.status_fields(device=slot)['code_storage'], 'flash')
         self.client.reset_program(settings={'speed': 1.0}, device='lights4')
         for slot in [f'lights{i}' for i in range(6)]:
@@ -69,7 +69,7 @@ class MultiDeviceTests(unittest.TestCase):
         a_generation = self.client.program_parameters()['generation']
         self.client.reset_program(settings={'random_color': False, 'color': 0x123456}, device='lights1')
         self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights1'))
-        self.assertEqual(bytes(self.client.pixel_snapshot), bytes.fromhex('123456') * 8)
+        self.assertEqual(bytes(self.client.pixel_snapshot), bytes.fromhex('123456') * 17)
         self.assertEqual(self.client.program_parameters()['generation'], a_generation)
         for slot in [f'lights{i}' for i in range(6)]:
             self.client.require_ok(self.client.command(RESET, device=slot))
@@ -83,7 +83,7 @@ class MultiDeviceTests(unittest.TestCase):
         self.client.configure(configuration(6))
         self.assertEqual(self.client.program_parameters()['generation'], before['generation'])
         self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
-        self.load('twinkle', 'lights5')
+        self.load('stars', 'lights5')
         time.sleep(.1)
         self.client.configure(configuration(1))
         after = self.client.program_parameters()
@@ -97,7 +97,7 @@ class MultiDeviceTests(unittest.TestCase):
         self.load('rainbow', 'lights0')
         self.load('color', 'lights1')
         before = self.client.program_parameters()
-        data = self.effects['twinkle']
+        data = self.effects['stars']
         self.client.require_ok(self.client.command(BEGIN, struct.pack('<II', len(data), zlib.crc32(data)) + b'lights2'))
         self.client.reset_program(settings={'random_color': False}, device='lights1')
         for offset in range(0, len(data), 508):

@@ -11,7 +11,7 @@ from lightvm.compiler import compile_source
 from client import Client, ProcessTransport, ProtocolError, FRAME, STOP
 
 PREFIX='''from lightvm import profile,init,render,rgb,hsv,colorwheel,hash01,PixelArray
-profile("layer/1")
+profile("animation/1")
 '''
 
 
@@ -51,14 +51,14 @@ class PixelMapTests(unittest.TestCase):
         self.assertEqual(self.frames(),expected)
         return result
 
-    def test_layer_rainbow_matches_original_native_fill_and_scalar_loop(self):
-        source=(ROOT/'examples/layers/rainbow.py').read_text()
+    def test_rainbow_matches_native_fill_and_scalar_loop(self):
+        source=(ROOT/'examples/animations/rainbow.py').read_text().replace('random.seed()','random.seed(1)')
         result=self.compare(source,{'scale':2.3})
-        native=source[:source.index('    stride =')]+'''    pixels.colorwheel(phase, ctx.scale * 255.0 / runtime.pixel_count)
+        native=source[:source.index('    for i in range(pixels.count):')]+'''    pixels.colorwheel(start_hue, spatial_scale)
 '''
         self.load(source,True,{'scale':2.3});expected=self.frames()
         self.load(native,True,{'scale':2.3});self.assertEqual(self.frames(),expected)
-        self.assertEqual(result.manifest['schema'],'lightvm.program/9')
+        self.assertEqual(result.manifest['schema'],'lightvm.program/10')
         self.assertEqual(struct.unpack_from('<I',result.bytecode,80)[0],4)
 
     def test_generic_nonlinear_hsv_helpers_integer_arithmetic_and_captured_values(self):
@@ -137,7 +137,7 @@ def draw(ctx,runtime,pixels):
     def test_target_fallback_and_forged_capability_or_body_are_rejected(self):
         source=PREFIX+'@render\ndef draw(ctx,runtime,pixels):\n for i in range(pixels.count):\n  pixels[i]=hsv(i/pixels.count,1.0,1.0)\n'
         target=self.client.describe()
-        old={**target,'program_schemas':['lightvm.program/6','lightvm.program/7']}
+        old={**target,'native_drawing_api':2}
         result=compile_source(source,target=old)
         self.assertTrue(result.success,result.diagnostics)
         self.assertFalse(any(i[0]==39 for i in instructions(result)))

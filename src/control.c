@@ -29,7 +29,7 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
     static const char *const pixel_fields[]={"format",NULL};
     static const char *const param_fields[]={"name","type","default","minimum","maximum",NULL};
     if (size>CONTROL_MANIFEST_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,portable?portable_fields:fields) ||
-        !json_equal(&j,json_get(&j,0,"schema"),portable?(portable->drawing_api==4?"lightvm.program/9":portable->drawing_api==3?"lightvm.program/8":portable->drawing_api?"lightvm.program/7":portable->profile==2?"lightvm.program/6":"lightvm.program/5"):"lightvm.program/3") ||
+        !json_equal(&j,json_get(&j,0,"schema"),portable?(portable->profile==3?"lightvm.program/10":portable->drawing_api==4?"lightvm.program/9":portable->drawing_api==3?"lightvm.program/8":portable->drawing_api?"lightvm.program/7":portable->profile==2?"lightvm.program/6":"lightvm.program/5"):"lightvm.program/3") ||
         !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=(portable?4u:CONTROL_ABI_VERSION)) return false;
     if(portable){
         int settings=json_get(&j,0,"settings");
@@ -45,7 +45,7 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
         }
     }
     int pixels=json_get(&j,0,"pixels"),params=json_get(&j,0,"parameters");
-    if (!json_fields(&j,pixels,pixel_fields) || !json_equal(&j,json_get(&j,pixels,"format"),portable&&portable->profile==2?"rgba8-premul":"rgb8")) return false;
+    if (!json_fields(&j,pixels,pixel_fields) || !json_equal(&j,json_get(&j,pixels,"format"),portable&&portable->profile>=2?"rgba8-premul":"rgb8")) return false;
     if (params<0 || j.tokens[params].type!=JSON_ARRAY || j.tokens[params].children>(int)CONTROL_PARAMETER_LIMIT) return false;
     for (int t=params+1;t<j.tokens[params].next;t=j.tokens[t].next) {
         ControlParameter *p=&c->parameters[c->parameter_count++];
@@ -111,13 +111,15 @@ static const char *control_prepare_impl(VmInstance *a) {
     if(a->portable&&a->portable->profile==2&&a->output)return "transparent layers require a scene destination";
     if (!c->allocation) {
         c->count=a->target->count;
-        size_t rgb_bytes=control_frame_bytes(a);
-        c->buffer_bytes=rgb_bytes*2;
+        size_t frame_bytes=control_frame_bytes(a),rgb_bytes=(size_t)c->count*3;
+        bool convert=a->output&&frame_bytes!=rgb_bytes;
+        c->buffer_bytes=frame_bytes*2+(convert?rgb_bytes:0);
         if (a->output && !vm_heap_charge(rgb_bytes)) return "control output exceeds aggregate heap budget";
         c->output_charge=a->output ? rgb_bytes : 0;
         c->allocation=demo_calloc(1,c->buffer_bytes);
         if (!c->allocation) { vm_heap_uncharge(c->output_charge); c->output_charge=0; return "memory allocation failed"; }
-        c->committed=c->allocation; c->working=c->committed+rgb_bytes;
+        c->committed=c->allocation; c->working=c->committed+frame_bytes;
+        c->presentation=convert?c->working+frame_bytes:NULL;
     }
     a->view=(LbcBuffer){.data=c->working,.count=c->count,.generation=a->generation};
     if(a->portable){const char *error=animation_prepare(a);if(!error)c->initialized=true;return error;}
@@ -258,7 +260,7 @@ static void describe(ControlWriter *w,bool with_parameters) {
     if(a->layer[0]){snprintf(b,sizeof(b),",\"layer\":\"%s\"",a->layer);text(w,b);}
     if(a->portable){
         Portable *p=a->portable;
-        snprintf(b,sizeof(b),",\"pixel_format\":\"%s\",\"render_total_us\":%" PRIu64 ",\"native_draw_us\":%" PRIu64 ",\"dispatch_count\":%" PRIu64 ",\"slice_count\":%" PRIu64,p->profile==2?"rgba8-premul":"rgb8",a->render_total_us,p->native_draw_us,p->dispatch_count,p->slice_count);text(w,b);
+        snprintf(b,sizeof(b),",\"pixel_format\":\"%s\",\"render_total_us\":%" PRIu64 ",\"native_draw_us\":%" PRIu64 ",\"dispatch_count\":%" PRIu64 ",\"slice_count\":%" PRIu64,p->profile>=2?"rgba8-premul":"rgb8",a->render_total_us,p->native_draw_us,p->dispatch_count,p->slice_count);text(w,b);
         snprintf(b,sizeof(b),",\"render_count\":%" PRIu64 ",\"active_wall_us\":%" PRIu64 ",\"continuation_bytes\":%zu",p->render_count,p->active_wall_us,c->continuation_bytes);text(w,b);
         snprintf(b,sizeof(b),",\"instance_context_bytes\":%zu,\"portable_context_bytes\":%zu,\"metadata_bytes\":%zu,\"state_bytes\":%zu,\"resource_payload_bytes\":%zu,\"register_bytes\":%zu,\"call_storage_bytes\":0,\"heap_used\":%zu,\"heap_peak\":%zu",
             sizeof(*a),sizeof(*p),p->metadata_bytes,p->state_bytes,p->payload_bytes,p->register_bytes,vm_heap_used(),vm_heap_peak());text(w,b);
@@ -347,7 +349,7 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     }
     ControlWriter writer={.vm=a,.id=id}; ControlWriter *w=&writer;
     if (snapshot) {
-        if (a->output&&c->output_valid)emit(a,id,RESP_PIXELS,a->output->rgb,(size_t)a->output->count*3);
+        if (a->output)emit(a,id,RESP_PIXELS,a->output->rgb,(size_t)a->output->count*3);
         else if(c->contribution_valid)emit(a,id,RESP_PIXELS,c->committed,control_frame_bytes(a));
         text(w,"{\"state\":"); describe(w,false); text(w,"}");
     } else describe(w,true);

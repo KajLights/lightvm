@@ -33,7 +33,7 @@ Supported calculations include integer and float arithmetic, conversions,
 comparisons, min/max, RGB/HSV construction, `hash01`, fixed resource lengths,
 `math.sin`, RGB channel extraction and scalar `colorwheel`. These are generic
 operations; for example a nonlinear HSV expression takes the same path as the
-affine colourwheel expression in the layer rainbow.
+affine colourwheel expression in Rainbow.
 
 Loops that mutate context or sprites, use randomness, read pixel data, branch,
 break/continue, nest another loop, or use unsupported operations retain ordinary
@@ -65,15 +65,14 @@ verification also applies to every embedded instruction.
 Optimization is enabled by default. Compare the same source without it using:
 
 ```sh
-python -m lightvm.compiler examples/layers/rainbow.py -o build/rainbow.lbc
-python -m lightvm.compiler examples/layers/rainbow.py --no-optimize -o build/rainbow-scalar.lbc
+python -m lightvm.compiler examples/animations/rainbow.py -o build/rainbow.lbc
+python -m lightvm.compiler examples/animations/rainbow.py --no-optimize -o build/rainbow-scalar.lbc
 ```
 
 Python callers can pass `compile_source(source, optimize=False)`. Target-aware
-compilation automatically retains ordinary loops when the target does not
-advertise `lightvm.program/9`.
+compilation automatically retains ordinary loops when the target advertises a drawing API below 4.
 
-Optimized maps require schema 9 and drawing API 4, retaining LBC1/4 and execution
+New programs use schema 10. Optimized maps require drawing API 4, retaining LBC1/4 and execution
 ABI 4. Opcode 39 contains a destination reference, index register, exclusive stop
 register and the PC after its embedded body. Older drawing APIs and packages
 remain supported. `native_draw_us` includes map execution in addition to native

@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 from lightvm.compiler import compile_source
 from client import Client, ProcessTransport, SerialTransport, FRAME, PLAY
 
-EFFECTS = ('color', 'pattern', 'chase', 'wipe', 'twinkle')
+EFFECTS = ('color', 'pattern', 'rainbow_sprite', 'wipe', 'stars')
 
 
 def check(condition, message):

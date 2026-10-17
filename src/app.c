@@ -204,7 +204,7 @@ static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const cha
         if(d->scene)d->scene->command_active=true;
         if(d->scene&&d->scene->pending){d->pixels.type->cancel(d->pixels.driver);d->scene->pending=false;}
         d->vm.playing=false;output_attempted=true;vm_output_cancel(&d->vm);
-        PixelBuffer *output=candidate->output;const uint8_t *frame=control_frame(candidate);
+        PixelBuffer *output=candidate->output;const uint8_t *frame=control_output_frame(candidate);
         output_succeeded=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&output->type->show(output->driver,frame,output->count);
         control_presented(candidate,output_succeeded);
     }
@@ -215,7 +215,7 @@ static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const cha
         if(d->scene)d->scene->command_active=false;
         d->vm.playing=was_playing;control_destroy(candidate);demo_free(candidate);return error;
     }
-    if(output_succeeded){memcpy(candidate->output->rgb,control_frame(candidate),(size_t)candidate->control.count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
+    if(output_succeeded){memcpy(candidate->output->rgb,control_output_frame(candidate),(size_t)candidate->control.count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
     clear_device_scene(d);
     control_destroy(&d->vm);d->vm=*candidate;demo_free(candidate);vm_rebind(&d->vm);
     d->vm.playing=play;d->vm.last_frame=platform_time_us();d->vm.next_frame=d->vm.last_frame;
@@ -374,7 +374,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
     literal(&w,",\"upload_page_bytes\":"); number(&w,STORE_PAGE_BYTES);
     literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
-    literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\",\"lightvm.program/6\",\"lightvm.program/7\",\"lightvm.program/8\",\"lightvm.program/9\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\",\"layer/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"black_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"parameter_limit\":8,\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
+    literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\",\"lightvm.program/6\",\"lightvm.program/7\",\"lightvm.program/8\",\"lightvm.program/9\",\"lightvm.program/10\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"parameter_limit\":8,\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);

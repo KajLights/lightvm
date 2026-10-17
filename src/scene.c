@@ -43,7 +43,7 @@ static void compose_slice(Scene *s) {
         for(unsigned n=0;n<s->layer_count;n++){
             SceneLayer *layer=&s->layers[n];VmInstance *vm=&layer->vm;
             if(!vm->control.contribution_valid||!layer->opacity)continue;
-            unsigned stride=vm->portable&&vm->portable->profile==2?4:3;
+            unsigned stride=vm->portable&&vm->portable->profile>=2?4:3;
             const uint8_t *src=control_frame(vm)+(size_t)i*stride;
             uint8_t rgba[4]={src[0],src[1],src[2],stride==4?src[3]:255};
             draw_over(result,rgba,layer->opacity);

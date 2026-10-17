@@ -14,7 +14,8 @@ from managed_replay import Example, Random
 from test_configuration import config
 
 PREFIX='from lightvm import profile,setting,rgb,init,render\nprofile("animation/1")\n'
-NAMES=('color','pattern','chase','wipe','rainbow','twinkle')
+NAMES=tuple(path.stem for path in sorted((ROOT/'examples/animations').glob('*.py')))
+REPLAY_NAMES=('color','pattern','wipe','rainbow')
 def source(name):
     path=ROOT/'examples/animations'/f'{name}.py'
     return path.read_text().replace('random.seed()', 'random.seed(1)')
@@ -22,7 +23,7 @@ def source(name):
 class PortableCompilerTests(unittest.TestCase):
     def test_target_negotiation_and_deterministic_compilation(self):
         target={'module_limit':32768,'program_abis':[4], 'bytecode_formats':['LBC1/4'],
-                'program_schemas':['lightvm.program/5','lightvm.program/9'],'program_profiles':['animation/1']}
+                'program_schemas':['lightvm.program/10'],'native_drawing_api':4,'program_profiles':['animation/1']}
         for name in NAMES:
             result=compile_source(source(name))
             self.assertTrue(result.success,result.diagnostics)
@@ -78,13 +79,13 @@ class AnimationProfileTests(unittest.TestCase):
     def test_examples_match_python_caller_contract(self):
         for count in (1,5,175):
             self.client.configure(config(count))
-            for name in NAMES:
+            for name in REPLAY_NAMES:
                 with self.subTest(name=name,count=count):
                     self.client.upload(program(source(name))); reference=Example(name,count)
                     for ms in (0,7,33,407,1000,0,1000,1000):
                         actual,expected=self.frame(ms),reference.frame(ms)
                         self.assertEqual(len(actual),count*3)
-                        self.assertLessEqual(max(abs(a-b) for a,b in zip(actual,expected)),1 if name in ('twinkle','rainbow') else 0)
+                        self.assertLessEqual(max(abs(a-b) for a,b in zip(actual,expected)),1 if name=='rainbow' else 0)
                     state=self.client.program_parameters()
                     self.assertEqual(state['render_count'],9)
                     self.assertNotIn('logical_ticks',state);self.assertNotIn('cycle_count',state)
@@ -105,19 +106,18 @@ def draw(state, clock, output):
         self.assertEqual(self.frame(0),bytes([4,0,10])*5)
         self.assertEqual(self.client.program_parameters()['program_us'],1_033_000)
 
-    def test_chase_and_wipe_use_elapsed_time_at_varied_frame_rates(self):
+    def test_wipe_uses_elapsed_time_at_varied_frame_rates(self):
         self.client.configure(config(51))
-        for name in ('chase','wipe'):
-            frames=[]
-            for schedule in ([407],[10]*40+[7],[123,284]):
-                self.client.upload(program(source(name)))
-                for ms in schedule: frame=self.frame(ms)
-                frames.append(frame)
-                self.assertEqual(self.client.program_parameters()['program_us'],407000)
-            self.assertEqual(frames[0],frames[1]);self.assertEqual(frames[1],frames[2])
-            self.reset({'speed':0.0})
-            frame=self.frame()
-            self.assertEqual(self.frame(1000),frame)
+        frames=[]
+        for schedule in ([407],[10]*40+[7],[123,284]):
+            self.client.upload(program(source('wipe')))
+            for ms in schedule: frame=self.frame(ms)
+            frames.append(frame)
+            self.assertEqual(self.client.program_parameters()['program_us'],407000)
+        self.assertEqual(frames[0],frames[1]);self.assertEqual(frames[1],frames[2])
+        self.reset({'speed':0.0})
+        frame=self.frame()
+        self.assertEqual(self.frame(1000),frame)
 
     def test_settings_are_frozen_until_explicit_reinitialization(self):
         self.client.upload(program('from array import array\n'+PREFIX+'''@init
@@ -199,6 +199,7 @@ def draw(ctx,runtime,pixels):
             self.assertEqual(self.client.snapshot()[1],before)
 
     def test_long_uptime_and_no_render_allocation(self):
+        self.client.configure(config(17))
         for name in NAMES:
             self.client.upload(program(source(name)))
             initial=self.client.program_parameters()
@@ -211,13 +212,13 @@ def draw(ctx,runtime,pixels):
 
     def test_old_binary_version_and_forged_entry_permissions_rejected(self):
         for patch in ('version','rights','reserved'):
-            data=bytearray(sample('chase'))
+            data=bytearray(sample('wipe'))
             regs,code,colors=struct.unpack_from('<3I',data,8)
             if patch=='version': struct.pack_into('<I',data,4,3)
             elif patch=='reserved': struct.pack_into('<I',data,48,1)
             else: struct.pack_into('<I',data,96+regs*8+code*8+colors*4+8,13)
             with self.assertRaises(ProtocolError): self.client.upload(data)
-        self.client.upload(sample('chase'));self.assertEqual(len(self.frame()),15)
+        self.client.upload(sample('wipe'));self.assertEqual(len(self.frame()),15)
     def test_immutable_package_growth_does_not_grow_resident_ram(self):
         data = sample('color')
         self.client.upload(data)
@@ -249,7 +250,7 @@ def draw(ctx,runtime,pixels):
 
     def test_live_reset_preserves_shared_upload_transaction(self):
         self.client.upload(sample('color'))
-        data=sample('chase')
+        data=sample('wipe')
         self.client.require_ok(self.client.command(BEGIN,struct.pack('<II',len(data),zlib.crc32(data))))
         self.client.require_ok(self.client.command(CHUNK,bytes(4)+data[:100]))
         self.reset()

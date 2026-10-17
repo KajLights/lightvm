@@ -41,6 +41,7 @@ static void scene_contract(void){
 
     /* Closing a physical output can itself service the engine. Detach its scene
        before freeing it, so those checkpoints cannot reenter freed state. */
+    storage_available=true;memset(flash,255,sizeof(flash));
     static App app;Session session;app_init(&app,capture,&reply);
     session_init(&session,&app,1,capture,&reply);
     secondary_output_allowed=true;
@@ -49,6 +50,13 @@ static void scene_contract(void){
     app.staged=true;app.object_kind=1;app.upload_owner=1;
     const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
+    /* Activation presents its initial frame before autonomous playback. The
+       direct driver must receive RGB, never the RGBA contribution bytes. */
+    CHECK(store_put(&app.store,"counter",counter_lbc,sizeof(counter_lbc)));
+    const char *activate="{\"op\":\"procedure_activate\",\"name\":\"counter\",\"device\":\"lights\",\"action\":\"play\"}";
+    command(&session,CMD_MANAGE,(const uint8_t *)activate,strlen(activate));CHECK(reply.code==STATUS_OK);
+    for(unsigned i=0;i<3;i++)CHECK(displayed[i*3]==1&&displayed[i*3+1]==0&&displayed[i*3+2]==0);
+    CHECK(!memcmp(app.devices[0]->pixels.rgb,displayed,9));
     for(unsigned i=0;i<app.device_count;i++){
         AppDevice *d=app.devices[i];d->scene=scene_create(&d->pixels,1);CHECK(d->scene);
         portable_load(&d->scene->layers[0].vm,&d->scene->layers[0].target,&reply,counter_lbc,sizeof(counter_lbc));
@@ -58,5 +66,5 @@ static void scene_contract(void){
     app.staged=true;app.object_kind=1;app.upload_owner=1;cooperative_show=true;
     apply="{\"op\":\"config_apply\",\"expected_revision\":1}";
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
-    cooperative_show=false;secondary_output_allowed=false;session_destroy(&session);app_destroy(&app);CHECK(vm_heap_used()==0);
+    cooperative_show=false;secondary_output_allowed=false;session_destroy(&session);app_destroy(&app);storage_available=false;CHECK(vm_heap_used()==0);
 }

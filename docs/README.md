@@ -19,6 +19,7 @@ animation. The guides below describe the current implementation.
 
 Runnable [animation examples](../examples/animations/) and
 [configuration examples](../examples/config/) live together in `examples/`.
+[Scene examples](../examples/scenes/) combine animations from that same directory.
 
 ## Design and history
 

@@ -13,7 +13,7 @@ from lightvm.compiler import compile_source
 from lightvm import easing, motion
 
 PREFIX = '''from lightvm import profile, init, render, rgb, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform
-profile("layer/1")
+profile("animation/1")
 '''
 
 
@@ -39,7 +39,7 @@ def draw(ctx,runtime,pixels):
         result = compile_source(source)
         self.assertTrue(result.success, result.diagnostics)
         self.assertEqual(result.bytecode, compile_source(source).bytecode)
-        self.assertEqual(result.manifest['schema'], 'lightvm.program/5')
+        self.assertEqual(result.manifest['schema'], 'lightvm.program/10')
         self.assertEqual(struct.unpack_from('<I', result.bytecode, 80)[0], 0)
         ncalls = struct.unpack_from('<I', result.bytecode, 32)[0]
         self.assertEqual(ncalls, 0)
@@ -181,11 +181,12 @@ def draw(ctx,runtime,pixels):
         for i in (0,1,66):
             expected[i*4:i*4+4] = bytes([255,0,0,255])
         self.assertEqual(self.frame(), bytes(expected))
-        self.assertEqual(result.manifest['schema'], 'lightvm.program/8')
+        self.assertEqual(result.manifest['schema'], 'lightvm.program/10')
         self.assertEqual(struct.unpack_from('<I', result.bytecode, 80)[0], 3)
         target = self.client.describe()
         self.assertTrue(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target=target).success)
-        older = {**target,'program_schemas':[s for s in target['program_schemas'] if s != 'lightvm.program/8']}
+        self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target={**target,'native_drawing_api':2}).success)
+        older = {**target,'program_schemas':[s for s in target['program_schemas'] if s != 'lightvm.program/10']}
         self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target=older).success)
         forged = bytearray(result.bytecode)
         struct.pack_into('<I', forged, 80, 2)
@@ -232,7 +233,7 @@ def draw(ctx,runtime,pixels):
     def test_rainbow_example_edges_hue_cycle_easing_and_frame_rate_independence(self):
         count = min(200, self.client.describe()['pixel_capacity'])
         self.configure(count)
-        source = (ROOT/'examples/layers/rainbow_sprite.py').read_text()
+        source = (ROOT/'examples/animations/rainbow_sprite.py').read_text()
         self.load(source, complete=True)
         frames = {0:self.frame()}
         for t in range(1,41):

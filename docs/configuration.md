@@ -285,7 +285,7 @@ Use device IDs for upload, activation, status, frame, stop, pause/resume and
 snapshot operations:
 
 ```sh
-python tools/client.py --port PORT --device desk build/examples/chase.lbc --animate
+python tools/client.py --port PORT --device desk build/examples/wipe.lbc --animate
 python tools/client.py --port PORT --device desk --parameters
 python tools/client.py --port PORT --device desk --pause
 ```

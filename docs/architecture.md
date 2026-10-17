@@ -193,10 +193,9 @@ run and publishes its successful batch before waiting; a failing step cannot
 roll back earlier commits or general guest state.
 
 New resources declare snapshot/readback semantics, publication, units, ownership
-and lifecycle. Addressable RGB frame steps start black; effects redraw their
-current output from animation state. Alpha transparency and
-[scene composition](design/feature-proposal-animation-composition.md)
-will be designed separately. Completed scenes may later feed an A/B mixer,
+and lifecycle. Current animation frames start transparent; effects redraw their
+current output from animation state. All new animations can participate in
+[scene composition](composition.md). Completed scenes may later feed an A/B mixer,
 subject to jointly advertised limits. Native brightness applies once after final
 mixing. Ordinary actuators initially have an exclusive writer. The legacy adapter
 keeps API v1's black-at-frame-start and callback/delta rules. General control
