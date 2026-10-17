@@ -51,6 +51,8 @@ static const NativeSignature natives[]={
     {0,4,{P_REF,P_REF,T_FLOAT,T_FLOAT},0},
     {0,4,{P_REF,T_INT,T_COLOR,T_INT},0},
     {0,4,{P_REF,P_REF,P_REF,T_INT},0}, /* 52: periodic destination drawing */
+    {0,4,{P_REF,T_FLOAT,T_INT,T_INT},0}, /* 53: complementary scene blend */
+    {0,4,{P_REF,T_INT,T_INT,T_INT},0}, /* 54: scene range copy */
 };
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}
@@ -429,7 +431,7 @@ static void random_seed(Portable *p,uint64_t seed){
 }
 static void random_default(Portable *p){
     static uint64_t sequence;
-    random_seed(p,platform_time_us()+(++sequence)*UINT64_C(0x9e3779b97f4a7c15));
+    random_seed(p,p->deterministic_random?p->default_seed:platform_time_us()+(++sequence)*UINT64_C(0x9e3779b97f4a7c15));
 }
 static bool random_range(Portable *p,int64_t start,int64_t stop,int64_t step,PbcValue *result){
     if(!step||(step>0?start>=stop:start<=stop))return false;

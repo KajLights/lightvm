@@ -28,11 +28,15 @@ NATIVES = {
     'randint': (17, I, (I, I), 8),
 }
 NATIVES.update(FEATURE_NATIVES)
+NATIVES.update({
+    'scene_mix': (53, 0, (6, F, I, I), 0),
+    'scene_copy': (54, 0, (6, I, I, I), 0),
+})
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
 PUBLIC = {'requires', 'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
-LIBRARIES = {'lightvm.motion', 'lightvm.easing'}
+LIBRARIES = {'lightvm.motion', 'lightvm.easing', 'lightvm.transitions'}
 
 
 class PortableCompiler(SpriteCompiler, Compiler):
@@ -42,14 +46,20 @@ class PortableCompiler(SpriteCompiler, Compiler):
         # Runtime arguments are flattened into typed input registers. Context
         # fields and array bindings belong to this instance, never module globals.
         self.regs, self.names = [], {}
+        self.profile_name = 'transition' if any(
+            isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and
+            getattr(n.value.func, 'id', '') == 'profile' and len(n.value.args) == 1 and
+            isinstance(n.value.args[0], ast.Constant) and n.value.args[0].value == 'transition'
+            for n in self.tree.body) else 'animation'
+        arguments = (('pixel_count', I), ('progress', F)) if self.profile_name == 'transition' else (
+            ('pixel_count', I), ('time', F), ('delta', F))
         self.inputs = {name: self.reg(typ, INPUT) for name, typ in
-                       (('pixel_count', I), ('time', F), ('delta', F))}
+                       arguments}
         self.resources, self.settings, self.expressions, self.calls = [], [], [], []
         self.resource_names, self.setting_names = {}, {}
         self.helpers, self.call_stack, self.return_stack, self.loop_stack = {}, [], [], []
         self.fields, self.caps, self.declarations, self.imports = {}, {}, {}, {}
         self.rights, self.depth = 0, 0
-        self.profile_name = 'animation'
         self.feature_setup()
         self.expressions.append((0, I, 0, 0, 0))
         count = len(self.expressions); self.expressions.append((1, I, 0, 0, 0))
@@ -211,6 +221,20 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 if n.keywords: self.fail(n, 'math.sin takes one positional argument')
                 return self.native('sin', [self.expr(a) for a in n.args], n)
             method = n.func.attr
+            if self.capability(n.func.value) == 'pixels' and method in ('mix', 'copy_scene'):
+                if self.profile_name != 'transition' or self.stage != 1:
+                    self.fail(n, 'scene drawing requires a transition render callback')
+                args = self.arguments(n, ('progress' if method == 'mix' else 'scene', 'start', 'stop'),
+                                      {'start': 0, 'stop': ast.Attribute(value=n.func.value, attr='count')})
+                if method == 'mix':
+                    value = self.expr(args['progress'])
+                else:
+                    scene = args['scene']
+                    if not isinstance(scene, ast.Constant) or scene.value not in ('A', 'B'):
+                        self.fail(n, 'copy_scene requires the literal scene name A or B')
+                    value = self.literal(int(scene.value == 'B'))
+                return self.native('scene_mix' if method == 'mix' else 'scene_copy',
+                                   [self.output, value, self.expr(args['start']), self.expr(args['stop'])], n)
             if self.capability(n.func.value) == 'pixels' and method in ('point', 'colorwheel', 'gradient', 'palette'):
                 if n.keywords: self.fail(n, 'native drawing takes positional arguments')
                 args = [self.output] + [self.expr(a) for a in n.args]
@@ -563,7 +587,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 try: minimum_release = normalize_release(call.args[0].value)
                 except ValueError as error: self.fail(n, str(error))
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'profile':
-                if self.imports.get('profile') != 'profile' or marked or n.value.keywords or len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or n.value.args[0].value != 'animation': self.fail(n, 'expected one animation profile declaration')
+                if self.imports.get('profile') != 'profile' or marked or n.value.keywords or len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or n.value.args[0].value not in ('animation', 'transition'): self.fail(n, 'expected one animation or transition profile declaration')
                 self.profile_name = n.value.args[0].value
                 marked = True
             elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='PixelArray':
@@ -582,7 +606,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 self.funcs[role] = n
             elif not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)):
                 self.fail(n, 'module state is unsupported; initialize ctx fields in @init')
-        if not marked or 'render' not in self.funcs: raise CompileError('animation requires a @render entry')
+        if not marked or 'render' not in self.funcs: raise CompileError('program requires a profile and @render entry')
         if minimum_release and release_error(minimum_release, BASELINE):
             raise CompileError('source requires a release below the supported feature floor ' + BASELINE)
         functions = []
@@ -598,7 +622,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 pending = bool(self.pending_batches)
                 self.finish_batches()
                 if pending: self.emit('END')
-            functions.append((start, len(self.code), self.rights, 0, 0, 3))
+            functions.append((start, len(self.code), self.rights, 0, 0, len(self.inputs)))
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
@@ -608,7 +632,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
-                             0, 1, 0, 0, 0, 0, 0, 0, 3, len(metadata), 0, 0, 0, 0)
+                             0, 1, 0, 0, 0, 0, 0, 0, 4 if self.profile_name == 'transition' else 3, len(metadata), 0, 0, 0, 0)
         raw = header + b''.join(struct.pack('<BBHI',t,role,0,v) for t,role,v in self.regs)
         raw += b''.join(struct.pack('<BBBBI',*ins) for ins in self.code)
         raw += b''.join(struct.pack('<I',c) for c in self.table)

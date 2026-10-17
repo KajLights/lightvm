@@ -249,6 +249,7 @@ static void network_transactions(void) {
 
 #include "portable_contract.inc"
 #include "scene_contract.inc"
+#include "transition_contract.inc"
 
 static unsigned service_calls;
 static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
@@ -494,5 +495,6 @@ int main(void) {
     network_transactions();
     portable_contract();
     scene_contract();
+    transition_contract();
     return 0;
 }

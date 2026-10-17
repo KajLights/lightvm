@@ -17,7 +17,7 @@ typedef struct {
 typedef struct Portable {
     LbcRead read; void *context;
     uint32_t size,nregs,ncode,ncolors,nfunctions,nresources,nexpressions,ncalls,nsettings;
-    /* Binding 3 is animation with premultiplied RGBA output. */
+    /* Binding 3 is animation; binding 4 is a progress-driven transition. */
     uint32_t entries[2],profile;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
     uint8_t *metadata, *descriptors; uint16_t *register_offsets;
@@ -34,6 +34,12 @@ typedef struct Portable {
     uint64_t now_us,render_count,active_wall_us,random_state;
     uint64_t native_draw_us,dispatch_count,slice_count;
     bool native_pending;
+    bool deterministic_random;
+    uint64_t default_seed;
+    /* Native, read-only RGB views. Never exposed as guest pointers. The owner
+       pins these completed scene frames until this evaluation finishes. */
+    const uint8_t *scene_frames[2];
+    float progress;
     bool initialized;
     _Alignas(4) uint8_t cache[256]; uint32_t cache_offset,cache_size;
 } Portable;

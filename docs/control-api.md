@@ -2,6 +2,8 @@
 
 Python programs use the [init/render animation API](animation-profile.md) and
 compile to portable bytecode with an unversioned `lightvm.program` document kind.
+Named [Python transitions](transition-profile.md) use that same document kind with
+`profile: "transition"` and are selected between A/B scenes by stored procedure name.
 The manifest records `compiler_version` for provenance and `requires` for its
 minimum application release. Firmware accepts the same major at or above that
 minimum, independently of the compiler's release. Settings are frozen at
@@ -69,12 +71,12 @@ New direct instances use `14N` frame bytes: two RGBA frames, one RGB presentatio
 and the last physical RGB output. Offscreen instances use `8N` bytes.
 Scenes add `9N` bytes for shared RGB output buffers; see [composition](composition.md).
 Native driver conversion storage adds `4N` bytes on Pico and `3N` on ESP32, plus SDK state.
-Rendering does not allocate. Each configured device has its own slot A and runs independently.
+Rendering does not allocate. Each configured device runs independently and can retain [A/B scenes and a transition](transitions.md).
 Virtual RGB devices use the same frame storage without physical driver conversion buffers.
 
 ## Management
 
-Operations accept an optional `device` and its slot A. Each device owns its
+Operations accept an optional `device` and scene `slot` A or B. Each device owns its
 generation, settings and playback state.
 
 - `program_state`: manifest, generation, settings_values, playback state,
@@ -91,3 +93,5 @@ released API version.
 Removed command 5 and operations such as live parameter writes return an unknown
 command/operation error. `mode` reports bytecode while playing.
 See [configuration and management](configuration.md).
+
+[A/B transition controls](transitions.md#management-api) use the same native owner and management transport.

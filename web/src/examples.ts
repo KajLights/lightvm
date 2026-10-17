@@ -4,8 +4,14 @@ import color from '../../examples/animations/color.py?raw';
 import pattern from '../../examples/animations/pattern.py?raw';
 import rainbowSprite from '../../examples/animations/rainbow_sprite.py?raw';
 import sweep from '../../examples/animations/sweep.py?raw';
+import crossfade from '../../examples/transitions/crossfade.py?raw';
+import wipe from '../../examples/transitions/wipe.py?raw';
 
 export const EXAMPLES = [
+  { id: 'transition_crossfade', filename: 'crossfade.py', label: 'crossfade.py · transition', source: crossfade,
+    description: 'A Python transition that blends the prepared A and B scenes at the supplied progress.' },
+  { id: 'transition_wipe', filename: 'wipe.py', label: 'wipe.py · transition', source: wipe,
+    description: 'A Python transition that reveals B across A. Set reverse to reveal from the opposite end.' },
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
     description: 'Original picolights Rainbow: one colour cycle every 60 seconds. Override duration in the preview settings for faster motion.' },
   { id: 'stars', filename: 'stars.py', label: 'stars.py', source: stars,
@@ -20,7 +26,7 @@ export const EXAMPLES = [
     description: 'Configurable eyes: loop, bounce, chase or inward wipe. Retain swept paint, or add timed trails with trail_seconds and samples. One eye can also run in its own scene layer.' },
 ];
 
-export const DEFAULT_EXAMPLE = EXAMPLES[0];
+export const DEFAULT_EXAMPLE = EXAMPLES.find(example => example.id === 'rainbow')!;
 export function exampleForSource(source: string) {
   return EXAMPLES.find(example => example.source === source);
 }

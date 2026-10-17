@@ -28,7 +28,7 @@ static bool manifest(const uint8_t *bytes,size_t size,Portable *p,const char **e
        !json_string(&j,json_get(&j,0,"requires"),required,sizeof(required))||
        !json_string(&j,json_get(&j,0,"compiler_version"),compiler,sizeof(compiler))||
        !lightvm_release_valid(compiler,false)||
-       !json_equal(&j,json_get(&j,0,"profile"),"animation"))return false;
+       !json_equal(&j,json_get(&j,0,"profile"),p->profile==4?"transition":"animation"))return false;
     *error=lightvm_release_error(LIGHTVM_VERSION,required);if(*error)return false;
     *error="invalid LightVM manifest";
     int pixels=json_get(&j,0,"pixels"),settings=json_get(&j,0,"settings");

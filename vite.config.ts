@@ -14,10 +14,11 @@ mkdirSync(resolve(staticAssets, 'python/lightvm'), { recursive: true });
 rmSync(resolve(staticAssets, 'samples'), { recursive: true, force: true });
 rmSync(resolve(staticAssets, 'examples'), { recursive: true, force: true });
 cpSync(resolve(root, 'web/compiler-worker.mjs'), resolve(staticAssets, 'compiler-worker.mjs'));
-for (const name of ['__init__.py', 'compiler.py', 'compiler_core.py', 'portable.py', 'sprite_compiler.py', 'easing.py', 'motion.py', 'release.py', 'release.json']) {
+for (const name of ['__init__.py', 'compiler.py', 'compiler_core.py', 'portable.py', 'sprite_compiler.py', 'easing.py', 'motion.py', 'transitions.py', 'release.py', 'release.json']) {
   cpSync(resolve(root, 'lightvm', name), resolve(staticAssets, 'python/lightvm', name));
 }
 cpSync(resolve(root, 'examples/animations'), resolve(staticAssets, 'examples/animations'), { recursive: true });
+cpSync(resolve(root, 'examples/transitions'), resolve(staticAssets, 'examples/transitions'), { recursive: true });
 
 export default defineConfig({
   root: resolve(root, 'web'), base: './', publicDir: staticAssets,

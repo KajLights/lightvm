@@ -5,7 +5,9 @@ The compiler emits portable bytecode with document kind `lightvm.program` and
 profile `animation`. Its `requires` field names the minimum LightVM application
 release. It parses source without executing it. See [versioning](versioning.md).
 
-There is one source profile. Every animation can run alone or as a [scene layer](composition.md).
+Every animation can run alone or as a [scene layer](composition.md).
+The separate [transition profile](transition-profile.md) uses the same compiler,
+init/render conventions and libraries to combine prepared A/B scenes by progress.
 Each frame starts blank. Unpainted pixels let lower layers remain visible.
 Ordinary colour writes paint solid pixels. Alpha is optional for effects that need partial transparency.
 The same profile supports native drawing, [PixelArray and sprites](pixelarray-sprites.md),

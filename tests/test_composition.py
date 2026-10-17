@@ -69,7 +69,12 @@ class CompositionTests(unittest.TestCase):
                         expected=[]
                         for lower,channel in zip((80,120,160),(200,100,50)):
                             paint=mul(mul(channel,alpha),opacity)
-                            value=(paint+mul(lower,255-a) if mode=='over' else
+                            # Source-over now rounds the combined sum once,
+                            # retaining both global opacity and pixel alpha.
+                            weight=(opacity*65536+127)//255
+                            denominator=255*65536
+                            over=(mul(channel,alpha)*weight*255+lower*(denominator-alpha*weight)+denominator//2)//denominator
+                            value=(over if mode=='over' else
                                    min(255,lower+paint) if mode=='add' else
                                    255-mul(255-lower,255-paint) if mode=='screen' else
                                    mul(lower,255-a+paint))

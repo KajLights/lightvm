@@ -37,7 +37,8 @@ def hash01(index: int, seed: int) -> float:
 
 
 def profile(name):
-    if name != "animation": raise ValueError("unsupported profile; use animation")
+    if name not in ("animation", "transition"):
+        raise ValueError("unsupported profile; use animation or transition")
 
 
 def requires(release):

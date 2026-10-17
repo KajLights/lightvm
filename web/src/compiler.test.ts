@@ -6,6 +6,11 @@ import rainbow from '../../examples/animations/rainbow.py?raw';
 const target = (version: string) => ({ version } as Description);
 const manifest: Manifest = { compiler_version: '1.20.0', requires: '1', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [] };
 describe('animation release compatibility', () => {
+  it('checks Python transition capability separately from animation playback', () => {
+    const transition = { ...manifest, profile: 'transition' };
+    expect(supportsProgram(target('1.0.0'), transition)).toBe(false);
+    expect(supportsProgram({ ...target('1.0.0'), transition_programs: true }, transition)).toBe(true);
+  });
   it('keeps the editor default identical to the supplied Rainbow example', () => {
     expect(DEFAULT_SOURCE).toBe(rainbow);
     expect(DEFAULT_SOURCE).toContain('profile("animation")');

@@ -122,6 +122,39 @@ function announcedUrl(child, output) {
     await page.getByRole('button', { name: 'Run on output', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Preset running on'));
     console.log('Selected second output, previewed settings, saved source, composed two layers, saved and ran device preset: passed');
+    await page.locator('#transition-slot-B').selectOption('browser');
+    await page.getByRole('button', { name: 'Load B', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
+    await page.locator('#transition-progress').evaluate(input => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '35');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_set"'));
+    await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
+    const transition = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    assert.equal(transition.progress, 35); assert.equal(transition.A.layers.length, 2); assert.equal(transition.B.layers.length, 2);
+    await page.locator('#transition-duration').fill('100');
+    await page.getByRole('button', { name: 'Run to A', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('label[for="transition-progress"]')?.textContent.includes('0.0%'));
+    console.log('Prepared B, set absolute slider progress, and completed a native timed transition: passed');
+
+    for (const name of ['crossfade', 'wipe']) {
+      await page.getByLabel('Load example').selectOption('transition_' + name);
+      await page.getByRole('button', { name: 'Save and select transition →', exact: true }).waitFor();
+      await page.waitForFunction(() => !document.querySelector('#upload')?.disabled);
+      await page.getByLabel('Stored transition name').fill(name);
+      await page.getByRole('button', { name: 'Save and select transition →', exact: true }).click();
+      await page.waitForFunction(name => document.querySelector('#transition-effect')?.value === name, name);
+    }
+    await page.getByLabel('Transition program').selectOption('crossfade');
+    await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
+    await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
+    const pythonTransition = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    assert.equal(pythonTransition.procedure, 'crossfade');
+    const programs = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--procedures'], { encoding: 'utf8' }));
+    assert.deepEqual(programs.filter(program => ['crossfade', 'wipe'].includes(program.name)).map(program => program.profile), ['transition', 'transition']);
+    console.log('Compiled both Python transition examples in the browser, stored them by name, and recalled crossfade: passed');
+
 
     await page.evaluate(() => {
       const editor = document.querySelector('.CodeMirror')?.CodeMirror;

@@ -24,10 +24,11 @@ Frozen settings remain initialization data. Changes to INPUT must not mutate
 settings or restart a program. Define sampling, capture timestamps, validity,
 units, delivery boundaries and pause behavior before exposing an API.
 
-The [A/B and INPUT proposal](feature-proposal-ab-transitions.md) defines sources,
-samples, INPUTs, and input bindings for position control. It specifies mapping,
-ownership, takeover, freshness, and pause behavior. Native bindings come before
-guest INPUT access. All additions use the [application release contract](../versioning.md).
+The [A/B and Transition proposal](feature-proposal-ab-transitions.md) uses one
+settable progress percentage. A timed routine or an external source can update
+it without depending on this general INPUT model. This proposal owns the broader
+typed INPUT contract. All additions use the
+[application release contract](../versioning.md).
 
 Events preserve edge/message ordering and counts. State samples may coalesce
 only under a documented policy. Queues have fixed capacities, dropped counters,
@@ -79,6 +80,6 @@ Implement INPUT separately after the current-only cleanup. Specify one contract,
 generate/check producer-consumer metadata, reject superseded contracts and test
 queue overflow, pause clocks, cancellation, stale generations, ownership,
 fault publication and no allocation during execution. Continue to support
-independent [A/B and INPUT planning](feature-proposal-ab-transitions.md),
+independent [A/B transition planning](feature-proposal-ab-transitions.md),
 [devices](feature-proposal-device-support.md) and
 [build profiles](feature-proposal-build-profiles.md).

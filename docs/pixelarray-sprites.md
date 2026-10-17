@@ -184,6 +184,8 @@ for eight argument registers. Bindings 27–52 implement generic drawing and
 instance storage. Resource kinds 14–17 are straight images, kind 18 is generic
 instances, and kind 19 is transform scratch. Resource flags are 0 for mutable
 owned storage, 1 for output and 2 for package-backed readonly images.
+The [transition profile](transition-profile.md) adds bindings 53–54 for read-only
+scene blending and range copies into its output.
 The verifier checks kinds, mutability, stage rights, bounds and signatures.
 Binding 52 requires drawing feature set 3. Removed bindings and resource kinds
 are rejected independently of the manifest's claimed schema.

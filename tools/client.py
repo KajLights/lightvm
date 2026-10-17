@@ -2,6 +2,7 @@
 """Upload and execute portable bytecode programs over USB CDC, HTTP or a host pipe."""
 import argparse
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 import select
@@ -184,12 +185,12 @@ class Client:
         return bytes(result)
 
     def command(self, kind, payload=b"", slot=None, device=None, layer=None):
-        if slot is not None and slot != "A":
-            raise ValueError("a device has only slot A")
+        if slot is not None and slot not in ("A", "B"):
+            raise ValueError("slot must be A or B")
         if slot is not None or device is not None or layer is not None:
             if kind not in (STATUS, PLAY, STOP, RESET, FRAME):
                 raise ValueError("slot routing supports STATUS/PLAY/STOP/RESET/FRAME")
-            fields = {"op": "device_command", "slot": "A", "command": kind}
+            fields = {"op": "device_command", "slot": slot or "A", "command": kind}
             if device is not None:
                 fields["device"] = device
             if layer is not None:
@@ -357,10 +358,10 @@ class Client:
     def activate(self, name, action="play", slot=None, settings=None, device=None, layer=None):
         if layer is not None:
             if action != 'play': raise ValueError('scene layers support play activation')
-            scene = self.scene(device=device)
+            scene = self.scene(device=device, slot=slot)
             state = next((item for item in scene.get('layers', []) if item['id'] == layer), None)
             if state is None: raise ValueError('scene layer is not configured')
-            fields = {'name':name, 'layer':layer, 'expected_revision':scene['revision'], 'expected_generation':state['generation']}
+            fields = {'slot':slot or 'A', 'name':name, 'layer':layer, 'expected_revision':scene['revision'], 'expected_generation':state['generation']}
             if device is not None: fields['device'] = device
             if settings is not None: fields['settings'] = settings
             return self.manage('scene_layer_activate', **fields)
@@ -406,20 +407,62 @@ class Client:
         self.manage("program_snapshot", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
 
-    def scene(self, device=None):
-        self.manage('scene_get', **({'device':device} if device is not None else {}))
+    def scene(self, device=None, slot="A"):
+        self.manage('scene_get', slot=slot or 'A', **({'device':device} if device is not None else {}))
         return json.loads(self.data_reply)
 
-    def configure_scene(self, layers, device=None):
-        revision = self.scene(device=device)['revision']
+    def configure_scene(self, layers, device=None, slot="A"):
+        revision = self.scene(device=device, slot=slot)['revision']
         document = {'schema':'lightvm.scene', 'layers':layers}
         self.upload_object('scene', json.dumps(document, separators=(',',':')).encode())
-        return self.manage('scene_apply', expected_revision=revision, **({'device':device} if device is not None else {}))
+        return self.manage('scene_apply', slot=slot, expected_revision=revision, **({'device':device} if device is not None else {}))
 
-    def scene_snapshot(self, device=None):
+    def scene_snapshot(self, device=None, slot=None):
         self.pixel_snapshot.clear()
-        self.manage('scene_snapshot', **({'device':device} if device is not None else {}))
+        self.manage('scene_snapshot', **({'slot':slot} if slot is not None else {}), **({'device':device} if device is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
+
+    def transition(self, device=None):
+        self.manage('transition_get', **({'device':device} if device is not None else {}))
+        return json.loads(self.data_reply)
+
+    def _transition_control(self, operation, device=None, **fields):
+        self.manage(operation, **fields, **({'device':device} if device is not None else {}))
+        return json.loads(self.data_reply)
+
+    def set_progress(self, progress, device=None):
+        return self._transition_control('transition_set', device, progress=progress)
+
+    def run_transition(self, target, duration_ms, device=None, interval_ms=0):
+        return self._transition_control('transition_run', device, target=target, duration_ms=duration_ms, interval_ms=interval_ms)
+
+    def hold_transition(self, device=None):
+        return self._transition_control('transition_hold', device)
+
+    def assign_transition_source(self, source, device=None):
+        return self._transition_control('transition_assign', device, source=source)
+
+    def update_transition_source(self, source, assignment, progress=None, device=None):
+        if isinstance(progress, float) and not math.isfinite(progress): progress = None
+        return bool(self.manage('transition_update', source=source, assignment=assignment, progress=progress,
+                               **({'device':device} if device is not None else {})).value)
+
+    def select_transition(self, procedure, settings=None, seed=0, device=None):
+        fields = {'procedure':procedure, 'seed':seed, 'expected_revision':self.transition(device)['revision']}
+        if settings is not None: fields['settings'] = settings
+        return self._transition_control('transition_select', device, **fields)
+
+    def select_transition_effect(self, effect='crossfade', seed=0, mask=None, paint=None, device=None):
+        """Compatibility control for the original firmware effect table."""
+        fields = {'effect':effect, 'seed':seed, 'expected_revision':self.transition(device)['revision']}
+        if mask is not None: fields['mask'] = mask
+        if paint is not None: fields['paint'] = paint
+        return self._transition_control('transition_select', device, **fields)
+
+    def pause_scene(self, device=None, slot='A', paused=True):
+        return self.manage('scene_pause' if paused else 'scene_resume', slot=slot,
+                           expected_revision=self.scene(device, slot)['revision'],
+                           **({'device':device} if device is not None else {}))
 
     def presets(self):
         self.manage('preset_list')
@@ -440,33 +483,33 @@ class Client:
             self.command(OBJECT_CANCEL)
             raise
 
-    def activate_preset(self, name, device=None):
-        revision = self.scene(device=device)['revision']
-        return self.manage('preset_activate', name=name, expected_revision=revision,
+    def activate_preset(self, name, device=None, slot="A"):
+        revision = self.scene(device=device, slot=slot)['revision']
+        return self.manage('preset_activate', slot=slot, name=name, expected_revision=revision,
                            **({'device': device} if device is not None else {}))
 
     def delete_preset(self, name):
         revision = self.describe()['catalog_revision']
         return self.manage('preset_delete', name=name, expected_revision=revision)
 
-    def layer_opacity(self, layer, opacity, device=None):
-        revision = self.scene(device=device)['revision']
-        return self.manage('scene_layer_opacity', layer=layer, opacity=opacity, expected_revision=revision,
+    def layer_opacity(self, layer, opacity, device=None, slot="A"):
+        revision = self.scene(device=device, slot=slot)['revision']
+        return self.manage('scene_layer_opacity', slot=slot, layer=layer, opacity=opacity, expected_revision=revision,
                            **({'device':device} if device is not None else {}))
 
-    def remove_layer(self, layer, device=None):
-        revision = self.scene(device=device)['revision']
-        return self.manage('scene_layer_remove', layer=layer, expected_revision=revision,
+    def remove_layer(self, layer, device=None, slot="A"):
+        revision = self.scene(device=device, slot=slot)['revision']
+        return self.manage('scene_layer_remove', slot=slot, layer=layer, expected_revision=revision,
                            **({'device':device} if device is not None else {}))
 
-    def layer_blend(self, layer, blend, device=None):
-        revision = self.scene(device=device)['revision']
-        return self.manage('scene_layer_blend', layer=layer, blend=blend, expected_revision=revision,
+    def layer_blend(self, layer, blend, device=None, slot="A"):
+        revision = self.scene(device=device, slot=slot)['revision']
+        return self.manage('scene_layer_blend', slot=slot, layer=layer, blend=blend, expected_revision=revision,
                            **({'device':device} if device is not None else {}))
 
-    def clear_scene(self, device=None):
-        revision = self.scene(device=device)['revision']
-        return self.manage('scene_clear', expected_revision=revision, **({'device':device} if device is not None else {}))
+    def clear_scene(self, device=None, slot="A"):
+        revision = self.scene(device=device, slot=slot)['revision']
+        return self.manage('scene_clear', slot=slot, expected_revision=revision, **({'device':device} if device is not None else {}))
 
 
 def main():
@@ -503,7 +546,21 @@ def main():
     action.add_argument("--layer-opacity", type=int, metavar="U8")
     action.add_argument("--layer-blend", choices=("over", "add", "screen", "multiply"))
     action.add_argument("--remove-layer", action="store_true")
-    parser.add_argument("--slot", choices=("A",), help="the device’s only slot, A")
+    action.add_argument("--get-transition", action="store_true")
+    action.add_argument("--progress", type=float, help="set an absolute percentage and release its driver")
+    action.add_argument("--run-to", type=float, metavar="PERCENT", help="run from current progress to target")
+    action.add_argument("--hold-transition", action="store_true")
+    action.add_argument("--transition-effect", choices=("crossfade","wipe","soft_wipe","dissolve","dip_black","white_flash"))
+    action.add_argument("--transition", metavar="NAME", help="select a stored Python transition procedure")
+    action.add_argument("--assign-source", metavar="NAME")
+    action.add_argument("--source-value", type=float, metavar="PERCENT")
+    parser.add_argument("--source-name", help="assigned source name for --source-value")
+    parser.add_argument("--assignment", type=int, help="assignment token returned by --assign-source")
+    parser.add_argument("--duration-ms", type=float, default=2000)
+    parser.add_argument("--interval-ms", type=float, default=0, help="repeat alternating fades at this interval; zero runs once")
+    parser.add_argument("--transition-seed", type=int, default=0)
+    parser.add_argument("--settings", help="JSON initialization settings for a named transition")
+    parser.add_argument("--slot", choices=("A", "B"), help="scene slot (defaults to A)")
     parser.add_argument("--device", help="configured device ID for upload, activation and controls")
     parser.add_argument("--layer", help="scene layer ID for activation, state and controls")
     action.add_argument("--cancel-upload", action="store_true")
@@ -531,7 +588,9 @@ def main():
     management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
                   args.activate or args.cancel_upload or args.program_state or
-                  args.pause or args.resume or args.snapshot or args.scene or args.get_scene or args.scene_snapshot or args.clear_scene or args.layer_opacity is not None or args.layer_blend or args.remove_layer)
+                  args.pause or args.resume or args.snapshot or args.scene or args.get_scene or args.scene_snapshot or args.clear_scene or args.layer_opacity is not None or args.layer_blend or args.remove_layer or args.get_transition or args.progress is not None or args.run_to is not None or args.hold_transition or args.transition_effect or args.transition or args.assign_source or args.source_value is not None)
+    if args.source_value is not None and (not args.source_name or args.assignment is None):
+        parser.error("--source-value requires --source-name and --assignment")
     if (args.layer_opacity is not None or args.layer_blend or args.remove_layer) and not args.layer:
         parser.error('--layer is required for a layer update or removal')
     if management and args.module is not None and not args.store_procedure:
@@ -550,23 +609,39 @@ def main():
         connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else HttpTransport(args.url, args.timeout) if args.url else ProcessTransport(args.process, storage=args.storage)
         client = Client(connection, timeout=args.timeout)
         if management:
-            if args.scene:
+            if args.get_transition:
+                print(json.dumps(client.transition(device=args.device),indent=2))
+            elif args.progress is not None:
+                print(json.dumps(client.set_progress(args.progress,device=args.device),indent=2))
+            elif args.run_to is not None:
+                print(json.dumps(client.run_transition(args.run_to,args.duration_ms,device=args.device,interval_ms=args.interval_ms),indent=2))
+            elif args.hold_transition:
+                print(json.dumps(client.hold_transition(device=args.device),indent=2))
+            elif args.transition_effect:
+                print(json.dumps(client.select_transition_effect(args.transition_effect,seed=args.transition_seed,device=args.device),indent=2))
+            elif args.transition:
+                print(json.dumps(client.select_transition(args.transition,settings=json.loads(args.settings) if args.settings else None,seed=args.transition_seed,device=args.device),indent=2))
+            elif args.assign_source:
+                print(json.dumps(client.assign_transition_source(args.assign_source,device=args.device),indent=2))
+            elif args.source_value is not None:
+                print(json.dumps({'applied':client.update_transition_source(args.source_name,args.assignment,args.source_value,device=args.device)}))
+            elif args.scene:
                 document=json.loads(args.scene.read_text())
                 if document.get('schema') != 'lightvm.scene': raise ValueError('expected lightvm.scene')
-                client.configure_scene(document['layers'],device=args.device)
+                client.configure_scene(document['layers'],device=args.device,slot=args.slot or 'A')
             elif args.get_scene:
-                print(json.dumps(client.scene(device=args.device),indent=2))
+                print(json.dumps(client.scene(device=args.device,slot=args.slot or 'A'),indent=2))
             elif args.scene_snapshot:
-                state,rgb=client.scene_snapshot(device=args.device)
+                state,rgb=client.scene_snapshot(device=args.device,slot=args.slot)
                 print(json.dumps({**state,'rgb':rgb.hex()},indent=2))
             elif args.clear_scene:
-                client.clear_scene(device=args.device)
+                client.clear_scene(device=args.device,slot=args.slot or 'A')
             elif args.layer_opacity is not None:
-                client.layer_opacity(args.layer,args.layer_opacity,device=args.device)
+                client.layer_opacity(args.layer,args.layer_opacity,device=args.device,slot=args.slot or 'A')
             elif args.layer_blend:
-                client.layer_blend(args.layer,args.layer_blend,device=args.device)
+                client.layer_blend(args.layer,args.layer_blend,device=args.device,slot=args.slot or 'A')
             elif args.remove_layer:
-                client.remove_layer(args.layer,device=args.device)
+                client.remove_layer(args.layer,device=args.device,slot=args.slot or 'A')
             elif args.network or args.validate_network:
                 path = args.network or args.validate_network
                 client.configure_network(json.loads(path.read_text()), validate=bool(args.validate_network))

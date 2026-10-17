@@ -1,0 +1,191 @@
+"""Named Python transitions use the real store, compiler, VM and presenter."""
+import os
+from pathlib import Path
+import struct
+import sys
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0] = [str(ROOT), str(ROOT / 'tools')]
+from lightvm.compiler import compile_source
+from client import Client, ProcessTransport, ProtocolError, FRAME, STOP
+
+
+class TransitionProfileTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.storage = Path(self.directory.name) / 'flash.bin'
+        self.receiver = os.environ.get('LIGHTVM_RECEIVER', str(ROOT / 'build/ab-host/lightvm'))
+        self.connect()
+        self.count = 67
+        self.client.configure({'schema': 'lightvm.config', 'devices': [
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': self.count}}]})
+        for name, color in (('a', '200,100,20'), ('b', '20,40,220')):
+            self.save(name, 'from lightvm import profile,render,rgb\nprofile("animation")\n'
+                      '@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(' + color + '))\n')
+        for name in ('crossfade', 'wipe'):
+            self.save(name, (ROOT / 'examples/transitions' / (name + '.py')).read_text())
+        self.scenes()
+
+    def connect(self):
+        self.client = Client(ProcessTransport(self.receiver, self.storage))
+
+    def tearDown(self):
+        self.client.close()
+        self.directory.cleanup()
+
+    def save(self, name, source):
+        result = compile_source(source)
+        self.assertTrue(result.success, result.diagnostics)
+        self.client.save_procedure(name, result.bytecode)
+        return result
+
+    def scenes(self):
+        for slot, name in (('A', 'a'), ('B', 'b')):
+            self.client.configure_scene([{'id': 'base', 'procedure': name}], device='lights', slot=slot)
+        self.client.require_ok(self.client.command(STOP, device='lights'))
+
+    def frame(self, progress):
+        self.client.set_progress(progress, device='lights')
+        self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights'))
+        return bytes(self.client.pixel_snapshot)
+
+    def test_examples_compile_to_bounded_bulk_operations(self):
+        for name, bindings in (('crossfade', {53}), ('wipe', {54})):
+            result = compile_source((ROOT / 'examples/transitions' / (name + '.py')).read_text())
+            self.assertTrue(result.success, result.diagnostics)
+            self.assertEqual(result.manifest['schema'], 'lightvm.program')
+            self.assertEqual(result.manifest['profile'], 'transition')
+            regs, code, colors, functions, resources, expressions, calls = struct.unpack_from('<7I', result.bytecode, 8)
+            at = 96 + regs*8 + code*8 + colors*4 + functions*24 + resources*24 + expressions*16
+            self.assertEqual({struct.unpack_from('<I', result.bytecode, at+i*16)[0] for i in range(calls)}, bindings)
+            self.assertLess(code, 40)
+            self.assertLess(len(result.bytecode), 1024)
+            self.assertEqual(struct.unpack_from('<I', result.bytecode, 72)[0], 4)
+
+    def test_crossfade_exact_endpoints_complementary_weights_and_no_white_paint(self):
+        state = self.client.select_transition('crossfade', device='lights')
+        self.assertEqual(state['procedure'], 'crossfade')
+        self.assertEqual(state['effect'], 'program')
+        self.assertEqual((state['mask'], state['paint']), ('', ''))
+        for p, rgb in ((0, (200,100,20)), (35, (137,79,90)), (100, (20,40,220)), (35, (137,79,90))):
+            self.assertEqual(self.frame(p), bytes(rgb) * self.count)
+        self.client.configure_scene([{'id':'base','procedure':'a'}], device='lights', slot='B')
+        for p in (0.001, 1, 35, 49.999, 50, 99.999):
+            self.assertEqual(self.frame(p), bytes((200,100,20)) * self.count)
+
+    def test_wipe_direction_settings_and_seek_at_partial_chunks(self):
+        for reverse in (False, True):
+            self.client.select_transition('wipe', settings={'reverse': reverse}, device='lights')
+            for p in (0, 35, 100, 75, 35, 0):
+                n = int(p / 100 * self.count)
+                a, b = bytes((200,100,20)), bytes((20,40,220))
+                expected = a*(self.count-n)+b*n if reverse else b*n+a*(self.count-n)
+                self.assertEqual(self.frame(p), expected)
+
+    def test_opaque_layers_and_crossfades_have_identical_pixels(self):
+        self.client.configure({'schema': 'lightvm.config', 'devices': [
+            {'id':name,'type':'ws2812b','config':{'pin':pin,'count':self.count}}
+            for name,pin in (('lights','GP16'),('layers','GP17'))]})
+        self.client.configure_scene([{'id':'lower','procedure':'a'},{'id':'upper','procedure':'b'}],device='layers')
+        self.client.require_ok(self.client.command(STOP,device='layers'))
+        self.client.select_transition('crossfade',device='lights')
+        for opacity in (0,1,17,35,63,127,128,129,192,254,255):
+            self.client.layer_opacity('upper',opacity,device='layers')
+            self.client.require_ok(self.client.command(FRAME,bytes(4),device='layers'))
+            expected=bytes(self.client.pixel_snapshot)
+            self.assertEqual(self.frame(opacity*100/255),expected)
+
+    def test_flash_names_survive_restart_and_profiles_are_discoverable(self):
+        self.client.save_config()
+        before = {p['name']: p for p in self.client.procedures()}
+        self.assertEqual(before['crossfade']['profile'], 'transition')
+        self.assertEqual(before['a']['profile'], 'animation')
+        self.client.close(); self.connect(); self.scenes()
+        self.assertEqual(self.client.get_procedure('crossfade'), compile_source(
+            (ROOT / 'examples/transitions/crossfade.py').read_text()).bytecode)
+        self.client.select_transition('crossfade', device='lights')
+        self.assertEqual(self.frame(35), bytes((137,79,90)) * self.count)
+
+    def test_failed_selection_and_wrong_profile_preserve_running_state(self):
+        self.client.select_transition('crossfade', device='lights')
+        expected = self.frame(35)
+        self.client.run_transition(100, 5000, device='lights')
+        state = self.client.transition(device='lights')
+        for name, settings in (('missing', None), ('a', None), ('wipe', {'reverse': 1}), ('wipe', {'missing': True})):
+            with self.assertRaises(ProtocolError):
+                self.client.select_transition(name, settings=settings, device='lights')
+            after = self.client.transition(device='lights')
+            self.assertEqual(after['procedure'], 'crossfade')
+            self.assertEqual(after['revision'], state['revision'])
+            self.assertEqual(after['driver']['assignment'], state['driver']['assignment'])
+        with self.assertRaises(ProtocolError): self.client.activate('wipe', device='lights')
+        with self.assertRaises(ProtocolError): self.client.configure_scene([{'id':'bad','procedure':'wipe'}], device='lights')
+        with self.assertRaises(ProtocolError): self.client.delete_procedure('crossfade')
+        self.assertEqual(self.frame(35), expected)
+
+    def test_evaluation_uses_progress_and_restores_state_before_each_seek(self):
+        self.save('seek', '''from lightvm import profile,init,render,rgb
+profile("transition")
+@init
+def setup(ctx,runtime):
+ ctx.calls=0
+@render
+def draw(ctx,runtime,pixels):
+ ctx.calls+=1
+ pixels.fill(rgb(ctx.calls,int(runtime.progress*100.0),0))
+''')
+        self.client.select_transition('seek', device='lights')
+        for p in (35, 80, 35):
+            self.assertEqual(self.frame(p), bytes((2,p,0)) * self.count)
+        self.assertEqual(self.frame(0), bytes((200,100,20)) * self.count)
+        self.assertEqual(self.frame(100), bytes((20,40,220)) * self.count)
+        heap = self.client.status_fields(device='lights')['heap']
+        for _ in range(10): self.frame(35)
+        self.assertEqual(self.client.status_fields(device='lights')['heap'], heap)
+
+    def test_replacing_a_stored_name_preserves_the_pinned_active_version(self):
+        self.client.select_transition('crossfade', device='lights')
+        state = self.client.transition(device='lights')
+        self.save('crossfade', (ROOT / 'examples/transitions/wipe.py').read_text())
+        self.assertEqual(self.frame(35), bytes((137,79,90)) * self.count)
+        self.assertEqual(self.client.transition(device='lights')['program_crc32'], state['program_crc32'])
+        self.client.select_transition('crossfade', device='lights')
+        self.assertNotEqual(self.client.transition(device='lights')['program_crc32'], state['program_crc32'])
+        n = int(.35 * self.count)
+        self.assertEqual(self.frame(35), bytes((20,40,220))*n + bytes((200,100,20))*(self.count-n))
+
+    def test_fault_keeps_the_completed_output_and_a_fresh_selection_recovers(self):
+        self.save('fault', '''from lightvm import profile,render
+profile("transition")
+@render
+def draw(ctx,runtime,pixels):
+ if runtime.progress > 0.5:
+  pixels.mix(runtime.progress, stop=pixels.count+1)
+ else:
+  pixels.mix(runtime.progress)
+''')
+        self.client.select_transition('fault', device='lights')
+        expected = self.frame(35)
+        self.client.set_progress(75, device='lights')
+        with self.assertRaises(ProtocolError): self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights'))
+        self.assertEqual(bytes(self.client.scene_snapshot(device='lights')[1]), expected)
+        self.client.select_transition('crossfade', device='lights')
+        self.assertEqual(self.frame(35), expected)
+
+    def test_progress_and_scene_access_are_profile_checked(self):
+        source = (ROOT / 'examples/transitions/crossfade.py').read_text()
+        self.assertFalse(compile_source(source, target={'version':'1.0.0'}).success)
+        self.assertTrue(compile_source(source, target={'version':'1.0.0', 'transition_programs':True}).success)
+        for source in (
+            'profile("animation")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.mix(0.5)\n',
+            'profile("animation")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(int(runtime.progress),0,0))\n',
+            'profile("transition")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(int(runtime.time),0,0))\n',
+            'profile("transition")\n@init\ndef setup(ctx,runtime):\n pixels.mix(0.5)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.mix(runtime.progress)\n',
+        ):
+            result = compile_source('from lightvm import profile,init,render,rgb\n' + source)
+            self.assertFalse(result.success)
+
+
+if __name__ == '__main__': unittest.main()

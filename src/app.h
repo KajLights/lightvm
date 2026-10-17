@@ -5,6 +5,7 @@
 #include "store.h"
 #include "network.h"
 #include "scene.h"
+#include "transition.h"
 #if LIGHTVM_BOOT_SEQUENCE
 #include "boot_sequence.h"
 #endif
@@ -14,6 +15,7 @@ typedef struct {
     VmInstance vm;
     PixelBuffer pixels;
     Scene *scene;
+    Transition *transition;
     uint32_t scene_revision;
     uint32_t layer_generation;
     char active_procedure[OBJECT_NAME_LIMIT + 1];
@@ -42,6 +44,7 @@ typedef struct {
     StoreUpload upload;
     uint32_t expected, received, expected_crc;
     unsigned object_kind, schedule_cursor;
+    uint32_t transition_sequence;
     bool uploading, staged, booting;
     bool command_active, disconnect_pending;
     uint64_t upload_deadline;

@@ -15,12 +15,14 @@ typedef struct Scene {
     unsigned count, layer_count, cursor, pixel;
     uint32_t revision, frames, composite_frames;
     uint64_t next_frame, output_started, composite_us, output_us;
-    bool playing, composing, prepared, pending, dirty, command_active, ticking;
+    bool playing, composing, prepared, pending, dirty, command_active, ticking, front_pinned;
     char error[100];
     SceneLayer layers[];
 } Scene;
 Scene *scene_create(PixelBuffer *, unsigned layers);
 void scene_destroy(Scene *);
+void scene_offscreen(Scene *, PixelBuffer *);
+void scene_publish(Scene *);
 SceneLayer *scene_layer(Scene *, const char *id);
 void scene_invalidate(Scene *);
 void scene_tick(Scene *, unsigned budget);

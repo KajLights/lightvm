@@ -1,0 +1,103 @@
+/* The monotonic driver and output ownership are independent of guest clocks. */
+#include "transition.h"
+#include <math.h>
+static void transition_contract(void){
+    clock_now=0;clock_step=0;deny_allocation=false;deny_show=false;
+    CHECK(vm_heap_used()==0);
+    PixelBuffer physical={0};PixelConfig config={16,67,255,"RGB"};
+    CHECK(pixels_init(&physical,&config,device_type("ws2812b")));
+    Transition *t=transition_create(&physical);CHECK(t);
+    CHECK(transition_set(t,35));CHECK(transition_run(t,100,2000));
+    transition_update(t,1000000);CHECK(t->progress==67.5&&t->driver==TRANSITION_TIMED);
+    CHECK(!transition_run(t,50,-1));CHECK(!transition_run(t,NAN,10));CHECK(!transition_run(t,50,INFINITY));
+    CHECK(t->progress==67.5&&t->driver==TRANSITION_TIMED);
+    transition_update(t,2000000);CHECK(t->progress==100&&t->driver==TRANSITION_MANUAL);
+    clock_now=2000000;CHECK(transition_run(t,0,2000));
+    transition_update(t,3000000);CHECK(t->progress==50);
+    clock_now=3000000;CHECK(transition_run(t,100,2000));
+    transition_update(t,4000000);CHECK(t->progress==75);
+    clock_now=4000000;transition_hold(t);transition_update(t,9999999);CHECK(t->progress==75);
+    CHECK(transition_assign(t,"sensor"));uint32_t token=t->assignment;
+    CHECK(transition_source(t,"sensor",token,35));CHECK(!transition_source(t,"sensor",token,NAN));
+    CHECK(!transition_source(t,"other",token,50)&&t->progress==35);
+    transition_hold(t);CHECK(!transition_source(t,"sensor",token,50));
+    CHECK(transition_assign(t,"sensor"));CHECK(t->assignment!=token);CHECK(!transition_source(t,"sensor",token,50));
+    CHECK(transition_set(t,0));CHECK(t->driver==TRANSITION_MANUAL);
+
+    /* A repeating routine evaluates the current leg directly after any gap. */
+    clock_now=10000000;CHECK(transition_set(t,0));CHECK(transition_run_interval(t,100,2000,10000));
+    transition_update(t,11000000);CHECK(t->progress==50);
+    transition_update(t,12000000);CHECK(t->progress==100&&t->driver==TRANSITION_TIMED);
+    transition_update(t,19000000);CHECK(t->progress==100);
+    transition_update(t,21000000);CHECK(t->progress==50);
+    transition_update(t,22000000);CHECK(t->progress==0);
+    transition_update(t,51000000);CHECK(t->progress==50&&t->driver==TRANSITION_TIMED);
+    CHECK(!transition_run_interval(t,100,2000,1000));CHECK(!transition_run_interval(t,100,2000,NAN));
+    CHECK(t->progress==50&&t->interval==10000000);
+    clock_now=52000000;transition_hold(t);transition_update(t,91000000);CHECK(t->progress==100&&t->driver==TRANSITION_MANUAL);
+
+    for(unsigned n=0;n<2;n++){
+        t->scenes[n]=scene_create(&t->target,0);CHECK(t->scenes[n]);
+        memset(t->scenes[n]->front,n?200:100,67*3);t->scenes[n]->playing=false;
+    }
+    /* A management mutation can invalidate a suspended custom call. Restoring
+       its baseline must also discard that call's interpreter continuation. */
+    Capture custom_reply={0};TransitionProgram *custom=demo_calloc(1,sizeof(*custom));CHECK(custom);
+    portable_load(&custom->vm,&t->target,&custom_reply,counter_lbc,sizeof(counter_lbc));
+    CHECK(transition_program_capture(custom));t->programs[0]=custom;t->effect=TRANSITION_CUSTOM;
+    CHECK(transition_set(t,35));
+    for(unsigned n=0;n<100&&!custom->vm.control.in_step;n++)transition_tick(t,1);
+    CHECK(custom->vm.control.in_step);transition_invalidate(t);
+    CHECK(!transition_frame(t,0)&&!custom->vm.control.faulted);
+    transition_program_destroy(custom);t->programs[0]=NULL;t->effect=TRANSITION_CROSSFADE;
+    transition_invalidate(t);t->frames=0;memset(physical.rgb,0,67*3);
+    for(unsigned n=0;n<2;n++)memset(t->scenes[n]->front,n?200:100,67*3);
+    CHECK(transition_set(t,35));
+    unsigned allocation_count=allocations;deny_allocation=true;
+    delayed_output=true;output_ready=false;output_failed=false;
+    /* First sample spans three slices. Later updates must not tear that frame. */
+    transition_tick(t,64);CHECK(t->composing&&t->sampled_progress==35);
+    CHECK(transition_set(t,90));transition_tick(t,64);transition_tick(t,64);
+    CHECK(t->prepared);
+    for(unsigned n=0;n<67*3;n++)CHECK(t->working[n]==135);
+    transition_tick(t,64);CHECK(t->pending&&borrowed_output==t->front&&t->frames==0);
+    for(unsigned n=0;n<12;n++){CHECK(transition_set(t,n*5));transition_tick(t,64);CHECK(t->pending&&t->frames==0);}
+    output_ready=true;t->command_active=true;transition_tick(t,64);t->command_active=false;CHECK(t->frames==1&&physical.rgb[0]==135);
+    output_ready=false;transition_tick(t,64);transition_tick(t,64);transition_tick(t,64);transition_tick(t,64);
+    CHECK(t->pending);uint32_t frames=t->frames;output_failed=true;transition_tick(t,64);
+    CHECK(t->frames==frames&&physical.rgb[0]==135);output_failed=false;
+    for(unsigned n=0;n<8&&!t->pending;n++)transition_tick(t,64);
+    CHECK(t->pending);CHECK(allocations==allocation_count);deny_allocation=false;
+    scene_destroy(t->scenes[0]);scene_destroy(t->scenes[1]);
+    unsigned cancelled=cancelled_outputs;transition_destroy(t);CHECK(!borrowed_output&&cancelled_outputs==cancelled+1);
+    delayed_output=false;pixels_destroy(&physical);CHECK(vm_heap_used()==0);
+
+    /* A suspended Python transition pins only source publication. Scene VMs
+       and back-buffer composition keep running, without tearing the sample. */
+    clock_now=0;CHECK(pixels_init(&physical,&config,device_type("ws2812b")));
+    t=transition_create(&physical);CHECK(t);t->effect=TRANSITION_PROGRAM;
+    for(unsigned n=0;n<2;n++){
+        Scene *s=scene_create(&t->target,1);CHECK(s);t->scenes[n]=s;
+        portable_load(&s->layers[0].vm,&s->layers[0].target,&custom_reply,counter_lbc,sizeof(counter_lbc));
+        s->layers[0].vm.playing=true;scene_prepare(s);scene_publish(s);
+    }
+    custom=demo_calloc(1,sizeof(*custom));CHECK(custom);
+    portable_load(&custom->vm,&t->target,&custom_reply,transition_lbc,sizeof(transition_lbc));
+    CHECK(transition_program_capture(custom));t->programs[0]=custom;
+    CHECK(transition_set(t,35));allocation_count=allocations;deny_allocation=true;
+    transition_tick(t,1);CHECK(t->composing&&t->scenes[0]->front_pinned);
+    uint8_t sampled=t->scenes[0]->front[0];
+    for(unsigned n=0;n<100&&t->phase<4;n++){clock_now+=20000;transition_tick(t,64);}
+    CHECK(t->composing&&t->phase==4);
+    Scene *s=t->scenes[0];scene_invalidate(s);s->layers[0].vm.next_frame=0;
+    uint64_t renders=s->layers[0].vm.portable->render_count;
+    clock_now+=20000;transition_tick(t,64);
+    CHECK(s->layers[0].vm.portable->render_count>renders);
+    CHECK(s->front_pinned&&s->front[0]==sampled);
+    for(unsigned n=0;n<100&&t->composing;n++){clock_now+=20000;transition_tick(t,64);}
+    CHECK(t->prepared&&!s->front_pinned);
+    for(unsigned n=0;n<67;n++)CHECK(t->working[n*3]==sampled&&t->working[n*3+1]==0&&t->working[n*3+2]==0);
+    CHECK(allocations==allocation_count);deny_allocation=false;
+    transition_invalidate(t);scene_destroy(t->scenes[0]);scene_destroy(t->scenes[1]);
+    transition_destroy(t);pixels_destroy(&physical);CHECK(vm_heap_used()==0);
+}

@@ -53,14 +53,23 @@ not implicitly visible to the guest.
 
 Layers composite bottom to top over opaque black. RGB values are the existing
 encoded 8-bit channel values; blending performs no gamma/linear-light conversion.
-For each channel, define `mul(v,a) = (v*a + 127)//255`. Straight input color is
-premultiplied at paint time. Given completed layer `src`, lower result `dst`, and
-layer opacity `o`, source-over is:
+Straight input color is premultiplied at paint time using
+`mul(v,a) = (v*a + 127)//255`. Layers, transitions, PixelArray drawing and sprites
+then use the shared native compositor in `src/draw.c`. For a completed layer
+`src`, lower result `dst` and 8-bit layer opacity `o`, source-over is:
 
 ```text
-a = mul(src.alpha, o)
-result.channel = mul(src.channel, o) + mul(dst.channel, 255-a)
+w = round(o * 65536 / 255) / 65536
+result.channel = round(src.channel * w + dst.channel * (1 - src.alpha/255 * w))
 ```
+
+The implementation uses integer arithmetic and rounds the combined sum once.
+It retains pixel alpha's full `/255` precision through that final division.
+Opaque sources use complementary Q16 weights, exactly as Python crossfade does;
+an opaque layer at opacity `o` equals a crossfade at progress `o/255`. This can
+change a channel by one level compared with the former separately rounded terms.
+Transparent and fully opaque endpoints have fast paths. Scene composition uses
+bounded spans of at most 32 pixels, as do transition drawing operations.
 
 Global layer opacity applies once to the completed layer, after overlapping
 points/sprites have blended within it. Alpha zero reveals the moving background;
@@ -70,12 +79,13 @@ and wire order run once, after composition. Each scene layer accepts optional
 completed layer, after its sprites have combined. Modes operate on the same
 encoded 8-bit values; there is no gamma/linear-light conversion.
 
-For opaque destination channel `d`, premultiplied source channel
+The other blend modes keep their existing 8-bit paint and effective-alpha
+rounding. For opaque destination channel `d`, premultiplied source channel
 `p = mul(src.channel, opacity)` and effective alpha `a = mul(src.alpha, opacity)`:
 
 | Mode | Result channel |
 | --- | --- |
-| `over` | `p + mul(d, 255-a)` |
+| `over` | Single-rounded source-over sum above. |
 | `add` | `min(255, d+p)` |
 | `screen` | `255 - mul(255-d, 255-p)` |
 | `multiply` | `mul(d, 255-a+p)` |
@@ -153,7 +163,7 @@ committed RGBA. `scene()` reports ordering,
 generations, opacity, physical frames, composite frames, cumulative compositor
 CPU time and output latency. Per-layer `program_state()` includes completed
 renders, cumulative render CPU, native draw CPU, dispatch and resume counts.
-`native_draw_us` measures SDK bindings 27–52 and compiler-generated pixel maps; existing bulk fill/copy
+`native_draw_us` measures SDK bindings 27–54 and compiler-generated pixel maps; existing bulk fill/copy
 instructions contribute to total render CPU only.
 Render CPU includes native kernels and excludes time spent servicing peers;
 output latency includes asynchronous transfer wait. These counters have distinct
@@ -217,4 +227,5 @@ There is no per-preset frame or VM allocation while a recipe is idle in flash.
 The Python client exposes `presets`, `preset`, `save_preset`, `activate_preset`
 and `delete_preset` helpers.
 
-Linear-light blending, two-dimensional rotation and A/B transitions remain follow-on work.
+Scenes can also supply independent A/B slots to the [transition owner](transitions.md).
+Linear-light blending and two-dimensional rotation remain follow-on work.

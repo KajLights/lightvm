@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compile the animation examples into controller-independent bytecode."""
+"""Compile animation and transition examples into controller-independent bytecode."""
 import argparse
 import json
 from pathlib import Path
@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--output", type=Path, default=ROOT / "build/examples")
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
-for source in sorted((ROOT / "examples/animations").glob("*.py")):
+for source in sorted((ROOT / "examples/animations").glob("*.py")) + sorted((ROOT / "examples/transitions").glob("*.py")):
     result = compile_source(source.read_text(), str(source))
     if not result.success:
         raise SystemExit(str(result.diagnostics))

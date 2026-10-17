@@ -229,12 +229,29 @@ export class LightVMClient {
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
-  async configureScene(layers, device) {
-    const state = await this.json('scene_get', { device });
+  async configureScene(layers, device, slot = 'A') {
+    const state = await this.json('scene_get', { device, slot });
     try {
       await this.uploadObject('scene', encoder.encode(JSON.stringify({ schema: 'lightvm.scene', layers })));
-      return await this.manage('scene_apply', { device, expected_revision: state.revision });
+      return await this.manage('scene_apply', { device, slot, expected_revision: state.revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
+  }
+
+  async transition(device) { return this.json('transition_get', { device }); }
+  async setProgress(progress, device) { return this.json('transition_set', { device, progress }); }
+  async runTransition(target, duration_ms, device, interval_ms = 0) { return this.json('transition_run', { device, target, duration_ms, interval_ms }); }
+  async holdTransition(device) { return this.json('transition_hold', { device }); }
+  async assignTransitionSource(source, device) { return this.json('transition_assign', { device, source }); }
+  async updateTransitionSource(source, assignment, progress, device) {
+    return Boolean((await this.manage('transition_update', { device, source, assignment, progress })).value);
+  }
+  async selectTransition(procedure, device, options = {}) {
+    const state = await this.transition(device);
+    return this.json('transition_select', { device, procedure, expected_revision: state.revision, ...options });
+  }
+  async selectTransitionEffect(effect, device, options = {}) {
+    const state = await this.transition(device);
+    return this.json('transition_select', { device, effect, expected_revision: state.revision, ...options });
   }
 
   async savePreset(name, layers, device) {
@@ -245,9 +262,9 @@ export class LightVMClient {
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
-  async activatePreset(name, device) {
-    const state = await this.json('scene_get', { device });
-    return this.manage('preset_activate', { name, device, expected_revision: state.revision });
+  async activatePreset(name, device, slot = 'A') {
+    const state = await this.json('scene_get', { device, slot });
+    return this.manage('preset_activate', { name, device, slot, expected_revision: state.revision });
   }
 
   async deletePreset(name) {

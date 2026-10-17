@@ -8,6 +8,8 @@ animation. The guides below describe the current implementation.
 - [Controllers and development workflow](architecture.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Native drawing and scene composition](composition.md)
+- [A/B scenes and transitions](transitions.md)
+- [Python transition profile and optimized helpers](transition-profile.md)
 - [PixelArray and user-defined sprites](pixelarray-sprites.md)
 - [Motion, easing and strip boundaries](motion.md)
 - [Compiler-generated bulk pixel maps](pixel-maps.md)
@@ -31,6 +33,6 @@ current contract. Superseded implementations are available through Git history.
 - [Build profiles proposal](design/feature-proposal-build-profiles.md)
 - [Web editor proposal](design/feature-proposal-web-editor.md)
 - [Animation composition proposal](design/feature-proposal-animation-composition.md)
-- [A/B scenes, INPUT, and transitions proposal](design/feature-proposal-ab-transitions.md)
+- [A/B transition design](design/feature-proposal-ab-transitions.md) (implemented; see the guide above)
 
 [Versioning](versioning.md) defines the shared application release and minimum program requirements.

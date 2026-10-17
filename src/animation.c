@@ -7,17 +7,18 @@
 #include <string.h>
 
 const char *animation_validate(Portable *p){
-    if(p->profile!=3||p->nregs<3||p->nfunctions!=2||!p->nresources)return "unsupported animation profile";
+    unsigned inputs=p->profile==4?2:3;
+    if((p->profile!=3&&p->profile!=4)||p->nregs<inputs||p->nfunctions!=2||!p->nresources)return "unsupported program profile";
     const unsigned types[3]={T_INT,T_FLOAT,T_FLOAT};
     for(unsigned r=0;r<p->nregs;r++){
-        if(r<3){if(pbc_role(p,r)!=R_INPUT||pbc_type(p,r)!=types[r]||pbc_initial(p,r))return "invalid runtime argument binding";}
+        if(r<inputs){if(pbc_role(p,r)!=R_INPUT||pbc_type(p,r)!=types[r]||pbc_initial(p,r))return "invalid runtime argument binding";}
         else if(pbc_role(p,r)==R_INPUT)return "unexpected animation input or frame state";
     }
     const unsigned rights[2]={9,13};
     for(unsigned n=0;n<2;n++){
         if(p->entries[n]>=p->nfunctions||p->entries[0]==p->entries[1])return "invalid animation entry binding";
         PbcFunction fn=pbc_function(p,p->entries[n]);
-        if(fn.rights!=rights[n]||fn.result||fn.arg_start||fn.arg_count!=3)return "invalid animation entry signature";
+        if(fn.rights!=rights[n]||fn.result||fn.arg_start||fn.arg_count!=inputs)return "invalid program entry signature";
     }
     PbcResourceSpec output=pbc_spec(p,0);
     if(output.kind!=DRAW_RGBA||output.flags!=1||pbc_expression(p,output.length).op!=1)return "invalid animation output binding";
@@ -30,8 +31,9 @@ static const char *fault(VmInstance *a,const char *error){
 }
 static bool invoke(VmInstance *a,unsigned entry,uint64_t time,uint64_t delta){
     PbcValue arguments[3]={{.i=(int32_t)a->control.count},{.f=(float)(time/1000000.0)},{.f=(float)(delta/1000000.0)}};
+    if(a->portable->profile==4){arguments[1].f=a->portable->progress;time=0;}
     a->portable->now_us=time;
-    return pbc_invoke(a->portable,a->portable->entries[entry],arguments,3);
+    return pbc_invoke(a->portable,a->portable->entries[entry],arguments,a->portable->profile==4?2:3);
 }
 static const char *finish(VmInstance *a){
     Control *c=&a->control;Portable *p=a->portable;

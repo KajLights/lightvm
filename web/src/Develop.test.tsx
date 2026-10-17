@@ -10,6 +10,7 @@ import { createAppStore, deviceActions, editorActions } from './store';
 import type { Description, ProgramState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
 import originalRainbow from '../../examples/animations/rainbow.py?raw';
+import crossfade from '../../examples/transitions/crossfade.py?raw';
 
 afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 
@@ -25,6 +26,29 @@ function workspace() {
 }
 
 describe('editor examples and playback status', () => {
+  it('saves and selects a Python transition under its recallable device name', async () => {
+    const { store, compiler, devices, show } = workspace();
+    const description = { device_id: 'pico', boot_id: 'boot', version: '1.0.0', transition_programs: true,
+      module_limit: 32768 } as Description;
+    const client = { closed: false, transport: { label: 'HTTP' }, saveProcedure: vi.fn(async () => {}),
+      selectTransition: vi.fn(async () => {}) };
+    devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
+    vi.spyOn(devices, 'readProcedures').mockResolvedValue();
+    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
+      { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 200 } },
+    ] }, revision: 1, savedRevision: 1 }));
+    store.dispatch(editorActions.edited({ source: crossfade, filename: 'crossfade.py' }));
+    const revision = store.getState().editor.revision;
+    const manifest = { compiler_version: '1.0.0', requires: '1.0.0', schema: 'lightvm.program', profile: 'transition', pixels: { format: 'rgba8-premul' }, settings: [] };
+    compiler.artifact = { id: revision, source: crossfade, bytecode: new Uint8Array([1, 2]), manifest, diagnostics: [] };
+    store.dispatch(editorActions.compiled({ revision, bytes: 2, manifest, diagnostics: [] }));
+    show();
+    fireEvent.change(screen.getByLabelText('Stored transition name'), { target: { value: 'gentle_fade' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save and select transition →' }));
+    await act(async () => {});
+    expect(client.saveProcedure).toHaveBeenCalledWith('gentle_fade', new Uint8Array([1, 2]));
+    expect(client.selectTransition).toHaveBeenCalledWith('gentle_fade', 'lights', { settings: {} });
+  });
   it('identifies the default and reloads the single Rainbow example from its canonical source', () => {
     const { show, store } = workspace(); show();
     expect(document.querySelector('#filename')).toHaveTextContent('rainbow.py');

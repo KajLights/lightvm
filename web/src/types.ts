@@ -9,6 +9,7 @@ export interface Description {
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;
+  ab_transitions?: boolean; transition_effects?: string[]; transition_programs?: boolean;
   scenes?: boolean; scene_layer_limit?: number; scene_blend_modes?: string[];
   presets?: boolean; preset_limit?: number; procedure_limit?: number; transient_settings?: boolean;
   boot_sequence_supported?: boolean;
@@ -25,7 +26,7 @@ export interface NetworkConfig {
   http: { enabled: boolean; port: number };
 }
 export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
-export interface Procedure { name: string; size: number; crc32: number }
+export interface Procedure { name: string; size: number; crc32: number; profile?: 'animation' | 'transition' }
 export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[] }
 export interface ProgramState {
@@ -39,3 +40,12 @@ export interface Diagnostic { message: string; line: number; column: number; end
 export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[] }
 export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', devices: [] };
 export const DEFAULT_SOURCE = DEFAULT_EXAMPLE.source;
+
+export interface TransitionState {
+  revision: number; active: boolean; progress: number; effect: string; seed: number;
+  procedure?: string; program_crc32?: number;
+  driver: { kind: 'manual' | 'timed' | 'source'; assignment: number; source?: string; target?: number; duration_ms?: number; interval_ms?: number };
+  A: { active: boolean; layers?: { id: string; procedure: string }[] };
+  B: { active: boolean; layers?: { id: string; procedure: string }[] };
+  error: string;
+}

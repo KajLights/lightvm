@@ -5,6 +5,13 @@ import struct
 from bytecode_fixtures import program
 prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation")\n'
 fixtures={
+ 'transition_lbc':program('''from lightvm import profile,render
+from lightvm.transitions import crossfade
+profile("transition")
+@render
+def draw(ctx,runtime,pixels):
+ crossfade(pixels,runtime.progress)
+'''),
  'library_lbc':program(prefix+"""@init
 def setup(ctx,runtime):
  ctx.duration=setting(2.0)

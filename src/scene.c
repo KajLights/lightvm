@@ -13,7 +13,7 @@ Scene *scene_create(PixelBuffer *output,unsigned layers) {
     s->output=output;s->count=output->count;s->layer_count=layers;s->playing=true;s->dirty=true;
     s->allocation=demo_calloc(1,(size_t)s->count*6);
     if(!s->allocation){demo_free(s);return NULL;}
-    if(!vm_heap_charge((size_t)s->count*3)){demo_free(s->allocation);demo_free(s);return NULL;}
+    if(output->type&&!vm_heap_charge((size_t)s->count*3)){demo_free(s->allocation);demo_free(s);return NULL;}
     s->working=s->allocation;s->front=s->allocation+(size_t)s->count*3;
     for(unsigned i=0;i<layers;i++){s->layers[i].target.count=s->count;s->layers[i].opacity=255;}
     return s;
@@ -22,8 +22,16 @@ void scene_destroy(Scene *s) {
     if(!s)return;
     if(s->pending)s->output->type->cancel(s->output->driver);
     for(unsigned i=0;i<s->layer_count;i++)control_destroy(&s->layers[i].vm);
-    vm_heap_uncharge((size_t)s->count*3);
+    if(s->output->type)vm_heap_uncharge((size_t)s->count*3);
     demo_free(s->allocation);demo_free(s);
+}
+void scene_offscreen(Scene *s,PixelBuffer *target) {
+    if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}
+    if(s->output->type)vm_heap_uncharge((size_t)s->count*3);
+    s->output=target;scene_invalidate(s);
+}
+void scene_publish(Scene *s) {
+    uint8_t *old=s->front;s->front=s->working;s->working=old;s->prepared=false;s->frames++;
 }
 SceneLayer *scene_layer(Scene *s,const char *id) {
     if(!s)return NULL;
@@ -38,15 +46,13 @@ static void compose_start(Scene *s) {
 static void compose_slice(Scene *s) {
     uint64_t started=platform_time_us();
     unsigned end=s->pixel+32;if(end>s->count)end=s->count;
-    for(unsigned i=s->pixel;i<end;i++){
-        uint8_t result[4]={0,0,0,255};
-        for(unsigned n=0;n<s->layer_count;n++){
-            SceneLayer *layer=&s->layers[n];VmInstance *vm=&layer->vm;
-            if(!vm->control.contribution_valid||!layer->opacity)continue;
-            const uint8_t *src=control_frame(vm)+(size_t)i*4;
-            draw_blend(result,src,layer->opacity,(DrawBlend)layer->blend);
-        }
-        memcpy(s->working+(size_t)i*3,result,3);
+    uint8_t *dst=s->working+(size_t)s->pixel*3;
+    unsigned count=end-s->pixel;memset(dst,0,(size_t)count*3);
+    for(unsigned n=0;n<s->layer_count;n++){
+        SceneLayer *layer=&s->layers[n];VmInstance *vm=&layer->vm;
+        if(!vm->control.contribution_valid||!layer->opacity)continue;
+        const uint8_t *src=control_frame(vm)+(size_t)s->pixel*4;
+        draw_composite(dst,3,dst,3,src,4,count,draw_opacity(layer->opacity),(DrawBlend)layer->blend);
     }
     s->pixel=end;s->composite_us+=platform_time_us()-started;
     if(end==s->count){s->composing=false;s->prepared=true;s->composite_frames++;}
@@ -77,6 +83,7 @@ static void scene_tick_impl(Scene *s,unsigned budget) {
         if(l->vm.control.contribution_frame!=l->sampled_frame)s->dirty=true;
     }
     if(s->prepared&&!s->pending){
+        if(!s->output->type){if(!s->front_pinned)scene_publish(s);return;}
         uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
         s->output_started=platform_time_us();
         if(s->output->type->submit(s->output->driver,s->front,s->count)){s->pending=true;complete_output(s);}
@@ -108,7 +115,8 @@ const char *scene_frame(Scene *s,uint32_t delta_ms) {
     if(!error){
         scene_prepare(s);
         if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}
-        if(!s->output->type->show(s->output->driver,s->working,s->count))error="native scene output failed";
+        if(!s->output->type)scene_publish(s);
+        else if(!s->output->type->show(s->output->driver,s->working,s->count))error="native scene output failed";
         else{memcpy(s->output->rgb,s->working,(size_t)s->count*3);s->frames++;s->prepared=false;}
     }
     s->command_active=false;return error;

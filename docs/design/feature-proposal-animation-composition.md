@@ -12,7 +12,7 @@ need history should own explicit simulation data. Do not infer transparency
 from black or add implicit retained paint.
 
 [A/B transitions](feature-proposal-ab-transitions.md) consume completed scenes.
-Their mix position and movement lifecycle differ from per-layer alpha. Admission
+Their settable progress percentage differs from per-layer alpha. Admission
 must account for both scenes, layer state, working/committed contributions,
 filter inputs, transition resources and immutable physical output buffers.
 Neither a maximum layer count nor a minimal mix-buffer estimate proves fit.

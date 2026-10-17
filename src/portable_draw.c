@@ -18,6 +18,7 @@ bool pbc_drawing_valid(Portable *p,const PbcCall *site,unsigned rights) {
     PbcResourceSpec first;
     if(!owned(p,site->args[0],&first)) return false;
     unsigned id=site->binding;
+    if(id==53||id==54)return p->profile==4&&first.kind==DRAW_RGBA&&first.flags==1&&(rights&4u);
     if(id>=37&&id<=47) return first.kind==DRAW_BATCH && !first.flags &&
         ((id==37||id==39||id==42||id==43||id==47)?(rights&1u):true);
     if(id==32||id==33) return first.kind==DRAW_STYLE && writable(first,rights);
@@ -110,6 +111,22 @@ static void more(Portable *p,unsigned end,unsigned stop) { p->bulk=end<stop?end:
 bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue *result) {
     unsigned id=site->binding;
     PbcResource *r=resource(p,a[0].u);if(!r)return false;
+    if(id==53||id==54){
+        if(p->profile!=4||r->kind!=DRAW_RGBA||r->sealed||!r->data||!p->output||r->count!=p->output->count)return false;
+        unsigned start=a[2].u,stop=a[3].u;
+        if(start>stop||stop>r->count)return false;
+        uint32_t weight=0;
+        if(id==53){
+            if(!isfinite(a[1].f)||a[1].f<0||a[1].f>1)return false;
+            weight=draw_opacity_float(a[1].f);
+        }else if(a[1].u>1)return false;
+        unsigned cursor=p->bulk?p->bulk:start,end=cursor+32;if(end>stop)end=stop;
+        const uint8_t *left=p->scene_frames[0],*right=p->scene_frames[1];
+        if(id==54){left=p->scene_frames[a[1].u];right=left;weight=0;}
+        draw_composite_rgb(r->data+(size_t)cursor*4,4,left?left+(size_t)cursor*3:NULL,
+                           right?right+(size_t)cursor*3:NULL,end-cursor,weight);
+        more(p,end,stop);return true;
+    }
     if(id>=37&&id<=47) {
         if(r->kind!=DRAW_BATCH||!r->data)return false;
         DrawBatch *batch=(DrawBatch *)r->data;
@@ -231,7 +248,7 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
         }else if(id==51){
             uint8_t point[5]={(uint8_t)(a[2].u>>16),(uint8_t)(a[2].u>>8),(uint8_t)a[2].u,0,(uint8_t)a[3].u};
             to_premul(DRAW_IMAGE_RGBA,point);to_premul(r->kind,v);
-            for(unsigned c=0;c<5;c++)v[c]=(uint8_t)(point[c]+draw_mul255(v[c],255-point[4]));
+            draw_over_channels(v,point,4,DRAW_OPACITY_ONE);
             from_premul(r->kind,v);
         }else if(id==35){if(!pbc_image_read(p,src,i,v))return false;}
         else if(id==36)color_transform(v,(DrawStyle *)style->data,r->kind==DRAW_RGBA);
@@ -257,7 +274,7 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
                 }
             }
             color_transform(left,s,true);to_premul(r->kind,v);
-            for(unsigned c=0;c<5;c++)v[c]=(uint8_t)(left[c]+draw_mul255(v[c],255-left[4]));
+            draw_over_channels(v,left,4,DRAW_OPACITY_ONE);
             from_premul(r->kind,v);
         }else return false;
         if(!write_pixel(r,i,v))return false;

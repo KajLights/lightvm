@@ -66,6 +66,7 @@ export function deviceLayers(library: Library, layers: PresetLayer[]): DeviceLay
   return layers.map(layer => {
     const animation = library.animations.find(item => item.id === layer.animation);
     if (!animation) throw new Error('The saved animation for layer ' + layer.id + ' is missing.');
+    if (animation.manifest.profile === 'transition') throw new Error('A transition combines A and B; it cannot be a scene layer.');
     return { id: layer.id, procedure: programName(animation), crc32: crc32(bytesFor(animation)), settings: settingsFor(animation.manifest, layer.settings), opacity: layer.opacity, blend: layer.blend };
   });
 }

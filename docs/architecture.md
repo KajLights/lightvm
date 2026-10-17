@@ -93,6 +93,7 @@ controller starts. Saved presets currently require an explicit run command.
 - [Browser workspace](web-editor.md): editor controls, library storage and connections.
 - [Device configuration](configuration.md): output configuration, startup and flash storage.
 - [Animation profile](animation-profile.md): Python source, initialization and rendering.
+- [Transition profile](transition-profile.md): named Python programs combining A/B scenes by progress.
 - [Scene composition](composition.md): layer settings, blending and preset operations.
 - [Control API](control-api.md): program execution, validation and management commands.
 - [Native port interface](../src/platform.h): the services that controller firmware supplies to the engine.

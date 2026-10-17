@@ -77,6 +77,28 @@ class HttpTests(unittest.TestCase):
             self.assertLess(time.monotonic(), deadline)
             time.sleep(.01)
 
+    def test_ab_timed_routine_survives_browser_disconnect_and_source_reassignment(self):
+        from lightvm.compiler import compile_source
+        self.http.configure(self.config())
+        for name, rgb in (('red',(200,0,0)),('blue',(0,0,200))):self.http.save_procedure(name,color(*rgb))
+        self.http.configure_scene([{'id':'base','procedure':'red'}],device='lights')
+        self.http.configure_scene([{'id':'base','procedure':'blue'}],device='lights',slot='B')
+        compiled=compile_source((ROOT/'examples/transitions/crossfade.py').read_text())
+        self.assertTrue(compiled.success,compiled.diagnostics)
+        self.pipe.save_procedure('crossfade',compiled.bytecode)
+        self.http.select_transition('crossfade',device='lights')
+        self.assertEqual(self.pipe.transition(device='lights')['procedure'],'crossfade')
+        self.http.set_progress(35,device='lights')
+        self.http.run_transition(100,100,device='lights')
+        self.http.transport.close()
+        time.sleep(.15)
+        self.assertEqual(self.pipe.transition(device='lights')['progress'],100)
+        current=self.connect()
+        old=current.assign_transition_source('sensor',device='lights')['driver']['assignment']
+        self.pipe.assign_transition_source('sensor',device='lights')
+        self.assertFalse(current.update_transition_source('sensor',old,10,device='lights'))
+        self.assertEqual(self.pipe.transition(device='lights')['progress'],100)
+
     def test_browser_preflight_has_no_command_body_or_session(self):
         from urllib.request import Request, urlopen
         request = Request(self.url + '/api/v1/command', method='OPTIONS', headers={'Origin': 'http://localhost:8000', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type,x-lightvm-session'})

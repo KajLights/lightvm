@@ -4,8 +4,9 @@ import { activityActions, DRAFT_KEY, editorActions } from './store';
 import type { Compilation, Description, Manifest } from './types';
 
 export function programCompatibility(target: Description, manifest: Manifest): string | null {
-  if (manifest.schema !== 'lightvm.program' || manifest.profile !== 'animation' || manifest.pixels?.format !== 'rgba8-premul')
-    return 'Recompile this animation with the release-based compiler.';
+  if (manifest.schema !== 'lightvm.program' || !['animation', 'transition'].includes(manifest.profile) || manifest.pixels?.format !== 'rgba8-premul')
+    return 'Recompile this program with the release-based compiler.';
+  if (manifest.profile === 'transition' && !target.transition_programs) return 'Install firmware with Python transition support.';
   return releaseError(target.version, manifest.requires);
 }
 export function supportsProgram(target: Description, manifest: Manifest) {

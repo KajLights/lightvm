@@ -252,8 +252,8 @@ can follow the file-based workflow; neither is required initially.
   as those capabilities arrive. Omitted features reserve no dedicated buffers;
   advertised layer/mode/instance limits match runtime admission.
 - Account for all layer colour/alpha, staging, filter inputs and scene frames
-  in combined RAM and frame budgets; the minimal A/B `10N` storage figure must
-  not be reported as the cost of layered scenes.
+  in combined RAM and frame budgets; a minimal mix-buffer estimate must not
+  be reported as the cost of two layered scenes and their transition.
 - Rebuild from the same resolved profile and pinned inputs with identical feature
   selections, limits and layout; record any toolchain limits on binary identity.
 - Run identical current bytecode on different profiles with unchanged import
