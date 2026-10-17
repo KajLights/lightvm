@@ -2,8 +2,9 @@ import { LightVMClient, COMMAND, parseJSON } from '../protocol.mjs';
 import { HttpTransport, SerialTransport } from '../transports.mjs';
 import { Connections } from '../connections.mjs';
 import { DeviceDiscovery } from '../discovery.mjs';
-import { activityActions, deviceActions, editorActions, outputFor, type AppStore } from './store';
+import { activityActions, deviceActions, editorActions, type AppStore } from './store';
 import type { Description, HardwareConfig, NetworkConfig, ParameterState, Path } from './types';
+import type { SettingsValues } from './library';
 
 export function download(bytes: BlobPart, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([bytes], { type }));
@@ -162,20 +163,32 @@ export class DeviceService {
     const procedures = await client.json('procedure_list');
     if (client === this.client) this.store.dispatch(deviceActions.procedures(procedures));
   }
+  async readPresets(client: LightVMClient) {
+    if (!this.snapshot.device.description?.preset_api) return;
+    const presets = await client.json('preset_list');
+    if (client === this.client) this.store.dispatch(deviceActions.presets(presets));
+  }
   async readParameters(client: LightVMClient, background = false) {
-    const current = () => client === this.client && (!background || !this.store.getState().activity.operation);
+    const output = this.snapshot.device.selectedOutput;
+    const current = () => client === this.client && output === this.snapshot.device.selectedOutput && (!background || !this.store.getState().activity.operation);
     try {
-      const parameters = await client.json('program_parameters_get');
+      const parameters = await client.json('program_parameters_get', ...(output ? [{ device: output }] : []));
       if (current()) this.store.dispatch(deviceActions.parameters(serializable(parameters)));
     } catch (error) {
       if (client.closed || !('code' in (error as object)) || (error as { code: number }).code !== 4) throw error;
       if (current()) this.store.dispatch(deviceActions.parameters(null));
     }
   }
+  selectOutput(id: string) {
+    return this.run('Selecting preview output', async client => {
+      this.store.dispatch(deviceActions.outputSelected(id));
+      if (client) await this.readParameters(client);
+    });
+  }
   async refresh(client = this.client) {
     if (!client) return;
     await this.readConfig(client); await this.readNetwork(client);
-    await this.readProcedures(client); await this.readParameters(client);
+    await this.readProcedures(client); await this.readPresets(client); await this.readParameters(client);
   }
   async poll() {
     if (this.polling || this.stopping || this.store.getState().activity.operation) return;
@@ -193,7 +206,7 @@ export class DeviceService {
         const state = this.store.getState().device;
         this.store.dispatch(deviceActions.description(description));
         if (description.active_revision !== state.configRevision || description.saved_revision !== state.savedRevision) await this.readConfig(connection.client);
-        if (!this.store.getState().activity.operation && description.catalog_revision !== state.description?.catalog_revision) await this.readProcedures(connection.client);
+        if (!this.store.getState().activity.operation && description.catalog_revision !== state.description?.catalog_revision) { await this.readProcedures(connection.client); await this.readPresets(connection.client); }
         if (!this.store.getState().activity.operation && description.network_revision !== state.networkRevision) await this.readNetwork(connection.client);
         if (!this.store.getState().activity.operation && (description.wifi_supported || description.http_supported)) {
           const status = await connection.client.json('network_status');
@@ -233,18 +246,25 @@ export class DeviceService {
       }
     });
   }
-  async upload(wasm: Uint8Array, source: string, revision: number) {
-    return this.run('Uploading animation', async client => {
+  async upload(wasm: Uint8Array, source: string, revision: number, settings: SettingsValues = {}) {
+    return this.run('Previewing animation', async client => {
       const connection = this.require(client), state = this.store.getState();
-      if (state.editor.revision !== revision || !outputFor(state.device.config)) throw new Error('Wait for current code checks and configure output before uploading.');
-      await connection.upload(wasm, state.device.description!.module_limit, progress => this.store.dispatch(activityActions.progress(progress)));
-      const reply = await connection.command(COMMAND.PLAY);
-      this.log('Animation running on ' + reply.value + ' pixels.', 'success');
+      const output = state.device.config?.devices.find(item => item.id === state.device.selectedOutput);
+      if (state.editor.revision !== revision || !output) throw new Error('Wait for current code checks and select an output before previewing.');
+      if (Object.keys(settings).length && !state.device.description?.transient_settings) throw new Error('Install firmware with preview settings support before previewing overrides.');
+      await connection.upload(wasm, state.device.description!.module_limit, progress => this.store.dispatch(activityActions.progress(progress)), output.id, settings);
+      await connection.manage('device_command', { device: output.id, command: COMMAND.PLAY });
+      this.log('Preview running on ' + output.id + ' (' + output.config.count + ' pixels).', 'success');
       await this.readParameters(connection);
       if (this.store.getState().editor.source !== source) this.store.dispatch(activityActions.notice('The animation is running. Your newer source changes have not been uploaded yet.'));
     });
   }
-  stopPlayback() { return this.run('Stopping playback', async client => { await this.require(client).command(COMMAND.STOP); await this.readParameters(this.require(client)); this.log('Playback stopped. Lights cleared.', 'success'); }); }
+  stopPlayback() { return this.run('Stopping playback', async client => {
+    const output = this.snapshot.device.selectedOutput;
+    if (!output) throw new Error('Select an output first.');
+    await this.require(client).manage('device_command', { device: output, command: COMMAND.STOP });
+    await this.readParameters(this.require(client)); this.log('Playback stopped on ' + output + '. Lights cleared.', 'success');
+  }); }
   setParameters(values: Record<string, number | boolean | bigint>, state: ParameterState) {
     return this.run('Applying parameters', async client => {
       const connection = this.require(client);

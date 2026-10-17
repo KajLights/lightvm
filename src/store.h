@@ -2,9 +2,12 @@
 #define LIGHTVM_STORE_H
 #include "config.h"
 #include "platform.h"
-#define STORE_ENTRY_LIMIT (PROCEDURE_LIMIT + 2u)
+#define PRESET_LIMIT 5u
+#define STORE_ENTRY_LIMIT (PROCEDURE_LIMIT + PRESET_LIMIT + 2u)
 #define STORE_CONFIG "$config"
 #define STORE_NETWORK "$network"
+/* Presets use $p + a public name (at most 30 characters). */
+bool store_preset_name(const char *name);
 #define STORE_BANK_BYTES (STORAGE_BYTES / 2u)
 #define STORE_DATA_OFFSET 4096u
 #define STORE_PAGE_BYTES 256u

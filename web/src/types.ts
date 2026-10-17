@@ -9,6 +9,8 @@ export interface Description {
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;
+  scene_api?: number; scene_layer_limit?: number; scene_blend_modes?: string[];
+  preset_api?: number; preset_limit?: number; procedure_limit?: number; transient_settings?: boolean;
   boot_sequence_supported?: boolean;
   recovery_supported?: boolean;
   boot_sequence?: { count: number; triggered: boolean; error: string };
@@ -27,6 +29,7 @@ export interface Procedure { name: string; size: number; crc32: number }
 export interface Parameter { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { abi: number; schema?: string; profile?: string; parameters: Parameter[]; settings?: Parameter[] }
 export interface ParameterState {
+  device?: string; layer?: string;
   manifest: Manifest; values: Record<string, string | number | boolean>;
   generation: number; parameter_revision: number; slot: string; paused: boolean; faulted: boolean;
   render_count?: number; settings_values?: Record<string, number | boolean>;

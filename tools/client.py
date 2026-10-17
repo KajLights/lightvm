@@ -246,7 +246,7 @@ class Client:
         # animation_error may contain spaces; capability/limit tokens do not.
         return dict(item.split("=", 1) for item in reply.message.split() if "=" in item)
 
-    def upload(self, bytecode, slot=None, device=None):
+    def upload(self, bytecode, slot=None, device=None, settings=None):
         fields = self.status_fields(slot=slot, device=device)
         try:
             limit = int(fields.get("module_limit", MODULE_LIMIT))
@@ -256,13 +256,16 @@ class Client:
             raise ProtocolError("receiver reported an invalid module limit")
         if not 8 <= len(bytecode) <= limit:
             raise ValueError(f"module must be 8..{limit} bytes for this receiver")
+        arguments = json.dumps({'settings': settings}, separators=(',', ':'), allow_nan=False).encode() if settings else b''
+        if len(arguments) > FRAME_LIMIT:
+            raise ValueError('preview settings exceed command size limit')
         self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode)) + (device.encode("ascii") if device is not None else b"")))
         for offset in range(0, len(bytecode), FRAME_LIMIT - 4):
             chunk = bytecode[offset:offset + FRAME_LIMIT - 4]
             reply = self.require_ok(self.command(CHUNK, struct.pack("<I", offset) + chunk))
             if reply.value != offset + len(chunk):
                 raise ProtocolError("receiver acknowledged an unexpected upload offset")
-        return self.require_ok(self.command(FINISH))
+        return self.require_ok(self.command(FINISH, arguments))
 
 
     def manage(self, operation, **fields):
@@ -426,6 +429,34 @@ class Client:
         self.pixel_snapshot.clear()
         self.manage('scene_snapshot', **({'device':device} if device is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
+
+    def presets(self):
+        self.manage('preset_list')
+        return json.loads(self.data_reply)
+
+    def preset(self, name):
+        self.manage('preset_get', name=name)
+        return json.loads(self.data_reply)
+
+    def save_preset(self, name, layers, device=None):
+        revision = self.describe()['catalog_revision']
+        document = {'schema': 'lightvm.preset/1', 'layers': layers}
+        try:
+            self.upload_object('preset', json.dumps(document, separators=(',', ':')).encode(), name)
+            return self.manage('preset_save', name=name, expected_revision=revision,
+                               **({'device': device} if device is not None else {}))
+        except Exception:
+            self.command(OBJECT_CANCEL)
+            raise
+
+    def activate_preset(self, name, device=None):
+        revision = self.scene(device=device)['revision']
+        return self.manage('preset_activate', name=name, expected_revision=revision,
+                           **({'device': device} if device is not None else {}))
+
+    def delete_preset(self, name):
+        revision = self.describe()['catalog_revision']
+        return self.manage('preset_delete', name=name, expected_revision=revision)
 
     def layer_opacity(self, layer, opacity, device=None):
         revision = self.scene(device=device)['revision']

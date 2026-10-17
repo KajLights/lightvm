@@ -187,3 +187,28 @@ test("parameter JSON preserves i64 boundaries and quoted numeric text", async ()
   assert.equal(encodeJSON(parsed), source);
   assert.throws(() => encodeJSON({ value: Infinity }), /finite/);
 });
+
+test('oversized preview settings fail before starting an upload', async () => {
+  const client = new LightVMClient({ close: async () => {} });
+  let commands = 0;
+  client.command = async () => { commands++; };
+  await assert.rejects(client.upload(new Uint8Array(8), 32768, () => {}, 'second', { long: 'x'.repeat(600) }), /command size limit/);
+  assert.equal(commands, 0);
+});
+
+test('preset saving retains its catalog revision and scene preparation cancels rejected staging', async () => {
+  const client = new LightVMClient({ close: async () => {} });
+  const calls = [];
+  client.describe = async () => ({ catalog_revision: 4 });
+  client.uploadObject = async (...args) => calls.push(args);
+  client.manage = async (...args) => calls.push(args);
+  await client.savePreset('scanner', [{ id: 'eye' }], 'second');
+  assert.equal(calls[0][0], 'preset');
+  assert.equal(calls[0][2], 'scanner');
+  assert.deepEqual(calls[1], ['preset_save', { name: 'scanner', device: 'second', expected_revision: 4 }]);
+  client.json = async () => ({ revision: 9 });
+  client.manage = async () => { throw new Error('memory admission failed'); };
+  client.command = async kind => calls.push(kind);
+  await assert.rejects(client.configureScene([{ id: 'eye' }], 'second'), /memory admission/);
+  assert.equal(calls.at(-1), COMMAND.OBJECT_CANCEL);
+});

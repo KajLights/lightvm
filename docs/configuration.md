@@ -134,8 +134,9 @@ available if loading or initialization fails.
 
 Replacing a stored name leaves an already loaded instance running its original
 bytes. Discovery reports its CRC separately from catalog metadata. Delete is
-blocked while active/saved startup configuration or the resident instance refers
-to that name. RESET unloads runtime state and cancels staging; it never erases
+blocked while a saved preset, active/saved startup configuration or resident instance refers
+to that name. Saved presets also block replacing a referenced program with different
+bytes; save the new version under another name. RESET unloads runtime state and cancels staging; it never erases
 configuration or procedures.
 
 `VmInstance` owns interpreter state, a pinned flash extent and timing. Both
@@ -184,6 +185,7 @@ retain their meanings.
 | `procedure_save` | `name`, `expected_revision` (catalog); persist staged module |
 | `procedure_delete` | `name`, `expected_revision` (catalog) |
 | `procedure_activate` | `name`, optional `action` (`play`/`run`, default play), optional `export` (default run) |
+| `preset_list`, `preset_get`, `preset_save`, `preset_activate`, `preset_delete` | Persistent scene recipes; see [preset fields and revisions](composition.md). |
 
 One object transfer is allowed at a time and conflicts with legacy uploading.
 Chunks are ordered; identical already-received chunks can be retried. Conflicting
@@ -197,11 +199,12 @@ read back revisions/content rather than blindly issuing a new save.
 
 The 512 KiB region has two alternating 4 KiB directory sectors, at offsets 0
 and 256 KiB, and immutable payload extents in the remaining sectors. Directory
-format 3 contains CRCs, revisions, up to ten catalogue entries (configuration,
-network settings and eight procedures). The obsolete singleton startup-selector
-area is reserved: readers ignore it and new commits zero it. New
+format 4 contains CRCs, revisions and up to fifteen catalogue entries (configuration,
+network settings, eight procedures and five presets). It reuses the obsolete
+singleton startup-selector area for entries. Formats 1–3 migrate on the next
+commit; firmware limited to format 3 cannot read a newly committed format 4 directory. New
 payloads occupy contiguous 4 KiB extents and stream through 256-byte pages.
-Configuration is limited to 8192 bytes; procedures to `module_limit`.
+Configuration and individual presets are limited to 8192 bytes; procedures to `module_limit`.
 `free_bytes` counts unoccupied payload sectors; fragmentation can prevent a
 contiguous allocation even when the total is sufficient. Running instances
 and staged uploads pin their extents until released.
@@ -215,9 +218,9 @@ If committed directories are corrupt, boot reports a storage error and explicit
 saving can repair the store. Abandoned first uploads do not turn blank storage
 into a boot error.
 
-Formats 1/2 are read in place and converted to format 3 on the next commit;
-packages need no migration copy. Firmware that only understands formats 1/2 must
-not be used to write the migrated partition.
+Formats 1–3 are read in place and converted to format 4 on the next commit;
+packages need no migration copy. Older firmware must not be used to write the
+migrated partition.
 
 Saving configuration validates every startup invocation using its supplied
 arguments before committing the configuration. Replacing a stored procedure leaves

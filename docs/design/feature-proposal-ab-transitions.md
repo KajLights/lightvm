@@ -40,12 +40,16 @@ New layers supply premultiplied RGBA8 contributions.
 The compositor supplies RGB8 output with `over`, `add`, `screen`, and `multiply` layer modes.
 Each layer keeps its own state, clock, and random sequence.
 
+The editor can save scene recipes as presets.
+Device preset storage has its own advertised capability.
+A saved recipe does not keep a running instance's state.
+
 The engine has scene composition.
 It does not have the A/B mixer in this proposal.
 The mixer must accept completed scenes from the first implementation.
 A single animation can supply a scene with one layer.
 
-This proposal extends the [control API](../control-api.md) and [native architecture](../architecture.md).
+This proposal extends the [control API](../control-api.md) and [controller model](../architecture.md).
 The earlier [control model](feature-proposal-control-api.md) gives more context for jobs and resource ownership.
 Its proposed general task interfaces are not necessary for this feature.
 
@@ -114,7 +118,7 @@ The first release must have:
 - Native playback after a browser or transport disconnection.
 
 The initial geometry is a one-dimensional pixel index.
-RGBW mixing, mapped transitions, beat control, playlists, and persistent shows are subsequent extensions.
+RGBW mixing, mapped transitions, beat control, playlists, and persistent A/B shows are subsequent extensions.
 Image distortion and arbitrary sampling of A/B frames are also subsequent extensions.
 Two slots do not supply storage for a third active scene.
 
@@ -645,10 +649,10 @@ The duration control applies to the next requested movement.
 Movement curves and transition settings must have their own controls.
 The editor must show the default completion policy as `continue`.
 
-Project data must keep scene bindings, layer order, artifacts, initialization settings, and default movement options.
+A/B project data must keep scene bindings, layer order, artifacts, initialization settings, and default movement options.
 Each artifact declares its own version and capability requirements.
-Saved project data does not make a persistent device show.
-Persistence must have its own feature and capability.
+A saved scene preset does not save A/B bindings or movement state.
+Persistence of an A/B show must have its own capability.
 
 The desktop client must have the same preparation and movement operations.
 The browser is not the playback clock.

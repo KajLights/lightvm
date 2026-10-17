@@ -1,5 +1,8 @@
 # Persistent animation state, initialization and timing API
 
+> Historical design record. Use the [controller and workflow guide](../architecture.md)
+> for the current model. Links to removed architecture notes use their original Git versions.
+
 > Historical proposal: its decorators, scheduler and cycle notifications were
 > superseded by the [init/render proof-of-concept API](../animation-profile.md).
 > Current settings are frozen at initialization; live controls and listeners are deferred.
@@ -19,7 +22,7 @@ Twinkle — and the compiler/runtime/editor support necessary to port their
 original state and render algorithms. This proposal does not expand that set.
 
 This specifies concrete bindings for the existing
-[portable animation architecture](architecture-decision-portable-bytecode.md),
+[portable animation architecture](https://github.com/KajLights/lightvm/blob/b4d6220bf3cb9477aa036b35b31fc07857d9fdd9/docs/design/architecture-decision-portable-bytecode.md),
 especially native retained buffers, admitted arrays, init, logical ticks and
 render purity. It follows the [coverage review](review-picolights-animation-coverage.md).
 The code blocks specify the agreed source contract. The [implementation notes](../animation-profile.md) record the binary bindings, limits, validation and measured memory costs.

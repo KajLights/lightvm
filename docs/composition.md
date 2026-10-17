@@ -185,10 +185,43 @@ pool, retained for stored schema 6 packages. New source uses generic batch kind
 Typed calls enforce stage permissions, resource kind, bounds and generation.
 There are no guest pointers or per-frame allocations.
 
-Scenes are RAM-only in v1. Saved hardware configuration and its single-procedure
-startup rules are unchanged; reboot restores that saved startup. The browser
-editor has no scene authoring interface yet. Persistent scenes, linear-light blending, two-dimensional rotation and A/B
-transitions remain follow-on work.
+Running scenes remain in RAM. The browser editor can author scenes and save them
+as **presets** in its editable library and on the device. A preset has one or more
+layers, so standalone and composite effects use the same recipe format. Saving
+does not change playback; activation prepares the whole candidate before swapping.
+Saved hardware configuration still uses single-procedure startup; reboot restores
+that startup, and saved presets can then be activated explicitly.
+
+Device presets use `lightvm.preset/1` with a `layers` array, using the same fields
+as a scene. Each layer additionally requires `crc32`, matching the stored program.
+Scene documents may also supply `crc32` to check the expected version. The editor
+derives immutable program names from the compiled SHA-256 digest and keeps full
+digests and editable source in its browser library. Multiple presets/layers share
+one stored program; active instances retain independent settings and state.
+
+Firmware advertises `preset_api: 1` and `preset_limit: 5`. Presets have independent
+storage slots from the eight compiled programs, and each document is limited to
+`config_limit` bytes and the JSON parser's token bound. Public preset names allow
+1–30 letters, digits, dots, underscores or hyphens. Presets reserve `$p` names in
+the flash catalog and do not appear in `procedure_list`.
+
+| Operation | Fields / behavior |
+| --- | --- |
+| `preset_list` | Returns `{name,size,crc32}` entries. |
+| `preset_get` | `name`; returns the recipe JSON. |
+| `preset_save` | Stage object kind `preset` with `name`, then supply `name`, `device`, `expected_revision` (catalog). Prepares against that output, then saves atomically. |
+| `preset_activate` | `name`, `device`, `expected_revision` (scene); admits a fresh scene before replacing playback. |
+| `preset_delete` | `name`, `expected_revision` (catalog); running instances continue. |
+
+Saved references prevent deleting or replacing the referenced program version.
+Delete the recipes that use it before removing unused code. An identical program
+can be saved again under the same name. Invalid recipes, stale revisions, full
+storage and failed memory admission preserve existing saved recipes and playback.
+There is no per-preset frame or VM allocation while a recipe is idle in flash.
+The Python client exposes `presets`, `preset`, `save_preset`, `activate_preset`
+and `delete_preset` helpers.
+
+Linear-light blending, two-dimensional rotation and A/B transitions remain follow-on work.
 
 The [Pico W measurement](design/measurement-native-composition-pico-w.md) records
 the initial four-output throughput, CPU and memory checks.

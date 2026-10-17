@@ -378,6 +378,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
     literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\",\"lightvm.program/6\",\"lightvm.program/7\",\"lightvm.program/8\",\"lightvm.program/9\",\"lightvm.program/10\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"parameter_limit\":8,\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
+    literal(&w,",\"transient_settings\":true,\"preset_api\":1,\"preset_limit\":");number(&w,PRESET_LIMIT);
     literal(&w,",\"scene_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
@@ -415,7 +416,24 @@ static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
     args->has_revision=revision>=0; args->has_saved_revision=saved>=0;
     return (!args->has_revision || json_u32(&j,revision,&args->revision)) && (!args->has_saved_revision || json_u32(&j,saved,&args->saved_revision));
 }
+static bool preset_references(App *a,const char *name) {
+    /* Only parse one flash document at a time. Saved recipes own no VM state. */
+    for(unsigned i=0;i<a->store.count;i++){
+        const StoreEntry *entry=&a->store.entries[i];
+        if(!store_preset_name(entry->name))continue;
+        uint8_t *data=platform_calloc(1,entry->size);Json *j=platform_calloc(1,sizeof(*j));
+        bool found=!data||!j||!store_read(&a->store,entry,0,data,entry->size)||!json_parse(j,data,entry->size);
+        if(!found){int layers=json_get(j,0,"layers");
+            if(layers<0)found=true;
+            else for(int t=layers+1;t<j->tokens[layers].next;t=j->tokens[t].next)
+                if(json_equal(j,json_get(j,t,"procedure"),name)){found=true;break;}
+        }
+        platform_free(j);platform_free(data);if(found)return true;
+    }
+    return false;
+}
 static bool referenced(App *a,const char *name) {
+    if(preset_references(a,name))return true;
     for(unsigned i=0;i<a->hardware.count;i++)if(!strcmp(a->hardware.devices[i].startup,name))return true;
     for(unsigned i=0;i<a->device_count;i++)if(!strcmp(a->devices[i]->active_procedure,name))return true;
     for(unsigned i=0;i<a->device_count;i++)if(a->devices[i]->scene){Scene *s=a->devices[i]->scene;for(unsigned n=0;n<s->layer_count;n++)if(!strcmp(s->layers[n].procedure,name))return true;}
@@ -448,7 +466,7 @@ static bool layer_blend(const Json *j,int token,uint8_t *mode){
     return false;
 }
 static const char *prepare_layer(App *a,AppDevice *d,SceneLayer *layer,const Json *j,int object){
-    static const char *const fields[]={"id","procedure","settings","opacity","blend",NULL};
+    static const char *const fields[]={"id","procedure","crc32","settings","opacity","blend",NULL};
     if(!json_fields(j,object,fields)||
        !json_string(j,json_get(j,object,"id"),layer->id,sizeof(layer->id))||!object_name_valid(layer->id)||
        !json_string(j,json_get(j,object,"procedure"),layer->procedure,sizeof(layer->procedure))||!object_name_valid(layer->procedure))return "invalid scene layer";
@@ -459,6 +477,8 @@ static const char *prepare_layer(App *a,AppDevice *d,SceneLayer *layer,const Jso
     if(blend>=0&&!layer_blend(j,blend,&layer->blend))return "layer blend must be over, add, screen or multiply";
     const StoreEntry *entry=store_find(&a->store,layer->procedure);
     if(!entry||!strcmp(layer->procedure,STORE_CONFIG)||!strcmp(layer->procedure,STORE_NETWORK))return "layer procedure does not exist";
+    uint32_t crc;int fingerprint=json_get(j,object,"crc32");
+    if(fingerprint>=0&&(!json_u32(j,fingerprint,&crc)||crc!=entry->crc))return "layer procedure version differs from the saved preset";
     if(d->layer_generation==UINT32_MAX)return "layer generation exhausted";
     vm_init(&layer->vm,&layer->target,vm_send,a);
     layer->vm.generation=++d->layer_generation;
@@ -468,14 +488,19 @@ static const char *prepare_layer(App *a,AppDevice *d,SceneLayer *layer,const Jso
     if(!error){layer->vm.playing=true;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame+FRAME_INTERVAL_US;}
     return error;
 }
-static const char *prepare_scene(App *a,AppDevice *d,Scene **out){
+static const char *prepare_scene_data(App *a,AppDevice *d,Scene **out,const void *data,uint32_t size,const char *schema){
     *out=NULL;Json *j=platform_calloc(1,sizeof(*j));
     if(!j)return "scene parser allocation failed";
     static const char *const fields[]={"schema","layers",NULL};
     const char *error="invalid scene document";
-    if(!json_parse(j,a->staging,a->expected)||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),"lightvm.scene/1"))goto done;
+    if(!json_parse(j,data,size)||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),schema))goto done;
     int layers=json_get(j,0,"layers");
     if(layers<0||j->tokens[layers].type!=JSON_ARRAY||(unsigned)j->tokens[layers].children>SCENE_LAYER_LIMIT)goto done;
+    if(!strcmp(schema,"lightvm.preset/1")){
+        if(!j->tokens[layers].children){error="preset requires at least one layer";goto done;}
+        for(int t=layers+1;t<j->tokens[layers].next;t=j->tokens[t].next)
+            if(json_get(j,t,"crc32")<0){error="preset layers require crc32 version references";goto done;}
+    }
     Scene *candidate=scene_create(&d->pixels,(unsigned)j->tokens[layers].children);
     if(!candidate){error="scene exceeds memory budget";goto done;}
     *out=candidate;error=NULL;unsigned n=0;
@@ -487,6 +512,60 @@ static const char *prepare_scene(App *a,AppDevice *d,Scene **out){
     }
     if(!error)scene_prepare(candidate);
 done:platform_free(j);return error;
+}
+static void apply_scene(AppDevice *d,Scene *candidate){
+    clear_device_scene(d);vm_output_cancel(&d->vm);d->vm.output=NULL;control_destroy(&d->vm);d->vm.playing=false;d->vm.ready=false;
+    d->scene=candidate;candidate->revision=++d->scene_revision;d->active_procedure[0]=0;d->active_crc=0;
+}
+static bool preset_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const char *op){
+    if(strncmp(op,"preset_",7))return false;
+    static const char *const fields[]={"op","name","device","expected_revision",NULL};
+    if(!json_fields(j,0,fields)){error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid preset fields");return true;}
+    if(!strcmp(op,"preset_list")){
+        Writer w={.app=a,.id=id};literal(&w,"[");unsigned count=0;
+        for(unsigned i=0;i<a->store.count;i++){
+            const StoreEntry *entry=&a->store.entries[i];if(!store_preset_name(entry->name))continue;
+            if(count++)literal(&w,",");
+            literal(&w,"{\"name\":");quoted(&w,entry->name+2);
+            literal(&w,",\"size\":");number(&w,entry->size);literal(&w,",\"crc32\":");number(&w,entry->crc);literal(&w,"}");
+        }
+        literal(&w,"]");flush(&w);reply(a,id,STATUS_OK,(int32_t)count,"stored presets");return true;
+    }
+    char name[OBJECT_NAME_LIMIT+1]={ '$','p' };
+    if(!json_string(j,json_get(j,0,"name"),name+2,sizeof(name)-2)||!object_name_valid(name+2)){
+        error_reply(a,id,STATUS_CONFIG,"invalid_name","preset name requires 1..30 letters, digits, dots, underscores or hyphens");return true;
+    }
+    const StoreEntry *entry=store_find(&a->store,name);
+    if(!strcmp(op,"preset_get")){if(entry)read_object(a,id,entry);else error_reply(a,id,STATUS_STORAGE,"not_found","stored preset does not exist");return true;}
+    uint32_t revision;
+    if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=(!strcmp(op,"preset_activate")?d->scene_revision:a->store.generation)){
+        error_reply(a,id,STATUS_CONFIG,"stale_revision","expected preset catalog or scene revision must match");return true;
+    }
+    if(!strcmp(op,"preset_delete")){
+        bool ok=entry&&store_delete(&a->store,name);resume_clock(a);
+        if(ok)reply(a,id,STATUS_OK,(int32_t)a->store.generation,"preset deleted; running scene retained");
+        else error_reply(a,id,STATUS_STORAGE,"delete_failed","preset missing or storage write failed");
+        return true;
+    }
+    bool saving=!strcmp(op,"preset_save");
+    if(!saving&&strcmp(op,"preset_activate")){error_reply(a,id,STATUS_PROTOCOL,"unknown_operation","unknown preset operation");return true;}
+    if(!d->pixels.count||(!saving&&d->scene_revision==UINT32_MAX)){error_reply(a,id,STATUS_CONFIG,"invalid_output","configure an output before preparing a preset");return true;}
+    if(saving&&(!a->staged||a->object_kind!=5||a->upload_owner!=a->source||strcmp(a->object_name,name+2))){error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage this named preset first");return true;}
+    /* Read saved documents outside staging so another session's candidate is untouched. */
+    uint8_t *data=NULL;const void *document=a->staging;uint32_t size=a->expected;
+    if(!saving){
+        if(!entry){error_reply(a,id,STATUS_STORAGE,"not_found","stored preset does not exist");return true;}
+        size=entry->size;data=platform_calloc(1,size);document=data;
+        if(!data||!store_read(&a->store,entry,0,data,size)){platform_free(data);error_reply(a,id,STATUS_STORAGE,"read_failed","preset read failed");return true;}
+    }
+    Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,document,size,"lightvm.preset/1");
+    if(error){scene_destroy(candidate);platform_free(data);error_reply(a,id,STATUS_LOAD,"invalid_preset",error);return true;}
+    if(saving){
+        scene_destroy(candidate);bool ok=store_put(&a->store,name,document,size);resume_clock(a);
+        if(ok){a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)a->store.generation,"preset saved; playback unchanged");}
+        else error_reply(a,id,STATUS_STORAGE,"save_failed","preset storage unavailable, full or write failed");
+    }else{apply_scene(d,candidate);reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"preset activated");}
+    platform_free(data);return true;
 }
 static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const char *op){
     if(strncmp(op,"scene_",6))return false;
@@ -504,10 +583,9 @@ static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const cha
     if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=d->scene_revision||revision==UINT32_MAX){error_reply(a,id,STATUS_CONFIG,"stale_revision","expected scene revision must match");return true;}
     if(!strcmp(op,"scene_apply")){
         if(!a->staged||a->object_kind!=4||a->upload_owner!=a->source){error_reply(a,id,STATUS_CONFIG,"no_candidate","upload a scene document first");return true;}
-        Scene *candidate=NULL;const char *error=prepare_scene(a,d,&candidate);
+        Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,a->staging,a->expected,"lightvm.scene/1");
         if(error){scene_destroy(candidate);error_reply(a,id,STATUS_LOAD,"scene_preparation_failed",error);return true;}
-        clear_device_scene(d);vm_output_cancel(&d->vm);d->vm.output=NULL;control_destroy(&d->vm);d->vm.playing=false;d->vm.ready=false;
-        d->scene=candidate;candidate->revision=++d->scene_revision;d->active_procedure[0]=0;d->active_crc=0;
+        apply_scene(d,candidate);
         a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"scene applied in RAM");return true;
     }
     if(!strcmp(op,"scene_clear")){
@@ -640,7 +718,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
     if (!strcmp(args.op,"procedure_list")) {
         Writer w={.app=a,.id=id}; literal(&w,"["); unsigned found=0;
         for (uint32_t i=0;i<a->store.count;++i) {
-            const StoreEntry *entry=&a->store.entries[i]; if (!strcmp(entry->name,STORE_CONFIG) || !strcmp(entry->name,STORE_NETWORK)) continue;
+            const StoreEntry *entry=&a->store.entries[i]; if (entry->name[0]=='$') continue;
             if (found++) literal(&w,",");
             literal(&w,"{\"name\":"); quoted(&w,entry->name); literal(&w,",\"size\":"); number(&w,entry->size);
             literal(&w,",\"crc32\":"); number(&w,entry->crc); literal(&w,"}");
@@ -681,11 +759,13 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         bool ok;
         if (!strcmp(args.op,"procedure_save")) {
             if (!a->staged || a->object_kind!=2 || a->upload_owner!=a->source || strcmp(args.name,a->object_name)) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","upload and finish this named procedure first"); return; }
+            const StoreEntry *old=store_find(&a->store,args.name);
+            if(old&&(old->crc!=a->upload.entry.crc||old->size!=a->upload.entry.size)&&preset_references(a,args.name)){error_reply(a,id,STATUS_STORAGE,"referenced","saved presets pin this program version; save a new program name");return;}
             ok=store_publish(&a->store,&a->upload.entry);
             if (ok) { a->staged=false; a->upload_owner=0; store_upload_cancel(&a->upload); }
         } else {
             if (!store_find(&a->store,args.name)) { error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); return; }
-            if (referenced(a,args.name)) { error_reply(a,id,STATUS_STORAGE,"referenced","procedure is referenced by active/saved configuration or runtime"); return; }
+            if (referenced(a,args.name)) { error_reply(a,id,STATUS_STORAGE,"referenced","procedure is referenced by a saved preset, active/saved configuration or runtime"); return; }
             ok=update_store(a,args.name,NULL,0,true);
         }
         resume_clock(a);
@@ -701,11 +781,11 @@ static bool object_begin(App *a,const uint8_t *p,size_t size) {
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) ||
         !json_string(&j,json_get(&j,0,"kind"),kind,sizeof(kind)) ||
         !json_u32(&j,json_get(&j,0,"size"),&expected) || !json_u32(&j,json_get(&j,0,"crc32"),&crc)) return false;
-    unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"procedure") ? 2u : !strcmp(kind,"network") ? 3u : !strcmp(kind,"scene") ? 4u : 0u;
+    unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"procedure") ? 2u : !strcmp(kind,"network") ? 3u : !strcmp(kind,"scene") ? 4u : !strcmp(kind,"preset") ? 5u : 0u;
     if (!object_kind || expected<(object_kind==2 ? 8u : 1u) || expected>(object_kind==2 ? MODULE_LIMIT : CONFIG_LIMIT)) return false;
     int n=json_get(&j,0,"name");
-    if (object_kind==2 && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name))) return false;
-    if (object_kind!=2 && n>=0) return false;
+    if ((object_kind==2||object_kind==5) && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name)||(object_kind==5&&strlen(name)>30))) return false;
+    if (object_kind!=2 && object_kind!=5 && n>=0) return false;
     if(object_kind==2&&!store_upload_begin(&a->store,&a->upload,name,expected,crc))return false;
     if(object_kind!=2)store_upload_cancel(&a->upload);
     a->object_kind=object_kind; a->expected=expected; a->expected_crc=crc; a->received=0;
@@ -775,10 +855,19 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         a->upload_deadline=platform_time_us()+30000000u;reply(a,id,STATUS_OK,(int32_t)a->upload.received,"chunk accepted");return;
     }
     if(type==CMD_FINISH){
-        if(size||!a->upload_device->vm.uploading||a->upload.received!=a->upload.entry.size){reply(a,id,STATUS_UPLOAD,0,"upload incomplete");return;}
+        if(!a->upload_device->vm.uploading||a->upload.received!=a->upload.entry.size){reply(a,id,STATUS_UPLOAD,0,"upload incomplete");return;}
+        Json *request=NULL;int settings=-1;
+        if(size){
+            static const char *const fields[]={"settings",NULL};
+            request=platform_calloc(1,sizeof(*request));
+            if(!request||!json_parse(request,p,size)||!json_fields(request,0,fields)||(settings=json_get(request,0,"settings"))<0){
+                platform_free(request);reply(a,id,STATUS_CONFIG,0,"invalid upload activation settings");return;
+            }
+        }
         const char *error=NULL;bool checksum_ok=false;
         if(!store_upload_finish(&a->upload))error="module checksum or flash write failure";
-        else {checksum_ok=true;error=install(a,a->upload_device,&a->upload.entry,NULL,false,NULL,-1);}
+        else {checksum_ok=true;error=install(a,a->upload_device,&a->upload.entry,NULL,false,request,settings);}
+        platform_free(request);
         a->upload_device->vm.uploading=false;a->upload_owner=0;store_upload_cancel(&a->upload);
         reply(a,id,error?(checksum_ok?STATUS_LOAD:STATUS_UPLOAD):STATUS_OK,0,error?error:"module loaded from flash");return;
     }
@@ -804,7 +893,7 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_device","invalid request, unknown device or slot other than A");return;}
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
-    if(scene_manage(a,d,id,j,op)){platform_free(j);return;}
+    if(preset_manage(a,d,id,j,op)||scene_manage(a,d,id,j,op)){platform_free(j);return;}
     VmInstance *vm=&d->vm;int layer_token=json_get(j,0,"layer");
     if(d->scene&&layer_token<0&&!strcmp(op,"program_snapshot")){
         static const char *const fields[]={"op","slot","device",NULL};

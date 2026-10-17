@@ -1,15 +1,13 @@
 # LightVM
 
 LightVM is a [Kajlights](https://kajlights.com/) runtime for programmable lighting
-on microcontrollers and native hosts. The current proof of concept replaces WASM
-with a limited custom bytecode interpreter. Python effects compile off-device to
-one controller-independent `.lbc` package.
+on microcontrollers and native hosts. The browser or a computer compiles supported
+Python source into a portable `.lbc` program. Controller firmware executes the
+program and sends data to the LEDs.
 
-The replacement runs inside the existing firmware. Device drivers, configuration,
-Wi-Fi, HTTP/serial protocols, procedure storage and startup policy are retained.
-There is no separate PoC firmware or upload protocol to install. Stored programs
-are read from flash through the existing native storage API, and the runtime owns
-pixel memory. Procedures can be replaced independently of firmware.
+Start with [controllers and the development workflow](docs/architecture.md) for
+outputs, animation versions, layers, presets, storage and startup. The browser
+supports Edit → Preview → Save animation → optional Compose → Save preset.
 
 The [animation profile](docs/animation-profile.md) defines persistent buffers,
 arrays and the `@init` / `@render` callbacks. Caller arguments supply context,
@@ -17,8 +15,7 @@ time, delta and pixels; settings are frozen at initialization.
 Every animation can run alone or as a scene layer. Frames start transparent.
 Ordinary colour writes paint solid pixels; alpha is optional. Use `clear()` to remove paint
 from an array, and `fill(rgb(0, 0, 0))` when solid black is required.
-The current compiler emits LBC1/4 packages. Together they implement a limited part of the
-[portable bytecode architecture decision](docs/design/architecture-decision-portable-bytecode.md).
+The current compiler emits LBC1/4 packages.
 Up to eight independent device slots run concurrently. Each output can also run
 a [native scene](docs/composition.md) with independent background and transparent
 foreground animations. The [PixelArray and sprite SDK](docs/pixelarray-sprites.md)
@@ -35,7 +32,7 @@ generic bulk backend; Rainbow uses ordinary pixel expressions.
 ## Repository layout
 
 - [`docs/`](docs/README.md): current guides and API references, with design
-  decisions, proposals and historical reviews in [`docs/design/`](docs/design/).
+  proposals, historical reviews and measurements in [`docs/design/`](docs/design/).
 - [`examples/animations/`](examples/animations/): the six canonical Python effects,
   shared by the editor, tools and tests.
 - [`examples/scenes/`](examples/scenes/): combinations of those animations on one output.
@@ -162,11 +159,12 @@ npm ci
 python3 tools/serve_editor.py
 ```
 
-The existing [browser workspace](docs/web-editor.md) compiles Python to bytecode
-in its worker, downloads `.lbc`, uploads over HTTP/USB, and manages saved programs
-and live parameters. Preparation settings restart an animation explicitly;
-the editor and example dropdown share the canonical sources. Firmware installation, discovery and configuration flows
-are unchanged. See [configuration and management](docs/configuration.md),
+The [browser workspace](docs/web-editor.md) follows Edit → physical Preview → Save
+animation → optional Compose → Save preset. It keeps editable animation versions
+and exportable presets in a browser library, and saves shared compiled programs
+and compact preset recipes on the device. Preview addresses the selected output
+over HTTP/USB. The editor and example dropdown share the canonical sources.
+See [configuration and management](docs/configuration.md),
 [networking](docs/networking.md) and [power recovery](docs/boot-sequence.md).
 
 ## Verification and measurements

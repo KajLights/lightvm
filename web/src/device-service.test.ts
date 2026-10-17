@@ -52,3 +52,39 @@ describe('network commit', () => {
     expect(JSON.stringify(store.getState().activity)).not.toContain('Reconnect HTTP');
   });
 });
+
+describe('selected preview output', () => {
+  function workspace() {
+    const store = createAppStore(), service = new DeviceService(store);
+    const description = { device_id: 'pico', boot_id: 'boot', module_limit: 32768, transient_settings: true } as Description;
+    const client = { closed: false, transport: { label: 'USB' }, upload: vi.fn(), manage: vi.fn(), json: vi.fn().mockResolvedValue({ generation: 2, device: 'second', settings_values: { duration: 2 } }) } as unknown as LightVMClient;
+    service.paths.attach('usb', client, description); service.syncPaths(description);
+    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config/1', devices: [
+      { id: 'first', type: 'ws2812b', config: { pin: 'GP16', count: 20 } },
+      { id: 'second', type: 'ws2812b', config: { pin: 'GP17', count: 20 } },
+    ] }, revision: 1, savedRevision: 1 }));
+    return { store, service, client };
+  }
+
+  it('routes upload, initialization settings, play, reads and stop to the chosen output', async () => {
+    const { store, service, client } = workspace();
+    store.dispatch(deviceActions.outputSelected('second'));
+    const bytes = new Uint8Array(8), editor = store.getState().editor;
+    expect(await service.upload(bytes, editor.source, editor.revision, { duration: 2 })).toBe(true);
+    expect(client.upload).toHaveBeenCalledWith(bytes, 32768, expect.any(Function), 'second', { duration: 2 });
+    expect(client.manage).toHaveBeenCalledWith('device_command', { device: 'second', command: 7 });
+    expect(client.json).toHaveBeenCalledWith('program_parameters_get', { device: 'second' });
+    await service.stopPlayback();
+    expect(client.manage).toHaveBeenLastCalledWith('device_command', { device: 'second', command: 8 });
+  });
+
+  it('ignores a parameter response for an output deselected during a background read', async () => {
+    const { store, service, client } = workspace();
+    let complete!: (state: unknown) => void;
+    vi.mocked(client.json).mockImplementation(() => new Promise(resolve => { complete = resolve; }));
+    const reading = service.readParameters(client, true);
+    store.dispatch(deviceActions.outputSelected('second'));
+    complete({ generation: 1, device: 'first' }); await reading;
+    expect(store.getState().device.parameters).toBeNull();
+  });
+});

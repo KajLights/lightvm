@@ -1,10 +1,13 @@
 # LightVM Control API and Execution Model Proposal
 
+> Historical design record. Use the [controller and workflow guide](../architecture.md)
+> for the current model. Links to removed architecture notes use their original Git versions.
+
 Status: Proposed general model; single-program animation profile implemented
 
 Date: 12 October 2026
 
-The [portable bytecode decision of 15 October 2026](architecture-decision-portable-bytecode.md)
+The [portable bytecode decision of 15 October 2026](https://github.com/KajLights/lightvm/blob/b4d6220bf3cb9477aa036b35b31fc07857d9fdd9/docs/design/architecture-decision-portable-bytecode.md)
 sets the execution direction for the future component runtime and refines its
 animation lifecycle and numeric policy. This proposal's general resource and
 service concepts remain relevant; its WASM-specific bindings and start/frame

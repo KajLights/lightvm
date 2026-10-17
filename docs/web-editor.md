@@ -112,8 +112,10 @@ clears it. Network changes keep playback running and may require the HTTP path t
 reconnect. Background status polling does not replace focused fields or unsaved
 values.
 
-**Develop** contains the Python editor, upload/run, stored bytecode programs,
-initialization settings and playback controls. The initial `rainbow.py` is selected in
+**Develop** follows **Edit → Preview → Save animation → Compose (optional) → Save
+preset**. Select a physical output for preview; preview replaces its playback and
+leaves the other outputs running. There is no in-browser LED simulation yet.
+The initial `rainbow.py` is selected in
 the dropdown and uses the same canonical source as its example. It preserves the
 original picolights Rainbow's default 60-second cycle, adjustable with its existing
 duration setting. Existing stored programs are not replaced when firmware or
@@ -121,19 +123,48 @@ examples change. Sweep supports moving eyes, retained chase/wipe and sampled
 trails through its initialization settings; wipe is one of its documented modes.
 Each example's opening comments describe the available modes and settings;
 see also [motion](motion.md#shared-sweep-animation).
-Animations have no automatic stop
-condition. The local draft is saved in browser storage and can be downloaded as
-.py. Compiled .lbc can also be downloaded. **Upload & run** requires slot A to
-be configured; it replaces the transient resident program and does not persist it.
-Stored programs can be saved, downloaded, activated and deleted when storage is
-available. The playback panel sends generation checks for pause/resume. Live parameter
-controls remain available only for stored ABI 2 programs.
+Animations have no automatic stop condition. The current source draft is saved
+automatically and can be exported as `.py`; compiled `.lbc` downloads remain
+available. **Preview animation** uses that draft's settings. Unchecked overrides
+use the animation defaults; after a successful preview, the resolved settings
+are shown. Editing settings requires another preview. Polling a running program
+never replaces the draft's inputs. Firmware must advertise `transient_settings`
+to preview explicit overrides atomically.
 
-The [animation/1](animation-profile.md) initialization settings panel validates and
-restarts a fresh instance, preserving the prior instance if preparation fails.
-Its changes are runtime-only: edit source defaults and save the compiled program
-to retain them after reboot. Playback status refreshes every five seconds without
-overwriting unsaved initialization settings. Settings are frozen for each instance;
+**Save animation** stores source, compiled code, selected defaults and a full
+compiled SHA-256 digest in the browser library. Each save creates a version.
+**Edit animation** opens that version's source and defaults. **Use alone** starts
+a one-layer recipe; **Add as layer** adds an independently configured instance.
+Unused animation versions and browser presets can be deleted from the library;
+saved browser presets protect their referenced animation versions.
+Layers are ordered bottom to top, with individual settings, opacity and `over`,
+`add`, `screen` or `multiply` blending. **Preview preset** saves missing compiled
+program versions on the device, then admits and activates the entire scene.
+It checks the device's program-slot limit before uploading. The displayed frame
+buffer estimate excludes VM state; device admission remains authoritative.
+
+**Save preset** stores the recipe in the browser. **Save preset to device** stores
+the shared compiled programs and compact recipe in flash; it does not change
+playback. Either save replaces a preset of the same name. **Run on output**
+activates a device preset on the selected output, even after reconnecting or
+rebooting. Startup remains a single stored program configured separately; saved
+presets do not automatically run at boot. Device presets require `preset_api: 1`.
+The device supports five presets independently of its eight program slots.
+
+**Export library** preserves editable source, versions, settings and recipes in
+one JSON file. **Import library** merges those versions and checks bytecode
+digests and references. Browser storage has a quota and can be cleared by the
+browser; export a backup before moving browsers or computers. Source is kept off
+the microcontroller. Failed browser storage writes are reported, and unreadable
+saved data is preserved until explicit import recovery. Device program storage
+controls can remove unused compiled programs; saved presets and active/saved
+startup or playback references protect programs still in use.
+
+The playback panel addresses the selected output and its first layer, with
+generation checks for pause/resume. Live parameter controls remain available
+for stored ABI 2 programs.
+
+The [animation/1](animation-profile.md) settings are frozen for each instance;
 there are no listeners or cycle notifications. Profile and
 format capability checks prevent sending new examples to unsupported firmware.
 

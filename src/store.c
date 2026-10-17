@@ -9,6 +9,10 @@
 #define COMMIT_MAGIC 0x54494d43u
 #define SECTOR 4096u
 #define SECTORS (STORAGE_BYTES / SECTOR)
+_Static_assert(32u+STORE_ENTRY_LIMIT*64u<=1020u,"store directory overflow");
+bool store_preset_name(const char *name) {
+    return !strncmp(name,"$p",2)&&object_name_valid(name+2);
+}
 static uint32_t aligned(uint32_t n) { return (n+255u)&~255u; }
 static bool same(const StoreEntry *a,const StoreEntry *b) { return a->offset==b->offset&&a->size==b->size&&a->crc==b->crc; }
 static bool valid_extent(const StoreEntry *e) {
@@ -36,7 +40,7 @@ static bool scan(int bank,Store *s) {
     uint8_t d[DIRECTORY_BYTES],commit[256];uint32_t base=(uint32_t)bank*STORE_BANK_BYTES;
     if(!platform_storage_read(base,d,sizeof(d))||!platform_storage_read(base+COMMIT_OFFSET,commit,sizeof(commit)))return false;
     unsigned version=read_u32(d+4);
-    if(memcmp(d,"LVS1",4)||version<1||version>3||read_u32(d+1020)!=crc32_bytes(d,1020)||
+    if(memcmp(d,"LVS1",4)||version<1||version>4||read_u32(d+1020)!=crc32_bytes(d,1020)||
        read_u32(commit)!=COMMIT_MAGIC||read_u32(commit+4)!=read_u32(d+8)||read_u32(commit+8)!=read_u32(d+1020)||read_u32(commit+12)!=crc32_bytes(commit,12))return false;
     memset(s,0,sizeof(*s));s->bank=bank;s->available=true;s->generation=read_u32(d+8);s->count=read_u32(d+12);
     s->config_revision=read_u32(d+16);s->network_revision=version>=2?read_u32(d+20):0;
@@ -46,14 +50,14 @@ static bool scan(int bank,Store *s) {
         const uint8_t *r=d+32+n*64;StoreEntry *e=&s->entries[n];
         if(!memchr(r,0,33))return false;
         decode(e,r);
-        bool config=!strcmp(e->name,STORE_CONFIG)||!strcmp(e->name,STORE_NETWORK);
+        bool config=!strcmp(e->name,STORE_CONFIG)||!strcmp(e->name,STORE_NETWORK)||store_preset_name(e->name);
         if((!config&&!object_name_valid(e->name))||e->size>(config?CONFIG_LIMIT:MODULE_LIMIT))return false;
         for(unsigned k=0;k<n;k++)if(!strcmp(e->name,s->entries[k].name))return false;
         if(version<3){if(e->offset!=expected||aligned(e->size)>STORE_BANK_BYTES-expected)return false;expected+=aligned(e->size);e->offset+=base;}
         if(!entry_crc(e))return false;
         for(unsigned k=0;k<n;k++){StoreEntry *p=&s->entries[k];if(e->offset<p->offset+p->size&&p->offset<e->offset+e->size)return false;}
     }
-    /* Bytes 736..799 are the obsolete singleton boot selector; ignore them. */
+    /* Version 4 reuses the obsolete singleton boot-selector space for entries. */
     return true;
 }
 bool store_mount(Store *s) {
@@ -148,10 +152,9 @@ static bool commit(Store *s,Store *next) {
     if(!s->available||s->generation==UINT32_MAX)return false;
     next->bank=s->bank==0?1:0;next->generation=s->generation+1;
     uint32_t base=(uint32_t)next->bank*STORE_BANK_BYTES;uint8_t d[1024]={0},page[256];
-    memcpy(d,"LVS1",4);write_u32(d+4,3);write_u32(d+8,next->generation);write_u32(d+12,next->count);
+    memcpy(d,"LVS1",4);write_u32(d+4,4);write_u32(d+8,next->generation);write_u32(d+12,next->count);
     write_u32(d+16,next->config_revision);write_u32(d+20,next->network_revision);
     for(unsigned n=0;n<next->count;n++)encode(d+32+n*64,&next->entries[n]);
-    /* Reserved boot-selector bytes remain zero. */
     uint32_t crc=crc32_bytes(d,1020);write_u32(d+1020,crc);
     if(!platform_storage_erase(base,SECTOR))return false;
     runtime_checkpoint();
@@ -166,15 +169,15 @@ static bool commit(Store *s,Store *next) {
     *s=*next;return true;
 }
 static bool publish(Store *s,const StoreEntry *entry) {
-    bool config=!strcmp(entry->name,STORE_CONFIG),network=!strcmp(entry->name,STORE_NETWORK);
-    if((!config&&!network&&!object_name_valid(entry->name))||entry->size>(config||network?CONFIG_LIMIT:MODULE_LIMIT)||!entry_crc(entry))return false;
+    bool config=!strcmp(entry->name,STORE_CONFIG),network=!strcmp(entry->name,STORE_NETWORK),preset=store_preset_name(entry->name);
+    if((!config&&!network&&!preset&&!object_name_valid(entry->name))||entry->size>(config||network||preset?CONFIG_LIMIT:MODULE_LIMIT)||!entry_crc(entry))return false;
     Store next=*s;unsigned n;
     for(n=0;n<next.count;n++)if(!strcmp(next.entries[n].name,entry->name))break;
     if(n==next.count){if(next.count==STORE_ENTRY_LIMIT)return false;next.count++;}
     next.entries[n]=*entry;
-    unsigned procedures=0;
-    for(n=0;n<next.count;n++)if(strcmp(next.entries[n].name,STORE_CONFIG)&&strcmp(next.entries[n].name,STORE_NETWORK))procedures++;
-    if(procedures>PROCEDURE_LIMIT||(config&&next.config_revision==UINT32_MAX)||(network&&next.network_revision==UINT32_MAX))return false;
+    unsigned procedures=0,presets=0;
+    for(n=0;n<next.count;n++)if(store_preset_name(next.entries[n].name))presets++;else if(next.entries[n].name[0]!='$')procedures++;
+    if(procedures>PROCEDURE_LIMIT||presets>PRESET_LIMIT||(config&&next.config_revision==UINT32_MAX)||(network&&next.network_revision==UINT32_MAX))return false;
     if(config)next.config_revision++;
     if(network)next.network_revision++;
     return commit(s,&next);

@@ -5,7 +5,7 @@ animation. The guides below describe the current implementation.
 
 ## Guides and reference
 
-- [Architecture and native ports](architecture.md)
+- [Controllers and development workflow](architecture.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Native drawing and scene composition](composition.md)
 - [PixelArray and user-defined sprites](pixelarray-sprites.md)
@@ -23,13 +23,10 @@ Runnable [animation examples](../examples/animations/) and
 
 ## Design and history
 
-The [design directory](design/) collects decisions, requirements, proposals and
-reviews. These record the direction and context at the time they were written;
-their status notes identify proposed, deferred or superseded work. Use the guides
-above for current behavior.
+The [design directory](design/) collects proposals, reviews and measurements.
+These record the direction and context at the time they were written.
+Use the guides above for current behavior.
 
-- [Portable bytecode architecture decision](design/architecture-decision-portable-bytecode.md)
-- [Component runtime requirements](design/architecture-request-component-runtime.md)
 - [Control API proposal](design/feature-proposal-control-api.md)
 - [Device support proposal](design/feature-proposal-device-support.md)
 - [Build profiles proposal](design/feature-proposal-build-profiles.md)

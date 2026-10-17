@@ -153,25 +153,37 @@ export class LightVMClient {
 
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionApi = description.connection_api; return description; }
 
-  /** @param {Uint8Array} wasm @param {number} limit @param {(progress: number) => void} [onProgress] */
-  async upload(wasm, limit, onProgress = () => {}) {
+  /** @param {Uint8Array} wasm @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [device] @param {Record<string, number | boolean>} [settings] */
+  async upload(wasm, limit, onProgress = () => {}, device = '', settings = {}) {
     if (!Number.isInteger(limit) || limit < 8 || wasm.length < 8 || wasm.length > limit) {
       throw new Error(`Program must fit the device's ${limit}-byte module limit.`);
     }
-    const metadata = new Uint8Array(8), view = new DataView(metadata.buffer);
+    if (device && !/^[A-Za-z0-9_.-]{1,32}$/.test(device)) throw new Error('Invalid output id.');
+    const argumentsBytes = Object.keys(settings).length ? encoder.encode(encodeJSON({ settings })) : new Uint8Array();
+    if (argumentsBytes.length > FRAME_LIMIT) throw new Error('Preview settings exceed the command size limit.');
+    const output = encoder.encode(device);
+    const metadata = new Uint8Array(8 + output.length), view = new DataView(metadata.buffer);
     view.setUint32(0, wasm.length, true); view.setUint32(4, crc32(wasm), true);
-    await this.command(COMMAND.BEGIN, metadata);
-    for (let offset = 0; offset < wasm.length; offset += FRAME_LIMIT - 4) {
-      const part = wasm.subarray(offset, offset + FRAME_LIMIT - 4), payload = new Uint8Array(4 + part.length);
-      new DataView(payload.buffer).setUint32(0, offset, true); payload.set(part, 4);
-      const reply = await this.command(COMMAND.CHUNK, payload);
-      if (reply.value !== offset + part.length) {
-        const error = new Error("Device acknowledged an unexpected upload offset.");
-        this.fail(error); throw error;
+    metadata.set(output, 8);
+    let started = false;
+    try {
+      await this.command(COMMAND.BEGIN, metadata);
+      started = true;
+      for (let offset = 0; offset < wasm.length; offset += FRAME_LIMIT - 4) {
+        const part = wasm.subarray(offset, offset + FRAME_LIMIT - 4), payload = new Uint8Array(4 + part.length);
+        new DataView(payload.buffer).setUint32(0, offset, true); payload.set(part, 4);
+        const reply = await this.command(COMMAND.CHUNK, payload);
+        if (reply.value !== offset + part.length) {
+          const error = new Error("Device acknowledged an unexpected upload offset.");
+          this.fail(error); throw error;
+        }
+        onProgress((offset + part.length) / wasm.length);
       }
-      onProgress((offset + part.length) / wasm.length);
+      await this.command(COMMAND.FINISH, argumentsBytes);
+    } catch (error) {
+      if (started && !this.closed) await this.command(COMMAND.OBJECT_CANCEL).catch(() => {});
+      throw error;
     }
-    await this.command(COMMAND.FINISH);
   }
 
   async json(op, fields = {}) { return parseJSON(decoder.decode((await this.manage(op, fields)).data)); }
@@ -211,8 +223,37 @@ export class LightVMClient {
   }
 
   async saveProcedure(name, wasm) {
-    const state = await this.describe(); await this.uploadObject("procedure", wasm, name);
-    return this.manage("procedure_save", { name, expected_revision: state.catalog_revision });
+    const state = await this.describe();
+    try {
+      await this.uploadObject("procedure", wasm, name);
+      return await this.manage("procedure_save", { name, expected_revision: state.catalog_revision });
+    } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
+  }
+
+  async configureScene(layers, device) {
+    const state = await this.json('scene_get', { device });
+    try {
+      await this.uploadObject('scene', encoder.encode(JSON.stringify({ schema: 'lightvm.scene/1', layers })));
+      return await this.manage('scene_apply', { device, expected_revision: state.revision });
+    } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
+  }
+
+  async savePreset(name, layers, device) {
+    const state = await this.describe();
+    try {
+      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset/1', layers })), name);
+      return await this.manage('preset_save', { name, device, expected_revision: state.catalog_revision });
+    } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
+  }
+
+  async activatePreset(name, device) {
+    const state = await this.json('scene_get', { device });
+    return this.manage('preset_activate', { name, device, expected_revision: state.revision });
+  }
+
+  async deletePreset(name) {
+    const state = await this.describe();
+    return this.manage('preset_delete', { name, expected_revision: state.catalog_revision });
   }
 
   async deleteProcedure(name) {
@@ -220,7 +261,7 @@ export class LightVMClient {
   }
 
   async setParameters(values, state) {
-    return this.json("program_parameters_set", { values, expected_generation: state.generation, expected_parameter_revision: state.parameter_revision });
+    return this.json("program_parameters_set", { values, device: state.device, layer: state.layer, expected_generation: state.generation, expected_parameter_revision: state.parameter_revision });
   }
 
   async close() {

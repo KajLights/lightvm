@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { activityActions, outputFor, useAppDispatch, useAppSelector } from './store';
+import { useAppSelector } from './store';
 import { useRuntime } from './runtime';
-import { supportsProgram } from './compiler';
 import { EXAMPLES, exampleForSource } from './examples';
 import { download } from './device-service';
+import { DevelopmentWorkflow } from './Workflow';
 import type { Diagnostic, ParameterState } from './types';
 
 function Editor() {
@@ -64,74 +63,13 @@ function Editor() {
     else textarea.current?.focus();
   }
   return <section className="editor-panel" aria-label="Python source editor">
-    <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example?.id ?? ''} onChange={event => loadExample(event.target.value)}><option value="">Examples…</option>{EXAMPLES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button id="open-source" className="quiet" onClick={() => picker.current?.click()}>Open .py</button><button id="save-source" className="quiet" onClick={() => download(editor.source, editor.filename, 'text/x-python')}>Save .py</button></div></div>
+    <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example?.id ?? ''} onChange={event => loadExample(event.target.value)}><option value="">Examples…</option>{EXAMPLES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button id="open-source" className="quiet" onClick={() => picker.current?.click()}>Open .py</button><button id="save-source" className="quiet" onClick={() => download(editor.source, editor.filename, 'text/x-python')}>Export .py</button></div></div>
     {example && <p id="example-description" className="helper">{example.description}</p>}
     <label className="sr-only" htmlFor="source">Animation Python source</label><textarea ref={textarea} id="source" value={editor.source} spellCheck={false} autoCapitalize="off" autoComplete="off" onChange={event => compiler.edit(event.target.value)} />
     <input ref={picker} id="source-file" type="file" accept=".py,text/x-python,text/plain" hidden onChange={event => void open(event.target.files?.[0])} />
     <div className="editor-footer"><span id="cursor-position">{cursor}</span><span>Python subset · Portable bytecode</span><span id="draft-state">{editor.draftSaved ? 'Draft saved in this browser' : 'Draft available for this session'}</span></div>
     <div className="diagnostics-header"><h2>Code checks</h2><span id="check-state">{editor.compiler === 'error' ? 'Compiler unavailable' : editor.checking ? 'Checking…' : editor.diagnostics.length ? 'Code needs attention' : editor.artifact ? 'All checks passed' : 'Waiting for Python…'}</span></div>
     <div id="diagnostics" className="diagnostics" role="status" aria-live="polite">{editor.diagnostics.length ? editor.diagnostics.map((item, index) => <button key={index} className="diagnostic" onClick={() => focusDiagnostic(item)}><strong>Line {item.line}:{item.column}</strong><span>{item.message}</span></button>) : <p className={editor.artifact ? 'check-ok' : 'muted'}>{editor.compiler === 'error' ? editor.message : editor.artifact ? '✓ Code checks passed. The compiled animation is ready.' : editor.message}</p>}</div>
-  </section>;
-}
-
-function SendProgram() {
-  const { compiler, devices } = useRuntime(), editor = useAppSelector(state => state.editor);
-  const device = useAppSelector(state => state.device), activity = useAppSelector(state => state.activity), dispatch = useAppDispatch();
-  const artifact = editor.artifact, canUpload = Boolean(artifact && device.selectedPath && outputFor(device.config) && artifact.bytes <= (device.description?.module_limit || 0));
-  const incompatible = Boolean(device.description && artifact && !supportsProgram(device.description, artifact.manifest));
-  async function upload() {
-    const compiled = compiler.artifact;
-    if (!compiled || compiled.id !== devices.snapshot.editor.revision) return;
-    await devices.upload(compiled.bytecode, compiled.source, compiled.id);
-  }
-  return <section className="card"><div className="card-heading"><h2>Send your animation</h2></div><p className="muted">Compilation happens in your browser. Only the bytecode program is sent to the device.</p>
-    <div className="artifact"><span>Compiled program</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div><p id="artifact-detail" className="helper">{artifact ? 'ABI ' + artifact.manifest.abi + ' · RGB8 · ' + (artifact.manifest.parameters.length + (artifact.manifest.settings?.length ?? 0)) + ' settings' : 'Ready when the code checks pass.'}</p>
-    {incompatible && <p className="helper">This device needs firmware that supports this animation's program profile.</p>}
-    {!outputFor(device.config) && device.selectedPath && <p className="helper">Configure an output before uploading. <Link to={'/devices/' + device.description?.device_id + '/configure'}>Open configuration</Link></p>}
-    <button id="upload" className="primary full" disabled={Boolean(activity.operation) || !canUpload || incompatible} onClick={() => void upload()}>{activity.operation === 'Uploading animation' ? 'Uploading…' : 'Upload & run →'}</button>
-    {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
-    <div className="button-pair"><button id="download" className="secondary" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), editor.filename.replace(/\.py$/i, '') + '.lbc', 'application/octet-stream'); }}>Download .lbc</button><button id="stop" className="quiet" disabled={Boolean(activity.operation) || !device.selectedPath} onClick={() => void devices.stopPlayback()}>Stop lights</button></div>
-    <p className="helper deployment-note">Upload replaces the running program. Saving a program to device storage is a separate step.</p>
-    {editor.compiler === 'error' && <button id="retry-compiler" className="quiet" onClick={() => compiler.retry()}>Retry compiler</button>}
-  </section>;
-}
-
-function Procedures() {
-  const { compiler, devices } = useRuntime(), device = useAppSelector(state => state.device), activity = useAppSelector(state => state.activity), editor = useAppSelector(state => state.editor);
-  const [name, setName] = useState(''), [selected, setSelected] = useState('');
-  const available = Boolean(device.selectedPath && device.description?.storage_available), busy = Boolean(activity.operation);
-  useEffect(() => { if (!device.procedures.some(item => item.name === selected)) setSelected(device.procedures[0]?.name || ''); }, [device.procedures, selected]);
-  async function save() {
-    await devices.run('Saving program', async client => {
-      const compiled = compiler.artifact;
-      if (!compiled || compiled.id !== devices.snapshot.editor.revision) throw new Error('Wait for the latest compilation.');
-      if (!/^[A-Za-z0-9_.-]{1,32}$/.test(name)) throw new Error('Use 1–32 letters, digits, underscores, dots or hyphens for the procedure name.');
-      const connection = devices.require(client);
-      await connection.saveProcedure(name, compiled.bytecode); await devices.readProcedures(connection); devices.log('Saved ' + name + '.', 'success');
-    });
-  }
-  async function activate() {
-    await devices.run('Activating program', async client => {
-      const connection = devices.require(client); await connection.manage('procedure_activate', { name: selected, slot: 'A' });
-      await devices.readParameters(connection); devices.log('Stored program activated.', 'success');
-    });
-  }
-  async function remove() {
-    await devices.run('Deleting program', async client => {
-      const connection = devices.require(client); await connection.deleteProcedure(selected);
-      await devices.readProcedures(connection); devices.log('Program deleted.', 'success');
-    });
-  }
-  return <section className="card"><div className="card-heading"><h2>Stored programs</h2><button id="procedures-refresh" className="quiet small" disabled={!available || busy} onClick={() => void devices.run('Refreshing programs', async client => devices.readProcedures(devices.require(client)))}>Refresh</button></div>
-    <p className="muted">Save your compiled animation to device storage, or run one already saved there.</p>
-    <fieldset id="procedure-fields" disabled={!available || busy}>
-      <label htmlFor="procedure-name">Save compiled animation as</label><input id="procedure-name" value={name} onChange={event => setName(event.target.value)} placeholder="rainbow" maxLength={32} autoComplete="off" />
-      <button id="procedure-save" className="secondary full" disabled={!editor.artifact} onClick={() => void save()}>Save compiled bytecode</button>
-      <label htmlFor="procedure-select">Stored program</label><select id="procedure-select" value={selected} onChange={event => setSelected(event.target.value)}>{!device.procedures.length && <option value="">No programs saved</option>}{device.procedures.map(item => <option key={item.name} value={item.name}>{item.name + ' · ' + item.size + ' bytes'}</option>)}</select>
-      <div className="button-pair"><button id="procedure-activate" className="secondary" disabled={!selected || !outputFor(device.config)} onClick={() => void activate()}>Activate on first output</button><button id="procedure-download" className="quiet" disabled={!selected} onClick={() => void devices.run('Downloading program', async client => { const reply = await devices.require(client).manage('procedure_get', { name: selected }); download(new Uint8Array(reply.data), selected + '.lbc', 'application/octet-stream'); })}>Download</button></div>
-      <button id="procedure-delete" className="quiet full" disabled={!selected} onClick={() => void remove()}>Delete selected program</button>
-    </fieldset>
-    <p className="helper">Saving adds to the library. Startup behaviour is set in Configure.</p>
   </section>;
 }
 
@@ -167,61 +105,23 @@ function Parameters() {
     if (!state) return;
     await devices.run(verb === 'pause' ? 'Pausing program' : 'Resuming program', async client => {
       const connection = devices.require(client);
-      await connection.manage('program_' + verb, { expected_generation: state.generation });
+      await connection.manage('program_' + verb, { device: state.device, layer: state.layer, expected_generation: state.generation });
       await devices.readParameters(connection);
     });
   }
   return <section className="card"><div className="card-heading"><h2>{state?.manifest.abi === 4 ? 'Playback' : 'Live parameters'}</h2><button id="parameters-refresh" className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing parameters', async client => devices.readParameters(devices.require(client)))}>Refresh</button></div>
-    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') + ' · slot ' + state.slot : 'Load a control program to edit its parameters.'}</p>
+    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') + (state.layer ? ' · layer ' + state.layer : ' · slot ' + state.slot) : 'Load a control program to edit its parameters.'}</p>
     <fieldset id="parameter-fields" disabled={!state || !selectedPath || busy}><div id="parameters">{parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input data-name={parameter.name} data-type={parameter.type} type={parameter.type === 'bool' ? 'checkbox' : parameter.type === 'rgb8' ? 'color' : parameter.type === 'int' ? 'text' : 'number'} inputMode={parameter.type === 'int' ? 'numeric' : undefined} step={parameter.type === 'float' ? 'any' : undefined} min={parameter.minimum} max={parameter.maximum} checked={parameter.type === 'bool' ? Boolean(values[parameter.name]) : undefined} value={parameter.type !== 'bool' ? String(values[parameter.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [parameter.name]: parameter.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
       {parameters.length > 0 && <button id="parameters-apply" className="secondary full" onClick={() => void apply()}>Apply parameter values</button>}<div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div>
     </fieldset>
   </section>;
 }
-function Settings() {
-  const { devices } = useRuntime();
-  const state = useAppSelector(store => store.device.parameters);
-  const selectedPath = useAppSelector(store => store.device.selectedPath);
-  const busy = useAppSelector(store => Boolean(store.activity.operation));
-  const [values, setValues] = useState<Record<string, string | boolean>>({});
-  const inputKey = JSON.stringify([state?.generation, state?.settings_values, state?.manifest.settings]);
-  useEffect(() => {
-    setValues(Object.fromEntries((state?.manifest.settings ?? []).map(setting => {
-      const value = state?.settings_values?.[setting.name];
-      return [setting.name, setting.type === 'rgb8' ? '#' + Number(value ?? 0).toString(16).padStart(6, '0') : setting.type === 'bool' ? Boolean(value) : String(value ?? '')];
-    })));
-  }, [inputKey]);
-  if (state?.manifest.abi !== 4) return null;
-  async function restart() {
-    if (!state) return;
-    await devices.run('Restarting animation', async client => {
-      const settings: Record<string, number | boolean> = {};
-      for (const setting of state.manifest.settings ?? []) {
-        const input = values[setting.name];
-        const value = setting.type === 'bool' ? Boolean(input) : setting.type === 'rgb8' ? parseInt(String(input).slice(1), 16) : Number(input);
-        if (typeof value === 'number' && (!String(input) || !Number.isFinite(value) || (setting.type === 'int' && (!Number.isInteger(value) || value < -2147483648 || value > 2147483647)))) throw new Error('Enter a valid ' + setting.type + ' value for ' + setting.name + '.');
-        settings[setting.name] = value;
-      }
-      const connection = devices.require(client);
-      await connection.json('program_reset', { expected_generation: state.generation, settings });
-      await devices.readParameters(connection);
-      devices.log('Animation restarted with the selected settings.', 'success');
-    });
-  }
-  return <section className="card"><div className="card-heading"><h2>Initialization settings</h2></div>
-    <p className="helper">Settings are fixed for each instance. Apply them by restarting the animation.</p>
-    <fieldset id="setting-fields" disabled={!selectedPath || busy}><div id="settings">{state.manifest.settings?.map(setting => <label key={setting.name}>{setting.name}<input data-name={setting.name} type={setting.type === 'bool' ? 'checkbox' : setting.type === 'rgb8' ? 'color' : 'number'} step={setting.type === 'float' ? 'any' : 1} checked={setting.type === 'bool' ? Boolean(values[setting.name]) : undefined} value={setting.type !== 'bool' ? String(values[setting.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [setting.name]: setting.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
-      <button id="settings-apply" className="secondary full" onClick={() => void restart()}>Apply settings &amp; restart</button>
-    </fieldset>
-  </section>;
-}
-
 export function Develop({ active }: { active: boolean }) {
   const description = useAppSelector(state => state.device.description), connected = useAppSelector(state => Boolean(state.device.selectedPath));
   const { compiler } = useRuntime();
   useEffect(() => { if (active) compiler.start(); }, [active, compiler]);
-  return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Write an animation, check it as you type, and send it to your lights.</p></div><div className="pipeline" aria-label="Compilation flow"><span>Python</span><span aria-hidden="true">→</span><span>Bytecode</span><span aria-hidden="true">→</span><span>Device</span></div></div>
+  return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Edit, preview on your lights, save an animation, then compose and save a preset.</p></div><div className="pipeline" aria-label="Development workflow"><span>Edit</span><span>→</span><span>Preview</span><span>→</span><span>Save</span><span>→</span><span>Compose</span><span>→</span><span>Preset</span></div></div>
     {description && !connected && <p className="connection-banner">Connect the device to upload. The editor and downloads remain available.</p>}
-    <div className="workspace"><Editor /><aside className="sidebar"><SendProgram /><Procedures /><Settings /><Parameters /></aside></div>
+    <DevelopmentWorkflow editorPanel={<Editor />} playback={<Parameters />} />
   </>;
 }

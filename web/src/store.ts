@@ -20,12 +20,13 @@ interface DeviceState {
   paths: { key: Path; label: string }[]; selectedPath: Path | null;
   config: HardwareConfig | null; configRevision: number; savedRevision: number;
   networkConfig: NetworkConfig | null; networkRevision: number; networkStatus: NetworkStatus | null;
-  procedures: Procedure[]; parameters: ParameterState | null;
+  procedures: Procedure[]; presets: Procedure[]; parameters: ParameterState | null;
+  selectedOutput: string | null;
   nearby: NearbyDevice[]; discovering: boolean; discoveryMessage: string;
 }
 const initialDevice: DeviceState = {
   description: null, paths: [], selectedPath: null, config: null, configRevision: 0, savedRevision: 0,
-  networkConfig: null, networkRevision: 0, networkStatus: null, procedures: [], parameters: null,
+  networkConfig: null, networkRevision: 0, networkStatus: null, procedures: [], presets: [], parameters: null, selectedOutput: null,
   nearby: [], discovering: false, discoveryMessage: 'Finding devices on your local network.',
 };
 const deviceSlice = createSlice({
@@ -35,7 +36,7 @@ const deviceSlice = createSlice({
       const { description, ...connections } = action.payload;
       if (description && state.description?.device_id !== description.device_id) Object.assign(state, {
         config: null, configRevision: 0, savedRevision: 0, networkConfig: null, networkRevision: 0,
-        networkStatus: null, parameters: null, procedures: [],
+        networkStatus: null, parameters: null, procedures: [], presets: [], selectedOutput: null,
       });
       Object.assign(state, connections);
       if (description) state.description = description;
@@ -43,13 +44,20 @@ const deviceSlice = createSlice({
     description(state, action: PayloadAction<Description>) { state.description = action.payload; },
     configuration(state, action: PayloadAction<{ config: HardwareConfig; revision: number; savedRevision: number }>) {
       state.config = action.payload.config; state.configRevision = action.payload.revision; state.savedRevision = action.payload.savedRevision;
+      if (!state.config.devices.some(output => output.id === state.selectedOutput)) {
+        state.selectedOutput = state.config.devices[0]?.id ?? null; state.parameters = null;
+      }
     },
     network(state, action: PayloadAction<{ config: NetworkConfig; revision: number }>) {
       state.networkConfig = action.payload.config; state.networkRevision = action.payload.revision;
     },
     networkStatus(state, action: PayloadAction<NetworkStatus>) { state.networkStatus = action.payload; },
     procedures(state, action: PayloadAction<Procedure[]>) { state.procedures = action.payload; },
+    presets(state, action: PayloadAction<Procedure[]>) { state.presets = action.payload; },
     parameters(state, action: PayloadAction<ParameterState | null>) { state.parameters = action.payload; },
+    outputSelected(state, action: PayloadAction<string>) {
+      if (state.config?.devices.some(output => output.id === action.payload)) { state.selectedOutput = action.payload; state.parameters = null; }
+    },
     discoveryStarted(state) { state.discovering = true; },
     discoveryFinished(state, action: PayloadAction<{ devices: NearbyDevice[]; message: string }>) {
       state.nearby = action.payload.devices; state.discoveryMessage = action.payload.message; state.discovering = false;

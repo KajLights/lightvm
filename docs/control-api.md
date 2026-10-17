@@ -50,6 +50,13 @@ old instance and generation. Each device’s `startup` names its boot procedure 
 optional initialization `args`. Boot resolves the current catalogue entry for each
 name; activation does not update configuration or select a separate boot revision.
 
+Firmware advertising `transient_settings: true` also accepts a FINISH payload
+`{"settings": {...}}` (within the 512-byte frame limit). Overrides are validated
+and applied while preparing the candidate, before replacing the old instance.
+An empty FINISH payload retains the existing default-settings behavior. BEGIN's
+optional output ID routes the upload; PLAY and subsequent management calls must
+address that same output explicitly.
+
 Initialization and render callbacks follow the [current source contract](animation-profile.md).
 FRAME advances by its explicit 0..1000 ms delta. Pause/resume excludes paused time;
 STOP clears physical output. RESET unloads state. Serial disconnection cancels the

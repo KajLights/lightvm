@@ -3,9 +3,9 @@
 Status: Native alpha composition v1 implemented; see [current contract](../composition.md).
 
 The implementation uses premultiplied RGBA8, independent init/render instances,
-native source-over composition and native sprite batches. Scenes are currently
-RAM-only and controlled through the management API/CLI. Editor authoring,
-persistent scenes and A/B integration remain future work. The October 12 text
+native source-over composition and native sprite batches. The editor can author
+scenes and save compact persistent presets, alongside management API/CLI control.
+Running instances remain in RAM; A/B integration remains future work. The October 12 text
 below records the design before this implementation.
 
 Date: 12 October 2026

@@ -11,7 +11,7 @@ a note or move a servo. Devices share the independently designed
 resources, typed properties and samples, actions/jobs, events and resumable
 tasks. Addressable RGB lighting is one capability within that model. This complements the
 [web editor](feature-proposal-web-editor.md) and
-[portable native ports](../architecture.md). Optional
+[controller model](../architecture.md). Optional
 [animation composition](feature-proposal-animation-composition.md) gives several
 lighting programs owned contributions to one scene under the same model.
 

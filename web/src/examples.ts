@@ -7,7 +7,7 @@ import sweep from '../../examples/animations/sweep.py?raw';
 
 export const EXAMPLES = [
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
-    description: 'Original picolights Rainbow: one colour cycle every 60 seconds. Lower duration in Initialization settings for faster motion.' },
+    description: 'Original picolights Rainbow: one colour cycle every 60 seconds. Override duration in the preview settings for faster motion.' },
   { id: 'stars', filename: 'stars.py', label: 'stars.py', source: stars,
     description: 'Three-pixel stars appear and fade over a transparent background. Run alone or over another animation.' },
   { id: 'color', filename: 'color.py', label: 'color.py', source: color,

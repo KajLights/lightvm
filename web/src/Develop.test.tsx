@@ -6,7 +6,7 @@ import { Compiler } from './compiler';
 import { DeviceService } from './device-service';
 import { Develop } from './Develop';
 import { RuntimeContext } from './runtime';
-import { createAppStore, deviceActions } from './store';
+import { createAppStore, deviceActions, editorActions } from './store';
 import type { Description, ParameterState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
 import originalRainbow from '../../examples/animations/rainbow.py?raw';
@@ -44,7 +44,7 @@ describe('editor examples and playback status', () => {
     expect(store.getState().editor.source).toBe(originalRainbow);
   });
 
-  it('polls renders and pause without discarding unsaved inputs, then loads inputs for a new instance', async () => {
+  it('polls playback without replacing the edited draft settings with a running program', async () => {
     const { store, devices, show } = workspace();
     const description = { device_id: 'pico', boot_id: 'boot', board: 'pico_w', active_revision: 0,
       saved_revision: 0, catalog_revision: 0, network_revision: 0 } as Description;
@@ -54,7 +54,9 @@ describe('editor examples and playback status', () => {
     const response = vi.fn().mockResolvedValue({ ...running, render_count: 3 });
     const client = { closed: false, transport: { label: 'HTTP' }, describe: vi.fn().mockResolvedValue(description), json: response } as unknown as LightVMClient;
     devices.paths.attach('http', client, description); devices.syncPaths(description);
-    store.dispatch(deviceActions.parameters(running)); show();
+    store.dispatch(deviceActions.parameters(running));
+    store.dispatch(editorActions.compiled({ revision: 0, bytes: 100, manifest: running.manifest, diagnostics: [] })); show();
+    fireEvent.click(screen.getByLabelText('Override duration'));
     fireEvent.change(screen.getByLabelText('duration'), { target: { value: '3' } });
 
     await act(async () => { await devices.poll(); });
@@ -74,7 +76,7 @@ describe('editor examples and playback status', () => {
 
     response.mockResolvedValue({ ...running, generation: 2, values: {}, settings_values: { duration: 20 } });
     await act(async () => { await devices.poll(); });
-    expect(screen.getByLabelText('duration')).toHaveValue(20);
+    expect(screen.getByLabelText('duration')).toHaveValue(3);
     expect(document.querySelector('#parameter-state')).toHaveTextContent('Running');
   });
 });
