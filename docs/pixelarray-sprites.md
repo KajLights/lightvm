@@ -1,7 +1,8 @@
 # PixelArray and user-defined sprites
 
 The Python frontend parses these declarations without executing Python source.
-All programs use profile `animation` and document kind `lightvm.program`.
+Animations and [transitions](transition-profile.md) share these drawing and sprite
+declarations and document kind `lightvm.program`.
 [Application releases](versioning.md) govern compatibility for drawing and all other features.
 Images, sprites and wrapped drawing are part of the LightVM 1.0.0 baseline.
 Optimized pixel loops use API 4; see [pixel maps](pixel-maps.md).
@@ -174,6 +175,9 @@ resume the same frame without repeating callbacks or advancing time. PixelArray
 kernels and slot scans (eight slots per dispatch) are native. No rendering or
 spawning path allocates heap memory. A slow or faulting callback follows the
 existing layer scheduling/fault-publication contract.
+The optimizer folds built-in transform and colour fields that every callback
+leaves at their reservation defaults, avoiding native reads for those fields.
+Conditional changes and persistent non-default values retain ordinary field reads.
 
 ## Package extension
 

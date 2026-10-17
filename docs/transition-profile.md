@@ -19,8 +19,10 @@ def draw(ctx, runtime, pixels):
 
 The [crossfade](../examples/transitions/crossfade.py) and
 [wipe](../examples/transitions/wipe.py) examples are the canonical sources.
-The wipe exposes a frozen boolean `reverse` setting through `@init`, using the
-same initialization and settings conventions as animations.
+The wipe exposes frozen boolean `reverse` and `separator` settings through
+`@init`, using the same initialization and settings conventions as animations.
+`separator: true` draws a three-pixel white Sprite at the wipe boundary with
+RGB intensities 85, 255, 85 (33%, 100%, 33%). Both settings default to false.
 
 ## Inputs and evaluation
 
@@ -30,6 +32,9 @@ and frozen `setting(...)` declarations follow the animation conventions.
 `runtime.progress` is a read-only float in **0..1**. Transition programs have no
 `runtime.time` or `runtime.delta`: the native controller independently drives the
 public percentage in 0..100. Progress is zero during preparation.
+Sprite callbacks also receive this progress, with their local pixel count and no
+animation clock. They derive position from progress rather than elapsed time;
+their prepared instance state is restored along with the rest of the transition.
 
 Each evaluation starts with transparent working pixels. The owner captures the
 percentage and both completed RGB source frames, restores the prepared baseline
@@ -88,6 +93,8 @@ python tools/client.py --port PORT --transition crossfade --device lights
 python -m lightvm.compiler examples/transitions/wipe.py -o build/examples/wipe.lbc
 python tools/client.py --port PORT --store-procedure wipe build/examples/wipe.lbc
 python tools/client.py --port PORT --transition wipe --settings '{"reverse": true}' --device lights
+# Add the white separator; reverse remains optional.
+python tools/client.py --port PORT --transition wipe --settings '{"separator": true}' --device lights
 ```
 
 Or call `client.save_procedure(name, compiled.bytecode)` then

@@ -87,13 +87,20 @@ static void transition_contract(void){
     CHECK(transition_set(t,35));allocation_count=allocations;deny_allocation=true;
     transition_tick(t,1);CHECK(t->composing&&t->scenes[0]->front_pinned);
     uint8_t sampled=t->scenes[0]->front[0];
-    for(unsigned n=0;n<100&&t->phase<4;n++){clock_now+=20000;transition_tick(t,64);}
+    for(unsigned n=0;n<100&&t->phase<4;n++){
+        clock_now+=20000;transition_tick(t,1);
+        if(t->phase<4)CHECK(t->scenes[0]->front_pinned&&t->scenes[0]->front[0]==sampled);
+    }
     CHECK(t->composing&&t->phase==4);
+    CHECK(!t->scenes[0]->front_pinned);
     Scene *s=t->scenes[0];scene_invalidate(s);s->layers[0].vm.next_frame=0;
     uint64_t renders=s->layers[0].vm.portable->render_count;
     clock_now+=20000;transition_tick(t,64);
     CHECK(s->layers[0].vm.portable->render_count>renders);
-    CHECK(s->front_pinned&&s->front[0]==sampled);
+    CHECK(!s->front_pinned);
+    /* Publish a different source while RGB conversion is unfinished. The
+       remaining output pixels must still come from the committed program. */
+    scene_prepare(s);scene_publish(s);CHECK(s->front[0]!=sampled);
     for(unsigned n=0;n<100&&t->composing;n++){clock_now+=20000;transition_tick(t,64);}
     CHECK(t->prepared&&!s->front_pinned);
     for(unsigned n=0;n<67;n++)CHECK(t->working[n*3]==sampled&&t->working[n*3+1]==0&&t->working[n*3+2]==0);

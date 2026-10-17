@@ -39,6 +39,26 @@ static void scene_contract(void){
     scene_destroy(s);CHECK(!borrowed_output&&cancelled_outputs==cancelled+1);
     delayed_output=false;pixels_destroy(&physical);CHECK(vm_heap_used()==0);
 
+    /* A completed back buffer blocks further writers until it can publish.
+       This must not discard a suspended call or lose elapsed animation time. */
+    PixelBuffer offscreen={.count=67};s=scene_create(&offscreen,1);CHECK(s);
+    portable_load(&s->layers[0].vm,&s->layers[0].target,&reply,counter_lbc,sizeof(counter_lbc));
+    s->layers[0].vm.playing=true;scene_prepare(s);scene_publish(s);s->front_pinned=true;
+    for(unsigned n=0;n<40&&!s->prepared;n++){clock_now+=20000;scene_tick(s,64);}
+    CHECK(s->prepared&&!s->composing);
+    uint64_t rendered=s->layers[0].vm.portable->render_count,program_us=s->layers[0].vm.control.program_us;
+    uint32_t front_crc=crc32_bytes(s->front,67*3),back_crc=crc32_bytes(s->working,67*3),published=s->frames;
+    allocation_count=allocations;deny_allocation=true;
+    for(unsigned n=0;n<20;n++){clock_now+=20000;scene_tick(s,64);}
+    CHECK(s->layers[0].vm.portable->render_count==rendered&&s->frames==published);
+    CHECK(crc32_bytes(s->front,67*3)==front_crc&&crc32_bytes(s->working,67*3)==back_crc);
+    s->front_pinned=false;scene_tick(s,64);CHECK(s->frames==published+1);
+    CHECK(crc32_bytes(s->front,67*3)==back_crc);
+    clock_now+=20000;scene_tick(s,64);
+    CHECK(s->layers[0].vm.portable->render_count>rendered);
+    CHECK(s->layers[0].vm.control.program_us>=program_us+400000);
+    CHECK(allocations==allocation_count);deny_allocation=false;scene_destroy(s);CHECK(vm_heap_used()==0);
+
     /* Closing a physical output can itself service the engine. Detach its scene
        before freeing it, so those checkpoints cannot reenter freed state. */
     storage_available=true;memset(flash,255,sizeof(flash));

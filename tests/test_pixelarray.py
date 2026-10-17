@@ -173,6 +173,41 @@ def draw(ctx,runtime,pixels):
 ''')
         self.assertEqual(self.frame()[132:140],bytes([0,128,0,255,255,0,0,255]))
 
+    def test_sprite_default_style_folding_preserves_conditional_and_retained_styles(self):
+        source = PREFIX + '''def birth(s,runtime,position):
+ s.position=position
+def paint(s,runtime,pixels):
+ pixels.fill(rgb(200,100,60))
+ if runtime.time < 0.25:
+  s.transform=Transform(translate=s.position)
+  s.color=ColorTransform(alpha=0.5,tint=rgb(255,128,255))
+  return
+ if runtime.time >= 0.5:
+  s.transform=Transform(translate=s.position+1.0)
+  s.color=ColorTransform()
+Particle=Sprite(width=1,init=birth,render=paint)
+@init
+def setup(ctx,runtime):
+ ctx.batch=SpriteBatch(Particle,capacity=2)
+ ctx.batch.spawn(position=2.0)
+ ctx.batch.spawn(position=5.0)
+@render
+def draw(ctx,runtime,pixels):
+ ctx.batch.render(runtime,pixels)
+'''
+        variants=[]
+        for optimized in (False, True):
+            result=compile_source(source,optimize=optimized)
+            self.assertTrue(result.success,result.diagnostics)
+            self.client.save_procedure('test',result.bytecode)
+            self.client.configure_scene([{'id':'fg','procedure':'test'}],device='lights')
+            self.client.require_ok(self.client.command(STOP,device='lights'))
+            variants.append([self.frame(delta) for delta in (0,100,200,300)])
+        self.assertEqual(variants[0],variants[1])
+        self.assertEqual(variants[1][0][8:12],bytes([100,25,30,128]))
+        self.assertEqual(variants[1][2][8:12],bytes([100,25,30,128]))
+        self.assertEqual(variants[1][3][12:16],bytes([200,100,60,255]))
+
     def test_spawn_callbacks_independent_state_removal_and_slot_reuse(self):
         self.load('''def birth(s,runtime,position,duration):
  s.position=position

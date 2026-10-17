@@ -115,7 +115,7 @@ class SpriteCompiler:
         fields={'__draw_'+k:(i,C if k=='tint' else F) for i,k in enumerate(GEOMETRY+COLOR)}
         ref=self.add_resource(name,18,length,self.constant_expr(0),self.constant_expr(8),self.constant_expr(223))
         scratch=self.add_resource(name+'.canvas',15,self.constant_expr(definition['width']),self.resources[0][2])
-        self.batches[ref]={'definition':definition,'fields':fields,'scratch':scratch,'ref':ref,'initialized':definition['init'] is None}
+        self.batches[ref]={'definition':definition,'fields':fields,'scratch':scratch,'ref':ref,'initialized':definition['init'] is None,'draw_mutable':set()}
         if name.startswith('ctx.'):self.fields[name[4:]]=ref
         else:self.env[name]=ref
 
@@ -228,6 +228,9 @@ class SpriteCompiler:
             batch['fields'][name]=(len(batch['fields']),typ)
         index,expected=batch['fields'][name]
         if expected!=typ:self.fail(node,'sprite field changes type')
+        if index<8:
+            default=self.colour_constant(DEFAULTS[index]) if typ==C else self.literal(DEFAULTS[index])
+            if self.regs[value]!=self.regs[default]:batch['draw_mutable'].add(name)
         if typ==C:value=self.convert(value,I)
         if typ==B:
             out=self.reg(I);j=self.emit('JZ',value);self.emit('MOV',out,self.literal(1));end=self.emit('JMP');self.code[j][4]=len(self.code);self.emit('MOV',out,self.literal(0));self.code[end][4]=len(self.code);value=out
@@ -240,11 +243,13 @@ class SpriteCompiler:
         self.env={};self.caps={fn.args.args[0].arg:'sprite',fn.args.args[1].arg:'runtime'}
         self.inputs={**self.inputs,'pixel_count':self.literal(batch['definition']['width'])}
         if role=='render':
-            self.inputs['time']=self.native('batch_time',[batch['ref'],slot,now],fn)
-            self.inputs['delta']=self.native('batch_delta',[batch['ref'],slot,now],fn)
+            if 'time' in self.inputs:
+                self.inputs['time']=self.native('batch_time',[batch['ref'],slot,now],fn)
+                self.inputs['delta']=self.native('batch_delta',[batch['ref'],slot,now],fn)
             self.caps[fn.args.args[2].arg]='pixels';self.output=batch['scratch']
         else:
-            self.inputs['time']=self.literal(0.0);self.inputs['delta']=self.literal(0.0)
+            if 'time' in self.inputs:
+                self.inputs['time']=self.literal(0.0);self.inputs['delta']=self.literal(0.0)
             for formal,actual in zip(fn.args.args[2:],args):
                 local=self.reg(self.typ(actual));self.emit('MOV',local,actual);self.env[formal.arg]=local
         self.loop_stack=[];self.depth=0;self.sprite_context=(batch,slot,role);self.descriptions={}
@@ -257,14 +262,17 @@ class SpriteCompiler:
     def batch_call(self,call,ref):
         if self.sprite_context:self.fail(call,'sprite callbacks cannot mutate or render a batch recursively')
         batch=self.batches[ref];method=call.func.attr
+        # Transition evaluations restore their baseline and have no running
+        # clock. Their sprites inherit progress and use zero for native births.
+        now=self.inputs['time'] if 'time' in self.inputs else self.literal(0.0)
         if method=='spawn':
             fn=batch['definition']['init'];names=tuple(a.arg for a in fn.args.args[2:]) if fn else ()
             args=self.arguments(call,names)
             values=[self.expr(args[name]) for name in names]
-            slot=self.native('batch_reserve',[ref,self.inputs['time']],call)
+            slot=self.native('batch_reserve',[ref,now],call)
             out=self.reg(B);cond=self.reg(B);self.emit('ILT',cond,slot,self.literal(0));self.emit('EQ',out,cond,self.literal(False))
             jump=self.emit('JZ',out)
-            self.callback(batch,slot,'init',values,self.inputs['time'])
+            self.callback(batch,slot,'init',values,now)
             batch['initialized']=True
             self.code[jump][4]=len(self.code)
             return out
@@ -276,7 +284,7 @@ class SpriteCompiler:
             binding=self.overflow(args['overflow'])
             sampling=args['sampling']
             if not isinstance(sampling,ast.Constant) or sampling.value not in ('linear','nearest'):self.fail(call,'sampling must be linear or nearest')
-            jump=self.emit('JMP');self.pending_batches.append((jump,len(self.code),batch,dst,self.inputs['time'],dict(self.env),dict(self.caps),dict(self.inputs),self.output,binding,int(sampling.value=='linear')))
+            jump=self.emit('JMP');self.pending_batches.append((jump,len(self.code),batch,dst,now,dict(self.env),dict(self.caps),dict(self.inputs),self.output,binding,int(sampling.value=='linear')))
             return -1
         self.fail(call,'SpriteBatch supports spawn(), render() and active')
 
@@ -293,7 +301,16 @@ class SpriteCompiler:
             self.callback(batch,slot,'render',[],now)
             alive=self.native('batch_alive',[batch['ref'],slot],None);skip=self.emit('JZ',alive)
             self.sprite_context=(batch,slot,'render')
-            geometry=[self.sprite_get("__draw_"+k,None) for k in GEOMETRY];color=[self.sprite_get("__draw_"+k,None) for k in COLOR]
+            # Reservation initializes the built-in style. Fields that no
+            # callback can change away from that default need no native read.
+            values=[]
+            for i,k in enumerate(GEOMETRY+COLOR):
+                name="__draw_"+k
+                if self.optimize and name not in batch['draw_mutable']:
+                    value=self.colour_constant(DEFAULTS[i]) if k=='tint' else self.literal(DEFAULTS[i])
+                else:value=self.sprite_get(name,None)
+                values.append(value)
+            geometry,color=values[:3],values[3:]
             self.sprite_context=None
             style=self.set_style(geometry,color,None)
             self.native(binding,[dst,scratch,style,self.literal(sampling)],None)

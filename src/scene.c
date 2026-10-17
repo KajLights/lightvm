@@ -76,18 +76,22 @@ static void scene_tick_impl(Scene *s,unsigned budget) {
     /* A composite pins every committed layer. Autonomous writers are deferred
        until the bounded composite finishes; management invalidates it first. */
     if(s->composing){compose_slice(s);return;}
-    unsigned first=s->layer_count?s->cursor++%s->layer_count:0;
-    for(unsigned i=0;i<s->layer_count;i++){
-        SceneLayer *l=&s->layers[(first+i)%s->layer_count];
-        if(!runtime_owns(&l->vm))vm_tick_budget(&l->vm,budget);
-        if(l->vm.control.contribution_frame!=l->sampled_frame)s->dirty=true;
-    }
-    if(s->prepared&&!s->pending){
+    /* The back buffer is complete. Publish it before spending more work on
+       layers; if a reader/driver still owns the front, apply backpressure.
+       VM clocks catch up from actual elapsed time when rendering resumes. */
+    if(s->prepared){
+        if(s->pending)return;
         if(!s->output->type){if(!s->front_pinned)scene_publish(s);return;}
         uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
         s->output_started=platform_time_us();
         if(s->output->type->submit(s->output->driver,s->front,s->count)){s->pending=true;complete_output(s);}
         else{snprintf(s->error,sizeof(s->error),"native scene output failed; retrying");s->dirty=true;}
+    }
+    unsigned first=s->layer_count?s->cursor++%s->layer_count:0;
+    for(unsigned i=0;i<s->layer_count;i++){
+        SceneLayer *l=&s->layers[(first+i)%s->layer_count];
+        if(!runtime_owns(&l->vm))vm_tick_budget(&l->vm,budget);
+        if(l->vm.control.contribution_frame!=l->sampled_frame)s->dirty=true;
     }
     uint64_t now=platform_time_us();
     if(!s->prepared&&s->dirty&&now>=s->next_frame){s->next_frame=now+FRAME_INTERVAL_US;compose_start(s);compose_slice(s);}

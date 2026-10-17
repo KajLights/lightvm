@@ -21,10 +21,27 @@ Transition *transition_create(PixelBuffer *output){
     t->output=output;t->target.count=output->count;t->working=t->allocation;t->front=t->working+(size_t)output->count*3;
     t->playing=true;t->dirty=true;return t;
 }
-bool transition_program_capture(TransitionProgram *program){
+/* Resource descriptors are fixed at admission. Only register values and owned
+ * payload can change during evaluation; don't checkpoint immutable pointers and
+ * layout descriptors between them. A chunk crosses at most these two spans. */
+static size_t saved_bytes(const Portable *p){return p->register_bytes+p->payload_bytes;}
+static void state_copy(TransitionProgram *program,size_t offset,size_t count,bool restore){
     Portable *p=program->vm.portable;
-    program->baseline=demo_calloc(1,p->state_bytes);if(!program->baseline)return false;
-    for(size_t offset=0;offset<p->state_bytes;offset+=256){size_t n=p->state_bytes-offset;if(n>256)n=256;memcpy(program->baseline+offset,(uint8_t *)p->state+offset,n);runtime_checkpoint();}
+    while(count){
+        size_t n=count;uint8_t *state;
+        if(offset<p->register_bytes){
+            if(n>p->register_bytes-offset)n=p->register_bytes-offset;
+            state=p->values+offset;
+        }else state=(uint8_t *)p->state+p->state_bytes-p->payload_bytes+offset-p->register_bytes;
+        if(restore)memcpy(state,program->baseline+offset,n);
+        else memcpy(program->baseline+offset,state,n);
+        offset+=n;count-=n;
+    }
+}
+bool transition_program_capture(TransitionProgram *program){
+    Portable *p=program->vm.portable;size_t bytes=saved_bytes(p);
+    program->baseline=demo_calloc(1,bytes);if(!program->baseline)return false;
+    for(size_t offset=0;offset<bytes;offset+=256){size_t n=bytes-offset;if(n>256)n=256;state_copy(program,offset,n,false);runtime_checkpoint();}
     program->random_state=p->random_state;return true;
 }
 void transition_program_destroy(TransitionProgram *p){if(p){control_destroy(&p->vm);demo_free(p->baseline);demo_free(p);}}
@@ -133,6 +150,7 @@ static void compose(Transition *t){
 }
 static void slice(Transition *t,unsigned budget){
     uint64_t begun=platform_time_us();
+    bool restored=false,ran=false;
     /* Reset all custom state to its admitted baseline, in bounded chunks. This
        makes seeking independent of previous percentages, including guest RNG. */
     while(t->phase<4){
@@ -140,18 +158,28 @@ static void slice(Transition *t,unsigned budget){
         if((t->effect!=TRANSITION_CUSTOM&&t->effect!=TRANSITION_PROGRAM)||t->sampled_progress==0||t->sampled_progress==100||!program){t->phase=(n+1)*2;continue;}
         VmInstance *vm=&program->vm;Portable *p=vm->portable;
         if(!(t->phase%2)){
-            size_t left=p->state_bytes-t->restore_offset;if(left>256)left=256;
-            memcpy((uint8_t *)p->state+t->restore_offset,program->baseline+t->restore_offset,left);t->restore_offset+=(unsigned)left;
-            if(t->restore_offset==p->state_bytes){t->restore_offset=0;t->phase++;p->random_state=program->random_state;p->status=1;p->bulk=0;p->native_pending=false;vm->control.program_us=0;vm->control.in_step=false;}
+            if(restored)break;
+            restored=true;
+            size_t bytes=saved_bytes(p),left=bytes-t->restore_offset;if(left>256)left=256;
+            state_copy(program,t->restore_offset,left,true);t->restore_offset+=(unsigned)left;
+            if(t->restore_offset==bytes){t->restore_offset=0;t->phase++;p->random_state=program->random_state;p->status=1;p->bulk=0;p->native_pending=false;vm->control.program_us=0;vm->control.in_step=false;}
         }else{
+            if(ran)break;
+            ran=true;
             bool ready=false;const char *error=animation_poll_budget(vm,p->profile==4?0:(uint64_t)(t->sampled_progress*10000),&ready,budget);
             if(error){snprintf(t->error,sizeof(t->error),"transition program: %.70s",error);unpin_scenes(t);t->composing=false;return;}
-            if(ready)t->phase++;
+            if(ready){
+                t->phase++;
+                /* A Python program has finished reading both scenes. Its
+                   committed RGBA now owns the result during RGB conversion. */
+                if(t->effect==TRANSITION_PROGRAM)unpin_scenes(t);
+            }
         }
-        t->composite_us+=platform_time_us()-begun;return;
     }
-    if(!t->pixel)for(unsigned n=0;n<2;n++)t->sampled_frames[n]=t->scenes[n]?t->scenes[n]->frames:0;
-    compose(t);t->composite_us+=platform_time_us()-begun;
+    /* At most one 256-byte restore, one guest budget and one 32-pixel copy.
+       Finished phases fall through without another full scheduler round. */
+    if(t->phase==4)compose(t);
+    t->composite_us+=platform_time_us()-begun;
 }
 static void complete(Transition *t){
     if(!t->pending)return;

@@ -51,9 +51,12 @@ class TransitionProfileTests(unittest.TestCase):
         self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights'))
         return bytes(self.client.pixel_snapshot)
 
-    def test_examples_compile_to_bounded_bulk_operations(self):
+    def test_libraries_compile_to_bounded_bulk_operations(self):
         for name, bindings in (('crossfade', {53}), ('wipe', {54})):
-            result = compile_source((ROOT / 'examples/transitions' / (name + '.py')).read_text())
+            result = compile_source('from lightvm import profile,render\n'
+                                    'from lightvm.transitions import ' + name + '\n'
+                                    'profile("transition")\n@render\ndef draw(ctx,runtime,pixels):\n '
+                                    + name + '(pixels,runtime.progress)\n')
             self.assertTrue(result.success, result.diagnostics)
             self.assertEqual(result.manifest['schema'], 'lightvm.program')
             self.assertEqual(result.manifest['profile'], 'transition')
@@ -83,6 +86,49 @@ class TransitionProfileTests(unittest.TestCase):
                 a, b = bytes((200,100,20)), bytes((20,40,220))
                 expected = a*(self.count-n)+b*n if reverse else b*n+a*(self.count-n)
                 self.assertEqual(self.frame(p), expected)
+
+    def test_wipe_separator_sprite_tracks_boundary_clips_and_seeks(self):
+        for count in (1, 2, 67):
+            self.count = count
+            self.client.configure({'schema': 'lightvm.config', 'devices': [
+                {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': count}}]})
+            self.scenes()
+            for reverse in (False, True):
+                self.client.select_transition('wipe', settings={'reverse': reverse, 'separator': True}, device='lights')
+                heap = self.client.status_fields(device='lights')['heap']
+                for p in (0, 1, 35, 50, 75, 99, 100, 50, 35, 0):
+                    n = int(p / 100 * count)
+                    a, b = (200, 100, 20), (20, 40, 220)
+                    expected = [a] * (count-n) + [b] * n if reverse else [b] * n + [a] * (count-n)
+                    if 0 < p < 100:
+                        boundary = count-n if reverse else n
+                        for offset, intensity in ((-1, 85), (0, 255), (1, 85)):
+                            if 0 <= boundary+offset < count:
+                                expected[boundary+offset] = (intensity,) * 3
+                    self.assertEqual(self.frame(p), bytes(c for pixel in expected for c in pixel))
+                self.assertEqual(self.client.status_fields(device='lights')['heap'], heap)
+
+    def test_separator_compilation_omits_immutable_default_style_reads(self):
+        source=(ROOT/'examples/transitions/wipe.py').read_text()
+        reads=[]
+        for optimized in (False,True):
+            result=compile_source(source,optimize=optimized)
+            self.assertTrue(result.success,result.diagnostics)
+            regs,code,colors,functions,resources,expressions,calls=struct.unpack_from('<7I',result.bytecode,8)
+            at=96+regs*8+code*8+colors*4+functions*24+resources*24+expressions*16
+            reads.append(sum(struct.unpack_from('<I',result.bytecode,at+i*16)[0] in (40,41) for i in range(calls)))
+        self.assertGreaterEqual(reads[0]-reads[1],5)
+
+    def test_transition_sprite_callbacks_have_no_animation_clock(self):
+        for prop in ('time', 'delta'):
+            result = compile_source('from lightvm import profile,init,render,Sprite,SpriteBatch,rgb\n'
+                                    'profile("transition")\ndef sprite_draw(s,runtime,pixels):\n'
+                                    ' pixels.fill(rgb(int(runtime.' + prop + '),0,0))\n'
+                                    'Mark=Sprite(width=1,render=sprite_draw)\n'
+                                    '@init\ndef setup(ctx,runtime):\n ctx.marks=SpriteBatch(Mark,capacity=1)\n ctx.marks.spawn()\n'
+                                    '@render\ndef draw(ctx,runtime,pixels):\n ctx.marks.render(runtime,pixels)\n')
+            self.assertFalse(result.success)
+            self.assertIn('unknown context field or caller argument property', str(result.diagnostics))
 
     def test_opaque_layers_and_crossfades_have_identical_pixels(self):
         self.client.configure({'schema': 'lightvm.config', 'devices': [
@@ -144,6 +190,25 @@ def draw(ctx,runtime,pixels):
         heap = self.client.status_fields(device='lights')['heap']
         for _ in range(10): self.frame(35)
         self.assertEqual(self.client.status_fields(device='lights')['heap'], heap)
+
+    def test_seek_restores_large_owned_payload_across_checkpoint_chunks(self):
+        self.save('seek_array', '''from array import array
+from lightvm import profile,init,render,rgb
+profile("transition")
+@init
+def setup(ctx,runtime):
+ ctx.data=array("i",[0]*300)
+ ctx.data[128]=7
+@render
+def draw(ctx,runtime,pixels):
+ ctx.data[0]+=1
+ ctx.data[128]+=3
+ ctx.data[299]+=5
+ pixels.fill(rgb(ctx.data[0],ctx.data[128],ctx.data[299]+int(runtime.progress*100.0)))
+''')
+        self.client.select_transition('seek_array',device='lights')
+        for p in (35,80,35,1,99,35):
+            self.assertEqual(self.frame(p),bytes((2,13,10+p))*self.count)
 
     def test_replacing_a_stored_name_preserves_the_pinned_active_version(self):
         self.client.select_transition('crossfade', device='lights')

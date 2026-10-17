@@ -175,8 +175,14 @@ retains the last completed physical output; selecting a fresh effect recovers.
 The native owner uses 32-pixel mixing slices, 64-instruction cooperative custom
 program slices and 256-byte state-restore slices. Execution and mixing can yield
 while the scene engines continue advancing. Only the completed front buffers
-are pinned: scene rendering and back-buffer composition continue, and publication
-waits until the captured evaluation finishes. Python transitions coalesce progress
+are pinned: scene rendering and back-buffer composition continue until the back
+buffer is ready. A ready back buffer waits for publication before starting more
+layer renders; animation clocks retain the actual elapsed time. Python programs
+release scene fronts as soon as their RGBA result is committed, allowing source
+publication during final RGB conversion. State checkpoints contain mutable values
+and owned payload, excluding immutable resource descriptors. Completed restore
+and evaluation phases advance within the same bounded scheduler visit.
+Python transitions coalesce progress
 updates to the presentation cadence. A pending physical transfer
 retains its front buffer while another completed result is prepared. Transfer
 failure keeps the last successfully presented snapshot and retries.
