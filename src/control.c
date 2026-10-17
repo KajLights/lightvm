@@ -29,7 +29,7 @@ static bool manifest(const uint8_t *bytes,size_t size,Control *c,Portable *porta
     static const char *const pixel_fields[]={"format",NULL};
     static const char *const param_fields[]={"name","type","default","minimum","maximum",NULL};
     if (size>CONTROL_MANIFEST_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,portable?portable_fields:fields) ||
-        !json_equal(&j,json_get(&j,0,"schema"),portable?(portable->drawing_api?"lightvm.program/7":portable->profile==2?"lightvm.program/6":"lightvm.program/5"):"lightvm.program/3") ||
+        !json_equal(&j,json_get(&j,0,"schema"),portable?(portable->drawing_api==4?"lightvm.program/9":portable->drawing_api==3?"lightvm.program/8":portable->drawing_api?"lightvm.program/7":portable->profile==2?"lightvm.program/6":"lightvm.program/5"):"lightvm.program/3") ||
         !json_u32(&j,json_get(&j,0,"abi"),&abi) || abi!=(portable?4u:CONTROL_ABI_VERSION)) return false;
     if(portable){
         int settings=json_get(&j,0,"settings");

@@ -132,7 +132,7 @@ committed RGBA (or RGB for legacy programs). `scene()` reports ordering,
 generations, opacity, physical frames, composite frames, cumulative compositor
 CPU time and output latency. Per-layer `program_parameters()` includes completed
 renders, cumulative render CPU, native draw CPU, dispatch and resume counts.
-`native_draw_us` measures SDK bindings 18–51; existing bulk fill/copy
+`native_draw_us` measures SDK bindings 18–52 and compiler-generated pixel maps; existing bulk fill/copy
 instructions contribute to total render CPU only.
 Render CPU includes native kernels and excludes time spent servicing peers;
 output latency includes asynchronous transfer wait. These counters have distinct
@@ -140,9 +140,9 @@ denominators: a scene may reuse a layer contribution for several outputs.
 
 ## Management and compatibility
 
-Discovery advertises `scene_api=1`, `native_drawing_api=2`,
+Discovery advertises `scene_api=1`, `native_drawing_api=4`,
 `scene_layer_limit=8`, `layer_pixel_format="rgba8-premul"`, `alpha=true`,
-`composition=true`, schemas 6/7 and `layer/1`. Target-aware compilation checks both
+`composition=true`, schemas 6/7/8/9 and `layer/1`. Target-aware compilation checks both
 profile and schema; old targets reject the new packages. Existing schema 5 RGB
 packages retain their ABI and pixel behavior.
 

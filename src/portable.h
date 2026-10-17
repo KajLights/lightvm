@@ -51,4 +51,5 @@ PbcCall pbc_call(Portable *, unsigned);
 PbcSetting pbc_setting(Portable *, unsigned);
 PbcValue pbc_value(const Portable *, unsigned);
 void pbc_set_value(Portable *,unsigned,PbcValue);
+bool pbc_read_instruction(Portable *,unsigned,uint8_t out[8]);
 #endif

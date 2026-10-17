@@ -22,6 +22,7 @@ FEATURE_NATIVES = {
     'batch_delta': (47,F,(6,I,F),1),
     'image_gradient': (48,0,(6,C,C),0), 'image_colorwheel': (49,0,(6,F,F),0),
     'image_palette': (50,0,(6,6,F,F),0), 'image_point': (51,0,(6,I,C,I),0),
+    'image_draw_wrap': (52,0,(6,6,6,I),0),
 }
 GEOMETRY = ('translate','scale','origin')
 COLOR = ('alpha','brightness','tint','hue','saturation')
@@ -33,6 +34,7 @@ class SpriteCompiler:
         self.pending_batches, self.descriptions = [], {}
         self.sprite_context = None
         self.feature_used = False
+        self.wrap_used = False
         self.style_ref = None
         self.artwork = {}
 
@@ -53,8 +55,14 @@ class SpriteCompiler:
         for name in names:
             if name not in values:
                 if name not in defaults:self.fail(call,'missing argument: '+name)
-                values[name]=ast.Constant(value=defaults[name])
+                values[name]=defaults[name] if isinstance(defaults[name],ast.AST) else ast.Constant(value=defaults[name])
         return values
+
+    def overflow(self, node):
+        if not isinstance(node,ast.Constant) or node.value not in ('clip','wrap'):
+            self.fail(node,'overflow must be clip or wrap')
+        if node.value=='wrap':self.wrap_used=True
+        return 'image_draw_wrap' if node.value=='wrap' else 'image_draw'
 
     def image_declaration(self, target, call, node, module=False):
         name=self.declaration_key(target)
@@ -172,7 +180,7 @@ class SpriteCompiler:
             return self.feature_native('alpha_set' if method=='set_alpha' else 'alpha_multiply',[ref,self.expr(args['value']),start,stop],call)
         if method=='draw':
             self.check_write(ref,call)
-            args=self.arguments(call,('image','transform','color','sampling'),{'transform':None,'color':None,'sampling':'linear'})
+            args=self.arguments(call,('image','transform','color','sampling','overflow'),{'transform':None,'color':None,'sampling':'linear','overflow':'clip'})
             source,source_kind=self.resource(args['image'])
             if source_kind not in (3,12,14,15,16,17):self.fail(call,'draw requires a PixelArray')
             geometry=self.description(None if isinstance(args['transform'],ast.Constant) and args['transform'].value is None else args['transform'],'Transform')
@@ -180,7 +188,7 @@ class SpriteCompiler:
             sampling=args['sampling']
             if not isinstance(sampling,ast.Constant) or sampling.value not in ('nearest','linear'):self.fail(call,'sampling must be nearest or linear')
             style=self.set_style(geometry,color,call)
-            return self.feature_native('image_draw',[ref,source,style,self.literal(int(sampling.value=='linear'))],call)
+            return self.feature_native(self.overflow(args['overflow']),[ref,source,style,self.literal(int(sampling.value=='linear'))],call)
         if method=='copy':
             self.check_write(ref,call);args=self.arguments(call,('source',));src,_=self.resource(args['source'])
             return self.feature_native('image_copy',[ref,src],call)
@@ -268,15 +276,17 @@ class SpriteCompiler:
             self.code[jump][4]=len(self.code)
             return out
         if method=='render':
-            if len(call.args)!=2 or call.keywords or self.capability(call.args[0])!='runtime':self.fail(call,'batch.render(runtime, pixels) expected')
-            dst,kind=self.resource(call.args[1]);self.check_write(dst,call)
+            args=self.arguments(call,('runtime','pixels','overflow'),{'overflow':'clip'})
+            if self.capability(args['runtime'])!='runtime':self.fail(call,'batch.render(runtime, pixels) expected')
+            dst,kind=self.resource(args['pixels']);self.check_write(dst,call)
             if kind not in (3,12,14,15,16,17):self.fail(call,'batch destination must be pixels')
-            jump=self.emit('JMP');self.pending_batches.append((jump,len(self.code),batch,dst,self.inputs['time'],dict(self.env),dict(self.caps),dict(self.inputs),self.output))
+            binding=self.overflow(args['overflow'])
+            jump=self.emit('JMP');self.pending_batches.append((jump,len(self.code),batch,dst,self.inputs['time'],dict(self.env),dict(self.caps),dict(self.inputs),self.output,binding))
             return -1
         self.fail(call,'SpriteBatch supports spawn(), render() and active')
 
     def finish_batches(self):
-        for jump,back,batch,dst,now,env,caps,inputs,output in self.pending_batches:
+        for jump,back,batch,dst,now,env,caps,inputs,output,binding in self.pending_batches:
             if not batch['initialized']:raise CompileError('sprite init needs a spawn call to establish its field types')
             self.env,self.caps,self.inputs,self.output=env,caps,inputs,output
             self.code[jump][4]=len(self.code)
@@ -291,7 +301,7 @@ class SpriteCompiler:
             geometry=[self.sprite_get("__draw_"+k,None) for k in GEOMETRY];color=[self.sprite_get("__draw_"+k,None) for k in COLOR]
             self.sprite_context=None
             style=self.set_style(geometry,color,None)
-            self.feature_native('image_draw',[dst,scratch,style,self.literal(1)],None)
+            self.feature_native(binding,[dst,scratch,style,self.literal(1)],None)
             self.code[skip][4]=len(self.code)
             self.emit('IADD',slot,slot,self.literal(1));self.emit('JMP',imm=head)
             self.code[leave][4]=len(self.code);self.emit('JMP',imm=back)
@@ -304,6 +314,8 @@ class SpriteCompiler:
     def feature_expr(self,node):
         if isinstance(node,ast.Name) and node.id in self.artwork:return self.artwork[node.id]
         if isinstance(node,ast.Attribute):
+            if isinstance(node.value,ast.Name) and node.value.id in self.sprite_definitions and node.attr=='width':
+                return self.literal(self.sprite_definitions[node.value.id]['width'])
             if self.capability(node.value)=='sprite':return self.sprite_get(node.attr,node)
             if node.attr in ('count','active'):
                 try:ref,kind=self.resource(node.value)

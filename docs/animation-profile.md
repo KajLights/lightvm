@@ -8,7 +8,9 @@ The opt-in [`layer/1` profile](composition.md) uses the same callbacks and froze
 settings with transparent RGBA output, native drawing kernels and sprite batches.
 It emits schema `lightvm.program/6` within LBC1/4. The
 [PixelArray and sprite SDK](pixelarray-sprites.md) uses schema `lightvm.program/7`
-and native drawing API 2 with either animation profile. SpriteBatch requires layer/1.
+and native drawing API 2 with either animation profile. Periodic drawing uses
+schema 8 and drawing API 3. [Optimized pixel loops](pixel-maps.md) use schema 9
+and drawing API 4. SpriteBatch requires layer/1.
 
 ```python
 from lightvm import profile, setting, rgb, init, render
@@ -108,7 +110,11 @@ provides `rgb`, `hsv`, `hash01`, `red`, `green`, `blue`, `pico_colorwheel`,
 `hue_degrees` and `colorwheel`. Hue degrees uses the original rounded hue; Rainbow
 converts it into the colorwheel's 255-unit scale.
 
-Helpers are positional, nonrecursive, statically inlined and must return a value
+The [motion and easing libraries](motion.md) compile bundled scalar functions
+into ordinary bytecode. They support explicit imports, named arguments and their
+documented defaults. Plain `assert condition` faults the invocation when false.
+
+User helpers are positional, nonrecursive, statically inlined and must return a value
 on every path. Scalar arguments are copied; ctx/runtime/pixels arguments retain
 access to the caller objects. The subset supports scalar arithmetic, comparisons,
 conditionals, `range(bound)` loops, break/continue, int/float and two-argument
@@ -127,8 +133,10 @@ are instance bindings. Init may write state and use randomness; render may also
 write output. Admission independently validates these rights and signatures.
 
 The compiler emits LBC1/4 and ABI 4. Basic animation/1 uses schema 5; basic
-layer/1 uses schema 6; the PixelArray/sprite extension uses schema 7. Header
-word 80 is zero for older packages and 2 for native drawing API 2; the remaining
+layer/1 uses schema 6; the PixelArray/sprite extension uses schema 7, or schema 8
+with periodic drawing. Optimized pixel loops use schema 9. Header word 80 is zero
+for older packages, 2 for native drawing API 2, 3 for periodic drawing, or 4 for
+compiler-generated pixel maps; the remaining
 three trailing words remain zero. Extended native sites support eight arguments
 in the existing 16-byte record; older sites retain zero in their unused bytes.
 

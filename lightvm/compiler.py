@@ -28,11 +28,13 @@ class Compilation:
         return not self.diagnostics
 
 
-def compile_source(source, filename="<string>", target=None):
+def compile_source(source, filename="<string>", target=None, *, optimize=True):
     try:
         if len(source.encode()) > 65536:
             raise CompileError("source exceeds 64 KiB")
-        bytecode, manifest = PortableCompiler(source).compile()
+        # Older targets execute the same source through the ordinary loop path.
+        bulk = optimize and (target is None or 'lightvm.program/9' in target.get('program_schemas', []))
+        bytecode, manifest = PortableCompiler(source, optimize=bulk).compile()
         if target is not None:
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
@@ -56,8 +58,9 @@ def main():
     parser.add_argument("source", type=Path)
     parser.add_argument("-o", "--output", type=Path, required=True)
     parser.add_argument("--target", type=Path)
+    parser.add_argument("--no-optimize", action="store_true", help="retain ordinary pixel loops for comparison")
     args = parser.parse_args()
-    result = compile_source(args.source.read_text(), str(args.source), json.loads(args.target.read_text()) if args.target else None)
+    result = compile_source(args.source.read_text(), str(args.source), json.loads(args.target.read_text()) if args.target else None, optimize=not args.no_optimize)
     if not result.success:
         for item in result.diagnostics:
             print(f"{item.filename}:{item.line}:{item.column}: {item.message}")

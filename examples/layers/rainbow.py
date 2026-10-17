@@ -1,5 +1,5 @@
-"""The colourwheel is drawn across the output by one bounded native kernel."""
-from lightvm import profile, setting, init, render
+"""A language-defined rainbow; independent pixel calculations compile in bulk."""
+from lightvm import profile, setting, init, render, colorwheel
 
 profile("layer/1")
 
@@ -13,4 +13,6 @@ def setup(ctx, runtime):
 @render
 def draw(ctx, runtime, pixels):
     phase = (runtime.time % ctx.duration) / ctx.duration * 255.0
-    pixels.colorwheel(phase, ctx.scale * 255.0 / runtime.pixel_count)
+    stride = ctx.scale * 255.0 / runtime.pixel_count
+    for i in range(pixels.count):
+        pixels[i] = colorwheel(phase + i * stride)

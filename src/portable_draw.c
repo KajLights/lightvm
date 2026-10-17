@@ -18,12 +18,13 @@ bool pbc_drawing_valid(Portable *p,const PbcCall *site,unsigned rights) {
     PbcResourceSpec first;
     if(!owned(p,site->args[0],&first)) return false;
     unsigned id=site->binding;
+    if(id==52 && p->drawing_api<3)return false;
     if(id>=37&&id<=47) return first.kind==DRAW_BATCH && !first.flags &&
         ((id==37||id==39||id==42||id==43||id==47)?(rights&1u):true);
     if(id==32||id==33) return first.kind==DRAW_STYLE && writable(first,rights);
     if(!image(first.kind)) return false;
     if(id!=27 && !writable(first,rights)) return false;
-    if(id==31||id==35) {
+    if(id==31||id==35||id==52) {
         PbcResourceSpec src;
         if(!owned(p,site->args[1],&src)||!image(src.kind)||((src.flags&1u)&&!(rights&4u)))return false;
     }
@@ -31,9 +32,9 @@ bool pbc_drawing_valid(Portable *p,const PbcCall *site,unsigned rights) {
         PbcResourceSpec src;
         if(!owned(p,site->args[1],&src)||(src.kind!=1&&src.kind!=11))return false;
     }
-    if(id==31||id==36) {
+    if(id==31||id==36||id==52) {
         PbcResourceSpec style;
-        if(!owned(p,site->args[id==31?2:1],&style)||style.kind!=DRAW_STYLE||style.flags)return false;
+        if(!owned(p,site->args[id==36?1:2],&style)||style.kind!=DRAW_STYLE||style.flags)return false;
     }
     return true;
 }
@@ -90,6 +91,21 @@ static bool sample(Portable *p,PbcResource *src,int index,uint8_t v[5]) {
     if(index<0||(unsigned)index>=src->count)return true;
     if(!pbc_image_read(p,src,(unsigned)index,v))return false;
     to_premul(src->kind,v);return true;
+}
+/* Add a filtered source sample before rounding. Periodic copies meet at the
+ * seam, so accumulate their premultiplied weights and blend exactly once. */
+static bool sample_add(Portable *p,PbcResource *src,double x,bool linear,float sum[5]) {
+    if(x < -1.0 || x > (double)src->count)return true;
+    uint8_t left[5],right[5];
+    if(!linear) {
+        if(!sample(p,src,(int)floor(x+0.5),left))return false;
+        for(unsigned c=0;c<5;c++)sum[c]+=left[c];
+    }else{
+        int base=(int)floor(x);float mix=(float)(x-floor(x));
+        if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
+        for(unsigned c=0;c<5;c++)sum[c]+=left[c]*(1-mix)+right[c]*mix;
+    }
+    return true;
 }
 static void more(Portable *p,unsigned end,unsigned stop) { p->bulk=end<stop?end:0;p->native_pending=end<stop; }
 bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue *result) {
@@ -161,10 +177,19 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
     if(id==36){start=a[2].u;stop=a[3].u;}
     if(start>stop||stop>r->count)return false;
     PbcResource *src=NULL,*style=NULL;
-    if(id==31||id==35){src=resource(p,a[1].u);if(!src||!image(src->kind))return false;if(src==r){p->bulk=0;return id==35;}}
+    if(id==31||id==35||id==52){src=resource(p,a[1].u);if(!src||!image(src->kind))return false;if(src==r){p->bulk=0;return id==35;}}
     if(id==35&&(src->count!=r->count||src->kind!=r->kind))return false;
-    if(id==31||id==36){style=resource(p,a[id==31?2:1].u);if(!style||style->kind!=DRAW_STYLE||!style->data)return false;}
-    if(id==31&&a[3].u>1)return false;
+    if(id==31||id==36||id==52){style=resource(p,a[id==36?1:2].u);if(!style||style->kind!=DRAW_STYLE||!style->data)return false;}
+    if((id==31||id==52)&&a[3].u>1)return false;
+    double period=0,wrapped_translate=0,wrapped_origin=0;
+    if(id==52){
+        DrawStyle *s=(DrawStyle *)style->data;
+        if(!isfinite(s->translate)||!isfinite(s->origin)||!isfinite(s->scale)||s->scale==0)return false;
+        if(!r->count || (double)src->count*fabs((double)s->scale)>(double)r->count)return false;
+        period=(double)r->count/fabs((double)s->scale);
+        wrapped_translate=fmod((double)s->translate,(double)r->count);
+        wrapped_origin=fmod((double)s->origin,period);
+    }
     if(id==31){
         DrawStyle *s=(DrawStyle *)style->data;
         float left=s->translate+(-1-s->origin)*s->scale,right=s->translate+((float)src->count-s->origin)*s->scale;
@@ -211,18 +236,26 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
             from_premul(r->kind,v);
         }else if(id==35){if(!pbc_image_read(p,src,i,v))return false;}
         else if(id==36)color_transform(v,(DrawStyle *)style->data,r->kind==DRAW_RGBA);
-        else if(id==31) {
+        else if(id==31||id==52) {
             DrawStyle *s=(DrawStyle *)style->data;
-            float x=((float)i-s->translate)/s->scale+s->origin;
-            if(!isfinite(x))return false;
-            if(x < -1 || x > (float)src->count)continue;
             uint8_t left[5],right[5];
-            int base=(int)floorf(x);
-            if(a[3].u==0){if(!sample(p,src,(int)floorf(x+0.5f),left))return false;}
-            else {
-                if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
-                float mix=x-floorf(x);
-                for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(left[c]*(1-mix)+right[c]*mix);
+            if(id==52){
+                double x=fmod(((double)i-wrapped_translate)/(double)s->scale+wrapped_origin,period);
+                if(x<0)x+=period;
+                float sum[5]={0};
+                if(!sample_add(p,src,x,a[3].u!=0,sum)||!sample_add(p,src,x-period,a[3].u!=0,sum))return false;
+                for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(sum[c]);
+            }else{
+                float x=((float)i-s->translate)/s->scale+s->origin;
+                if(!isfinite(x))return false;
+                if(x < -1 || x > (float)src->count)continue;
+                int base=(int)floorf(x);
+                if(a[3].u==0){if(!sample(p,src,(int)floorf(x+0.5f),left))return false;}
+                else {
+                    if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
+                    float mix=x-floorf(x);
+                    for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(left[c]*(1-mix)+right[c]*mix);
+                }
             }
             color_transform(left,s,true);to_premul(r->kind,v);
             for(unsigned c=0;c<5;c++)v[c]=(uint8_t)(left[c]+draw_mul255(v[c],255-left[4]));

@@ -23,6 +23,12 @@ adds shared artwork, user-defined sprite callbacks, optional channels and native
 geometry/colour transforms. Multiple languages and a broader component system
 remain future work.
 
+[Motion helpers](docs/motion.md) add compiled easing, bounce progress, fitting
+bounds and periodic drawing. The [15-pixel rainbow sprite](examples/layers/rainbow_sprite.py)
+cycles hue in 10 seconds and traverses the strip in 20 seconds per direction.
+The compiler accelerates [independent pixel loops](docs/pixel-maps.md) through a
+generic bulk backend; the layer rainbow no longer needs a specialized fill call.
+
 ## Repository layout
 
 - [`docs/`](docs/README.md): current guides and API references, with design

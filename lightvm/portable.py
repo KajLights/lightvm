@@ -7,12 +7,13 @@ import ast
 import json
 import math
 import struct
+from pathlib import Path
 from .sprite_compiler import SpriteCompiler, FEATURE_NATIVES
 from .bytecode import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE, FRAME, PARAM
 
 STAMP, REF, SETTING = 5, 6, 6
 P_OP = {**OP, 'LOAD_ELEM': 33, 'STORE_ELEM': 34, 'LENGTH': 35,
-        'RESOURCE_FILL': 36, 'RESOURCE_COPY': 37, 'NATIVE': 38}
+        'RESOURCE_FILL': 36, 'RESOURCE_COPY': 37, 'NATIVE': 38, 'PIXEL_MAP': 39}
 # name: binding ID, result type, argument types, required effect permissions
 NATIVES = {
     'random': (3, F, (), 8), 'randrange': (4, I, (I, I, I), 8),
@@ -21,6 +22,7 @@ NATIVES = {
     'green': (9, I, (C,), 0), 'blue': (10, I, (C,), 0),
     'colorwheel': (11, C, (F,), 0), 'pico_colorwheel': (12, C, (I,), 0),
     'hue_degrees': (13, F, (C,), 0),
+    'require': (14, 0, (B,), 0),
     'color_int': (15, I, (C,), 0), 'int_color': (16, C, (I,), 0),
     'randint': (17, I, (I, I), 8),
     'rgba_fill': (18, 0, (REF, C, I), 4),
@@ -38,11 +40,13 @@ ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
 PUBLIC = {'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
+LIBRARIES = {'lightvm.motion', 'lightvm.easing'}
 
 
 class PortableCompiler(SpriteCompiler, Compiler):
-    def __init__(self, source):
+    def __init__(self, source, optimize=True):
         super().__init__(source, fuse=False)
+        self.optimize, self.map_used = optimize, False
         # Runtime arguments are flattened into typed input registers. Context
         # fields and array bindings belong to this instance, never module globals.
         self.regs, self.names = [], {}
@@ -68,6 +72,29 @@ class PortableCompiler(SpriteCompiler, Compiler):
         if isinstance(node, ast.Attribute) and self.capability(node.value) == 'ctx':
             return 'ctx.' + node.attr
         return None
+
+    def import_library(self, node):
+        """Parse only bundled, trusted sources; guest imports never execute."""
+        module = node.module
+        tree = ast.parse(Path(__file__).with_name(module.split('.')[-1] + '.py').read_text())
+        functions = {fn.name: fn for fn in tree.body if isinstance(fn, ast.FunctionDef)}
+
+        class Qualify(ast.NodeTransformer):
+            def visit_Call(self, call):
+                self.generic_visit(call)
+                if isinstance(call.func, ast.Name) and call.func.id in functions:
+                    call.func.id = module + '.' + call.func.id
+                elif isinstance(call.func, ast.Name) and call.func.id in ('min','max','float','int'):
+                    call.func.id = 'lightvm.builtin.' + call.func.id
+                return call
+
+        for name, fn in functions.items():
+            self.helpers[module + '.' + name] = Qualify().visit(fn)
+        for item in node.names:
+            name = item.asname or item.name
+            if item.name.startswith('_') or item.name not in functions or name in self.imports or name in self.helpers or name in self.artwork or name in self.sprite_definitions:
+                self.fail(node, 'unknown or duplicate library helper: ' + name)
+            self.imports[name] = module + '.' + item.name
 
     def truth(self, reg):
         if self.typ(reg) == B: return reg
@@ -111,6 +138,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
             return self.declarative(ast.Constant(value=-node.operand.value))
         elif isinstance(node, ast.Attribute) and self.capability(node.value) == 'runtime' and node.attr == 'pixel_count':
             value = (1, I, 0, 0, 0)
+        elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id in self.sprite_definitions and node.attr == 'width':
+            return self.declarative(ast.Constant(value=self.sprite_definitions[node.value.id]['width']))
         elif self.declaration_key(node) in self.declarations:
             return self.declarations[self.declaration_key(node)]
         elif isinstance(node, ast.Call) and getattr(node.func, 'id', '') == 'rgb':
@@ -171,6 +200,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
     def expr(self, n):
         feature = self.feature_expr(n)
         if feature is not None: return feature
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id.startswith('lightvm.builtin.'):
+            return super().expr(ast.Call(func=ast.Name(id=n.func.id.rsplit('.',1)[1]), args=n.args, keywords=n.keywords))
         if isinstance(n, ast.Attribute):
             cap = self.capability(n.value)
             if cap == 'ctx' and n.attr in self.fields: return self.fields[n.attr]
@@ -256,16 +287,22 @@ class PortableCompiler(SpriteCompiler, Compiler):
             if imported == 'math.sin' or imported in NATIVES:
                 if n.keywords: self.fail(n, 'helper takes positional arguments')
                 return self.native('sin' if imported == 'math.sin' else imported, [self.expr(a) for a in n.args], n)
+            if name not in self.helpers and imported in self.helpers:
+                name = imported
             if name in self.helpers:
-                if n.keywords or name in self.call_stack or len(self.call_stack) >= 8: self.fail(n, 'bounded nonrecursive positional helper required')
+                library = name.startswith('lightvm.')
+                if (n.keywords and not library) or name in self.call_stack or len(self.call_stack) >= 8: self.fail(n, 'bounded nonrecursive positional helper required')
                 fn = self.helpers[name]
-                if len(n.args) != len(fn.args.args): self.fail(n, 'helper argument count mismatch')
+                names = tuple(arg.arg for arg in fn.args.args)
+                defaults = dict(zip(names[len(names)-len(fn.args.defaults):], fn.args.defaults)) if fn.args.defaults else {}
+                values = self.arguments(n, names, defaults)
                 def returns(nodes):
                     return any(isinstance(item, ast.Return) and item.value is not None or
                                isinstance(item, ast.If) and returns(item.body) and returns(item.orelse)
                                for item in nodes)
                 if not returns(fn.body): self.fail(fn, 'helper must return a value on every path')
-                args = [(self.capability(a), None) if self.capability(a) else (None, self.expr(a)) for a in n.args]
+                evaluated = {key: (self.capability(a), None) if self.capability(a) else (None, self.expr(a)) for key,a in values.items()}
+                args = [evaluated[key] for key in names]
                 previous_env, previous_writes, previous_loops, previous_caps = self.env, self.writes, self.loop_stack, self.caps
                 self.env = {}; self.loop_stack = []; self.caps = {}
                 for formal, (cap, actual) in zip(fn.args.args, args):
@@ -411,7 +448,10 @@ class PortableCompiler(SpriteCompiler, Compiler):
     def statements(self, nodes):
         for n in nodes:
             if isinstance(n, ast.Pass) or isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str): continue
-            if isinstance(n, ast.Assign) and len(n.targets) == 1:
+            if isinstance(n, ast.Assert):
+                if n.msg is not None: self.fail(n, 'assert messages are unsupported')
+                self.native('require', [self.truth(self.expr(n.test))], n)
+            elif isinstance(n, ast.Assign) and len(n.targets) == 1:
                 if self.feature_assignment(n.targets[0], n.value, n): continue
                 if isinstance(n.value, ast.Call) and self.imports.get(getattr(n.value.func, 'id', '')) in ('setting', 'array.array', 'SpriteBatch', 'PixelArray'):
                     self.declaration(n.targets[0], n.value, n)
@@ -456,6 +496,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 for j in continues: self.code[j][4] = len(self.code)
                 self.emit('IADD', loop, loop, self.literal(1)); self.emit('JMP', imm=head)
                 for j in breaks + [end]: self.code[j][4] = len(self.code)
+                if self.optimize and not breaks and not continues:
+                    self.optimize_pixel_loop(head, loop, bound)
             elif isinstance(n, (ast.Break, ast.Continue)):
                 if not self.loop_stack: self.fail(n, 'loop control outside loop')
                 self.loop_stack[-1][isinstance(n, ast.Continue)].append(self.emit('JMP'))
@@ -480,6 +522,42 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 self.declarations = {k:v for k,v in self.declarations.items() if body_decl.get(k) == v}
             else: self.fail(n, 'unsupported statement in portable profile')
 
+    def optimize_pixel_loop(self, head, index, bound):
+        """Recognize independent maps after normal typing/helper inlining.
+
+        Keep unsafe/unsupported loops unchanged. The body retains its existing
+        typed operations, including f32 rounding and scalar colour functions.
+        """
+        body = self.code[head+2:-2]
+        if not 1 <= len(body) <= 32:return
+        unary = {P_OP[n] for n in ('MOV','ITOF','FTOI','LENGTH')}
+        binary = {P_OP[n] for n in ('IADD','ISUB','IMUL','IDIV','IMOD','FADD','FSUB','FMUL','FDIV','FMOD','ILT','FLT','EQ','IMIN','IMAX','FMIN','FMAX','HASH')}
+        defined, captures, stores = {index}, set(), []
+        for offset, (op,a,b,c,d) in enumerate(body):
+            if op in unary:reads=[b]
+            elif op in binary:reads=[b,c]
+            elif op in (P_OP['RGB'],P_OP['HSV']):reads=[b,c,d]
+            elif op==P_OP['NATIVE']:
+                binding,reads=self.calls[d]
+                if binding not in (7,8,9,10,11):return
+            elif op==P_OP['JMP'] and d==head+3+offset:continue
+            elif op==P_OP['STORE_ELEM']:
+                if b!=index or self.resources[self.regs[a][2]][0] not in (3,12,14,15,16,17):return
+                stores.append(a);reads=[c]
+            else:return
+            captures.update(r for r in reads if r not in defined)
+            if op!=P_OP['STORE_ELEM']:
+                if self.regs[a][1]!=LOCAL or a==index or a==bound:return
+                defined.add(a)
+        if len(stores)!=1 or body[-1][0]!=P_OP['STORE_ELEM'] or captures & (defined-{index}):return
+        # Removing loop control changes only this just-emitted region. Helpers
+        # can contain an unconditional return jump to the following instruction.
+        for ins in body:
+            if ins[0]==P_OP['JMP']:ins[4]-=1
+        end=head+1+len(body)
+        self.code[head:]=[[P_OP['PIXEL_MAP'],stores[0],index,bound,end]]+body
+        self.map_used=True
+
     def compile(self):
         marked = False
         self.env = {}
@@ -489,6 +567,9 @@ class PortableCompiler(SpriteCompiler, Compiler):
                     if item.name not in ('random', 'math'): self.fail(n, 'only random and math module imports supported')
                     self.imports[item.asname or item.name] = item.name
             elif isinstance(n, ast.ImportFrom):
+                if not n.level and n.module in LIBRARIES:
+                    self.import_library(n)
+                    continue
                 allowed = PUBLIC if n.module == 'lightvm' else {'array'} if n.module == 'array' else {'sin', 'pi'} if n.module == 'math' else {'seed', 'random', 'randint', 'randrange'} if n.module == 'random' else set()
                 if n.level or any(a.name not in allowed or a.asname for a in n.names): self.fail(n, 'unsupported import; animation decorators are @init and @render')
                 for item in n.names: self.imports[item.name] = item.name if n.module == 'lightvm' else n.module + '.' + item.name
@@ -534,11 +615,12 @@ class PortableCompiler(SpriteCompiler, Compiler):
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
         layer = self.profile_name == 'layer/1'
-        manifest = {'schema':'lightvm.program/7' if self.feature_used else 'lightvm.program/6' if layer else 'lightvm.program/5','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul' if layer else 'rgb8'},'parameters':self.params,
+        drawing_api = 4 if self.map_used else 3 if self.wrap_used else 2 if self.feature_used else 0
+        manifest = {'schema':'lightvm.program/9' if self.map_used else 'lightvm.program/8' if self.wrap_used else 'lightvm.program/7' if self.feature_used else 'lightvm.program/6' if layer else 'lightvm.program/5','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul' if layer else 'rgb8'},'parameters':self.params,
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
-                             0, 1, 0, 0, 0, 0, 0, 0, 2 if layer else 1, len(metadata), 2 if self.feature_used else 0, 0, 0, 0)
+                             0, 1, 0, 0, 0, 0, 0, 0, 2 if layer else 1, len(metadata), drawing_api, 0, 0, 0)
         raw = header + b''.join(struct.pack('<BBHI',t,role,0,v) for t,role,v in self.regs)
         raw += b''.join(struct.pack('<BBBBI',*ins) for ins in self.code)
         raw += b''.join(struct.pack('<I',c) for c in self.table)
@@ -565,11 +647,13 @@ class PortableCompiler(SpriteCompiler, Compiler):
             if op == P_OP['STORE_ELEM']: return [], [1,2,3]
             if op == P_OP['RESOURCE_FILL']: return [], [1,2,3,4]
             if op == P_OP['RESOURCE_COPY']: return [], [1,2]
+            if op == P_OP['PIXEL_MAP']: return [2], [1,3]
             if op in (P_OP['RETURN'],P_OP['JZ']): return [], [1]
             if op == P_OP['NATIVE']: return [1] if a != -1 else [], []
             return [], []
         graph = [set() for _ in self.regs]
         for start,end,*_ in functions:
+            map_tails = {ins[4]-1:pc for pc,ins in enumerate(self.code[start:end],start) if ins[0]==P_OP['PIXEL_MAP']}
             live = [set() for _ in range(end-start)]
             changed = True
             while changed:
@@ -579,6 +663,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
                     following = [] if ins[0] in (P_OP['END'],P_OP['RETURN']) else [pc+1] if pc+1 < end else []
                     if ins[0] == P_OP['JMP']: following = [ins[4]]
                     elif ins[0] == P_OP['JZ']: following += [ins[4]]
+                    elif ins[0] == P_OP['PIXEL_MAP']: following += [ins[4]]
+                    if pc in map_tails:following += [map_tails[pc]]
                     after = set().union(*(live[j-start] for j in following))
                     defined = {ins[k] for k in defs}; used = {ins[k] for k in uses}
                     if ins[0] == P_OP['NATIVE']: used.update(self.calls[ins[4]][1])

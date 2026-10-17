@@ -1,0 +1,8 @@
+{
+  "schema": "lightvm.scene/1",
+  "layers": [
+    {"id": "rainbow", "procedure": "rainbow_sprite", "settings": {
+      "color_duration": 10.0, "travel_duration": 20.0
+    }}
+  ]
+}

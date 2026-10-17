@@ -4,6 +4,11 @@ import struct
 from bytecode_fixtures import program
 prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation/1")\n'
 fixtures={
+ 'pixel_map_lbc':program(prefix+'''@render
+def draw(ctx,runtime,pixels):
+ for i in range(pixels.count):
+  pixels[i]=rgb(i%255,0,0)
+'''),
  'delta_lbc':program(prefix+'''@init
 def setup(ctx, runtime): ctx.elapsed=0.0
 @render

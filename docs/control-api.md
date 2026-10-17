@@ -10,7 +10,9 @@ The [`layer/1` extension](composition.md) adds schema `lightvm.program/6`, nativ
 drawing and offscreen RGBA output. Scenes own physical presentation; existing
 RGB programs remain usable as opaque layers. The
 [PixelArray/sprite extension](pixelarray-sprites.md) uses schema
-`lightvm.program/7` and advertises `native_drawing_api=2`.
+`lightvm.program/7`. Periodic drawing uses `lightvm.program/8`; firmware advertises
+`native_drawing_api=4`. Compiler-generated pixel maps use `lightvm.program/9`;
+older drawing API 2/3 packages remain accepted.
 
 ```sh
 python -m lightvm.compiler examples/animations/rainbow.py -o build/examples/rainbow.lbc

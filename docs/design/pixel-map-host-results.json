@@ -1,0 +1,383 @@
+{
+  "timestamp_utc": "2026-10-16T16:56:33.589877+00:00",
+  "process": "/Users/kws/work/kajlights/lightvm/build/composition-host/lightvm",
+  "executable_sha256": "db4126d546e5bb222b1f995259c8e611e953e55a944d3e5cda0d3b2c8d016306",
+  "pixels": 200,
+  "frames_per_window": 300,
+  "rounds": 7,
+  "timing": "engine render_total_us deltas / render_count deltas; host CPU, not hardware fps",
+  "variants": {
+    "rainbow/native": {
+      "bytecode_bytes": 767,
+      "schema": "lightvm.program/6",
+      "source_sha256": "4d225726a0686e331b3a0b5694cf790226812a721055caa90f7c304b4ac5217c",
+      "windows": [
+        {
+          "render_us_per_frame": 5.766666666666667,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.8066666666666666,
+          "heap_bytes": 6274
+        },
+        {
+          "render_us_per_frame": 5.743333333333333,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.7433333333333333,
+          "heap_bytes": 6274
+        },
+        {
+          "render_us_per_frame": 5.756666666666667,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.7466666666666667,
+          "heap_bytes": 6274
+        },
+        {
+          "render_us_per_frame": 5.7,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.7,
+          "heap_bytes": 6274
+        },
+        {
+          "render_us_per_frame": 5.713333333333333,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.7433333333333333,
+          "heap_bytes": 6274
+        },
+        {
+          "render_us_per_frame": 5.713333333333333,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.7066666666666667,
+          "heap_bytes": 6274
+        },
+        {
+          "render_us_per_frame": 5.753333333333333,
+          "dispatches_per_frame": 15.0,
+          "native_us_per_frame": 0.7133333333333334,
+          "heap_bytes": 6274
+        }
+      ],
+      "render_us_per_frame": 5.743333333333333,
+      "dispatches_per_frame": 15.0,
+      "native_us_per_frame": 0.7433333333333333,
+      "heap_bytes": 6274
+    },
+    "rainbow/scalar": {
+      "bytecode_bytes": 903,
+      "schema": "lightvm.program/6",
+      "source_sha256": "4cb6ee9d9bba19473a1c119ca08c26af3273cbb7a98ba2ff49b4b812ba479a96",
+      "windows": [
+        {
+          "render_us_per_frame": 229.00666666666666,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 234.25666666666666,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 232.75666666666666,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 231.17666666666668,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 233.77666666666667,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 233.98,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 232.27,
+          "dispatches_per_frame": 1813.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6308
+        }
+      ],
+      "render_us_per_frame": 232.75666666666666,
+      "dispatches_per_frame": 1813.0,
+      "native_us_per_frame": 0.0,
+      "heap_bytes": 6308
+    },
+    "rainbow/bulk": {
+      "bytecode_bytes": 879,
+      "schema": "lightvm.program/9",
+      "source_sha256": "4cb6ee9d9bba19473a1c119ca08c26af3273cbb7a98ba2ff49b4b812ba479a96",
+      "windows": [
+        {
+          "render_us_per_frame": 8.58,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.426666666666667,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 8.6,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.656666666666666,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 8.496666666666666,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.56,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 8.523333333333333,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.513333333333334,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 8.56,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.596666666666667,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 8.586666666666666,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.743333333333333,
+          "heap_bytes": 6308
+        },
+        {
+          "render_us_per_frame": 8.736666666666666,
+          "dispatches_per_frame": 18.0,
+          "native_us_per_frame": 5.71,
+          "heap_bytes": 6308
+        }
+      ],
+      "render_us_per_frame": 8.58,
+      "dispatches_per_frame": 18.0,
+      "native_us_per_frame": 5.596666666666667,
+      "heap_bytes": 6308
+    },
+    "nonlinear/scalar": {
+      "bytecode_bytes": 635,
+      "schema": "lightvm.program/6",
+      "source_sha256": "a7d3f69a2dfb403d37240655eb742ac2ef1c92e5ab3dcc252b4d8ee36d00afc2",
+      "windows": [
+        {
+          "render_us_per_frame": 295.88,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 316.3,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 300.37666666666667,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 300.25,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 298.81,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 298.13,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 297.67,
+          "dispatches_per_frame": 2807.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 6300
+        }
+      ],
+      "render_us_per_frame": 298.81,
+      "dispatches_per_frame": 2807.0,
+      "native_us_per_frame": 0.0,
+      "heap_bytes": 6300
+    },
+    "nonlinear/bulk": {
+      "bytecode_bytes": 611,
+      "schema": "lightvm.program/9",
+      "source_sha256": "a7d3f69a2dfb403d37240655eb742ac2ef1c92e5ab3dcc252b4d8ee36d00afc2",
+      "windows": [
+        {
+          "render_us_per_frame": 11.863333333333333,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 8.843333333333334,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 12.61,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 9.253333333333334,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 11.95,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 8.796666666666667,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 11.903333333333334,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 8.77,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 11.946666666666667,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 8.78,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 11.966666666666667,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 8.76,
+          "heap_bytes": 6300
+        },
+        {
+          "render_us_per_frame": 11.866666666666667,
+          "dispatches_per_frame": 12.0,
+          "native_us_per_frame": 8.643333333333333,
+          "heap_bytes": 6300
+        }
+      ],
+      "render_us_per_frame": 11.946666666666667,
+      "dispatches_per_frame": 12.0,
+      "native_us_per_frame": 8.78,
+      "heap_bytes": 6300
+    },
+    "sprite/scalar": {
+      "bytecode_bytes": 3831,
+      "schema": "lightvm.program/7",
+      "source_sha256": "f3cd0d8510349a0d7e08969e48f15e559df54d4fa6012957d5947de880cd238e",
+      "windows": [
+        {
+          "render_us_per_frame": 71.88,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 12.296666666666667,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 75.68,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 13.37,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 71.73,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 12.886666666666667,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 72.14333333333333,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 12.62,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 72.09333333333333,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 12.676666666666666,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 72.57,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 12.823333333333334,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 74.21666666666667,
+          "dispatches_per_frame": 236.0,
+          "native_us_per_frame": 12.966666666666667,
+          "heap_bytes": 6714
+        }
+      ],
+      "render_us_per_frame": 72.14333333333333,
+      "dispatches_per_frame": 236.0,
+      "native_us_per_frame": 12.823333333333334,
+      "heap_bytes": 6714
+    },
+    "sprite/bulk": {
+      "bytecode_bytes": 3807,
+      "schema": "lightvm.program/9",
+      "source_sha256": "f3cd0d8510349a0d7e08969e48f15e559df54d4fa6012957d5947de880cd238e",
+      "windows": [
+        {
+          "render_us_per_frame": 51.64333333333333,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 13.803333333333333,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 52.96333333333333,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 14.283333333333333,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 51.513333333333335,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 13.56,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 52.376666666666665,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 13.78,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 52.22,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 13.59,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 52.78,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 13.923333333333334,
+          "heap_bytes": 6714
+        },
+        {
+          "render_us_per_frame": 52.7,
+          "dispatches_per_frame": 85.0,
+          "native_us_per_frame": 13.883333333333333,
+          "heap_bytes": 6714
+        }
+      ],
+      "render_us_per_frame": 52.376666666666665,
+      "dispatches_per_frame": 85.0,
+      "native_us_per_frame": 13.803333333333333,
+      "heap_bytes": 6714
+    }
+  },
+  "pixel_equality": "exact at all four timestamps within each workload family"
+}

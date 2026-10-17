@@ -4,13 +4,14 @@
 #include "vm_allocator.h"
 #include "draw.h"
 #include "portable_draw.h"
+#include "portable_map.h"
 #include <math.h>
 #include <limits.h>
 #include <string.h>
 
 /* Opcodes 0..32 retain their numeric assignments, but v4 functions return to
  * their native caller; profile scheduling never lives in the interpreter. */
-enum { P_STAMP=5,P_REF=6,P_SETTING=6,P_LOAD=33,P_STORE,P_LEN,P_FILL,P_COPY,P_NATIVE };
+enum { P_STAMP=5,P_REF=6,P_SETTING=6,P_LOAD=33,P_STORE,P_LEN,P_FILL,P_COPY,P_NATIVE,P_MAP };
 enum { WRITE_STATE=1,WRITE_FRAME=2,WRITE_OUTPUT=4,USE_RNG=8 };
 typedef struct { uint8_t result,argc,args[8],rights; } NativeSignature;
 static const NativeSignature natives[]={
@@ -56,6 +57,7 @@ static const NativeSignature natives[]={
     {0,3,{P_REF,T_FLOAT,T_FLOAT},0},
     {0,4,{P_REF,P_REF,T_FLOAT,T_FLOAT},0},
     {0,4,{P_REF,T_INT,T_COLOR,T_INT},0},
+    {0,4,{P_REF,P_REF,P_REF,T_INT},0}, /* 52: periodic destination drawing */
 };
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}
@@ -95,6 +97,7 @@ static bool instruction(Portable *p,unsigned pc,uint8_t out[8]){
     }
     memcpy(out,p->cache+(offset-p->cache_offset),8);return true;
 }
+bool pbc_read_instruction(Portable *p,unsigned pc,uint8_t out[8]){return pc<p->ncode&&instruction(p,pc,out);}
 static unsigned element_type(unsigned kind){return kind==7||kind==8||kind==11?T_INT:kind==10||draw_channels(kind)?T_COLOR:kind;}
 static unsigned element_size(unsigned kind){
     if(kind>=DRAW_IMAGE_RGB&&kind<=DRAW_IMAGE_RGBWA)return draw_stride(kind);
@@ -123,6 +126,12 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     if(op==P_STORE){int id=resource_id(p,a);return resource_write(p,a,fn->rights)&&bt==T_INT&&ct==element_type(pbc_spec((Portable*)p,id).kind)&&!d;}
     if(op==P_FILL){int id=resource_id(p,a);return resource_write(p,a,fn->rights)&&bt==element_type(pbc_spec((Portable*)p,id).kind)&&ct==T_INT&&pbc_type(p,d)==T_INT;}
     if(op==P_COPY){int x=resource_id(p,a),y=resource_id(p,b);return resource_write(p,a,fn->rights)&&y>=0&&(!(pbc_spec((Portable*)p,y).flags&1u)||(fn->rights&WRITE_OUTPUT))&&pbc_spec((Portable*)p,x).kind==(pbc_spec((Portable*)p,y).kind==10?3:pbc_spec((Portable*)p,y).kind)&&!c&&!d;}
+    if(op==P_MAP){
+        int id=resource_id(p,a);
+        return p->drawing_api>=4&&id>=0&&draw_channels(pbc_spec(p,(unsigned)id).kind)&&resource_write(p,a,fn->rights)&&
+            bt==T_INT&&ct==T_INT&&pbc_role(p,b)==R_LOCAL&&d>pc+1&&d<fn->end&&
+            pbc_map_valid(p,pc+1,d,a,b,c);
+    }
     if(op==P_NATIVE){
         if(b||c||d>=p->ncalls)return false;
         PbcCall site_value=pbc_call(p,d);const PbcCall *site=&site_value;if(!site->binding||site->binding>=sizeof(natives)/sizeof(*natives))return false;
@@ -213,7 +222,7 @@ const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     for(unsigned n=84;n<96;n+=4)if(lbc_u32(h+n))return "reserved portable header field";
     Portable *p=demo_calloc(1,sizeof(*p));if(!p)return "portable context exceeds memory budget";
     p->read=read;p->context=context;p->size=(uint32_t)size;p->drawing_api=lbc_u32(h+80);
-    if(p->drawing_api&&p->drawing_api!=2){pbc_destroy(p);return "unsupported drawing API";}
+    if(p->drawing_api&&p->drawing_api!=2&&p->drawing_api!=3&&p->drawing_api!=4){pbc_destroy(p);return "unsupported drawing API";}
     p->nregs=lbc_u32(h+8);p->ncode=lbc_u32(h+12);p->ncolors=lbc_u32(h+16);
     p->nfunctions=lbc_u32(h+20);p->nresources=lbc_u32(h+24);p->nexpressions=lbc_u32(h+28);
     p->ncalls=lbc_u32(h+32);p->nsettings=lbc_u32(h+36);
@@ -649,6 +658,13 @@ int pbc_resume(Portable *p,unsigned quota){
             if(end<dst->count){p->bulk=end;p->pc--;}else p->bulk=0;break;
         }
         case P_NATIVE:{PbcValue result={0};PbcCall site=pbc_call(p,d);p->native_pending=false;if(!native_call(p,&site,&result))goto fault;if(p->native_pending){p->pc--;writes=false;}else if(a!=255)r[0]=result;else writes=false;break;}
+        case P_MAP:{
+            writes=false;p->native_pending=false;uint64_t started=platform_time_us();
+            bool ok=pbc_map_run(p,p->pc,d,a,b,c);p->native_draw_us+=platform_time_us()-started;
+            if(!ok)goto fault;
+            if(p->native_pending)p->pc--;else p->pc=d;
+            break;
+        }
         default:goto fault;
         }
         if(writes)pbc_set_value(p,a,r[0]);

@@ -29,6 +29,18 @@ static void portable_contract(void){
     CHECK(pbc_invoke(p,0,NULL,0));portable_finish(p,1);CHECK(p->result.i==42);
     pbc_destroy(p);CHECK(vm_heap_used()==0);
 
+    // Bulk pixel maps resume with a one-dispatch quota, without allocations.
+    uint8_t map_bytes[67*3]={0};PixelBuffer map_canvas={.rgb=map_bytes,.count=67};
+    Capture map_reply={0};static VmInstance map_vm;
+    portable_load(&map_vm,&map_canvas,&map_reply,pixel_map_lbc,sizeof(pixel_map_lbc));
+    p=map_vm.portable;unsigned map_allocations=allocations;
+    uint64_t map_dispatches=p->dispatch_count;
+    PbcValue map_args[3]={{.i=67},{.f=1},{.f=1}};
+    deny_allocation=true;CHECK(pbc_invoke(p,p->entries[1],map_args,3));portable_finish(p,1);deny_allocation=false;
+    CHECK(allocations==map_allocations&&p->dispatch_count-map_dispatches<32);
+    for(unsigned i=0;i<67;i++)CHECK(p->resources[0].data[i*3]==i&&p->resources[0].data[i*3+1]==0);
+    vm_destroy(&map_vm);CHECK(vm_heap_used()==0);
+
     uint8_t canvas_bytes[9]={0};PixelBuffer canvas={.rgb=canvas_bytes,.count=3};
     Capture reply={.marker=0x12345678u};static VmInstance vm;
     portable_load(&vm,&canvas,&reply,delta_lbc,sizeof(delta_lbc));p=vm.portable;

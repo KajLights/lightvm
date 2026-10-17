@@ -255,7 +255,7 @@ def draw(ctx,runtime,pixels):
  pixels.draw(ART)
 ''')
         target=self.client.describe()
-        self.assertEqual(target['native_drawing_api'],2)
+        self.assertEqual(target['native_drawing_api'],4)
         self.assertEqual(result.manifest['schema'],'lightvm.program/7')
         old={**target,'program_schemas':['lightvm.program/6']}
         self.assertFalse(compile_source(PREFIX+'@init\ndef setup(ctx,runtime):\n ctx.image=PixelArray(1)\n@render\ndef draw(ctx,runtime,pixels): pass\n',target=old).success)

@@ -2,8 +2,9 @@
 
 The Python frontend parses these declarations without executing Python source.
 Programs using them emit `lightvm.program/7`, LBC1/4, execution ABI 4 and drawing
-API 2. Target-aware compilation rejects targets that do not advertise schema 7.
-Existing schema 5/6 packages remain loadable, including the original stored
+API 2. Wrapped drawing emits schema 8 and drawing API 3. Optimized pixel loops
+emit schema 9 and drawing API 4; see [pixel maps](pixel-maps.md). Target-aware compilation
+checks the required schema. Existing schema 5/6/7/8 packages remain loadable, including the original stored
 one-pixel sprite implementation. New SpriteBatch source uses the general API.
 
 ## Images and channels
@@ -43,7 +44,7 @@ All arrays and scratch canvases count towards the existing resource/heap limits.
 | `image.multiply_alpha(0.5, start=0, stop=image.count)` | Intentionally scale existing alpha, saturating at 255. Factor must be finite and nonnegative. |
 | `image.fill(color, alpha=255, start=0, stop=image.count)` | Replace selected pixels with RGB plus byte alpha; clear white. |
 | `image.copy(source)` | Copy all channels from an equal-size, equal-format image, including readonly artwork. |
-| `image.draw(source, transform=Transform(), color=ColorTransform(), sampling="linear")` | Source-over compatible image formats; clip to the destination. Source and destination must differ. |
+| `image.draw(source, transform=Transform(), color=ColorTransform(), sampling="linear", overflow="clip")` | Source-over compatible image formats; clip or periodically wrap at destination edges. Source and destination must differ. |
 | `image.transform(ColorTransform(...), start=0, stop=image.count)` | Apply a destructive bulk colour operation in C. |
 | `image.point(index, color, alpha=255)` | Source-over an RGB point. |
 | `image.gradient(first, last)` | Opaque RGB gradient with exact endpoints. |
@@ -87,6 +88,11 @@ Integer source pixel centres map to integer destination centres. Kernels restric
 drawing to the transformed source footprint and process at most 32 pixels per
 VM dispatch. Two-dimensional surfaces and rotation remain future extensions.
 
+`overflow="wrap"` makes destination coordinates periodic. It supports a scaled
+source width up to the destination count, including fractional placement and
+reflection. See [motion and boundaries](motion.md) for fitting helpers, easing
+and seam filtering. Wrapping scans at most 32 destination pixels per dispatch.
+
 ## Sprite definitions and batches
 
 See [the Stars example](../examples/layers/stars.py) for a complete animation.
@@ -117,7 +123,8 @@ ctx.stars.render(runtime, pixels)
 ```
 
 A definition has a positive literal width, an optional init function and a render
-function. Declare callbacks before their Sprite definition. Callbacks use ordinary
+function. `Definition.width` exposes its literal width, including in declarations.
+Declare callbacks before their Sprite definition. Callbacks use ordinary
 functions, making the contract suitable for future JS functions and Blocks event
 sections. Python classes and the other frontends are not implemented here.
 
@@ -128,7 +135,8 @@ once. It returns false when full, without invoking init or replacing an instance
 count; memory admission sets the practical limit. There is no placement policy or
 collision avoidance: overlapping instances are allowed.
 
-`render(runtime, pixels)` visits active slots in stable order. Each sprite gets a
+`render(runtime, pixels, overflow="clip")` visits active slots in stable order.
+Use `overflow="wrap"` for periodic destination drawing. Each sprite gets a
 cleared local RGBA canvas of the definition's width, reused after composition.
 Its `runtime.time` is seconds since spawn, starting at zero; `runtime.delta` is
 seconds since its previous callback (or since spawn for the first callback).
@@ -160,11 +168,13 @@ existing layer scheduling/fault-publication contract.
 
 ## Package extension
 
-Header word 80 is 2 for drawing API 2; words 84–92 remain zero. This lets older
+Header word 80 is 2 for drawing API 2, or 3 when wrapping is used; words 84–92 remain zero. This lets older
 runtimes reject the extension before execution. Native call sites retain their
 16-byte size and use their formerly reserved trailing four bytes for arguments
-five through eight; old calls still have zero padding. Bindings 27–51 implement
+five through eight; old calls still have zero padding. Bindings 27–52 implement
 the SDK and generic storage. Resource kinds 14–17 are straight images, kind 18 is
 generic instances, and kind 19 is reusable transform scratch. Resource flags are
 0 for mutable owned storage, 1 for output and 2 for package-backed readonly images.
 The verifier independently checks kinds, mutability, stage rights and signatures.
+Binding 52 is periodic image drawing and requires API 3; existing bindings retain
+their signatures and API 2 compatibility.
