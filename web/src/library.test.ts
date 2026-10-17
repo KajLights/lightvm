@@ -1,3 +1,4 @@
+import fixtures from '../../tests/portable_fixtures.h?raw';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bytesFor, deviceLayers, emptyLibrary, importLibrary, LIBRARY_KEY, parseLibrary, readLibrary, saveAnimation, writeLibrary } from './library';
@@ -5,14 +6,17 @@ import type { Compilation } from './types';
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => { localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
-const compiled: Compilation = { id: 1, source: '# editable source', bytecode: new Uint8Array([76, 66, 67, 49, 4, 0, 0, 0]), diagnostics: [],
-  manifest: { abi: 4, profile: 'animation/1', parameters: [], settings: [{ name: 'duration', type: 'float' }, { name: 'color', type: 'rgb8' }] } };
+const fixture = fixtures.split('library_lbc[] = {')[1].split('};')[0];
+const bytecode = Uint8Array.from(fixture.match(/0x[0-9a-f]{2}/g)!, value => parseInt(value.slice(2),16));
+const header = new DataView(bytecode.buffer);
+const manifest = JSON.parse(new TextDecoder().decode(bytecode.subarray(bytecode.length-header.getUint32(76,true))));
+const compiled: Compilation = { id: 1, source: '# editable source', bytecode, diagnostics: [], manifest };
 
 describe('editable library and pinned presets', () => {
   it('round trips source, compiled code and independent instance settings across library reloads', async () => {
     const first = await saveAnimation(emptyLibrary(), compiled, 'sweep.py', 'Sweep', { duration: 2 });
     first.library.presets.push({ id: 'blue', name: 'blue', layers: [{ id: 'eye', animation: first.animation.id, settings: { duration: 4, color: 255 }, opacity: 128, blend: 'screen' }] });
-    const second = await saveAnimation(first.library, { ...compiled, source: '# updated', bytecode: new Uint8Array([76, 66, 67, 49, 4, 1, 0, 0]) }, 'sweep.py', 'Sweep', { duration: 1 });
+    const second = await saveAnimation(first.library, { ...compiled, source: '# updated', bytecode: compiled.bytecode }, 'sweep.py', 'Sweep', { duration: 1 });
     writeLibrary(second.library);
     const loaded = readLibrary().library;
     expect(loaded.animations.map(item => item.version)).toEqual([1, 2]);
@@ -31,7 +35,22 @@ describe('editable library and pinned presets', () => {
     expect(() => parseLibrary(JSON.stringify(library))).toThrow(/preset layer/);
     library.presets = [];
     animation.bytecode = btoa('corrupted bytes');
-    await expect(importLibrary(emptyLibrary(), JSON.stringify(library))).rejects.toThrow(/checksum/);
+    await expect(importLibrary(emptyLibrary(), JSON.stringify(library))).rejects.toThrow(/Unsupported compiled/);
+  });
+
+  it('rejects obsolete schemas, profile bindings and mismatched embedded metadata without erasing saved data', async () => {
+    const { library } = await saveAnimation(emptyLibrary(), compiled, 'color.py', 'Color', {});
+    for (const schema of ['lightvm.program/3', 'lightvm.program/10']) {
+      const old = structuredClone(library); old.animations[0].manifest.schema = schema;
+      localStorage.setItem(LIBRARY_KEY, JSON.stringify(old));
+      expect(() => parseLibrary(JSON.stringify(old))).toThrow(/Recompile/);
+      expect(readLibrary().error).toBeTruthy();
+      expect(readLibrary().backup).toBe(JSON.stringify(old));
+      expect(localStorage.getItem(LIBRARY_KEY)).toBe(JSON.stringify(old));
+    }
+    const patched = new Uint8Array(compiled.bytecode); new DataView(patched.buffer).setUint32(72,1,true);
+    await expect(saveAnimation(emptyLibrary(), {...compiled,bytecode:patched}, 'x.py','X',{})).rejects.toThrow(/Recompile/);
+    await expect(saveAnimation(emptyLibrary(), {...compiled,manifest:{...manifest,settings:[]}}, 'x.py','X',{})).rejects.toThrow(/Recompile/);
   });
 
   it('reports quota failure and preserves unreadable data until explicit recovery', () => {

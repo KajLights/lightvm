@@ -9,7 +9,7 @@
 #include "hardware/sync.h"
 #include <stdlib.h>
 #include <string.h>
-static const PlatformInfo info={"pico",LIGHTVM_BOARD_NAME,"ws2812",-1,0};
+static const PlatformInfo info={"pico",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return time_us_64(); }
 void pico_port_init(void) {}

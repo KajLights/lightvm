@@ -43,10 +43,8 @@ static void compose_slice(Scene *s) {
         for(unsigned n=0;n<s->layer_count;n++){
             SceneLayer *layer=&s->layers[n];VmInstance *vm=&layer->vm;
             if(!vm->control.contribution_valid||!layer->opacity)continue;
-            unsigned stride=vm->portable&&vm->portable->profile>=2?4:3;
-            const uint8_t *src=control_frame(vm)+(size_t)i*stride;
-            uint8_t rgba[4]={src[0],src[1],src[2],stride==4?src[3]:255};
-            draw_blend(result,rgba,layer->opacity,(DrawBlend)layer->blend);
+            const uint8_t *src=control_frame(vm)+(size_t)i*4;
+            draw_blend(result,src,layer->opacity,(DrawBlend)layer->blend);
         }
         memcpy(s->working+(size_t)i*3,result,3);
     }
@@ -105,7 +103,7 @@ const char *scene_frame(Scene *s,uint32_t delta_ms) {
     for(unsigned i=0;i<s->layer_count&&!error;i++){
         VmInstance *vm=&s->layers[i].vm;
         if(vm->portable)error=animation_quiesce(vm);
-        if(!error)error=control_step(vm,1,(uint64_t)delta_ms*1000u);
+        if(!error)error=control_step(vm,(uint64_t)delta_ms*1000u);
     }
     if(!error){
         scene_prepare(s);

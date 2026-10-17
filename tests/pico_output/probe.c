@@ -1,7 +1,5 @@
-/* Probe the real production driver and the frozen blocking control in the same
- * firmware, at exactly the same clock/compiler settings. */
+/* Capture and exercise the production Pico DMA driver on hardware. */
 #include "../../platforms/pico/pixels.c"
-#include "blocking_pixels.c"
 #include "monitor.pio.h"
 #include "pico/stdio_usb.h"
 #include "hardware/clocks.h"
@@ -86,21 +84,21 @@ static uint32_t median(uint32_t *values) {
     return (values[SAMPLES/2-1]+values[SAMPLES/2])/2;
 }
 
-static bool benchmark(unsigned devices,bool asynchronous) {
+static bool benchmark(unsigned devices) {
     void *outputs[4]={0};
     uint32_t submission[SAMPLES],wall[SAMPLES],work[SAMPLES];
     bool ok=true;
     for(unsigned d=0;d<devices;d++){
         PixelConfig cfg={.pin=probe_pins[d],.count=COUNT,.brightness=100,.order="GRB"};
-        if(!(asynchronous?platform_pixels_open(&cfg,&outputs[d]):blocking_pixels_open(&cfg,&outputs[d]))){ok=false;break;}
+        if(!(platform_pixels_open(&cfg,&outputs[d]))){ok=false;break;}
     }
     pattern(100,"GRB");
     if(ok)for(unsigned sample=0;sample<SAMPLES;sample++){
         uint64_t started=time_us_64();
-        for(unsigned d=0;d<devices;d++)ok&=asynchronous?platform_pixels_submit(outputs[d],source,COUNT):blocking_pixels_show(outputs[d],source,COUNT);
+        for(unsigned d=0;d<devices;d++)ok&=platform_pixels_submit(outputs[d],source,COUNT);
         submission[sample]=(uint32_t)(time_us_64()-started);
         unsigned iterations=0;
-        if(asynchronous)for(;;){
+        for(;;){
             bool done=true;
             for(unsigned d=0;d<devices;d++)if(!platform_pixels_poll(outputs[d]))done=false;
             if(done)break;
@@ -109,10 +107,10 @@ static bool benchmark(unsigned devices,bool asynchronous) {
         work[sample]=iterations;wall[sample]=(uint32_t)(time_us_64()-started);
     }
     for(unsigned d=0;d<devices;d++){
-        if(asynchronous)platform_pixels_close(outputs[d]);else blocking_pixels_close(outputs[d]);
+        platform_pixels_close(outputs[d]);
     }
     if(ok)printf("{\"benchmark\":\"%s\",\"devices\":%u,\"pixels_each\":%u,\"samples\":%u,\"submit_us_median\":%lu,\"wall_us_median\":%lu,\"background_iterations_median\":%lu}\n",
-        asynchronous?"dma":"blocking",devices,COUNT,SAMPLES,
+        "dma",devices,COUNT,SAMPLES,
         (unsigned long)median(submission),(unsigned long)median(wall),(unsigned long)median(work));
     return ok;
 }
@@ -175,14 +173,14 @@ int main(void) {
     while(!stdio_usb_connected())sleep_ms(10);
     puts("{\"ready\":true}");
     while(getchar_timeout_us(100000)!='r')tight_loop_contents();
-    printf("{\"clock_hz\":%lu,\"dma_driver_bytes\":%u,\"blocking_driver_bytes\":%u,\"staging_bytes_per_200_pixels\":%u}\n",
-           (unsigned long)clock_get_hz(clk_sys),(unsigned)sizeof(Pixels),(unsigned)sizeof(BlockingPixels),COUNT*4);
+    printf("{\"clock_hz\":%lu,\"dma_driver_bytes\":%u,\"staging_bytes_per_200_pixels\":%u}\n",
+           (unsigned long)clock_get_hz(clk_sys),(unsigned)sizeof(Pixels),COUNT*4);
     bool ok=true;
     const char *orders[]={"RGB","RBG","GRB","GBR","BRG","BGR"};
     const unsigned brightness[]={0,100,255};
     for(unsigned b=0;b<3;b++)for(unsigned o=0;o<6;o++)ok&=capture(b==2?17:16,orders[o],brightness[b]);
     for(unsigned p=1;p<4;p++)ok&=capture((unsigned)probe_pins[p],"GRB",100);
-    for(unsigned n=1;n<=4;n*=2){ok&=benchmark(n,false);ok&=benchmark(n,true);}
+    for(unsigned n=1;n<=4;n*=2){ok&=benchmark(n);}
     ok&=lifecycle();
     ok&=fault_recovery();
     printf("{\"done\":true,\"passed\":%s}\n",ok?"true":"false");

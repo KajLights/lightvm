@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import time
 
-from measure import SerialPort
+from client import SerialTransport
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--port", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    port = SerialPort(args.port)
+    port = SerialTransport(args.port)
     observations = []
     buffered = b""
     deadline = time.monotonic() + 45

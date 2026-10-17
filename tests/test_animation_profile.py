@@ -23,7 +23,7 @@ def source(name):
 class PortableCompilerTests(unittest.TestCase):
     def test_target_negotiation_and_deterministic_compilation(self):
         target={'module_limit':32768,'program_abis':[4], 'bytecode_formats':['LBC1/4'],
-                'program_schemas':['lightvm.program/10'],'native_drawing_api':4,'program_profiles':['animation/1']}
+                'program_schemas':['lightvm.program/11'],'native_drawing_api':4,'program_profiles':['animation/1']}
         for name in NAMES:
             result=compile_source(source(name))
             self.assertTrue(result.success,result.diagnostics)
@@ -34,6 +34,7 @@ class PortableCompilerTests(unittest.TestCase):
         for key in ('program_abis','bytecode_formats','program_schemas','program_profiles'):
             self.assertFalse(compile_source(source('color'),target={**target,key:[]}).success)
         self.assertFalse(compile_source(source('color'),target={**target,'module_limit':100}).success)
+        self.assertFalse(compile_source(source('color'),target={'control_abi':4,'bytecode_format':'LBC1/4','program_schemas':['lightvm.program/11']}).success)
 
     def test_invalid_callback_signatures_and_bindings_are_rejected(self):
         cases=[
@@ -73,7 +74,7 @@ class AnimationProfileTests(unittest.TestCase):
         self.client.require_ok(self.client.command(FRAME,struct.pack('<I',ms)))
         return bytes(self.client.pixel_snapshot)
     def reset(self,settings=None,values=None):
-        state=self.client.program_parameters()
+        state=self.client.program_state()
         return self.client.manage('program_reset',expected_generation=state['generation'],**({'settings':settings} if settings is not None else {}),**({'values':values} if values is not None else {}))
 
     def test_examples_match_python_caller_contract(self):
@@ -86,7 +87,7 @@ class AnimationProfileTests(unittest.TestCase):
                         actual,expected=self.frame(ms),reference.frame(ms)
                         self.assertEqual(len(actual),count*3)
                         self.assertLessEqual(max(abs(a-b) for a,b in zip(actual,expected)),1 if name=='rainbow' else 0)
-                    state=self.client.program_parameters()
+                    state=self.client.program_state()
                     self.assertEqual(state['render_count'],9)
                     self.assertNotIn('logical_ticks',state);self.assertNotIn('cycle_count',state)
 
@@ -104,7 +105,7 @@ def draw(state, clock, output):
         self.assertEqual(self.frame(33),bytes([2,0,0])*5)
         self.assertEqual(self.frame(1000),bytes([3,10,10])*5)
         self.assertEqual(self.frame(0),bytes([4,0,10])*5)
-        self.assertEqual(self.client.program_parameters()['program_us'],1_033_000)
+        self.assertEqual(self.client.program_state()['program_us'],1_033_000)
 
     def test_settings_are_frozen_until_explicit_reinitialization(self):
         self.client.upload(program('from array import array\n'+PREFIX+'''@init
@@ -114,14 +115,15 @@ def setup(ctx,runtime):
 @render
 def draw(ctx,runtime,pixels): pixels.fill(rgb(ctx.size,len(ctx.data),0))
 '''))
-        before=self.client.program_parameters()
+        before=self.client.program_state()
         for values in ({'size':4},{}):
-            with self.assertRaisesRegex(ProtocolError,'frozen'): self.client.set_parameters(values)
-        self.assertEqual(self.client.program_parameters()['settings_values'],{'size':2})
-        self.assertEqual(self.client.program_parameters()['parameter_revision'],before['parameter_revision'])
+            with self.assertRaises(ProtocolError): self.client.manage('program_parameters_set',values=values)
+        self.assertEqual(self.client.program_state()['settings_values'],{'size':2})
+        self.assertNotIn('parameter_revision',self.client.program_state())
+        self.assertNotIn('values',self.client.program_state())
         self.assertEqual(self.frame(),bytes([2,2,0])*5)
         with self.assertRaises(ProtocolError): self.reset({'size':6})
-        self.assertEqual(self.client.program_parameters()['generation'],before['generation'])
+        self.assertEqual(self.client.program_state()['generation'],before['generation'])
         self.assertEqual(self.frame(),bytes([2,2,0])*5)
         self.reset({'size':4})
         self.assertEqual(self.frame(),bytes([4,4,0])*5)
@@ -182,16 +184,16 @@ def draw(ctx,runtime,pixels):
 '''))
             before=self.frame()
             self.assertNotEqual(self.client.command(FRAME,struct.pack('<I',1)).code,0)
-            self.assertTrue(self.client.program_parameters()['faulted'])
+            self.assertTrue(self.client.program_state()['faulted'])
             self.assertEqual(self.client.snapshot()[1],before)
 
     def test_long_uptime_and_no_render_allocation(self):
         self.client.configure(config(17))
         for name in NAMES:
             self.client.upload(program(source(name)))
-            initial=self.client.program_parameters()
+            initial=self.client.program_state()
             for _ in range(80): self.frame(1000)
-            state=self.client.program_parameters()
+            state=self.client.program_state()
             self.assertEqual(state['program_us'],80_000_000)
             self.assertEqual(state['render_count'],initial['render_count']+80)
             self.assertEqual(state['heap_used'],initial['heap_used'])
@@ -209,7 +211,7 @@ def draw(ctx,runtime,pixels):
     def test_immutable_package_growth_does_not_grow_resident_ram(self):
         data = sample('color')
         self.client.upload(data)
-        small = self.client.program_parameters()
+        small = self.client.program_state()
         self.assertLess(small['instance_context_bytes'], 2048)
         self.assertLessEqual(self.client.describe()['upload_workspace_bytes'], 512)
         self.assertEqual(self.client.describe()['upload_page_bytes'], 256)
@@ -227,7 +229,7 @@ def draw(ctx,runtime,pixels):
         struct.pack_into('<I', large, 76, 8192)
         self.assertGreater(len(large)-len(data), 10000)
         self.client.upload(large)
-        big = self.client.program_parameters()
+        big = self.client.program_state()
         for field in ('heap_used', 'metadata_bytes', 'register_bytes', 'state_bytes', 'instance_context_bytes'):
             self.assertEqual(big[field], small[field], field)
         self.assertLess(big['register_bytes'], regs*8)
@@ -254,9 +256,9 @@ def draw(ctx,runtime,pixels):
         settings={'random_color':False,'color':0x123456}
         self.client.activate('paint',settings=settings)
         before=self.client.snapshot()[1];self.assertEqual(before,bytes([0x12,0x34,0x56])*5)
-        generation=self.client.program_parameters()['generation']
+        generation=self.client.program_state()['generation']
         with self.assertRaises(ProtocolError):self.client.activate('paint',settings={'seed':-1})
-        self.assertEqual(self.client.program_parameters()['generation'],generation)
+        self.assertEqual(self.client.program_state()['generation'],generation)
         self.assertEqual(self.client.snapshot()[1],before)
         self.client.save_procedure('other',sample('pattern'))
         self.client.delete_procedure('other')

@@ -5,6 +5,7 @@ if(LIGHTVM_WIFI AND NOT PICO_BOARD STREQUAL "pico_w")
     message(FATAL_ERROR "Wi-Fi requires PICO_BOARD=pico_w")
 endif()
 pico_sdk_init()
+option(LIGHTVM_OUTPUT_PROBE "Build the Pico hardware output verification image" OFF)
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c")
 target_compile_definitions(lightvm PRIVATE PICO_STACK_SIZE=16384)
@@ -36,4 +37,8 @@ if(LIGHTVM_WIFI)
     find_program(LIGHTVM_ARM_SIZE arm-none-eabi-size HINTS "${toolchain_bin}" REQUIRED)
     add_custom_command(TARGET lightvm POST_BUILD
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/check_pico_ram.py" "${LIGHTVM_ARM_SIZE}" "$<TARGET_FILE:lightvm>")
+endif()
+
+if(LIGHTVM_OUTPUT_PROBE)
+    include("${CMAKE_SOURCE_DIR}/tests/pico_output/CMakeLists.txt")
 endif()

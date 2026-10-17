@@ -147,9 +147,9 @@ class HttpTests(unittest.TestCase):
 
     def test_network_password_retention_reboot_and_eight_procedures(self):
         self.http.configure(self.config(), save=True)
-        wasm = color()
+        bytecode = color()
         for index in range(8):
-            self.http.save_procedure('effect' + str(index), wasm)
+            self.http.save_procedure('effect' + str(index), bytecode)
         self.http.configure_network(self.network())
         self.wait_network()
         visible = self.http.network_config()
@@ -189,7 +189,7 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(self.http.network_status()['mode'], 'ap')
         self.assertFalse(self.http.network_status()['initial_setup'])
 
-    def test_existing_directory_migrates_without_losing_procedures(self):
+    def test_unsupported_directory_is_rejected_without_erasure(self):
         self.http.save_procedure('old', color())
         self.stop()
         data = bytearray(self.storage.read_bytes())
@@ -203,15 +203,21 @@ class HttpTests(unittest.TestCase):
             struct.pack_into('<I', data, base + 1036, zlib.crc32(data[base + 1024:base + 1036]))
         self.storage.write_bytes(data)
         self.start()
-        self.assertEqual(self.http.procedures()[0]['name'], 'old')
-        self.http.configure_network(self.network())
-        self.assertEqual(self.http.procedures()[0]['name'], 'old')
+        self.assertEqual(self.http.procedures(), [])
+        self.assertIn('storage', self.http.describe()['boot_error'])
+        self.assertEqual(self.storage.read_bytes(), data)
+        self.assertEqual(self.http.command(1).code, 0)
+
+    def test_previous_wire_magic_is_rejected(self):
+        obsolete=b'WASM'+frame(STATUS,73)[4:]
+        with self.assertRaises(ProtocolError):self.http.transport.write(obsolete)
+        self.assertEqual(self.pipe.command(STATUS).code,0)
 
     def test_large_download_preserves_all_frames(self):
-        wasm = padded_program(min(27000, self.http.describe()['module_limit']))
-        self.http.save_procedure('large', wasm)
-        self.assertEqual(self.http.get_procedure('large'), wasm)
-        self.assertEqual(self.pipe.get_procedure('large'), wasm)
+        bytecode = padded_program(min(27000, self.http.describe()['module_limit']))
+        self.http.save_procedure('large', bytecode)
+        self.assertEqual(self.http.get_procedure('large'), bytecode)
+        self.assertEqual(self.pipe.get_procedure('large'), bytecode)
 
     def test_stalled_download_keeps_pipe_and_animation_responsive(self):
         from bytecode_fixtures import color, sample, padded_program

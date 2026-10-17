@@ -33,7 +33,7 @@ class CompositionTests(unittest.TestCase):
     def frame(self,delta=0,device='lights'):
         self.client.require_ok(self.client.command(FRAME,struct.pack('<I',delta),device=device))
         return bytes(self.client.pixel_snapshot)
-    def state(self,layer,device='lights'): return self.client.program_parameters(device=device,layer=layer)
+    def state(self,layer,device='lights'): return self.client.program_state(device=device,layer=layer)
     def layer(self,layer,device='lights'): return self.client.snapshot(device=device,layer=layer)[1]
 
     def test_transparency_opaque_black_and_exact_endpoints(self):
@@ -207,7 +207,7 @@ class CompositionTests(unittest.TestCase):
         self.assertEqual(self.layer('fg'),bytes([255,0,0,255])+bytes((self.count-1)*4))
         source=PREFIX+'@render\ndef draw(ctx,runtime,pixels): pass\n'
         self.assertTrue(compile_source(source,target=target).success)
-        old={**target,'program_schemas':[s for s in target['program_schemas'] if s!='lightvm.program/10']}
+        old={**target,'program_schemas':[s for s in target['program_schemas'] if s!='lightvm.program/11']}
         self.assertFalse(compile_source(source,target=old).success)
         self.assertFalse(compile_source(source.replace('animation/1','layer/1')).success)
 
@@ -236,7 +236,9 @@ class CompositionTests(unittest.TestCase):
         self.assertEqual(self.frame(),expected)
         self.assertEqual(self.layer('fg'),bytes(4)+bytes([128,0,0,128])+bytes((self.count-2)*4))
 
-    def test_stored_rgb_and_layer_packages_keep_their_original_behavior(self):
+    def test_obsolete_rgb_and_layer_packages_are_rejected(self):
+        self.save('blue',' pixels.fill(rgb(0,0,255))\n')
+        self.scene([{'id':'bg','procedure':'blue'}])
         source='from lightvm import profile,rgb,render\nprofile("animation/1")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(0,0,255))\n'
         artifact=compile_source(source)
         for binding,profile,schema,format in ((1,'animation/1',5,'rgb8'),(2,'layer/1',6,'rgba8-premul')):
@@ -249,14 +251,8 @@ class CompositionTests(unittest.TestCase):
             nregs,ncode,ncolors,nfunctions=struct.unpack_from('<4I',raw,8)
             resources=96+nregs*8+ncode*8+ncolors*4+nfunctions*24
             struct.pack_into('<I',raw,resources,3 if binding==1 else 12)
-            self.client.save_procedure('legacy' if binding==1 else 'legacy_layer',raw)
-        self.scene([{'id':'bg','procedure':'legacy_layer'}])
-        self.assertEqual(self.frame(),bytes([0,0,255])*self.count)
-        self.save('point',' pixels.point(0,rgb(255,255,255),128)\n')
-        self.scene([{'id':'bg','procedure':'legacy'},{'id':'fg','procedure':'point'}])
-        self.assertEqual(self.frame(),bytes([128,128,255])+bytes([0,0,255])*(self.count-1))
-        self.client.clear_scene(device='lights')
-        self.client.activate('legacy',device='lights');self.assertEqual(self.client.status_fields()['mode'],'bytecode')
+            with self.assertRaises(ProtocolError):self.client.save_procedure('obsolete',raw)
+            self.assertEqual(self.frame(),bytes([0,0,255])*self.count)
 
     def test_budget_rejection_and_stale_requests_are_atomic(self):
         self.save('sprite',' ctx.stars.render(runtime,pixels)\n',' ctx.capacity=setting(3,minimum=1)\n ctx.stars=SpriteBatch(Particle,capacity=ctx.capacity)\n','def particle_render(s,runtime,pixels):\n pixels.fill(rgb(255,255,255))\nParticle=Sprite(width=1,render=particle_render)\n')
@@ -266,7 +262,7 @@ class CompositionTests(unittest.TestCase):
         revision=self.client.scene(device='lights')['revision']
         with self.assertRaises(ProtocolError):self.client.manage('scene_layer_opacity',device='lights',layer='fg',opacity=128,expected_revision=revision-1)
         self.assertEqual(self.client.scene(device='lights')['revision'],revision)
-        with self.assertRaises(ProtocolError):self.client.program_parameters(device='lights',layer='missing')
+        with self.assertRaises(ProtocolError):self.client.program_state(device='lights',layer='missing')
 
     def test_default_snapshot_is_composed_and_reset_layer_can_be_replaced(self):
         self.save('blue',' pixels.fill(rgb(0,0,255))\n')
@@ -312,8 +308,7 @@ class CompositionTests(unittest.TestCase):
             self.assertEqual(self.frame(),expected);self.assertEqual(self.client.status_fields()['heap'],heap)
 
     def test_native_resource_kinds_are_validated_before_execution(self):
-        for setup,draw in [(' ctx.data=array("I",[0])\n',' pixels.sprites(ctx.data)\n'),
-                           (' ctx.data=PixelArray(1)\n',' pixels.palette(ctx.data,0.0,1.0)\n')]:
+        for setup,draw in [(' ctx.data=PixelArray(1)\n',' pixels.palette(ctx.data,0.0,1.0)\n')]:
             source='from array import array\n'+PREFIX+'@init\ndef setup(ctx,runtime):\n'+setup+'@render\ndef draw(ctx,runtime,pixels):\n'+draw
             artifact=compile_source(source);self.assertTrue(artifact.success,artifact.diagnostics)
             heap=self.client.status_fields()['heap']

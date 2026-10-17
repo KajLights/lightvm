@@ -4,7 +4,7 @@ import { useRuntime } from './runtime';
 import { EXAMPLES, exampleForSource } from './examples';
 import { download } from './device-service';
 import { DevelopmentWorkflow } from './Workflow';
-import type { Diagnostic, ParameterState } from './types';
+import type { Diagnostic } from './types';
 
 function Editor() {
   const { compiler, devices } = useRuntime(), editor = useAppSelector(state => state.editor);
@@ -73,47 +73,21 @@ function Editor() {
   </section>;
 }
 
-function Parameters() {
-  const { devices } = useRuntime(), state = useAppSelector(store => store.device.parameters), selectedPath = useAppSelector(store => store.device.selectedPath), busy = useAppSelector(store => Boolean(store.activity.operation));
-  const [values, setValues] = useState<Record<string, string | boolean>>({});
-  // Playback counters/status can refresh without replacing an unfinished edit.
-  const parameters = state?.manifest.parameters ?? [];
-  const inputKey = JSON.stringify([state?.generation, state?.parameter_revision, state?.values, parameters]);
-  useEffect(() => {
-    if (!state) { setValues({}); return; }
-    setValues(Object.fromEntries(parameters.map(parameter => [parameter.name, parameter.type === 'rgb8' ? '#' + Number(state.values[parameter.name]).toString(16).padStart(6, '0') : parameter.type === 'bool' ? Boolean(state.values[parameter.name]) : String(state.values[parameter.name])])));
-  }, [inputKey]);
-  async function apply() {
-    if (!state) return;
-    const patch: Record<string, bigint | number | boolean> = {};
-    for (const parameter of parameters) {
-      const input = values[parameter.name];
-      if (parameter.type === 'int') {
-        if (!/^-?\d+$/.test(String(input))) { await devices.run('Applying parameters', async () => { throw new Error('Enter a whole signed integer.'); }); return; }
-        if (String(input) !== String(state.values[parameter.name])) patch[parameter.name] = BigInt(String(input));
-      } else if (parameter.type === 'float') {
-        if (!String(input) || !Number.isFinite(Number(input))) { await devices.run('Applying parameters', async () => { throw new Error('Enter a finite number.'); }); return; }
-        if (Number(input) !== Number(state.values[parameter.name])) patch[parameter.name] = Number(input);
-      } else if (parameter.type === 'rgb8') {
-        const color = parseInt(String(input).slice(1), 16);
-        if (color !== Number(state.values[parameter.name])) patch[parameter.name] = color;
-      } else if (input !== state.values[parameter.name]) patch[parameter.name] = Boolean(input);
-    }
-    await devices.setParameters(patch, state);
-  }
+function Playback() {
+  const { devices } = useRuntime();
+  const { programState: state, selectedPath } = useAppSelector(state => state.device);
+  const busy = useAppSelector(state => state.activity.operation !== null);
   async function playback(verb: 'pause' | 'resume') {
     if (!state) return;
     await devices.run(verb === 'pause' ? 'Pausing program' : 'Resuming program', async client => {
       const connection = devices.require(client);
       await connection.manage('program_' + verb, { device: state.device, layer: state.layer, expected_generation: state.generation });
-      await devices.readParameters(connection);
+      await devices.readProgramState(connection);
     });
   }
-  return <section className="card"><div className="card-heading"><h2>{state?.manifest.abi === 4 ? 'Playback' : 'Live parameters'}</h2><button id="parameters-refresh" className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing parameters', async client => devices.readParameters(devices.require(client)))}>Refresh</button></div>
-    <p id="parameter-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') + (state.layer ? ' · layer ' + state.layer : ' · slot ' + state.slot) : 'Load a control program to edit its parameters.'}</p>
-    <fieldset id="parameter-fields" disabled={!state || !selectedPath || busy}><div id="parameters">{parameters.map(parameter => <label key={parameter.name}>{parameter.name}<input data-name={parameter.name} data-type={parameter.type} type={parameter.type === 'bool' ? 'checkbox' : parameter.type === 'rgb8' ? 'color' : parameter.type === 'int' ? 'text' : 'number'} inputMode={parameter.type === 'int' ? 'numeric' : undefined} step={parameter.type === 'float' ? 'any' : undefined} min={parameter.minimum} max={parameter.maximum} checked={parameter.type === 'bool' ? Boolean(values[parameter.name]) : undefined} value={parameter.type !== 'bool' ? String(values[parameter.name] ?? '') : undefined} onChange={event => setValues(current => ({ ...current, [parameter.name]: parameter.type === 'bool' ? event.target.checked : event.target.value }))} /></label>)}</div>
-      {parameters.length > 0 && <button id="parameters-apply" className="secondary full" onClick={() => void apply()}>Apply parameter values</button>}<div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div>
-    </fieldset>
+  return <section className="card"><div className="card-heading"><h2>Playback</h2><button className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing playback', async client => devices.readProgramState(devices.require(client)))}>Refresh</button></div>
+    <p id="playback-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') : 'Load an animation to control playback.'}</p>
+    <fieldset disabled={!state || !selectedPath || busy}><div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div></fieldset>
   </section>;
 }
 export function Develop({ active }: { active: boolean }) {
@@ -122,6 +96,6 @@ export function Develop({ active }: { active: boolean }) {
   useEffect(() => { if (active) compiler.start(); }, [active, compiler]);
   return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Edit, preview on your lights, save an animation, then compose and save a preset.</p></div><div className="pipeline" aria-label="Development workflow"><span>Edit</span><span>→</span><span>Preview</span><span>→</span><span>Save</span><span>→</span><span>Compose</span><span>→</span><span>Preset</span></div></div>
     {description && !connected && <p className="connection-banner">Connect the device to upload. The editor and downloads remain available.</p>}
-    <DevelopmentWorkflow editorPanel={<Editor />} playback={<Parameters />} />
+    <DevelopmentWorkflow editorPanel={<Editor />} playback={<Playback />} />
   </>;
 }

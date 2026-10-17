@@ -1,8 +1,8 @@
 import { DEFAULT_EXAMPLE } from './examples';
 export type Path = 'usb' | 'http';
 export interface Description {
-  device_id: string; boot_id: string; board: string; control_abi: number;
-  program_abis?: number[]; bytecode_format?: string; bytecode_formats?: string[]; program_profiles?: string[]; animation_reset?: boolean; activation_settings?: boolean;
+  device_id: string; boot_id: string; board: string;
+  program_abis: number[]; bytecode_formats: string[]; program_profiles: string[]; animation_reset?: boolean; activation_settings?: boolean;
   program_schemas: string[]; module_limit: number; config_limit: number;
   pixel_capacity: number; pins: string[]; slots: string[];
   storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean;
@@ -26,12 +26,12 @@ export interface NetworkConfig {
 }
 export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
 export interface Procedure { name: string; size: number; crc32: number }
-export interface Parameter { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
-export interface Manifest { abi: number; schema?: string; profile?: string; parameters: Parameter[]; settings?: Parameter[] }
-export interface ParameterState {
+export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
+export interface Manifest { abi: number; schema: string; profile: string; pixels: { format: string }; settings: Setting[] }
+export interface ProgramState {
   device?: string; layer?: string;
-  manifest: Manifest; values: Record<string, string | number | boolean>;
-  generation: number; parameter_revision: number; slot: string; paused: boolean; faulted: boolean;
+  manifest: Manifest;
+  generation: number; slot: string; paused: boolean; faulted: boolean;
   render_count?: number; settings_values?: Record<string, number | boolean>;
 }
 export interface NearbyDevice { device_id: string; board: string; hostname: string; ip: string; port: number; url: string }

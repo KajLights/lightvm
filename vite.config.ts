@@ -8,12 +8,13 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 const staticAssets = resolve(root, 'build/editor-assets');
 
 // Package the canonical compiler and leave the worker's remote imports intact.
+rmSync(resolve(staticAssets, 'python'), { recursive: true, force: true });
 mkdirSync(resolve(staticAssets, 'python/lightvm'), { recursive: true });
 // Remove generated examples from both the previous and current layouts.
 rmSync(resolve(staticAssets, 'samples'), { recursive: true, force: true });
 rmSync(resolve(staticAssets, 'examples'), { recursive: true, force: true });
 cpSync(resolve(root, 'web/compiler-worker.mjs'), resolve(staticAssets, 'compiler-worker.mjs'));
-for (const name of ['__init__.py', 'compiler.py', 'bytecode.py', 'portable.py', 'sprite_compiler.py', 'easing.py', 'motion.py']) {
+for (const name of ['__init__.py', 'compiler.py', 'compiler_core.py', 'portable.py', 'sprite_compiler.py', 'easing.py', 'motion.py']) {
   cpSync(resolve(root, 'lightvm', name), resolve(staticAssets, 'python/lightvm', name));
 }
 cpSync(resolve(root, 'examples/animations'), resolve(staticAssets, 'examples/animations'), { recursive: true });

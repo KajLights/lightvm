@@ -1,5 +1,5 @@
 import { crc32 } from '../protocol.mjs';
-import type { Compilation, Manifest, Parameter } from './types';
+import type { Compilation, Manifest, Setting } from './types';
 
 export type SettingsValues = Record<string, number | boolean>;
 export type Blend = 'over' | 'add' | 'screen' | 'multiply';
@@ -25,7 +25,7 @@ export function settingsFor(manifest: Manifest, settings: SettingsValues): Setti
     const value = settings[setting.name]; validateSetting(setting, value); return [setting.name, value];
   }));
 }
-export function validateSetting(setting: Parameter, value: unknown) {
+export function validateSetting(setting: Setting, value: unknown) {
   const valid = setting.type === 'bool' ? typeof value === 'boolean' : typeof value === 'number' && Number.isFinite(value) &&
     (setting.type === 'float' || Number.isInteger(value)) &&
     (setting.type !== 'int' || (value >= -2147483648 && value <= 2147483647)) &&
@@ -33,7 +33,23 @@ export function validateSetting(setting: Parameter, value: unknown) {
     (setting.minimum === undefined || value >= setting.minimum) && (setting.maximum === undefined || value <= setting.maximum);
   if (!valid) throw new Error('Enter a valid ' + setting.type + ' value for ' + setting.name + '.');
 }
+export function validateArtifact(bytes: Uint8Array, manifest: Manifest) {
+  const invalid = () => new Error('Unsupported compiled animation. Recompile its source with the current compiler.');
+  if (manifest.abi !== 4 || manifest.schema !== 'lightvm.program/11' || manifest.profile !== 'animation/1' ||
+      manifest.pixels?.format !== 'rgba8-premul' || !Array.isArray(manifest.settings) || 'parameters' in manifest || bytes.length < 96) throw invalid();
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const u32 = (offset: number) => view.getUint32(offset, true);
+  const offset = 96 + u32(8)*8 + u32(12)*8 + u32(16)*4 + u32(20)*24 + u32(24)*24 + u32(28)*16 + u32(32)*16 + u32(36)*16;
+  if (new TextDecoder().decode(bytes.subarray(0,4)) !== 'LBC1' || u32(4) !== 4 || u32(72) !== 3 ||
+      u32(8) < 3 || u32(8) > 128 || !u32(12) || u32(12) > 2048 || u32(20) !== 2 || !u32(24) || u32(24) > 16 || u32(36) !== manifest.settings.length ||
+      offset + u32(76) !== bytes.length || ![0,2,3,4].includes(u32(80))) throw invalid();
+  let embedded: Manifest;
+  try { embedded = JSON.parse(new TextDecoder().decode(bytes.subarray(offset))); } catch { throw invalid(); }
+  const canonical = (value: any): any => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  if (JSON.stringify(canonical(embedded)) !== JSON.stringify(canonical(manifest))) throw invalid();
+}
 export async function saveAnimation(library: Library, compiled: Compilation, filename: string, name: string, settings: SettingsValues) {
+  validateArtifact(compiled.bytecode, compiled.manifest);
   if (!name.trim() || name.length > 80) throw new Error('Give the animation a name of 1–80 characters.');
   const version = Math.max(0, ...library.animations.filter(item => item.name === name.trim()).map(item => item.version)) + 1;
   const animation: SavedAnimation = {
@@ -64,10 +80,10 @@ export function parseLibrary(text: string): Library {
     if (!animation || typeof animation.id !== 'string' || !animation.id || ids.has(animation.id) || typeof animation.name !== 'string' || !animation.name.trim() || animation.name.length > 80 ||
       !Number.isSafeInteger(animation.version) || animation.version < 1 || typeof animation.source !== 'string' || animation.source.length > 65536 ||
       typeof animation.filename !== 'string' || typeof animation.bytecode !== 'string' || animation.bytecode.length > 1500000 || !/^[a-f0-9]{64}$/.test(animation.digest) ||
-      !animation.manifest || !Array.isArray(animation.manifest.parameters) || !Array.isArray(animation.manifest.settings ?? []) || !checkSettings(animation.settings)) throw new Error('Invalid saved animation.');
+      !animation.manifest || !Array.isArray(animation.manifest.settings) || !checkSettings(animation.settings)) throw new Error('Invalid saved animation.');
     ids.add(animation.id);
     for (const setting of animation.manifest.settings ?? []) if (!setting || typeof setting.name !== 'string' || !['bool', 'int', 'rgb8', 'float'].includes(setting.type)) throw new Error('Invalid animation setting.');
-    if (bytesFor(animation).length < 8) throw new Error('Invalid compiled animation.');
+    validateArtifact(bytesFor(animation), animation.manifest);
     settingsFor(animation.manifest, animation.settings);
   }
   const presetIds = new Set<string>();
@@ -83,9 +99,14 @@ export function parseLibrary(text: string): Library {
   }
   return library;
 }
-export function readLibrary(): { library: Library; error: string } {
-  try { const saved = localStorage.getItem(LIBRARY_KEY); return { library: saved ? parseLibrary(saved) : emptyLibrary(), error: '' }; }
-  catch { return { library: emptyLibrary(), error: 'The saved library could not be opened. Import a library backup to recover; existing browser data will remain until then.' }; }
+export function readLibrary(): { library: Library; error: string; backup: string | null } {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(LIBRARY_KEY);
+    return { library: saved ? parseLibrary(saved) : emptyLibrary(), error: '', backup: null };
+  } catch {
+    return { library: emptyLibrary(), backup: saved, error: 'The saved library could not be opened. Export its preserved backup to recover source, then recompile with the current compiler. Existing browser data remains until an explicit import.' };
+  }
 }
 export function writeLibrary(library: Library) {
   // Commit storage before updating the UI. Quota errors must never look like a successful save.

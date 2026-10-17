@@ -121,12 +121,12 @@ class PresetTests(unittest.TestCase):
     def test_replacing_and_deleting_recipe_preserves_running_instances(self):
         self.client.save_preset('blue', self.layers, device='second')
         self.client.activate_preset('blue', device='second')
-        original = self.client.program_parameters(device='second', layer='eye')['generation']
+        original = self.client.program_state(device='second', layer='eye')['generation']
         red = [{**self.layers[0], 'settings': {'color': 0xff0000}}]
         self.client.save_preset('blue', red, device='second')
         self.assertEqual(self.frame(), bytes([0, 0, 255]) * 5)
         self.client.delete_preset('blue')
-        self.assertEqual(self.client.program_parameters(device='second', layer='eye')['generation'], original)
+        self.assertEqual(self.client.program_state(device='second', layer='eye')['generation'], original)
         self.assertEqual(self.frame(), bytes([0, 0, 255]) * 5)
         with self.assertRaises(ProtocolError):
             self.client.delete_procedure('brush')
@@ -150,6 +150,6 @@ class PresetTests(unittest.TestCase):
             self.client.upload(self.program, device='second', settings={'unknown': 1})
         self.assertEqual(self.frame(), expected)
         self.client.upload(self.program, device='second', settings={'color': 0x00ff00})
-        self.assertEqual(self.client.program_parameters(device='second')['settings_values'], {'color': 0x00ff00})
+        self.assertEqual(self.client.program_state(device='second')['settings_values'], {'color': 0x00ff00})
         self.assertEqual(self.frame(), bytes([0, 255, 0]) * 5)
         self.assertFalse(self.client.scene('first')['active'])

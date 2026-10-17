@@ -1,7 +1,7 @@
 #include "protocol.h"
 #include <string.h>
 
-static const uint8_t magic[4] = {'W','A','S','M'};
+static const uint8_t magic[4] = {'L','V','M','1'};
 uint32_t read_u32(const uint8_t *p) {
     return (uint32_t)p[0] | (uint32_t)p[1]<<8 | (uint32_t)p[2]<<16 | (uint32_t)p[3]<<24;
 }
@@ -31,7 +31,7 @@ void send_status(SendMessage send, void *context, uint16_t id,
 }
 void write_frame(WriteBytes write, void *context, uint8_t type, uint16_t id,
                  const uint8_t *payload, size_t size) {
-    uint8_t header[HEADER_SIZE]={'W','A','S','M',LIGHTVM_PROTOCOL_VERSION,type,(uint8_t)id,(uint8_t)(id>>8)};
+    uint8_t header[HEADER_SIZE]={'L','V','M','1',LIGHTVM_PROTOCOL_VERSION,type,(uint8_t)id,(uint8_t)(id>>8)};
     write_u32(header+8,(uint32_t)size);
     uint32_t crc=crc32_update(0xffffffffu,header+4,8);
     crc=crc32_update(crc,payload,size)^0xffffffffu;

@@ -41,7 +41,7 @@ class MultiDeviceTests(unittest.TestCase):
     def test_six_instances_and_independent_controls(self):
         for slot, name in zip([f'lights{i}' for i in range(6)], self.effects):
             self.load(name, slot, play=False)
-            state = self.client.program_parameters(device=slot)
+            state = self.client.program_state(device=slot)
             self.assertEqual(state['slot'], 'A')
             self.assertEqual(state['device'], slot)
             self.assertEqual(len(self.client.snapshot(device=slot)[1]), 51)
@@ -49,28 +49,28 @@ class MultiDeviceTests(unittest.TestCase):
         self.client.reset_program(settings={'duration': 17.0}, device='lights4')
         for slot in [f'lights{i}' for i in range(6)]:
             self.client.require_ok(self.client.command(PLAY, device=slot))
-        start = {slot: self.client.program_parameters(device=slot) for slot in [f'lights{i}' for i in range(6)]}
+        start = {slot: self.client.program_state(device=slot) for slot in [f'lights{i}' for i in range(6)]}
         heap = self.client.status_fields()['heap']
         time.sleep(.12)
         for slot in [f'lights{i}' for i in range(6)]:
-            state = self.client.program_parameters(device=slot)
+            state = self.client.program_state(device=slot)
             self.assertGreater(state['output_frame'], start[slot]['output_frame'])
             self.assertFalse(state['faulted'])
         self.assertEqual(self.client.status_fields()['heap'], heap)
         self.client.pause_program(device='lights1')
-        paused = self.client.program_parameters(device='lights1')['program_us']
-        running = self.client.program_parameters(device='lights0')['program_us']
+        paused = self.client.program_state(device='lights1')['program_us']
+        running = self.client.program_state(device='lights0')['program_us']
         time.sleep(.06)
-        self.assertEqual(self.client.program_parameters(device='lights1')['program_us'], paused)
-        self.assertGreater(self.client.program_parameters(device='lights0')['program_us'], running)
+        self.assertEqual(self.client.program_state(device='lights1')['program_us'], paused)
+        self.assertGreater(self.client.program_state(device='lights0')['program_us'], running)
         self.client.resume_program(device='lights1')
         time.sleep(.04)
-        self.assertGreater(self.client.program_parameters(device='lights1')['program_us'], paused)
-        a_generation = self.client.program_parameters()['generation']
+        self.assertGreater(self.client.program_state(device='lights1')['program_us'], paused)
+        a_generation = self.client.program_state()['generation']
         self.client.reset_program(settings={'random_color': False, 'color': 0x123456}, device='lights1')
         self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights1'))
         self.assertEqual(bytes(self.client.pixel_snapshot), bytes.fromhex('123456') * 17)
-        self.assertEqual(self.client.program_parameters()['generation'], a_generation)
+        self.assertEqual(self.client.program_state()['generation'], a_generation)
         for slot in [f'lights{i}' for i in range(6)]:
             self.client.require_ok(self.client.command(RESET, device=slot))
         self.assertEqual(self.client.status_fields()['heap'], '0')
@@ -78,15 +78,15 @@ class MultiDeviceTests(unittest.TestCase):
     def test_adding_and_removing_devices_preserves_existing_playback(self):
         self.client.configure(configuration(1))
         self.load('rainbow', 'lights0')
-        before = self.client.program_parameters()
+        before = self.client.program_state()
         heap = self.client.status_fields()['heap']
         self.client.configure(configuration(6))
-        self.assertEqual(self.client.program_parameters()['generation'], before['generation'])
+        self.assertEqual(self.client.program_state()['generation'], before['generation'])
         self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
         self.load('stars', 'lights5')
         time.sleep(.1)
         self.client.configure(configuration(1))
-        after = self.client.program_parameters()
+        after = self.client.program_state()
         self.assertEqual(after['generation'], before['generation'])
         self.assertGreater(after['program_us'], before['program_us'])
         self.assertEqual(self.client.status_fields()['heap'], heap)
@@ -96,7 +96,7 @@ class MultiDeviceTests(unittest.TestCase):
     def test_shared_upload_keeps_destination_and_running_instances(self):
         self.load('rainbow', 'lights0')
         self.load('color', 'lights1')
-        before = self.client.program_parameters()
+        before = self.client.program_state()
         data = self.effects['stars']
         self.client.require_ok(self.client.command(BEGIN, struct.pack('<II', len(data), zlib.crc32(data)) + b'lights2'))
         self.client.reset_program(settings={'random_color': False}, device='lights1')
@@ -105,13 +105,13 @@ class MultiDeviceTests(unittest.TestCase):
             time.sleep(.004)
         self.client.require_ok(self.client.command(FINISH))
         self.client.require_ok(self.client.command(PLAY, device='lights2'))
-        self.assertEqual(self.client.program_parameters(device='lights2')['slot'], 'A')
-        self.assertEqual(self.client.program_parameters()['generation'], before['generation'])
-        self.assertGreater(self.client.program_parameters()['output_frame'], before['output_frame'])
-        generation = self.client.program_parameters(device='lights2')['generation']
+        self.assertEqual(self.client.program_state(device='lights2')['slot'], 'A')
+        self.assertEqual(self.client.program_state()['generation'], before['generation'])
+        self.assertGreater(self.client.program_state()['output_frame'], before['output_frame'])
+        generation = self.client.program_state(device='lights2')['generation']
         with self.assertRaises(ProtocolError):
             self.client.upload(b'LBC1' + bytes(20), device='lights2')
-        self.assertEqual(self.client.program_parameters(device='lights2')['generation'], generation)
+        self.assertEqual(self.client.program_state(device='lights2')['generation'], generation)
         self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
 
     def test_more_than_eight_devices_and_no_aggregate_pixel_ceiling(self):
@@ -125,10 +125,10 @@ class MultiDeviceTests(unittest.TestCase):
         self.load('color', 'lights8')
         self.assertEqual(len(self.client.snapshot(device='lights8')[1]), count * 3)
         # Reordering device declarations must preserve identity and generation.
-        before = self.client.program_parameters(device='lights8')
+        before = self.client.program_state(device='lights8')
         config['devices'].reverse()
         self.client.configure(config)
-        self.assertEqual(self.client.program_parameters(device='lights8')['generation'], before['generation'])
+        self.assertEqual(self.client.program_state(device='lights8')['generation'], before['generation'])
         self.assertEqual(self.client.status_fields(device='lights8')['mode'], 'bytecode')
 
     def test_configuration_rejects_collisions_and_global_slots(self):
@@ -151,7 +151,7 @@ class MultiDeviceTests(unittest.TestCase):
                 self.client.configure(candidate)
             self.assertEqual(self.client.get_config(), valid)
         with self.assertRaises(ProtocolError):
-            self.client.manage('program_parameters_get', device='lights0', slot='B')
+            self.client.manage('program_state', device='lights0', slot='B')
 
 
 if __name__ == '__main__':

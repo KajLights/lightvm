@@ -15,7 +15,7 @@
 #include <stdatomic.h>
 #include "esp_attr.h"
 
-static const PlatformInfo info={"esp32",LIGHTVM_BOARD_NAME,"ws2812",-1,0};
+static const PlatformInfo info={"esp32",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return (uint64_t)esp_timer_get_time(); }
 void esp32_port_init(void) {}

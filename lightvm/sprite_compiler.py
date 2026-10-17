@@ -4,7 +4,7 @@ Callbacks become bounded bytecode control flow, including normal VM yielding.
 Only pixel kernels and instance storage cross the native boundary.
 """
 import ast
-from .bytecode import I, F, C, B, LOCAL, STATE, CompileError
+from .compiler_core import I, F, C, B, LOCAL, STATE, CompileError
 
 IMAGE_FORMATS = {'rgb8':14, 'rgba8':15, 'rgbw8':16, 'rgbwa8':17}
 CHANNELS = {'r':0, 'g':1, 'b':2, 'w':3, 'a':4}

@@ -7,7 +7,7 @@ unsigned draw_stride(unsigned format) {
         format == DRAW_RGBA || format == DRAW_IMAGE_RGBA || format == DRAW_IMAGE_RGBW ? 4u : 3u;
 }
 unsigned draw_channels(unsigned format) {
-    return format == DRAW_RGB || format == DRAW_IMAGE_RGB ? 7u :
+    return format == DRAW_IMAGE_RGB ? 7u :
         format == DRAW_RGBA || format == DRAW_IMAGE_RGBA ? 23u :
         format == DRAW_IMAGE_RGBW ? 15u : format == DRAW_IMAGE_RGBWA ? 31u : 0u;
 }
@@ -60,45 +60,4 @@ uint32_t draw_colorwheel(float hue) {
     if (rising > 255) rising = 255;
     unsigned falling = 255 - rising;
     return sector == 0 ? (falling << 16 | rising << 8) : sector == 1 ? (falling << 8 | rising) : (rising << 16 | falling);
-}
-static size_t records_offset(unsigned pixels) {
-    size_t size = sizeof(DrawSprites) + (size_t)pixels * sizeof(uint16_t);
-    return (size + _Alignof(DrawSprite) - 1) & ~(size_t)(_Alignof(DrawSprite) - 1);
-}
-size_t draw_sprites_bytes(unsigned capacity, unsigned pixels) {
-    return records_offset(pixels) + (size_t)capacity * sizeof(DrawSprite);
-}
-uint16_t *draw_free_positions(DrawSprites *batch) { return (uint16_t *)(batch + 1); }
-DrawSprite *draw_sprite_records(DrawSprites *batch, unsigned pixels) {
-    return (DrawSprite *)((uint8_t *)batch + records_offset(pixels));
-}
-void draw_sprites_init(DrawSprites *batch, unsigned capacity, unsigned pixels) {
-    memset(batch, 0, draw_sprites_bytes(capacity, pixels));
-    batch->free_count = pixels;
-    for (unsigned i = 0; i < pixels; ++i) draw_free_positions(batch)[i] = (uint16_t)i;
-}
-bool draw_sprite_spawn(DrawSprites *batch, DrawSprite *sprites, unsigned slot, unsigned rank, uint32_t color, float lifetime) {
-    if (sprites[slot].active || rank >= batch->free_count) return false;
-    uint16_t *free_positions = draw_free_positions(batch);
-    sprites[slot] = (DrawSprite){.position=free_positions[rank], .color=color, .lifetime=lifetime, .active=1};
-    free_positions[rank] = free_positions[--batch->free_count];
-    ++batch->active_count;
-    return true;
-}
-void draw_sprite_advance(DrawSprites *batch, DrawSprite *sprites, unsigned slot, float delta) {
-    DrawSprite *s = &sprites[slot];
-    if (!s->active) return;
-    s->age += delta;
-    if (s->age > s->lifetime) {
-        draw_free_positions(batch)[batch->free_count++] = (uint16_t)s->position;
-        s->active = 0; --batch->active_count;
-    }
-}
-void draw_sprite_paint(uint8_t *rgba, const DrawSprite *sprite) {
-    if (!sprite->active) return;
-    float progress = fminf(1.0f, sprite->age / sprite->lifetime);
-    float fade = 1.0f - sinf(progress * 1.5707963267948966f);
-    unsigned alpha = (unsigned)(fmaxf(0, fade) * 255.0f + 0.5f);
-    uint8_t pixel[4]; draw_rgba(pixel, sprite->color, alpha);
-    draw_over(rgba + (size_t)sprite->position * 4, pixel, 255);
 }

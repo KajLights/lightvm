@@ -31,7 +31,7 @@ class BootSequenceTests(unittest.TestCase):
         if self.transport:
             self.transport.close()
         self.transport = ProcessTransport(self.receiver, self.storage if storage else None)
-        self.client = Client(self.transport, output=lambda data: None)
+        self.client = Client(self.transport)
 
     def require_detector(self):
         if not self.supported:

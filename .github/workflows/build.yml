@@ -41,6 +41,8 @@ jobs:
         env:
           LIGHTVM_RECEIVER: ${{ github.workspace }}/build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
         run: |
+          python -B tests/generate_bytecode_fixtures.py --check
+          python -B tests/generate_portable_fixtures.py --check
           ctest --test-dir build/${{ matrix.profile }}-${{ matrix.transport }} --output-on-failure
           python -m unittest discover -s tests -v
           node --test tests/test_editor.mjs

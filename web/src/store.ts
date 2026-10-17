@@ -1,6 +1,6 @@
 import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
-import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyDevice, NetworkConfig, NetworkStatus, ParameterState, Path, Procedure } from './types';
+import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyDevice, NetworkConfig, NetworkStatus, ProgramState, Path, Procedure } from './types';
 import { DEFAULT_SOURCE } from './types';
 import { DEFAULT_EXAMPLE, exampleForSource } from './examples';
 
@@ -20,13 +20,13 @@ interface DeviceState {
   paths: { key: Path; label: string }[]; selectedPath: Path | null;
   config: HardwareConfig | null; configRevision: number; savedRevision: number;
   networkConfig: NetworkConfig | null; networkRevision: number; networkStatus: NetworkStatus | null;
-  procedures: Procedure[]; presets: Procedure[]; parameters: ParameterState | null;
+  procedures: Procedure[]; presets: Procedure[]; programState: ProgramState | null;
   selectedOutput: string | null;
   nearby: NearbyDevice[]; discovering: boolean; discoveryMessage: string;
 }
 const initialDevice: DeviceState = {
   description: null, paths: [], selectedPath: null, config: null, configRevision: 0, savedRevision: 0,
-  networkConfig: null, networkRevision: 0, networkStatus: null, procedures: [], presets: [], parameters: null, selectedOutput: null,
+  networkConfig: null, networkRevision: 0, networkStatus: null, procedures: [], presets: [], programState: null, selectedOutput: null,
   nearby: [], discovering: false, discoveryMessage: 'Finding devices on your local network.',
 };
 const deviceSlice = createSlice({
@@ -36,7 +36,7 @@ const deviceSlice = createSlice({
       const { description, ...connections } = action.payload;
       if (description && state.description?.device_id !== description.device_id) Object.assign(state, {
         config: null, configRevision: 0, savedRevision: 0, networkConfig: null, networkRevision: 0,
-        networkStatus: null, parameters: null, procedures: [], presets: [], selectedOutput: null,
+        networkStatus: null, programState: null, procedures: [], presets: [], selectedOutput: null,
       });
       Object.assign(state, connections);
       if (description) state.description = description;
@@ -45,7 +45,7 @@ const deviceSlice = createSlice({
     configuration(state, action: PayloadAction<{ config: HardwareConfig; revision: number; savedRevision: number }>) {
       state.config = action.payload.config; state.configRevision = action.payload.revision; state.savedRevision = action.payload.savedRevision;
       if (!state.config.devices.some(output => output.id === state.selectedOutput)) {
-        state.selectedOutput = state.config.devices[0]?.id ?? null; state.parameters = null;
+        state.selectedOutput = state.config.devices[0]?.id ?? null; state.programState = null;
       }
     },
     network(state, action: PayloadAction<{ config: NetworkConfig; revision: number }>) {
@@ -54,9 +54,9 @@ const deviceSlice = createSlice({
     networkStatus(state, action: PayloadAction<NetworkStatus>) { state.networkStatus = action.payload; },
     procedures(state, action: PayloadAction<Procedure[]>) { state.procedures = action.payload; },
     presets(state, action: PayloadAction<Procedure[]>) { state.presets = action.payload; },
-    parameters(state, action: PayloadAction<ParameterState | null>) { state.parameters = action.payload; },
+    programState(state, action: PayloadAction<ProgramState | null>) { state.programState = action.payload; },
     outputSelected(state, action: PayloadAction<string>) {
-      if (state.config?.devices.some(output => output.id === action.payload)) { state.selectedOutput = action.payload; state.parameters = null; }
+      if (state.config?.devices.some(output => output.id === action.payload)) { state.selectedOutput = action.payload; state.programState = null; }
     },
     discoveryStarted(state) { state.discovering = true; },
     discoveryFinished(state, action: PayloadAction<{ devices: NearbyDevice[]; message: string }>) {

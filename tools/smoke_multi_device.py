@@ -49,9 +49,9 @@ def run(client, reference, count, seconds, output):
         output.write_text(json.dumps(report, indent=2) + '\n')
 
     try:
-        baseline = client.program_parameters(device=primary)
+        baseline = client.program_state(device=primary)
         client.configure(config)
-        check(client.program_parameters(device=primary)['generation'] == baseline['generation'],
+        check(client.program_state(device=primary)['generation'] == baseline['generation'],
               'adding devices restarted Rainbow')
         for effect in EFFECTS:
             source = ROOT / 'examples/animations' / (effect + '.py')
@@ -73,10 +73,10 @@ def run(client, reference, count, seconds, output):
             client.require_ok(client.command(PLAY, device=effect))
             print(f'RUNNING {effect}: slot A, {count} physical pixels; Rainbow continues', flush=True)
             save()
-        current = client.program_parameters(device=primary)
+        current = client.program_state(device=primary)
         check(current['generation'] == baseline['generation'] and current['output_frame'] > baseline['output_frame'],
               'Rainbow did not continue during configuration and uploads')
-        initial = {device: client.program_parameters(device=device) for device in devices}
+        initial = {device: client.program_state(device=device) for device in devices}
         initial_status = client.status_fields()
         report['initial'] = initial
         report['initial_status'] = initial_status
@@ -86,7 +86,7 @@ def run(client, reference, count, seconds, output):
         while milestone < seconds:
             milestone = min(seconds, milestone + 5)
             time.sleep(max(0, started + milestone - time.monotonic()))
-            states = {device: client.program_parameters(device=device) for device in devices}
+            states = {device: client.program_state(device=device) for device in devices}
             status = client.status_fields()
             native = client.describe()['devices']
             report['samples'].append({'elapsed_seconds': round(time.monotonic()-started, 3),
@@ -109,11 +109,11 @@ def run(client, reference, count, seconds, output):
                                  for device, state in initial.items()}
         check(previous['sweep']['render_count'] > initial['sweep']['render_count'] + 1, 'Sweep did not continue rendering')
         client.pause_program(device='pattern')
-        paused = client.program_parameters(device='pattern')['program_us']
-        rainbow_frame = client.program_parameters(device=primary)['output_frame']
+        paused = client.program_state(device='pattern')['program_us']
+        rainbow_frame = client.program_state(device=primary)['output_frame']
         time.sleep(.2)
-        check(client.program_parameters(device='pattern')['program_us'] == paused, 'Pattern pause did not hold')
-        check(client.program_parameters(device=primary)['output_frame'] > rainbow_frame, 'pausing Pattern blocked Rainbow')
+        check(client.program_state(device='pattern')['program_us'] == paused, 'Pattern pause did not hold')
+        check(client.program_state(device=primary)['output_frame'] > rainbow_frame, 'pausing Pattern blocked Rainbow')
         client.resume_program(device='pattern')
         report['independent_pause_resume'] = True
         check(client.get_config(saved=True) == saved and client.procedures() == library,

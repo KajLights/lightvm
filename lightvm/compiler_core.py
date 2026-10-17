@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
 """Restricted Python -> portable LBC1 bytecode. Parses source; never executes it."""
-import argparse
 import ast
-import json
 import math
 import struct
-import re
-from pathlib import Path
 
-# Keep numeric IDs in sync with vm.h. Registers have fixed declared types.
-OPS = ['END', 'RETURN', 'MOV', 'IADD', 'ISUB', 'IMUL', 'IDIV', 'IMOD',
-       'FADD', 'FSUB', 'FMUL', 'FDIV', 'FMOD', 'ITOF', 'FTOI', 'ILT',
-       'FLT', 'EQ', 'JZ', 'JMP', 'RGB', 'HSV', 'PALETTE', 'IMIN', 'IMAX',
-       'FMIN', 'FMAX', 'HASH', 'HSV_RETURN', 'STORE', 'FILL', 'HUE_RETURN', 'IFMADD']
-OP = {name: i for i, name in enumerate(OPS)}
+# Keep numeric IDs in sync with bytecode_core.h. Registers have fixed declared types.
+OP = {name: i for i, name in enumerate([
+    'END', 'RETURN', 'MOV', 'IADD', 'ISUB', 'IMUL', 'IDIV', 'IMOD',
+    'FADD', 'FSUB', 'FMUL', 'FDIV', 'FMOD', 'ITOF', 'FTOI', 'ILT',
+    'FLT', 'EQ', 'JZ', 'JMP', 'RGB', 'HSV'])}
+OP.update(IMIN=23, IMAX=24, FMIN=25, FMAX=26, HASH=27)
 I, F, C, B = 1, 2, 3, 4
-LOCAL, INPUT, CONST, STATE, FRAME, PARAM = range(6)
+LOCAL, INPUT, CONST, STATE = range(4)
 MAX_REGS = 128
 
 class CompileError(ValueError):
@@ -24,11 +20,10 @@ class CompileError(ValueError):
         self.node = node
 
 class Compiler:
-    def __init__(self, source, fuse=True):
+    def __init__(self, source):
         self.tree = ast.parse(source)
-        self.fuse = fuse
-        self.regs, self.code, self.constants, self.names, self.palettes = [], [], {}, {}, {}
-        self.params, self.funcs, self.table = [], {}, []
+        self.regs, self.code, self.constants, self.names = [], [], {}, {}
+        self.funcs, self.table = {}, []
     def fail(self, node, message):
         raise CompileError(message, node)
 
@@ -102,16 +97,8 @@ class Compiler:
             if self.typ(a) != self.typ(b): self.fail(n, 'conditional branches must have the same type')
             self.emit('MOV',out,b); self.code[jump][4] = len(self.code)
             return out
-        if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id in self.palettes:
-            r = self.expr(n.slice)
-            if self.typ(r)!=I: self.fail(n, 'palette index must be i32')
-            start, count = self.palettes[n.value.id]
-            out = self.reg(C); self.emit('PALETTE',out,r,count,start)
-            return out
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and not n.keywords:
             name = n.func.id
-            if name=='len' and len(n.args)==1 and isinstance(n.args[0], ast.Name) and n.args[0].id in self.palettes:
-                return self.literal(self.palettes[n.args[0].id][1])
             args = [self.expr(a) for a in n.args]
             if name in ('int', 'float') and len(args)==1:
                 return self.convert(args[0], I if name=='int' else F)
@@ -134,11 +121,6 @@ class Compiler:
         if type(op) not in names or (isinstance(op, ast.FloorDiv) and t==F):
             raise CompileError('unsupported arithmetic operation')
         out=self.reg(t)
-        # Combine a typed index conversion, multiply and add without FMA rounding.
-        if self.fuse and isinstance(op,ast.Add) and t==F and len(self.code)>=2:
-            mul,conv=self.code[-1],self.code[-2]
-            if mul[0]==OP['FMUL'] and mul[1]==b and conv[0]==OP['ITOF'] and mul[2]==conv[1] and a not in (mul[1],conv[1]):
-                self.code.pop();self.code.pop();self.emit('IFMADD',out,conv[2],mul[3],a);return out
         self.emit(('F' if t==F else 'I')+names[type(op)],out,a,b);return out
 
     def colour_literal(self,n):
@@ -150,7 +132,3 @@ class Compiler:
 
     def colour_constant(self,v):
         return self.reg(C,CONST,v)
-
-if __name__ == '__main__':
-    from .compiler import main
-    main()

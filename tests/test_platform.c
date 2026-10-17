@@ -25,7 +25,7 @@ static size_t borrowed_count;
 static uint32_t borrowed_crc;
 static unsigned cancelled_outputs;
 static uint8_t displayed[PIXEL_BYTES];
-static const PlatformInfo info = {"test", "virtual", "capture", -1, 7};
+static const PlatformInfo info = {"test", "virtual", "capture"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) {
     uint64_t now = clock_now;
@@ -99,18 +99,18 @@ bool platform_boot_storage_sync(void) { CHECK(false); return false; }
 static void storage_faults(void) {
     storage_available=true; memset(flash,255,sizeof(flash));
     Store s; CHECK(store_mount(&s));
-    CHECK(store_put(&s,"effect","old wasm",8));
+    CHECK(store_put(&s,"effect","old data",8));
     CHECK(store_put(&s,STORE_CONFIG,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG)));
     CHECK(store_put(&s,STORE_NETWORK,"old network",11));
     memcpy(baseline,flash,sizeof(flash));
     unsigned interrupted=0;
     for (int point=0;point<90;++point) {
         memcpy(flash,baseline,sizeof(flash)); fail_after=-1; CHECK(store_mount(&s));
-        fail_after=point; bool ok=store_put(&s,"effect","new wasm",8); fail_after=-1;
+        fail_after=point; bool ok=store_put(&s,"effect","new data",8); fail_after=-1;
         Store recovered; CHECK(store_mount(&recovered));
         const StoreEntry *entry=store_find(&recovered,"effect"); char bytes[8];
         CHECK(entry && store_read(&recovered,entry,0,bytes,8));
-        CHECK(!memcmp(bytes,"old wasm",8) || !memcmp(bytes,"new wasm",8));
+        CHECK(!memcmp(bytes,"old data",8) || !memcmp(bytes,"new data",8));
         CHECK(store_find(&recovered,STORE_CONFIG) && recovered.config_revision==1);
         CHECK(store_find(&recovered,STORE_NETWORK) && recovered.network_revision==1);
         if (!ok) ++interrupted;
@@ -174,15 +174,15 @@ static void command(Session *session, uint8_t type, const uint8_t *bytes, size_t
     // write_frame delivers header and payload separately, exercising the session.
     write_frame(input, session, type, 42, bytes, size);
 }
-static void upload(Session *session, Capture *reply, const uint8_t *wasm, size_t size) {
+static void upload(Session *session, Capture *reply, const uint8_t *bytecode, size_t size) {
     uint8_t begin[8], chunk[FRAME_LIMIT];
     write_u32(begin, (uint32_t)size);
-    write_u32(begin + 4, crc32_bytes(wasm, size));
+    write_u32(begin + 4, crc32_bytes(bytecode, size));
     command(session, CMD_BEGIN, begin, sizeof(begin));
     CHECK(reply->code == STATUS_OK);
     for(size_t at=0;at<size;) {
         size_t n=size-at;if(n>FRAME_LIMIT-4)n=FRAME_LIMIT-4;
-        write_u32(chunk,(uint32_t)at);memcpy(chunk+4,wasm+at,n);
+        write_u32(chunk,(uint32_t)at);memcpy(chunk+4,bytecode+at,n);
         command(session,CMD_CHUNK,chunk,n+4);CHECK(reply->code==STATUS_OK);at+=n;
     }
     command(session, CMD_FINISH, NULL, 0);
@@ -265,7 +265,7 @@ int main(void) {
     // Equal request IDs on independent, fragmented decoders retain reply ownership.
     Session other; Capture other_reply={.marker=0x12345678u}; session_init(&other,&app,2,capture,&other_reply);
     uint8_t begin[8]; write_u32(begin,8); write_u32(begin+4,0);
-    uint8_t partial[HEADER_SIZE+8]={'W','A','S','M',1,CMD_BEGIN,42,0};
+    uint8_t partial[HEADER_SIZE+8]={'L','V','M','1',1,CMD_BEGIN,42,0};
     write_u32(partial+8,8); memcpy(partial+16,begin,8);
     uint32_t crc=crc32_update(0xffffffffu,partial+4,8); crc=crc32_update(crc,partial+16,8)^0xffffffffu; write_u32(partial+12,crc);
     session_feed(&session,partial,7); CHECK(!app.upload_owner);
@@ -296,7 +296,7 @@ int main(void) {
     CHECK(strstr(reply.message, "api=1 protocol=1 platform=test board=virtual output=capture"));
     CHECK(strstr(reply.message, "pin=16") && strstr(reply.message, "brightness=7"));
     // Decoder errors must use the same native transport context as app replies.
-    uint8_t bad_header[HEADER_SIZE] = {'W','A','S','M',99,CMD_STATUS,7,0};
+    uint8_t bad_header[HEADER_SIZE] = {'L','V','M','1',99,CMD_STATUS,7,0};
     session_feed(&session, bad_header, sizeof(bad_header));
     CHECK(reply.code == STATUS_PROTOCOL && reply.id == 7);
 
@@ -344,7 +344,7 @@ int main(void) {
     vm_destroy(&app_device(&app,NULL)->vm);vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);
     app_device(&app,NULL)->vm.memory=fault_lbc;app_device(&app,NULL)->vm.expected=sizeof(fault_lbc);CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
     command(&session, CMD_FRAME, delta, sizeof(delta));
-    CHECK(reply.code == STATUS_RUN);
+    CHECK(reply.code == STATUS_EXECUTION);
     command(&session, CMD_RESET, NULL, 0);
     CHECK(reply.code == STATUS_OK && vm_heap_used() == 0);
     deny_allocation = true;
@@ -377,7 +377,7 @@ int main(void) {
     uint32_t before_frame=app_device(&app,NULL)->vm.control.output_frame;
     deny_show=true; reply.snapshot_size=0; write_u32(delta,7);
     command(&session,CMD_FRAME,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_RUN && !app_device(&app,NULL)->vm.control.faulted && app_device(&app,NULL)->vm.playing);
+    CHECK(reply.code==STATUS_EXECUTION && !app_device(&app,NULL)->vm.control.faulted && app_device(&app,NULL)->vm.playing);
     CHECK(app_device(&app,NULL)->vm.control.output_frame==before_frame);
     CHECK(displayed[2]==220 && app_device(&app,NULL)->pixels.rgb[2]==220);
     CHECK(app_device(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
@@ -387,7 +387,7 @@ int main(void) {
     vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);app_device(&app,NULL)->vm.memory=control_lbc;app_device(&app,NULL)->vm.expected=sizeof(control_lbc);
     CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
     deny_allocation=true; reply.snapshot_size=0;
-    command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_RUN);
+    command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_EXECUTION);
     CHECK(app_device(&app,NULL)->vm.control.output_charge==0);
     deny_allocation=false;
     // Admission also rejects an output reservation when the aggregate budget
@@ -396,7 +396,7 @@ int main(void) {
     CHECK(vm_heap_charge(occupied));
     size_t admitted=vm_heap_used();
     reply.snapshot_size=0; command(&session,CMD_FRAME,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_RUN && vm_heap_used()==admitted);
+    CHECK(reply.code==STATUS_EXECUTION && vm_heap_used()==admitted);
     CHECK(strstr(reply.message,"aggregate heap budget"));
     vm_heap_uncharge(occupied);
     session_destroy(&session); app_destroy(&app);
@@ -429,7 +429,7 @@ int main(void) {
     CHECK(vm_heap_used()==0);
 
     // One identical artifact renders into arbitrary assigned canvases, with no
-    // physical driver. State, clock, settings and RGB frames are private.
+    // physical driver. State, clock, settings and RGBA contributions are private.
     uint8_t canvas_one[9], canvas_two[21];
     memset(canvas_one,99,sizeof(canvas_one)); memset(canvas_two,99,sizeof(canvas_two));
     PixelBuffer offscreen_one={.rgb=canvas_one,.count=3}, offscreen_two={.rgb=canvas_two,.count=7};
@@ -450,14 +450,15 @@ int main(void) {
     CHECK(!one.output && !two.output && !one.control.output_charge && !two.control.output_charge);
     CHECK(one.control.allocation!=two.control.allocation);
     allocation_count=allocations; deny_allocation=true;
-    CHECK(!control_step(&one,1,5000) && !control_step(&two,1,9000));
-    CHECK(one.control.committed[8]==13 && two.control.committed[20]==21);
+    CHECK(!control_step(&one,5000) && !control_step(&two,9000));
+    CHECK(one.control.committed[10]==13 && two.control.committed[26]==21);
     CHECK(one.control.program_us==5000 && two.control.program_us==9000);
-    CHECK(!control_step(&one,1,2000));
-    CHECK(one.control.committed[8]==11 && two.control.committed[20]==21);
+    CHECK(!control_step(&one,2000));
+    CHECK(one.control.committed[10]==11 && two.control.committed[26]==21);
     CHECK(one.control.contribution_frame==3 && two.control.contribution_frame==2);
-    CHECK(one.control.buffer_bytes==18 && two.control.buffer_bytes==42);
+    CHECK(one.control.buffer_bytes==24 && two.control.buffer_bytes==56);
     CHECK(one.control.committed[0]==0 && two.control.committed[0]==0);
+    CHECK(one.control.committed[11]==255 && two.control.committed[27]==255);
     CHECK(!one.control.output_valid && !two.control.output_valid && shows==offscreen_shows);
     for (size_t i=0;i<sizeof(canvas_one);++i) CHECK(canvas_one[i]==99);
     for (size_t i=0;i<sizeof(canvas_two);++i) CHECK(canvas_two[i]==99);
@@ -473,12 +474,12 @@ int main(void) {
     vm_init(&one,&offscreen_one,capture,&first_reply);
     CHECK(vm_bind_storage(&one,&stored,entry));
     CHECK(!vm_load(&one));one.ready=true;CHECK(!control_prepare(&one));
-    CHECK(!control_step(&one,1,5000));CHECK(one.control.committed[8]==10);
+    CHECK(!control_step(&one,5000));CHECK(one.control.committed[10]==10);
     uint32_t pinned=one.code.offset;
     for(unsigned k=0;k<20;k++)CHECK(store_put(&stored,"bytecode",render_lbc,sizeof(render_lbc)));
     CHECK(one.from_storage && one.code.offset==pinned);
-    CHECK(!control_step(&one,1,7000));
-    CHECK(one.control.committed[8]==13);vm_destroy(&one);storage_available=false;
+    CHECK(!control_step(&one,7000));
+    CHECK(one.control.committed[10]==13);vm_destroy(&one);storage_available=false;
 
     // Initialization failure changes the active revision and leaves no driver.
     clock_now=0; app_init(&app,capture,&reply); session_init(&session,&app,1,capture,&reply);

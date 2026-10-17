@@ -8,7 +8,7 @@ per scene, subject to the shared VM memory budget.
 
 All animations use `profile("animation/1")`. The single `examples/animations/`
 directory supplies examples for both direct playback and scene composition.
-New programs use LBC1/4, ABI 4, schema `lightvm.program/10`, and `rgba8-premul` output.
+New programs use LBC1/4, ABI 4, schema `lightvm.program/11`, and `rgba8-premul` output.
 Every animation can run directly on a device or inside a scene.
 Direct playback shows the animation over black. A scene combines it with lower layers.
 Programs receive a destination from the engine. They cannot choose GPIOs or other layers.
@@ -37,7 +37,7 @@ participate in the VM's normal instruction budget and continuation. C implements
 generic instance storage, pixel sampling, colour transforms and blending; it has
 no star policy. There are no per-frame heap allocations.
 
-Legacy `pixels.fill`, `point`, `gradient`, `colorwheel` and `palette` operations
+`pixels.fill`, `point`, `gradient`, `colorwheel` and `palette` operations
 remain available. Output surfaces use premultiplied RGBA, while mutable
 `PixelArray` images use straight channels so changing alpha never destroys their
 colour. Drawing converts and composites compatible formats in native kernels.
@@ -125,7 +125,7 @@ python tools/client.py --port PORT --store-procedure rainbow build/rainbow.lbc
 python tools/client.py --port PORT --store-procedure stars build/stars.lbc
 python tools/client.py --port PORT --device lights --scene examples/scenes/rainbow-stars.json
 python tools/client.py --port PORT --device lights --get-scene
-python tools/client.py --port PORT --device lights --layer stars --parameters
+python tools/client.py --port PORT --device lights --layer stars --program-state
 python tools/client.py --port PORT --device lights --layer stars --pause
 python tools/client.py --port PORT --device lights --layer bg --activate color
 python tools/client.py --port PORT --device lights --layer stars --resume
@@ -149,11 +149,11 @@ Root RESET or `clear_scene` releases the scene. Normal root procedure activation
 replaces a scene with the original single-program presentation path.
 
 `snapshot()` returns final RGB; `snapshot(layer=...)` returns that layer's
-committed RGBA (or RGB for legacy programs). `scene()` reports ordering,
+committed RGBA. `scene()` reports ordering,
 generations, opacity, physical frames, composite frames, cumulative compositor
-CPU time and output latency. Per-layer `program_parameters()` includes completed
+CPU time and output latency. Per-layer `program_state()` includes completed
 renders, cumulative render CPU, native draw CPU, dispatch and resume counts.
-`native_draw_us` measures SDK bindings 18–52 and compiler-generated pixel maps; existing bulk fill/copy
+`native_draw_us` measures SDK bindings 27–52 and compiler-generated pixel maps; existing bulk fill/copy
 instructions contribute to total render CPU only.
 Render CPU includes native kernels and excludes time spent servicing peers;
 output latency includes asynchronous transfer wait. These counters have distinct
@@ -163,12 +163,11 @@ denominators: a scene may reuse a layer contribution for several outputs.
 
 Discovery advertises `scene_api=1`, `native_drawing_api=4`,
 `scene_layer_limit=8`, `layer_pixel_format="rgba8-premul"`, `alpha=true`,
-`composition=true`, schema 10 and the single source profile `animation/1`.
-`scene_blend_modes` lists `over`, `add`, `screen` and `multiply`. Older scene
-documents omit `blend` and retain their source-over behavior.
-Target-aware compilation checks both profile and schema. Old targets reject new packages.
-Stored schema 5–9 packages retain their ABI and pixel behavior. The loader accepts their
-old profile bindings for compatibility; these are not additional source profiles.
+`composition=true`, schema 11 and the single source profile `animation/1`.
+`scene_blend_modes` lists `over`, `add`, `screen` and `multiply`. Omitted `blend`
+means `over` within the current scene schema. Target-aware compilation requires
+an explicit current descriptor. Only schema 11, internal profile binding 3 and
+RGBA contributions are accepted.
 
 The object upload protocol accepts kind `scene`. Operations are `scene_get`,
 `scene_snapshot`, `scene_apply`, `scene_clear`, `scene_layer_activate`,
@@ -177,11 +176,10 @@ The object upload protocol accepts kind `scene`. Operations are `scene_get`,
 The `layer` selector extends existing program controls and `device_command`.
 Full-scene writes replace every instance; use layer activation to retain peers.
 
-Legacy native binding IDs 18–26 are respectively RGBA fill, RGBA point, colorwheel fill,
-sprite advance, sprite spawn, sprite draw, sprite active count, gradient fill and
-palette fill. Resource kind 12 is premultiplied RGBA; kind 13 is the bounded sprite
-pool, retained for stored schema 6 packages. New source uses generic batch kind
-18 and PixelArray kinds 14–17; see the [SDK reference](pixelarray-sprites.md).
+Resource kind 12 is premultiplied RGBA. SpriteBatch uses generic batch kind 18;
+PixelArray uses kinds 14–17. Source point/fill/gradient/colorwheel/palette methods
+use generic PixelArray kernels. Removed resource kind 13 and native bindings
+18–26 are rejected even inside a package claiming the current schema.
 Typed calls enforce stage permissions, resource kind, bounds and generation.
 There are no guest pointers or per-frame allocations.
 
@@ -222,6 +220,3 @@ The Python client exposes `presets`, `preset`, `save_preset`, `activate_preset`
 and `delete_preset` helpers.
 
 Linear-light blending, two-dimensional rotation and A/B transitions remain follow-on work.
-
-The [Pico W measurement](design/measurement-native-composition-pico-w.md) records
-the initial four-output throughput, CPU and memory checks.

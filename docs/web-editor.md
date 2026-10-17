@@ -152,17 +152,18 @@ presets do not automatically run at boot. Device presets require `preset_api: 1`
 The device supports five presets independently of its eight program slots.
 
 **Export library** preserves editable source, versions, settings and recipes in
-one JSON file. **Import library** merges those versions and checks bytecode
-digests and references. Browser storage has a quota and can be cleared by the
+one JSON file. **Import library** merges current versions and checks explicit
+schema/profile/ABI, embedded package metadata, digests and references. Obsolete
+artifacts require recompilation from source; their saved browser data is not erased. Browser storage has a quota and can be cleared by the
 browser; export a backup before moving browsers or computers. Source is kept off
 the microcontroller. Failed browser storage writes are reported, and unreadable
-saved data is preserved until explicit import recovery. Device program storage
+saved data can be downloaded with **Export preserved library** until explicit
+import recovery. Recover the source and recompile obsolete artifacts. Device program storage
 controls can remove unused compiled programs; saved presets and active/saved
 startup or playback references protect programs still in use.
 
 The playback panel addresses the selected output and its first layer, with
-generation checks for pause/resume. Live parameter controls remain available
-for stored ABI 2 programs.
+generation checks for pause/resume. Settings are edited before preview or reset.
 
 The [animation/1](animation-profile.md) settings are frozen for each instance;
 there are no listeners or cycle notifications. Profile and
@@ -198,42 +199,15 @@ workspace views, configurations, uploads and live controls. Set LIGHTVM_RECEIVER
 to a host build and CHROME_EXECUTABLE if needed, then run npm run test:browser.
 It requires the pinned browser compiler assets.
 
-### XIAO ESP32-C6 browser installation, 13 October 2026
+### Firmware acceptance
 
-A newly connected 4 MiB ESP32-C6 was identified over USB Serial/JTAG. The
-local Firmware page served the XIAO C6 Wi-Fi/HTTP/boot-sequence bundle and the
-Chrome flow reached the new LightVM device workspace. Readback verification
-matched the packaged bootloader at `0x0`, partition table at `0x8000` and app
-at `0x10000` against the device flash. After reset, USB `describe` reported
-`board:xiao_esp32c6`, Control ABI 2, Wi-Fi/HTTP and recovery support, with
-empty boot and animation errors. `status` returned idle with no output
-configuration, as expected for a new installation.
+The Pages workflow builds the supported board profiles and packages images from
+one source tree. The ESP32 packager requires the correct chip, flash layout and
+Wi-Fi/HTTP/boot-sequence feature flags. Pico packaging validates every UF2 block
+and its reserved-storage boundary. The browser uses the vendored pico⚡flash
+PICOBOOT implementation for RP2040 boards.
 
-### XIAO ESP32-S3 browser installation, 13 October 2026
-
-The next connected USB Serial/JTAG device identified as ESP32-S3 with 8 MiB
-flash. The first local installer attempt said the chip was unsupported because
-that local manifest contained only the C6 image. Repackaging the local site
-with all three XIAO images and reloading the page exposed the S3 bundle. The
-browser installation then reached the LightVM workspace, which connected over
-USB as `xiao_esp32s3` with device ID matching the detected chip MAC and fresh
-output setup. The S3 flash bytes were not independently read back while the
-browser held the active USB session.
-
-### XIAO ESP32-C3 browser installation, 13 October 2026
-
-The first local C3 installer bundle accidentally used a USB-only profile, so
-the device reported no Wi-Fi/HTTP support and the editor hid its network
-configuration. The bundle was corrected to the C3 Wi-Fi/HTTP/boot-sequence
-profile, and the packager now rejects installer images built without those
-features. Kaj installed the corrected image through the Chrome installer. The
-editor then showed Wi-Fi & HTTP configuration, a connected Wi-Fi network, and
-both USB and HTTP command paths for the C3. Flash bytes were not independently
-read back after installation.
-
-### Pico and Pico W browser installation
-
-The Pages workflow builds and validates RP2040 UF2 images for Pico and Pico W.
-The browser path uses the vendored pico⚡flash PICOBOOT implementation. Local
-packaging and browser rendering have been checked with real UF2 builds; direct
-WebUSB flashing and readback still need a physical Pico and Pico W test.
+Browser rendering and simulator checks do not establish physical flashing,
+readback, wireless behavior or power-recovery timing. Validate these separately
+on each board when a hardware test is explicitly requested. Preserve reserved
+storage and retain source/configuration backups across contract cutovers.

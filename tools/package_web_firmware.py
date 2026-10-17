@@ -63,6 +63,11 @@ def package(output: Path, board_dirs: dict[str, Path], version: str, pico_files:
     output.mkdir(parents=True, exist_ok=True)
     for name in ("manifest.json", "pico.json"):
         (output / name).unlink(missing_ok=True)
+    # This is a generated bundle: do not ship files left by a previous build.
+    for name in (*CHIPS, *PICO_BOARDS, "licenses"):
+        directory = output / name
+        if directory.exists():
+            shutil.rmtree(directory)
     builds = []
     for board, directory in board_dirs.items():
         if board not in CHIPS:
@@ -113,6 +118,7 @@ def package(output: Path, board_dirs: dict[str, Path], version: str, pico_files:
     if pico_builds:
         (output / "pico.json").write_text(json.dumps({"version": version, "builds": pico_builds}, indent=2) + "\n")
     root = Path(__file__).resolve().parents[1]
+    shutil.copyfile(root / "LICENSE", output / "LICENSE")
     shutil.copyfile(root / "THIRD_PARTY_NOTICES.md", output / "THIRD_PARTY_NOTICES.md")
     shutil.copytree(root / "licenses", output / "licenses", dirs_exist_ok=True)
     return manifest

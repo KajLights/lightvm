@@ -1,7 +1,7 @@
 #ifndef LIGHTVM_VM_H
 #define LIGHTVM_VM_H
 #include "protocol.h"
-#include "bytecode.h"
+#include "bytecode_core.h"
 #include "config.h"
 #include "platform.h"
 #include <stdbool.h>
@@ -9,12 +9,11 @@
 #include "control.h"
 #include "portable.h"
 #include "store.h"
-typedef struct { LbcProgram program; LbcInstance instance; } LegacyVm;
 
 typedef struct VmInstance {
     const uint8_t *memory; /* Borrowed immutable fixtures/firmware only. */
     Store *store; StoreEntry code; int code_pin; bool from_storage;
-    LegacyVm *legacy; LbcBuffer view;
+    LbcBuffer view;
     Portable *portable;
     size_t received, expected;
     uint32_t expected_crc;

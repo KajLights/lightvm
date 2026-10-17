@@ -7,7 +7,7 @@ import { DeviceService } from './device-service';
 import { Develop } from './Develop';
 import { RuntimeContext } from './runtime';
 import { createAppStore, deviceActions, editorActions } from './store';
-import type { Description, ParameterState } from './types';
+import type { Description, ProgramState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
 import originalRainbow from '../../examples/animations/rainbow.py?raw';
 
@@ -48,35 +48,35 @@ describe('editor examples and playback status', () => {
     const { store, devices, show } = workspace();
     const description = { device_id: 'pico', boot_id: 'boot', board: 'pico_w', active_revision: 0,
       saved_revision: 0, catalog_revision: 0, network_revision: 0 } as Description;
-    const running: ParameterState = { generation: 1, parameter_revision: 0, slot: 'A', paused: false,
-      faulted: false, render_count: 0, values: {}, settings_values: { duration: 60 },
-      manifest: { abi: 4, parameters: [], settings: [{ name: 'duration', type: 'float' }] } };
+    const running: ProgramState = { generation: 1, slot: 'A', paused: false,
+      faulted: false, render_count: 0, settings_values: { duration: 60 },
+      manifest: { abi: 4, schema: 'lightvm.program/11', profile: 'animation/1', pixels: { format: 'rgba8-premul' }, settings: [{ name: 'duration', type: 'float' }] } };
     const response = vi.fn().mockResolvedValue({ ...running, render_count: 3 });
     const client = { closed: false, transport: { label: 'HTTP' }, describe: vi.fn().mockResolvedValue(description), json: response } as unknown as LightVMClient;
     devices.paths.attach('http', client, description); devices.syncPaths(description);
-    store.dispatch(deviceActions.parameters(running));
+    store.dispatch(deviceActions.programState(running));
     store.dispatch(editorActions.compiled({ revision: 0, bytes: 100, manifest: running.manifest, diagnostics: [] })); show();
     fireEvent.click(screen.getByLabelText('Override duration'));
     fireEvent.change(screen.getByLabelText('duration'), { target: { value: '3' } });
 
     await act(async () => { await devices.poll(); });
-    expect(response).toHaveBeenCalledWith('program_parameters_get');
-    expect(document.querySelector('#parameter-state')).toHaveTextContent('Running');
+    expect(response).toHaveBeenCalledWith('program_state');
+    expect(document.querySelector('#playback-state')).toHaveTextContent('Running');
     expect(screen.getByRole('button', { name: /^Pause$/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Apply parameter values' })).toBeNull();
     expect(screen.getByLabelText('duration')).toHaveValue(3);
 
     response.mockResolvedValue({ ...running, render_count: 3, paused: true });
     await act(async () => { await devices.poll(); });
-    expect(document.querySelector('#parameter-state')).toHaveTextContent('Paused');
+    expect(document.querySelector('#playback-state')).toHaveTextContent('Paused');
     expect(screen.getByRole('button', { name: /^Pause$/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /^Resume$/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Apply parameter values' })).toBeNull();
     expect(screen.getByLabelText('duration')).toHaveValue(3);
 
-    response.mockResolvedValue({ ...running, generation: 2, values: {}, settings_values: { duration: 20 } });
+    response.mockResolvedValue({ ...running, generation: 2, settings_values: { duration: 20 } });
     await act(async () => { await devices.poll(); });
     expect(screen.getByLabelText('duration')).toHaveValue(3);
-    expect(document.querySelector('#parameter-state')).toHaveTextContent('Running');
+    expect(document.querySelector('#playback-state')).toHaveTextContent('Running');
   });
 });

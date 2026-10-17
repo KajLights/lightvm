@@ -53,61 +53,40 @@ bool vm_bind_storage(VmInstance *a,Store *store,const StoreEntry *entry) {
 }
 void vm_rebind(VmInstance *a) {
     if(a->portable){a->portable->context=a;a->portable->output=&a->view;}
-    if(a->legacy){a->legacy->program.context=a;a->legacy->instance.program=&a->legacy->program;a->legacy->instance.buffer=&a->view;}
 }
 static const char *vm_load_impl(VmInstance *a) {
     if(a->generation==UINT32_MAX)return "program generation exhausted";
-    uint8_t header[8];
-    if(vm_read(a,0,header,sizeof(header))&&!memcmp(header,"LBC1",4)&&lbc_u32(header+4)==4){
-        const char *error=pbc_open(&a->portable,vm_read,a,a->expected);
-        if(!error)error=animation_validate(a->portable);
-        return error?error:control_probe(a);
-    }
-    a->legacy=demo_calloc(1,sizeof(*a->legacy));
-    if(!a->legacy)return "legacy context exceeds memory budget";
-    if(!lbc_open_reader(&a->legacy->program,vm_read,a,a->expected))return "invalid LBC1 bytecode package";
-    int status;do{status=lbc_validate(&a->legacy->program,32);runtime_checkpoint();}while(!status);
-    if(status!=1)return "invalid bytecode instruction";
-    return control_probe(a);
-}
-static void run(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size) {
-    (void)payload;(void)size;
-    reply(a,id,STATUS_RUN,0,a->ready ? "control programs execute through PLAY/FRAME, not RUN" : "no loaded module");
-}
-static enum Status execution_status(VmInstance *a,const char *error) {
-    (void)a;(void)error;
-    return STATUS_RUN;
+    const char *error=pbc_open(&a->portable,vm_read,a,a->expected);
+    if(!error)error=animation_validate(a->portable);
+    return error?error:control_probe(a);
 }
 static const char *prepare_animation(VmInstance *a) { return control_prepare(a); }
 static const char *render_animation(VmInstance *a,uint32_t delta_ms) {
-    return control_step(a,1,(uint64_t)delta_ms*1000u);
+    return control_step(a,(uint64_t)delta_ms*1000u);
 }
 void control_presented(VmInstance *a,bool success) {
     if(success)a->animation_error[0]=0;
     else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed; retrying");
 }
-static void show_frame(VmInstance *a, uint64_t started, bool contribution, bool asynchronous) {
-    if(!a->portable)a->render_us=(uint32_t)(platform_time_us()-started);
+static void show_frame(VmInstance *a,bool asynchronous) {
     uint64_t show_started=platform_time_us();
     bool success;
-    if (contribution) {
-        // Each device presents its own complete RGB frame and retains an
-        // independent committed contribution.
-        if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
-        const uint8_t *frame=control_output_frame(a);
-        if(asynchronous){
-            if(a->output->driver&&a->output->type->submit(a->output->driver,frame,a->control.count)){
-                a->output_pending=true;a->view.sealed=true;a->output_started=show_started;return;
-            }
-            vm_output_cancel(a);
-            if(a->output->driver)a->output->type->cancel(a->output->driver);
-            control_presented(a,false);return;
+    // Each device presents its own complete RGB frame and retains an
+    // independent committed contribution.
+    if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
+    const uint8_t *frame=control_output_frame(a);
+    if(asynchronous){
+        if(a->output->driver&&a->output->type->submit(a->output->driver,frame,a->control.count)){
+            a->output_pending=true;a->view.sealed=true;a->output_started=show_started;return;
         }
-        success=a->output->driver && a->output->type && a->output->rgb &&
-            a->output->count==a->control.count &&
-            a->output->type->show(a->output->driver,frame,a->control.count);
-        if (success) memcpy(a->output->rgb,frame,(size_t)a->control.count*3);
-    } else success=pixels_show(a->target);
+        vm_output_cancel(a);
+        if(a->output->driver)a->output->type->cancel(a->output->driver);
+        control_presented(a,false);return;
+    }
+    success=a->output->driver && a->output->type && a->output->rgb &&
+        a->output->count==a->control.count &&
+        a->output->type->show(a->output->driver,frame,a->control.count);
+    if (success) memcpy(a->output->rgb,frame,(size_t)a->control.count*3);
     control_presented(a,success);
     a->show_us=(uint32_t)(platform_time_us()-show_started);
     if (a->control.enabled && success) {
@@ -121,7 +100,7 @@ static bool complete_output(VmInstance *a) {
         if(!status)return false;
         a->view.sealed=false;a->output_pending=false;
         if(status<0){a->output->type->cancel(a->output->driver);control_presented(a,false);return false;}
-        memcpy(a->output->rgb,a->control.presentation?a->control.presentation:control_frame(a),(size_t)a->control.count*3);
+        memcpy(a->output->rgb,a->control.presentation,(size_t)a->control.count*3);
         control_presented(a,true);a->control.output_valid=true;a->control.output_frame++;a->frame_count++;
         a->show_us=(uint32_t)(platform_time_us()-a->output_started);
     }
@@ -131,41 +110,36 @@ void vm_tick_budget(VmInstance *a,unsigned budget) {
     if(!complete_output(a))return;
     if (!a->playing) return;
     uint64_t now=platform_time_us();
-    bool continuing=a->portable&&a->control.in_step;
+    bool continuing=a->control.in_step;
     if (!continuing&&now<a->next_frame) return;
     uint64_t elapsed_us=continuing?0:now-a->last_frame;
-    uint32_t delta_ms=elapsed_us>1000000u ? 1000 : (uint32_t)(elapsed_us/1000u);
-    // Carry fractional milliseconds and keep the scheduled frame cadence.
+    // Sample actual elapsed microseconds and keep the scheduled frame cadence.
     if(!continuing){
-        a->last_frame=a->control.enabled || elapsed_us>1000000u ? now : a->last_frame+delta_ms*1000u;
+        a->last_frame=now;
         a->next_frame+=FRAME_INTERVAL_US;
         if (a->next_frame<=now) a->next_frame=now+FRAME_INTERVAL_US;
     }
     bool ready=true;
-    const char * error=a->portable?animation_poll_budget(a,elapsed_us,&ready,budget):a->control.enabled ? control_playback_step(a,elapsed_us) : render_animation(a,delta_ms);
+    const char * error=animation_poll_budget(a,elapsed_us,&ready,budget);
     if (error) {
         a->playing=false;
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         return; // Preserve the last complete frame on the physical strip.
     }
-    if(ready){show_frame(a,now,a->control.enabled,true);(void)complete_output(a);}
+    if(ready){show_frame(a,true);(void)complete_output(a);}
 }
 void vm_tick(VmInstance *a){vm_tick_budget(a,4096);}
 static void play(VmInstance *a, uint16_t id) {
     vm_output_cancel(a);
     a->playing=false; a->animation_error[0]=0;
-    bool initial=a->control.enabled && !a->control.initialized;
-    uint64_t started=platform_time_us();
     const char * error=a->portable?animation_quiesce(a):NULL;
     if(!error)error=prepare_animation(a);
     if (error) {
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
-        reply(a,id,execution_status(a,error),0,error);
+        reply(a,id,STATUS_EXECUTION,0,error);
         return;
     }
-    if (initial || a->portable) {
-        show_frame(a,started,true,false);
-    }
+    show_frame(a,false);
     a->playing=true; a->frame_count=0;
     a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
     reply(a,id,STATUS_OK,(a->target ? a->target->count : 0),"animation started");
@@ -173,23 +147,21 @@ static void play(VmInstance *a, uint16_t id) {
 static void frame_step_impl(VmInstance *a, uint16_t id, uint32_t delta_ms) {
     if(a->portable){
         const char *error=animation_preflight(a,(uint64_t)delta_ms*1000u);
-        if(error){reply(a,id,execution_status(a,error),0,error);return;}
+        if(error){reply(a,id,STATUS_EXECUTION,0,error);return;}
     }
     vm_output_cancel(a);
     a->animation_error[0]=0;
-    uint64_t started=platform_time_us();
     const char * error=a->portable?animation_quiesce(a):NULL;
     if(!error)error=prepare_animation(a);
     if (!error) error=render_animation(a,delta_ms);
     if (error) {
-        reply(a,id,execution_status(a,error),0,error);
+        reply(a,id,STATUS_EXECUTION,0,error);
         return;
     }
-    show_frame(a,started,a->control.enabled,false);
-    if (a->animation_error[0]) { reply(a,id,STATUS_RUN,0,a->animation_error); return; }
-    const uint8_t *bytes=a->control.enabled ?
-        (a->output ? a->output->rgb : a->control.committed) : a->target->rgb;
-    size_t frame_bytes=a->control.enabled&&!a->output?control_frame_bytes(a):(size_t)a->target->count*3;
+    show_frame(a,false);
+    if (a->animation_error[0]) { reply(a,id,STATUS_EXECUTION,0,a->animation_error); return; }
+    const uint8_t *bytes=a->output ? a->output->rgb : a->control.committed;
+    size_t frame_bytes=!a->output?control_frame_bytes(a):(size_t)a->target->count*3;
     for (size_t offset=0; offset<frame_bytes; offset+=FRAME_LIMIT) {
         size_t count=frame_bytes-offset;
         if (count>FRAME_LIMIT) count=FRAME_LIMIT;
@@ -209,16 +181,16 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"STATUS takes no payload"); break; }
         const PlatformInfo *info=platform_info();
         char message[FRAME_LIMIT-8];
-        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u linear_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s code_storage=%s frames=%lu render_us=%lu show_us=%lu control_abi=%u generation=%lu animation_error=",
+        snprintf(message,sizeof(message),"api=%u protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s code_storage=%s frames=%lu render_us=%lu show_us=%lu program_abi=%u generation=%lu animation_error=",
                  LIGHTVM_ANIMATION_API_VERSION,LIGHTVM_PROTOCOL_VERSION,
                  info->platform,info->board,info->output,
                  a->ready,a->uploading,(unsigned long)a->received,MODULE_LIMIT,
                  (unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,
-                 LINEAR_MEMORY_LIMIT,(long)(a->target && a->target->count ? a->target->config.pin : -1),(unsigned long)(a->target ? a->target->count : 0),
+                 (long)(a->target && a->target->count ? a->target->config.pin : -1),(unsigned long)(a->target ? a->target->count : 0),
                  (unsigned long)(a->target && a->target->count ? a->target->config.brightness : 0),FRAME_INTERVAL_US,
                  a->playing ? "bytecode" : "idle", a->ready ? (a->from_storage ? "flash" : "ram") : "none",
                  (unsigned long)a->frame_count,(unsigned long)a->render_us,
-                 (unsigned long)a->show_us,CONTROL_ABI_VERSION,(unsigned long)a->generation);
+                 (unsigned long)a->show_us,4u,(unsigned long)a->generation);
         const char *error=a->animation_error[0]?a->animation_error:"-";
         size_t used=strlen(message),length=strlen(error);
         if(length>=sizeof(message)-used)length=sizeof(message)-used-1;
@@ -227,7 +199,6 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
     }
     case CMD_BEGIN: case CMD_CHUNK: case CMD_FINISH:
         reply(a,id,STATUS_UPLOAD,0,"uploads require the shared flash installer");break;
-    case CMD_RUN: run(a,id,p,size); break;
     case CMD_RESET:
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"RESET takes no payload"); break; }
         vm_destroy(a); a->uploading=false; a->received=0; a->expected=0;

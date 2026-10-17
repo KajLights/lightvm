@@ -55,7 +55,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     if (strcmp(r->method,"POST")) return 405;
     HttpSession *s=session(h,r->token,now); if (!s) return 404;
     const uint8_t *b=r->body;
-    if (r->size<HEADER_SIZE || memcmp(b,"WASM",4) || b[4]!=LIGHTVM_PROTOCOL_VERSION || read_u32(b+8)>FRAME_LIMIT || r->size!=HEADER_SIZE+read_u32(b+8) || b[5]>=RESP_OUTPUT) return 400;
+    if (r->size<HEADER_SIZE || memcmp(b,"LVM1",4) || b[4]!=LIGHTVM_PROTOCOL_VERSION || read_u32(b+8)>FRAME_LIMIT || r->size!=HEADER_SIZE+read_u32(b+8) || b[5]>=RESP_STATUS) return 400;
     uint32_t crc=crc32_update(0xffffffffu,b+4,8); crc=crc32_update(crc,b+16,r->size-16)^0xffffffffu;
     if (crc!=read_u32(b+12)) return 400;
     h->reply_source=s->source;

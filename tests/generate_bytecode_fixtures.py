@@ -1,3 +1,4 @@
+import sys
 """Regenerate the small C test fixtures: python tests/generate_bytecode_fixtures.py."""
 from pathlib import Path
 from bytecode_fixtures import PREFIX, color, fault, program
@@ -12,4 +13,9 @@ for name, data in fixtures.items():
     text += f"_Alignas(4) static const uint8_t {name}[] = {{\n"
     text += "".join("    " + ",".join(f"0x{x:02x}" for x in data[i:i+16]) + ",\n" for i in range(0, len(data), 16))
     text += "};\n"
-Path(__file__).with_name("bytecode_fixtures.h").write_text(text)
+output = Path(__file__).with_name("bytecode_fixtures.h")
+if '--check' in sys.argv:
+    if output.read_text() != text:
+        raise SystemExit(str(output) + ' is stale; regenerate fixtures')
+else:
+    output.write_text(text)

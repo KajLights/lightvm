@@ -73,18 +73,18 @@ describe('selected preview output', () => {
     expect(await service.upload(bytes, editor.source, editor.revision, { duration: 2 })).toBe(true);
     expect(client.upload).toHaveBeenCalledWith(bytes, 32768, expect.any(Function), 'second', { duration: 2 });
     expect(client.manage).toHaveBeenCalledWith('device_command', { device: 'second', command: 7 });
-    expect(client.json).toHaveBeenCalledWith('program_parameters_get', { device: 'second' });
+    expect(client.json).toHaveBeenCalledWith('program_state', { device: 'second' });
     await service.stopPlayback();
     expect(client.manage).toHaveBeenLastCalledWith('device_command', { device: 'second', command: 8 });
   });
 
-  it('ignores a parameter response for an output deselected during a background read', async () => {
+  it('ignores a program-state response for an output deselected during a background read', async () => {
     const { store, service, client } = workspace();
     let complete!: (state: unknown) => void;
     vi.mocked(client.json).mockImplementation(() => new Promise(resolve => { complete = resolve; }));
-    const reading = service.readParameters(client, true);
+    const reading = service.readProgramState(client, true);
     store.dispatch(deviceActions.outputSelected('second'));
     complete({ generation: 1, device: 'first' }); await reading;
-    expect(store.getState().device.parameters).toBeNull();
+    expect(store.getState().device.programState).toBeNull();
   });
 });

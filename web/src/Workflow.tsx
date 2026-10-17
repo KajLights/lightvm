@@ -67,7 +67,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
     catch (error) { await devices.run('Previewing animation', async () => { throw error; }); return; }
     const revision = editor.revision, outputId = output?.id;
     if (await devices.upload(compiled.bytecode, compiled.source, compiled.id, overrides) && devices.snapshot.editor.revision === revision && devices.snapshot.device.selectedOutput === outputId) {
-      const resolved = devices.snapshot.device.parameters;
+      const resolved = devices.snapshot.device.programState;
       if (resolved && !resolved.layer) setSettings(resolved.settings_values ?? overrides);
     }
   }
@@ -119,7 +119,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
       const connection = devices.require(client), outputId = device.selectedOutput;
       if (!outputId) throw new Error('Select an output first.');
       const recipe = await ensurePrograms(connection);
-      await connection.configureScene(recipe, outputId); await devices.readProcedures(connection); await devices.readParameters(connection);
+      await connection.configureScene(recipe, outputId); await devices.readProcedures(connection); await devices.readProgramState(connection);
       devices.log('Preset preview running on ' + outputId + '.', 'success');
     });
   }
@@ -166,7 +166,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
         <p className="helper">Preview replaces playback on this output. Other outputs continue. Saved presets and startup settings stay as saved.</p>
         <div className="artifact"><span>Compiled animation</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div>
         {artifact && <p id="artifact-detail" className="helper">ABI {artifact.manifest.abi} · {(artifact.manifest.settings ?? []).length} settings</p>}
-        <fieldset disabled={busy}><SettingFields manifest={artifact?.manifest ?? { abi: 4, parameters: [] }} values={settings} onChange={setSettings} prefix="draft" /></fieldset>
+        <fieldset disabled={busy}><SettingFields manifest={artifact?.manifest ?? { abi: 4, schema: 'lightvm.program/11', profile: 'animation/1', pixels: { format: 'rgba8-premul' }, settings: [] }} values={settings} onChange={setSettings} prefix="draft" /></fieldset>
         <button id="upload" className="primary full" disabled={busy || !connected || !compatible || !artifact || artifact.bytes > (device.description?.module_limit ?? 0)} onClick={() => void preview()}>Preview animation →</button>
         {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
         <div className="button-pair"><button id="download" className="quiet" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), editor.filename.replace(/\.py$/i, '') + '.lbc', 'application/octet-stream'); }}>Download .lbc</button><button id="stop" className="quiet" disabled={busy || !connected} onClick={() => void devices.stopPlayback()}>Stop output</button></div>
@@ -191,7 +191,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
         })}>Delete animation version</button>
         <hr /><h3>Library backup</h3><p className="helper">Source stays in this browser. Export a library to move it to another browser or computer.</p>
         {storageError && <p role="alert">{storageError}</p>}
-        <div className="button-pair"><button className="quiet" disabled={Boolean(storageError)} onClick={() => download(JSON.stringify(library, null, 2), 'lightvm-library.json', 'application/json')}>Export library</button><button className="quiet" disabled={busy} onClick={() => picker.current?.click()}>Import library</button></div>
+        <div className="button-pair"><button className="quiet" disabled={Boolean(storageError) && !initial.backup} onClick={() => download(storageError && initial.backup ? initial.backup : JSON.stringify(library, null, 2), 'lightvm-library.json', 'application/json')}>{storageError ? 'Export preserved library' : 'Export library'}</button><button className="quiet" disabled={busy} onClick={() => picker.current?.click()}>Import library</button></div>
         <input ref={picker} hidden type="file" accept=".json,application/json" aria-label="Import library file" onChange={event => void importFile(event.target.files?.[0])} />
       </section>
       <section className="card composer"><div className="card-heading"><h2>Compose &amp; save preset</h2></div>
@@ -220,14 +220,14 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
         })}>Delete browser preset</button>
         <hr /><label htmlFor="device-preset">Device preset</label><select id="device-preset" value={storedPreset} onChange={event => setStoredPreset(event.target.value)}><option value="">Choose a device preset</option>{device.presets.map(item => <option key={item.name}>{item.name}</option>)}</select>
         <div className="button-pair"><button className="secondary" disabled={busy || !connected || !storedPreset} onClick={() => void devices.run('Running device preset', async client => {
-          const connection = devices.require(client); await connection.activatePreset(storedPreset, device.selectedOutput); await devices.readParameters(connection); devices.log('Preset running on ' + device.selectedOutput + '.', 'success');
+          const connection = devices.require(client); await connection.activatePreset(storedPreset, device.selectedOutput); await devices.readProgramState(connection); devices.log('Preset running on ' + device.selectedOutput + '.', 'success');
         })}>Run on output</button><button className="quiet" disabled={busy || !device.selectedPath || !storedPreset} onClick={() => void devices.run('Deleting device preset', async client => {
           const connection = devices.require(client); await connection.deletePreset(storedPreset); await devices.readPresets(connection); setStoredPreset('');
         })}>Delete device preset</button></div>
         <details><summary>Device program storage</summary><p className="helper">Remove unused programs to free library slots. Programs referenced by presets, startup or running animations are protected.</p>
           <label htmlFor="stored-program">Stored compiled program</label><select id="stored-program" value={storedProgram} onChange={event => setStoredProgram(event.target.value)}><option value="">Choose a program</option>{device.procedures.map(item => <option key={item.name}>{item.name}</option>)}</select>
           <div className="button-pair"><button className="secondary" disabled={busy || !connected || !storedProgram} onClick={() => void devices.run('Running stored program', async client => {
-            const connection = devices.require(client); await connection.manage('procedure_activate', { name: storedProgram, device: device.selectedOutput }); await devices.readParameters(connection);
+            const connection = devices.require(client); await connection.manage('procedure_activate', { name: storedProgram, device: device.selectedOutput }); await devices.readProgramState(connection);
           })}>Run stored program</button><button className="quiet" disabled={busy || !device.selectedPath || !storedProgram} onClick={() => void devices.run('Downloading stored program', async client => {
             const reply = await devices.require(client).manage('procedure_get', { name: storedProgram }); download(new Uint8Array(reply.data), storedProgram + '.lbc', 'application/octet-stream');
           })}>Download program</button></div>

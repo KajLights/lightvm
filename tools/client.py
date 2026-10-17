@@ -11,14 +11,14 @@ import sys
 import time
 import zlib
 
-MAGIC = b"WASM"
+MAGIC = b"LVM1"
 HEADER = struct.Struct("<4sBBHII")
 FRAME_LIMIT = 512
 MODULE_LIMIT = 32768
-STATUS, BEGIN, CHUNK, FINISH, RUN, RESET = range(1, 7)
+STATUS, BEGIN, CHUNK, FINISH, RESET = 1, 2, 3, 4, 6
 PLAY, STOP, FRAME = 7, 8, 9
 MANAGE, OBJECT_BEGIN, OBJECT_CHUNK, OBJECT_FINISH, OBJECT_CANCEL = range(11, 16)
-OUTPUT, RESULT, PIXELS, DATA = 128, 129, 130, 131
+RESULT, PIXELS, DATA = 129, 130, 131
 
 
 class ProtocolError(RuntimeError):
@@ -167,10 +167,9 @@ class HttpTransport:
 
 
 class Client:
-    def __init__(self, transport, timeout=5, output=None):
+    def __init__(self, transport, timeout=5):
         self.transport = transport
         self.timeout = timeout
-        self.output = output or (lambda data: None)
         self.request_id = 0
         self.pixel_snapshot = bytearray()
         self.data_reply = bytearray()
@@ -223,9 +222,7 @@ class Client:
                 raise ProtocolError("response checksum mismatch")
             if identity != request_id:
                 raise ProtocolError("unexpected response identity")
-            if kind == OUTPUT:
-                self.output(payload)
-            elif kind == PIXELS:
+            if kind == PIXELS:
                 self.pixel_snapshot.extend(payload)
             elif kind == DATA:
                 self.data_reply.extend(payload)
@@ -357,7 +354,7 @@ class Client:
         revision = self.describe()["catalog_revision"]
         return self.manage("procedure_delete", name=name, expected_revision=revision)
 
-    def activate(self, name, action="play", export="run", slot=None, settings=None, device=None, layer=None):
+    def activate(self, name, action="play", slot=None, settings=None, device=None, layer=None):
         if layer is not None:
             if action != 'play': raise ValueError('scene layers support play activation')
             scene = self.scene(device=device)
@@ -367,7 +364,7 @@ class Client:
             if device is not None: fields['device'] = device
             if settings is not None: fields['settings'] = settings
             return self.manage('scene_layer_activate', **fields)
-        fields = {"name": name, "action": action, "export": export}
+        fields = {"name": name, "action": action}
         if device is not None:
             fields["device"] = device
         if slot is not None:
@@ -376,12 +373,12 @@ class Client:
             fields["settings"] = settings
         return self.manage("procedure_activate", **fields)
 
-    def program_parameters(self, slot=None, device=None, layer=None):
-        self.manage("program_parameters_get", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
+    def program_state(self, slot=None, device=None, layer=None):
+        self.manage("program_state", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
     def reset_program(self, settings=None, slot=None, device=None, layer=None):
-        state = self.program_parameters(slot=slot, device=device, layer=layer)
+        state = self.program_state(slot=slot, device=device, layer=layer)
         fields = {"expected_generation": state["generation"]}
         if device is not None:
             fields["device"] = device
@@ -394,19 +391,13 @@ class Client:
         self.manage("program_reset", **fields)
         return json.loads(self.data_reply)
 
-    def set_parameters(self, values, slot=None, device=None, layer=None):
-        state = self.program_parameters(slot=slot, device=device, layer=layer)
-        self.manage("program_parameters_set", values=values, expected_generation=state["generation"],
-                    expected_parameter_revision=state["parameter_revision"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
-        return json.loads(self.data_reply)
-
     def pause_program(self, slot=None, device=None, layer=None):
-        state = self.program_parameters(slot=slot, device=device, layer=layer)
+        state = self.program_state(slot=slot, device=device, layer=layer)
         self.manage("program_pause", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
     def resume_program(self, slot=None, device=None, layer=None):
-        state = self.program_parameters(slot=slot, device=device, layer=layer)
+        state = self.program_state(slot=slot, device=device, layer=layer)
         self.manage("program_resume", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
@@ -488,9 +479,8 @@ def main():
     parser.add_argument("--storage", type=Path, help="host persistent store file")
     parser.add_argument("--save", action="store_true", help="save an applied --config for reboot")
     parser.add_argument("--saved", action="store_true", help="read saved rather than active configuration")
-    parser.add_argument("--action", choices=("play", "run"), default="play")
+    parser.add_argument("--action", choices=("play",), default="play")
     parser.add_argument("--output", type=Path, help="binary readback destination")
-    parser.add_argument("--function", default="run", help="zero-argument exported function")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--network", type=Path, help="validate, save and apply network JSON")
     action.add_argument("--validate-network", type=Path, help="validate network JSON without saving")
@@ -517,13 +507,12 @@ def main():
     parser.add_argument("--device", help="configured device ID for upload, activation and controls")
     parser.add_argument("--layer", help="scene layer ID for activation, state and controls")
     action.add_argument("--cancel-upload", action="store_true")
-    action.add_argument("--parameters", action="store_true", help="read control parameters and program state")
-    action.add_argument("--set-parameters", metavar="JSON", help="atomically update live control parameters")
+    action.add_argument("--program-state", action="store_true", help="read settings and program state")
     action.add_argument("--pause", action="store_true", help="pause control program time")
     action.add_argument("--resume", action="store_true", help="resume the initialized control program")
     action.add_argument("--snapshot", action="store_true", help="read output without stepping playback")
     action.add_argument("--status", action="store_true", help="query receiver without uploading")
-    action.add_argument("--animate", action="store_true", help="start render(index) animation on the device")
+    action.add_argument("--animate", action="store_true", help="start animation playback on the device")
     action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
     action.add_argument("--frame-ms", type=int, help="render one frame with this delta and report an RGB preview")
     parser.add_argument("--timeout", type=float, default=5)
@@ -541,12 +530,12 @@ def main():
         parser.error("--store-procedure requires a .lbc program")
     management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
-                  args.activate or args.cancel_upload or args.parameters or args.set_parameters is not None or
+                  args.activate or args.cancel_upload or args.program_state or
                   args.pause or args.resume or args.snapshot or args.scene or args.get_scene or args.scene_snapshot or args.clear_scene or args.layer_opacity is not None or args.layer_blend or args.remove_layer)
     if (args.layer_opacity is not None or args.layer_blend or args.remove_layer) and not args.layer:
         parser.error('--layer is required for a layer update or removal')
     if management and args.module is not None and not args.store_procedure:
-        parser.error("module argument only applies to --store-procedure or legacy execution")
+        parser.error("module argument only applies to --store-procedure or playback")
     if args.no_reset and not args.port:
         parser.error("--no-reset requires --port")
     if args.timeout <= 0:
@@ -559,10 +548,7 @@ def main():
     client = None
     try:
         connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else HttpTransport(args.url, args.timeout) if args.url else ProcessTransport(args.process, storage=args.storage)
-        def console(data):
-            sys.stdout.buffer.write(data)
-            sys.stdout.buffer.flush()
-        client = Client(connection, timeout=args.timeout, output=console)
+        client = Client(connection, timeout=args.timeout)
         if management:
             if args.scene:
                 document=json.loads(args.scene.read_text())
@@ -612,13 +598,11 @@ def main():
             elif args.delete_procedure:
                 client.delete_procedure(args.delete_procedure)
             elif args.activate:
-                client.activate(args.activate, args.action, args.function, args.slot, device=args.device, layer=args.layer)
+                client.activate(args.activate, args.action, args.slot, device=args.device, layer=args.layer)
             elif args.cancel_upload:
                 client.require_ok(client.command(OBJECT_CANCEL))
-            elif args.parameters:
-                print(json.dumps(client.program_parameters(slot=args.slot, device=args.device, layer=args.layer), indent=2))
-            elif args.set_parameters is not None:
-                print(json.dumps(client.set_parameters(json.loads(args.set_parameters), slot=args.slot, device=args.device, layer=args.layer), indent=2))
+            elif args.program_state:
+                print(json.dumps(client.program_state(slot=args.slot, device=args.device, layer=args.layer), indent=2))
             elif args.pause:
                 print(json.dumps(client.pause_program(slot=args.slot, device=args.device, layer=args.layer), indent=2))
             elif args.resume:
@@ -637,7 +621,7 @@ def main():
         elif args.frame_ms is not None:
             reply = client.command(FRAME, struct.pack("<I", args.frame_ms), slot=args.slot, device=args.device, layer=args.layer)
             if client.pixel_snapshot:
-                rgba = args.layer is not None and client.program_parameters(device=args.device, layer=args.layer).get('pixel_format') == 'rgba8-premul'
+                rgba = args.layer is not None and client.program_state(device=args.device, layer=args.layer).get('pixel_format') == 'rgba8-premul'
                 stride = 4 if rgba else 3
                 colors = [tuple(client.pixel_snapshot[index:index+stride])
                           for index in range(0, min(5*stride, len(client.pixel_snapshot)), stride)]
@@ -645,7 +629,7 @@ def main():
         elif args.status or args.module is None:
             reply = client.command(STATUS, slot=args.slot, device=args.device, layer=args.layer)
         else:
-            reply = client.command(RUN, args.function.encode("utf-8"))
+            reply = client.command(PLAY, slot=args.slot, device=args.device, layer=args.layer)
         print(f"Status {reply.code}, result {reply.value}: {reply.message}", file=sys.stderr)
         return 0 if reply.code == 0 else 1
     except (OSError, ValueError, ProtocolError, ImportError) as error:

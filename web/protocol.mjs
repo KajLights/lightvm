@@ -1,11 +1,11 @@
 // LightVM protocol v1. Compatible with tools/client.py and src/protocol.c.
 export const COMMAND = { STATUS: 1, BEGIN: 2, CHUNK: 3, FINISH: 4, PLAY: 7, STOP: 8, MANAGE: 11, OBJECT_BEGIN: 12, OBJECT_CHUNK: 13, OBJECT_FINISH: 14, OBJECT_CANCEL: 15 };
-const OUTPUT = 128, RESULT = 129, PIXELS = 130, DATA = 131;
-const MAGIC = new Uint8Array([87, 65, 83, 77]);
+const RESULT = 129, PIXELS = 130, DATA = 131;
+const MAGIC = new Uint8Array([76, 86, 77, 49]);
 const encoder = new TextEncoder(), decoder = new TextDecoder();
 export const FRAME_LIMIT = 512;
 
-// Preserve native signed i64 parameters instead of rounding them through JS Number.
+// Preserve integer telemetry beyond JavaScript Number precision.
 export function parseJSON(text) {
   const integers = [];
   const protectedText = text.replace(/"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g, token => {
@@ -22,7 +22,7 @@ export function encodeJSON(value) {
   if (typeof value === "bigint") return value.toString();
   if (Array.isArray(value)) return `[${value.map(encodeJSON).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.entries(value).filter(([, item]) => item !== undefined).map(([key, item]) => `${JSON.stringify(key)}:${encodeJSON(item)}`).join(",")}}`;
-  if (typeof value === "number" && !Number.isFinite(value)) throw new Error("Parameter numbers must be finite.");
+  if (typeof value === "number" && !Number.isFinite(value)) throw new Error("JSON numbers must be finite.");
   return JSON.stringify(value);
 }
 
@@ -79,9 +79,9 @@ export class FrameDecoder {
 
 export class LightVMClient {
   /** @param {any} transport
-   *  @param {{ timeout?: number, onOutput?: (text: string) => void, onDisconnect?: (error: Error) => void }} [options] */
-  constructor(transport, { timeout = 5000, onOutput = () => {}, onDisconnect = () => {} } = {}) {
-    this.transport = transport; this.timeout = timeout; this.onOutput = onOutput;
+   *  @param {{ timeout?: number, onDisconnect?: (error: Error) => void }} [options] */
+  constructor(transport, { timeout = 5000, onDisconnect = () => {} } = {}) {
+    this.transport = transport; this.timeout = timeout;
     this.onDisconnect = onDisconnect; this.requestId = 0; this.pending = null;
     this.closed = false; this.queue = Promise.resolve();
     this.decoder = new FrameDecoder(message => this.receive(message));
@@ -105,7 +105,6 @@ export class LightVMClient {
     const pending = this.pending;
     // Boot messages and replies left by a previous connection have no owner here.
     if (!pending || id !== pending.id) return;
-    if (kind === OUTPUT) { this.onOutput(decoder.decode(payload)); return; }
     if (kind === DATA) { pending.data.push(payload); return; }
     if (kind === PIXELS) { pending.pixels.push(payload); return; }
     if (kind !== RESULT || payload.length < 8) throw new Error("Invalid device response type.");
@@ -153,9 +152,9 @@ export class LightVMClient {
 
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionApi = description.connection_api; return description; }
 
-  /** @param {Uint8Array} wasm @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [device] @param {Record<string, number | boolean>} [settings] */
-  async upload(wasm, limit, onProgress = () => {}, device = '', settings = {}) {
-    if (!Number.isInteger(limit) || limit < 8 || wasm.length < 8 || wasm.length > limit) {
+  /** @param {Uint8Array} bytecode @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [device] @param {Record<string, number | boolean>} [settings] */
+  async upload(bytecode, limit, onProgress = () => {}, device = '', settings = {}) {
+    if (!Number.isInteger(limit) || limit < 8 || bytecode.length < 8 || bytecode.length > limit) {
       throw new Error(`Program must fit the device's ${limit}-byte module limit.`);
     }
     if (device && !/^[A-Za-z0-9_.-]{1,32}$/.test(device)) throw new Error('Invalid output id.');
@@ -163,21 +162,21 @@ export class LightVMClient {
     if (argumentsBytes.length > FRAME_LIMIT) throw new Error('Preview settings exceed the command size limit.');
     const output = encoder.encode(device);
     const metadata = new Uint8Array(8 + output.length), view = new DataView(metadata.buffer);
-    view.setUint32(0, wasm.length, true); view.setUint32(4, crc32(wasm), true);
+    view.setUint32(0, bytecode.length, true); view.setUint32(4, crc32(bytecode), true);
     metadata.set(output, 8);
     let started = false;
     try {
       await this.command(COMMAND.BEGIN, metadata);
       started = true;
-      for (let offset = 0; offset < wasm.length; offset += FRAME_LIMIT - 4) {
-        const part = wasm.subarray(offset, offset + FRAME_LIMIT - 4), payload = new Uint8Array(4 + part.length);
+      for (let offset = 0; offset < bytecode.length; offset += FRAME_LIMIT - 4) {
+        const part = bytecode.subarray(offset, offset + FRAME_LIMIT - 4), payload = new Uint8Array(4 + part.length);
         new DataView(payload.buffer).setUint32(0, offset, true); payload.set(part, 4);
         const reply = await this.command(COMMAND.CHUNK, payload);
         if (reply.value !== offset + part.length) {
           const error = new Error("Device acknowledged an unexpected upload offset.");
           this.fail(error); throw error;
         }
-        onProgress((offset + part.length) / wasm.length);
+        onProgress((offset + part.length) / bytecode.length);
       }
       await this.command(COMMAND.FINISH, argumentsBytes);
     } catch (error) {
@@ -222,10 +221,10 @@ export class LightVMClient {
     return this.manage("network_commit", { expected_revision: state.network_revision });
   }
 
-  async saveProcedure(name, wasm) {
+  async saveProcedure(name, bytecode) {
     const state = await this.describe();
     try {
-      await this.uploadObject("procedure", wasm, name);
+      await this.uploadObject("procedure", bytecode, name);
       return await this.manage("procedure_save", { name, expected_revision: state.catalog_revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
@@ -260,9 +259,7 @@ export class LightVMClient {
     const state = await this.describe(); return this.manage("procedure_delete", { name, expected_revision: state.catalog_revision });
   }
 
-  async setParameters(values, state) {
-    return this.json("program_parameters_set", { values, device: state.device, layer: state.layer, expected_generation: state.generation, expected_parameter_revision: state.parameter_revision });
-  }
+
 
   async close() {
     if (!this.closed && !this.pending && this.connectionApi) await this.manage("session_close").catch(() => {});

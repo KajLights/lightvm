@@ -7,7 +7,7 @@ import ast
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-from .bytecode import CompileError
+from .compiler_core import CompileError
 from .portable import PortableCompiler
 
 @dataclass
@@ -32,16 +32,15 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
     try:
         if len(source.encode()) > 65536:
             raise CompileError("source exceeds 64 KiB")
-        # Older targets execute the same source through the ordinary loop path.
-        bulk = optimize and (target is None or target.get('native_drawing_api', 0) >= 4)
+        bulk = optimize
         bytecode, manifest = PortableCompiler(source, optimize=bulk).compile()
         if target is not None:
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
             abi = manifest['abi']
-            if abi not in target.get('program_abis', [target.get('control_abi')]) or manifest['schema'] not in target.get('program_schemas', []):
+            if abi not in target.get('program_abis', []) or manifest['schema'] not in target.get('program_schemas', []):
                 raise CompileError(f'target does not advertise program ABI {abi} and {manifest["schema"]}')
-            if f'LBC1/{abi}' not in target.get('bytecode_formats', [target.get('bytecode_format')]):
+            if f'LBC1/{abi}' not in target.get('bytecode_formats', []):
                 raise CompileError(f'target does not advertise LBC1/{abi} bytecode')
             if abi == 4 and manifest['profile'] not in target.get('program_profiles', []):
                 raise CompileError('target does not advertise ' + manifest['profile'])

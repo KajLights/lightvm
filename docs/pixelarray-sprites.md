@@ -1,10 +1,10 @@
 # PixelArray and user-defined sprites
 
 The Python frontend parses these declarations without executing Python source.
-All programs use `animation/1`, `lightvm.program/10`, LBC1/4, and execution ABI 4.
+All programs use `animation/1`, `lightvm.program/11`, LBC1/4, and execution ABI 4.
 Images and sprites use drawing API 2. Wrapped drawing uses API 3.
 Optimized pixel loops use API 4; see [pixel maps](pixel-maps.md).
-Target-aware compilation checks the required schema. Stored schema 5–9 packages remain loadable.
+Target-aware compilation checks the required schema. Superseded packages are rejected; recompile their source.
 New SpriteBatch source uses the general API.
 
 ## Images and channels
@@ -176,13 +176,14 @@ existing layer scheduling/fault-publication contract.
 
 ## Package extension
 
-Header word 80 is 2 for drawing API 2, or 3 when wrapping is used; words 84–92 remain zero. This lets older
-runtimes reject the extension before execution. Native call sites retain their
-16-byte size and use their formerly reserved trailing four bytes for arguments
-five through eight; old calls still have zero padding. Bindings 27–52 implement
-the SDK and generic storage. Resource kinds 14–17 are straight images, kind 18 is
-generic instances, and kind 19 is reusable transform scratch. Resource flags are
-0 for mutable owned storage, 1 for output and 2 for package-backed readonly images.
-The verifier independently checks kinds, mutability, stage rights and signatures.
-Binding 52 is periodic image drawing and requires API 3; existing bindings retain
-their signatures and API 2 compatibility.
+Header word 80 declares the minimum drawing feature set used by a current-schema
+package: 0 for basic operations, 2 for generic image/sprite kernels, 3 for periodic
+drawing, and 4 for pixel maps. These values do not select package compatibility
+paths. Words 84–92 remain zero. Native call sites have a 16-byte layout with room
+for eight argument registers. Bindings 27–52 implement generic drawing and
+instance storage. Resource kinds 14–17 are straight images, kind 18 is generic
+instances, and kind 19 is transform scratch. Resource flags are 0 for mutable
+owned storage, 1 for output and 2 for package-backed readonly images.
+The verifier checks kinds, mutability, stage rights, bounds and signatures.
+Binding 52 requires drawing feature set 3. Removed bindings and resource kinds
+are rejected independently of the manifest's claimed schema.

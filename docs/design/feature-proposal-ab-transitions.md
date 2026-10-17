@@ -31,7 +31,7 @@ Completion does not automatically pause or unload a scene.
 The [animation profile](../animation-profile.md) uses portable bytecode and initialization settings.
 Each instance owns its state.
 Its initialization settings cannot change during playback.
-New packages use LBC1/4, execution ABI 4, and schema `lightvm.program/10`.
+New packages use LBC1/4, execution ABI 4, and schema `lightvm.program/11`.
 The compiler does not execute source code.
 
 The [scene compositor](../composition.md) combines layers over opaque black.
@@ -50,7 +50,7 @@ The mixer must accept completed scenes from the first implementation.
 A single animation can supply a scene with one layer.
 
 This proposal extends the [control API](../control-api.md) and [controller model](../architecture.md).
-The earlier [control model](feature-proposal-control-api.md) gives more context for jobs and resource ownership.
+The future [control model](feature-proposal-control-api.md) gives more context for jobs and resource ownership.
 Its proposed general task interfaces are not necessary for this feature.
 
 All new operations and profile names below specify proposed interfaces.

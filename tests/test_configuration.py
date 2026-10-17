@@ -13,7 +13,7 @@ from bytecode_fixtures import color, sample, fault, padded_program, program
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from client import (Client, ProcessTransport, ProtocolError, MANAGE, OBJECT_BEGIN,
-                    OBJECT_CHUNK, OBJECT_FINISH, OBJECT_CANCEL, FRAME, RESET, RUN, PLAY)
+                    OBJECT_CHUNK, OBJECT_FINISH, OBJECT_CANCEL, FRAME, RESET, PLAY)
 
 
 def config(count=5, pin="GP16", startup=None):
@@ -43,8 +43,7 @@ class ConfigurationTests(unittest.TestCase):
         if self.transport:
             self.transport.close()
         self.transport = ProcessTransport(self.receiver, self.storage)
-        self.output = bytearray()
-        self.client = Client(self.transport, output=self.output.extend)
+        self.client = Client(self.transport)
 
     def raw_manage(self, operation, **fields):
         return self.client.command(MANAGE, json.dumps({"op": operation, **fields}).encode())
@@ -57,7 +56,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("GP16", description["pins"])
         self.assertEqual(self.client.status_fields()["pixels"], "0")
         self.client.upload(color())
-        self.assertEqual(self.client.command(RUN).code, 4)
+        self.assertEqual(self.client.command(5).code, 1)
         self.assertEqual(self.client.command(PLAY).code, 4)
         self.assertIn("unavailable", self.client.command(FRAME, bytes(4)).message)
 
@@ -73,7 +72,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual((fields["pin"], fields["pixels"], fields["brightness"], fields["heap"]),
                          ("18", "7", "0", "0"))
         self.assertEqual(self.client.get_config(), changed)
-        self.assertEqual(self.client.command(RUN).code, 4)
+        self.assertEqual(self.client.command(5).code, 1)
         self.restart()
         self.assertEqual(self.client.status_fields()["pixels"], "0")
 
@@ -338,7 +337,7 @@ def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
         self.assertEqual(self.client.get_procedure("p"), one)
         self.assertEqual(self.client.describe()["catalog_revision"], 1)
 
-    def test_corrupt_store_is_idle_and_can_be_repaired(self):
+    def test_corrupt_store_requires_explicit_reprovision(self):
         self.client.save_procedure("p", color())
         self.transport.close()
         self.transport = None
@@ -348,10 +347,15 @@ def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
         self.restart()
         self.assertEqual(self.client.status_fields()["mode"], "idle")
         self.assertIn("storage", self.client.describe()["boot_error"])
-        self.client.save_procedure("repair", color())
+        original=self.storage.read_bytes()
+        self.assertFalse(self.client.describe()['storage_available'])
+        with self.assertRaises(ProtocolError):self.client.save_procedure("repair",color())
+        self.assertEqual(self.storage.read_bytes(),original)
+        # Explicitly reprovision only this isolated test store.
+        self.transport.close();self.transport=None;self.storage.unlink()
         self.restart()
-        self.assertEqual(self.client.describe()["boot_error"], "")
-        self.assertEqual(self.client.get_procedure("repair"), color())
+        self.client.save_procedure("repair",color())
+        self.assertEqual(self.client.get_procedure("repair"),color())
 
     def test_missing_startup_catalog_name_is_idle_and_repairable(self):
         data = sample("rainbow")

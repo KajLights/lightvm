@@ -196,9 +196,9 @@ That scene uses 24-pixel eyes and therefore requires at least 24 output pixels.
 ## Compatibility
 
 Scalar helpers use existing instructions and need no new runtime API. Ordinary
-All new programs use `animation/1` and schema 10. PixelArray and sprites use drawing API 2.
+All new programs use `animation/1` and schema 11. PixelArray and sprites use drawing API 2.
 Wrapped drawing adds native binding 52 and drawing API 3 in header word 80.
 Optimized [pixel loops](pixel-maps.md) use drawing API 4.
-Discovery advertises schema 10 and `native_drawing_api=4`.
-Target-aware compilation rejects targets without schema 10 support.
-The loader retains stored schema 5–9 packages and rejects binding 52 in an API 2 package.
+Discovery advertises schema 11 and `native_drawing_api=4`.
+Target-aware compilation rejects targets without schema 11 support.
+The loader accepts only the current schema/profile and rejects binding 52 when its drawing requirement is below 3.

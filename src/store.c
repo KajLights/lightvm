@@ -13,7 +13,6 @@ _Static_assert(32u+STORE_ENTRY_LIMIT*64u<=1020u,"store directory overflow");
 bool store_preset_name(const char *name) {
     return !strncmp(name,"$p",2)&&object_name_valid(name+2);
 }
-static uint32_t aligned(uint32_t n) { return (n+255u)&~255u; }
 static bool same(const StoreEntry *a,const StoreEntry *b) { return a->offset==b->offset&&a->size==b->size&&a->crc==b->crc; }
 static bool valid_extent(const StoreEntry *e) {
     if(!e->size||e->offset>=STORAGE_BYTES||e->size>STORAGE_BYTES-e->offset)return false;
@@ -40,12 +39,11 @@ static bool scan(int bank,Store *s) {
     uint8_t d[DIRECTORY_BYTES],commit[256];uint32_t base=(uint32_t)bank*STORE_BANK_BYTES;
     if(!platform_storage_read(base,d,sizeof(d))||!platform_storage_read(base+COMMIT_OFFSET,commit,sizeof(commit)))return false;
     unsigned version=read_u32(d+4);
-    if(memcmp(d,"LVS1",4)||version<1||version>4||read_u32(d+1020)!=crc32_bytes(d,1020)||
+    if(memcmp(d,"LVS1",4)||version!=4||read_u32(d+1020)!=crc32_bytes(d,1020)||
        read_u32(commit)!=COMMIT_MAGIC||read_u32(commit+4)!=read_u32(d+8)||read_u32(commit+8)!=read_u32(d+1020)||read_u32(commit+12)!=crc32_bytes(commit,12))return false;
     memset(s,0,sizeof(*s));s->bank=bank;s->available=true;s->generation=read_u32(d+8);s->count=read_u32(d+12);
-    s->config_revision=read_u32(d+16);s->network_revision=version>=2?read_u32(d+20):0;
+    s->config_revision=read_u32(d+16);s->network_revision=read_u32(d+20);
     if(!s->generation||s->count>STORE_ENTRY_LIMIT)return false;
-    uint32_t expected=STORE_DATA_OFFSET;
     for(unsigned n=0;n<s->count;n++) {
         const uint8_t *r=d+32+n*64;StoreEntry *e=&s->entries[n];
         if(!memchr(r,0,33))return false;
@@ -53,11 +51,9 @@ static bool scan(int bank,Store *s) {
         bool config=!strcmp(e->name,STORE_CONFIG)||!strcmp(e->name,STORE_NETWORK)||store_preset_name(e->name);
         if((!config&&!object_name_valid(e->name))||e->size>(config?CONFIG_LIMIT:MODULE_LIMIT))return false;
         for(unsigned k=0;k<n;k++)if(!strcmp(e->name,s->entries[k].name))return false;
-        if(version<3){if(e->offset!=expected||aligned(e->size)>STORE_BANK_BYTES-expected)return false;expected+=aligned(e->size);e->offset+=base;}
         if(!entry_crc(e))return false;
         for(unsigned k=0;k<n;k++){StoreEntry *p=&s->entries[k];if(e->offset<p->offset+p->size&&p->offset<e->offset+e->size)return false;}
     }
-    /* Version 4 reuses the obsolete singleton boot-selector space for entries. */
     return true;
 }
 bool store_mount(Store *s) {
@@ -69,8 +65,8 @@ bool store_mount(Store *s) {
        a mount error; interrupted first uploads never constitute activation. */
     uint8_t marker[4];
     for(unsigned bank=0;bank<2;bank++){
-        if(!platform_storage_read(bank*STORE_BANK_BYTES+COMMIT_OFFSET,marker,4))return false;
-        if(read_u32(marker)==COMMIT_MAGIC)return false;
+        if(!platform_storage_read(bank*STORE_BANK_BYTES+COMMIT_OFFSET,marker,4)){s->available=false;return false;}
+        if(read_u32(marker)==COMMIT_MAGIC){s->available=false;return false;}
     }
     return true;
 }

@@ -11,8 +11,6 @@ typedef struct {
     const char *platform;
     const char *board;
     const char *output;
-    int32_t pixel_pin; // Legacy placeholder; active wiring is in PixelConfig.
-    uint32_t brightness; // Legacy placeholder; active limit is in PixelConfig.
 } PlatformInfo;
 const PlatformInfo *platform_info(void);
 // Stable native device identity and a fresh non-authentication boot nonce.

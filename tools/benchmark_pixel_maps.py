@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare native fill, scalar loops and optimized maps on the same host build.
+"""Compare generic kernels, scalar loops and optimized maps on the same host build.
 
 Each variant gets a fresh instance, equal timestamps and the same output count.
 Timing uses engine CPU counters, excluding Python/transport/snapshot latency.
@@ -40,7 +40,7 @@ def draw(ctx,runtime,pixels):
  for i in range(pixels.count):
   pixels[i]=hsv((i/pixels.count)*(i/pixels.count)+phase,0.6,0.8)
 '''
-    variants=[('rainbow/native',native,False),('rainbow/scalar',rainbow,False),
+    variants=[('rainbow/kernel',native,False),('rainbow/scalar',rainbow,False),
               ('rainbow/bulk',rainbow,True),('nonlinear/scalar',nonlinear,False),
               ('nonlinear/bulk',nonlinear,True),('sprite/scalar',sprite,False),('sprite/bulk',sprite,True)]
     client=Client(ProcessTransport(args.process.resolve()))
@@ -51,7 +51,7 @@ def draw(ctx,runtime,pixels):
             'variants':{}}
     try:
         target=client.describe()
-        if 'lightvm.program/10' not in target['program_schemas'] or target.get('native_drawing_api',0)<4:raise RuntimeError('build the receiver with current animation and pixel-map support first')
+        if 'lightvm.program/11' not in target['program_schemas'] or target.get('native_drawing_api',0)<4:raise RuntimeError('build the receiver with current animation and pixel-map support first')
         client.configure({'schema':'lightvm.config/1','devices':[{
             'id':'benchmark','type':'ws2812b','config':{'pin':'GP16','count':args.pixels}}]})
         expected={}
@@ -76,10 +76,10 @@ def draw(ctx,runtime,pixels):
                 client.configure_scene([{'id':'fg','procedure':name.replace('/','_')}],device='benchmark')
                 client.require_ok(client.command(STOP,device='benchmark'))
                 for _ in range(10):client.require_ok(client.command(FRAME,struct.pack('<I',16),device='benchmark'))
-                before=client.program_parameters(device='benchmark',layer='fg')
+                before=client.program_state(device='benchmark',layer='fg')
                 heap=client.status_fields()['heap']
                 for _ in range(args.frames):client.require_ok(client.command(FRAME,struct.pack('<I',16),device='benchmark'))
-                after=client.program_parameters(device='benchmark',layer='fg')
+                after=client.program_state(device='benchmark',layer='fg')
                 if heap!=client.status_fields()['heap']:raise AssertionError('heap changed during rendering')
                 frames=after['render_count']-before['render_count']
                 report['variants'][name]['windows'].append({

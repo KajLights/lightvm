@@ -36,8 +36,8 @@ On the third short boot, Pico W and the XIAO ESP32 ports enter a temporary **ope
 existing AP/DHCP/discovery implementation, channel 1 and worldwide radio country
 `XX`. Recovery overrides saved disabled networking, station credentials, AP
 name/password and HTTP port only for the runtime; saved values remain intact.
-The hardware configuration and all saved startup procedures load and run as
-normal. Recovery changes networking only; it does not suppress animations.
+The hardware configuration loads, while automatic startup playback stays idle.
+Management can explicitly activate a stored program during recovery.
 
 The recovery AP remains for the entire boot. Clearing the journal counter after
 five seconds does not end recovery. Network commits save settings for the next
@@ -124,8 +124,8 @@ re-enabling it can resume that counter. Full-chip erase also erases the journal.
 rollover, corrupt pages, every-byte interrupted first writes and injected read,
 program, erase, verification and synchronization failures. Protocol integration
 tests exercise real host process restarts, flag retention, guest reset, unavailable
-metadata, detector-only startup and byte-for-byte snapshot preservation. Historical recovery
-integration tests cover the previous idle-startup policy, manual activation, HTTP/USB management,
+metadata, detector-only startup and byte-for-byte snapshot preservation. Recovery
+integration tests cover idle startup, manual activation, HTTP/USB management,
 credential retention, next-boot saves and normal restart after counter clear. CI builds
 both feature settings across the maintained native ports. Cross-builds establish
 build compatibility; physical power-switch timing still needs hardware validation.

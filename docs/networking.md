@@ -74,7 +74,7 @@ USB-only builds and the host simulator do not start an AP.
 The editor's **Wi-Fi & HTTP** panel offers **Join Wi-Fi networks** and **Host an
 access point** on firmware advertising `wifi_ap_supported:true`. Only one mode
 runs at a time; switching retains both station and AP credentials. An omitted
-mode selects `station` for compatibility with existing configurations.
+mode selects the current `station` default.
 
 For standalone operation, save a configuration such as
 [`examples/config/network-ap.json`](../examples/config/network-ap.json):
@@ -146,7 +146,7 @@ python tools/client.py --url http://DEVICE_IP --describe
 python tools/client.py --url http://DEVICE_IP --get-config
 python tools/client.py --url http://DEVICE_IP --store-procedure rainbow rainbow.lbc
 python tools/client.py --url http://DEVICE_IP --activate rainbow
-python tools/client.py --url http://DEVICE_IP --set-parameters '{"speed":0.3}'
+python tools/client.py --url http://DEVICE_IP --program-state
 ```
 
 Omit `--no-reset` for Pico/Pico W. `--get-network` omits passwords;
@@ -280,14 +280,12 @@ New management operations are `network_get`, `network_status`,
 OBJECT_BEGIN with `kind:"network"`. Commit uses `expected_revision` from discovery's
 `network_revision`. Discovery adds `connection_api:1`, stable `device_id`,
 per-boot `boot_id`, feature support, network revision and the effective VM heap limit.
-No guest ABI or protocol-version change is required.
+The descriptor advertises the selected current execution contract.
 
-Saved snapshots now use directory version 2, preserving version-1 read support
-and eight procedure slots plus reserved `$config`/`$network` objects. Upgrading
-keeps existing stored programs and configuration without repartitioning. Older
-firmware may recover an older bank or reject new snapshots; downgrading cannot be
-relied upon to preserve recent data. Network settings are independent of startup
-configuration, including failed hardware initialization.
+Network settings share the current format-4 catalogue with programs and hardware
+configuration. Unsupported committed directory formats require explicit
+reprovisioning; they are not read or migrated. Network settings remain independent
+of startup configuration, including failed hardware initialization.
 
 After any lost mutation reply, reconnect and read state before deciding whether
 to repeat it. A successful save may have occurred even when its reply was lost.
@@ -297,7 +295,7 @@ to repeat it. A successful save may have occurred even when its reply was lost.
 Host C tests cover ownership, expiry, parser rejection, snapshot interruption and
 radio policy using a fake asynchronous radio. Python tests exercise real bytecode interpreter
 through concurrent pipes and HTTP, including large and stalled downloads,
-credentials, reboot/migration and parameter conflicts. Browser tests verify path
+credentials, reboot, unsupported storage and generation conflicts. Browser tests verify path
 identity/selection and forbid automatic replay after a lost HTTP response.
 
 ```sh
@@ -319,107 +317,21 @@ HTTP session; native pipe/HTTP concurrency is covered by the Python suite.
 LIGHTVM_RECEIVER=build/network-host/lightvm node tools/check_editor_browser.cjs
 ```
 
-### Local verification, 12 October 2026
+### Reproducible checks
 
-- Host and 175-pixel profiles: C contracts pass with USB-only and HTTP builds;
-  91 Python integration tests pass on each HTTP profile, and 80 pass on each
-  USB-only profile (the HTTP class is skipped). Both host smoke checks pass.
-- Nine Node protocol/editor tests pass. The Chrome acceptance check passes
-  both paths, network settings, password clearing/browser-storage exclusion,
-  conflict refresh, parameter updates, pause/resume, procedure save/download/
-  activate/delete, startup selection, and mobile layout without horizontal overflow.
-- All six Python effects upload and render at 1,024 pixels under the 64 KiB VM
-  ceiling in a host build using the Pico W resource profile. Observed cumulative
-  VM heap peak is 32,783 bytes; this does not measure the native radio heap.
-- All ten embedded variants below build. Images fit the existing flash/storage
-  layout; the C6 HTTP image leaves 74,816 bytes in its 1 MiB application partition.
-  CI workflow validation and GCC warning checks pass.
-
-| Board | Transport features | Application `.bin` bytes | Static RAM bytes |
-|---|---|---:|---:|
-| Pico | USB | 207,740 | 81,292 |
-| Pico W | USB | 207,340 | 81,292 |
-| Pico W | USB + Wi-Fi | 481,284 | 105,760 |
-| Pico W | USB + Wi-Fi + HTTP | 548,080 | 159,208 |
-| XIAO ESP32-C6 | USB | 266,416 | 137,788 |
-| XIAO ESP32-C6 | USB + Wi-Fi | 922,448 | 225,332 |
-| XIAO ESP32-C6 | USB + Wi-Fi + HTTP | 973,760 | 265,138 |
-| XIAO ESP32-S3 | USB | 303,280 | 153,623 |
-| XIAO ESP32-S3 | USB + Wi-Fi | 811,920 | 203,995 |
-| XIAO ESP32-S3 | USB + Wi-Fi + HTTP | 854,896 | 243,715 |
-
-Pico static RAM is GNU `size` data plus BSS. ESP32 figures sum SDK-reported RAM
-regions, including resident code and RTC reservations. Neither includes peak
-dynamic allocations. Pico W HTTP retains 9,752 bytes beyond its separate
-64 KiB VM, 16 KiB stack, 3 KiB pixel-driver and 16 KiB operating-headroom
-reservations; Wi-Fi without HTTP retains 63,200 bytes beyond those reservations.
-
-Cross-builds establish compilation and declared capacity, not physical radio
-correctness. Hardware acceptance still requires Wi-Fi-capable boards: provision,
-power cycle, fail the first SSID, recover after AP loss, and use USB/HTTP concurrently
-while measuring output, stack and native heap under load.
-
-### Pico W deployment, 12 October 2026
-
-The attached board was identified by the previous firmware as `pico`; that was
-its USB-only build profile, rather than evidence of the physical board model.
-After backing up its configuration and stored program, the Pico W Wi-Fi/HTTP UF2
-was flashed over BOOTSEL. Its image ends below the reserved snapshot-storage area.
-USB verification confirms `board:pico_w`, Wi-Fi and HTTP capabilities, the 64 KiB
-VM ceiling, and the retained 200-pixel GP16/GRB configuration at brightness 32.
-The saved `rainbow` program resumes with no boot or animation error and 11,870
-bytes of VM heap in use. Network settings are initially disabled; Wi-Fi provisioning
-and the wireless acceptance checks remain pending.
-
-### Device discovery validation, 12 October 2026
-
-The discovery builds pass all four host C contracts, all 92 Python integration
-tests and all 12 editor Node tests. DNS tests exercise two-board exchange,
-compressed names, record truncation, cache limits, TTL expiry, goodbye records,
-shared aliases, legacy unicast replies, known-answer suppression and unique-name
-conflicts. Packet mutations also pass AddressSanitizer and UndefinedBehaviorSanitizer.
-The Chrome acceptance check verifies automatic bootstrap, IP selection, HTTP and
-USB concurrency, compiler/upload/management flows, stable focused form controls
-and mobile layout. Its simulator bootstrap DNS name is routed to the real host;
-the live Pico W check below additionally verifies actual multicast and Wi-Fi.
-
-| Board | Discovery application `.bin` bytes | Static RAM bytes |
-|---|---:|---:|
-| Pico W | 563,568 | 162,940 |
-| XIAO ESP32-C6 | 985,312 | 269,002 |
-| XIAO ESP32-S3 | 865,024 | 247,555 |
-
-The Pico comparison against the same pre-discovery source/toolchain is +15,424
-bytes of flash and +3,716 static bytes, leaving 6,020 bytes after the existing RAM
-reservations. The C6 application partition retains 63,264 bytes. These figures
-exclude peak dynamic transport/task allocations; a non-default command port
-starts an additional ESP32 HTTP task for the discovery-only listener. Fresh ESP32
-builds use the updated sixteen-socket SDK default. USB-only host and Wi-Fi-only
-Pico builds also pass. ESP32 physical radio validation remains pending.
-
-### Pico W discovery deployment, 12 October 2026
-
-The connected Pico W's active/saved output configuration and stored `rainbow`
-module were backed up and checked before flashing the discovery UF2. Every UF2
-block targets flash below `0x10180000`, preserving snapshot storage. After boot,
-the configurations and module bytes match the backup, Wi-Fi reconnects using the
-saved credentials, and the 200-pixel GP16/GRB output retains brightness limit 100
-and its `rainbow` startup program. USB and HTTP report no boot or animation error;
-the active VM heap remains 11,870 bytes and playback continues during HTTP reads.
-
-Actual `lightvm.local` resolution and `GET /api/v1/devices` both succeed. macOS
-Bonjour browsing discovers `_lightvm._tcp.local` as `lightvm-0160a2`. A Chrome
-check using actual DNS, with no bootstrap interception, automatically finds the
-Pico W, selects its IP, connects over HTTP and displays the 200-pixel slot A
-binding without page errors. The check closes its session without changing the
-program or configuration. Multi-board physical discovery, AP-loss recovery and
-sustained resource measurements remain separate acceptance work.
+Discovery contracts exercise compressed DNS names, truncation, cache bounds, TTL
+expiry, goodbye records, shared aliases, standard legacy unicast replies,
+known-answer suppression and unique-name conflicts. Browser acceptance uses the
+actual host API for discovery, configuration, current compiler uploads, playback,
+presets and layout. Cross-builds establish compilation and declared capacity;
+physical radio, power-cycle, AP-loss and sustained-load checks require hardware.
+Do not reuse measurements from superseded package/firmware revisions.
 
 ## AP validation on hardware
 
 For each Wi-Fi board, check a fresh or invalid configuration boots to the open
 setup AP, obtains DHCP leases, and answers discovery and all existing command
-endpoints. Exercise configuration, library uploads/activation and parameters
+endpoints. Exercise configuration, library uploads/activation and program state
 while animation playback and USB management continue. Verify a failed save
 leaves setup accessible, a successful save replies before switching interfaces,
 and saved open/WPA2 AP settings survive reboot. Repeat AP/station transitions,

@@ -7,7 +7,7 @@ import unittest
 import zlib
 from bytecode_fixtures import ROOT, color, fault
 sys.path.insert(0, str(ROOT / 'tools'))
-from client import BEGIN, CHUNK, FINISH, FRAME, RESET, RUN, STATUS, OBJECT_CANCEL, Client, ProcessTransport, ProtocolError
+from client import BEGIN, CHUNK, FINISH, FRAME, RESET, STATUS, OBJECT_CANCEL, Client, ProcessTransport, ProtocolError
 from test_configuration import config
 
 class ReceiverTests(unittest.TestCase):
@@ -59,18 +59,18 @@ class ReceiverTests(unittest.TestCase):
 
     def test_failed_or_cancelled_replacement_preserves_live_program(self):
         self.client.upload(color(31))
-        generation = self.client.program_parameters()['generation']
+        generation = self.client.program_state()['generation']
         for candidate in (fault(), b'LBC1' + bytes(12)):
             with self.assertRaises(ProtocolError):
                 self.client.upload(candidate)
-            self.assertEqual(self.client.program_parameters()['generation'], generation)
+            self.assertEqual(self.client.program_state()['generation'], generation)
             self.client.command(FRAME, bytes(4))
             self.assertEqual(self.client.pixel_snapshot[0], 31)
         data = color(99)
         self.client.require_ok(self.client.command(BEGIN, struct.pack('<II', len(data), zlib.crc32(data))))
         self.client.require_ok(self.client.command(CHUNK, bytes(4) + data[:100]))
         self.client.require_ok(self.client.command(OBJECT_CANCEL))
-        self.assertEqual(self.client.program_parameters()['generation'], generation)
+        self.assertEqual(self.client.program_state()['generation'], generation)
         self.client.command(FRAME, bytes(4))
         self.assertEqual(self.client.pixel_snapshot[0], 31)
 
@@ -84,7 +84,7 @@ class ReceiverTests(unittest.TestCase):
 
     def test_run_is_rejected_and_command_payload_validation_is_unchanged(self):
         self.client.upload(color())
-        self.assertEqual(self.client.command(RUN).code,4)
+        self.assertEqual(self.client.command(5).code,1)
         self.assertEqual(self.client.command(10).code,1)
         self.assertEqual(self.client.command(FRAME,struct.pack('<I',1001)).code,1)
         self.assertEqual(self.client.command(RESET,b'x').code,1)

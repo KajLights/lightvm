@@ -290,7 +290,7 @@ def draw(ctx,runtime,pixels):
 ''')
         target=self.client.describe()
         self.assertEqual(target['native_drawing_api'],4)
-        self.assertEqual(result.manifest['schema'],'lightvm.program/10')
+        self.assertEqual(result.manifest['schema'],'lightvm.program/11')
         old={**target,'program_schemas':['lightvm.program/6']}
         self.assertFalse(compile_source(PREFIX+'@init\ndef setup(ctx,runtime):\n ctx.image=PixelArray(1)\n@render\ndef draw(ctx,runtime,pixels): pass\n',target=old).success)
         # Forge the destination of image_draw to the readonly source. Admission

@@ -92,7 +92,7 @@ function announcedUrl(child, output) {
     await page.locator('#preview-output').selectOption('lights2');
     await page.waitForFunction(() => !document.querySelector('#preview-output')?.disabled);
     await page.locator('#upload').click();
-    await page.waitForFunction(() => document.querySelector('#parameter-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
+    await page.waitForFunction(() => document.querySelector('#playback-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
     await page.locator('#draft-duration').fill('30');
     await page.locator('#upload').click();
     await page.waitForFunction(() => !document.querySelector('#upload')?.disabled);
@@ -166,7 +166,7 @@ function announcedUrl(child, output) {
     await page.getByRole('link', { name: 'Develop', exact: true }).click();
     assert.equal(await page.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue().includes('# draft survives tab changes')), true);
     await page.getByRole('button', { name: 'Run on output', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#parameter-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
+    await page.waitForFunction(() => document.querySelector('#playback-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
     await page.waitForFunction(() => document.querySelector('#check-state')?.textContent === 'All checks passed');
     await page.screenshot({ path: path.join(root, 'build/network-editor-desktop.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });

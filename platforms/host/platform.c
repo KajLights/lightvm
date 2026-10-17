@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-static const PlatformInfo info={"host",LIGHTVM_BOARD_NAME,"memory",-1,255};
+static const PlatformInfo info={"host",LIGHTVM_BOARD_NAME,"memory"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) {
     struct timespec now; clock_gettime(CLOCK_MONOTONIC,&now);

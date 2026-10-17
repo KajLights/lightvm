@@ -7,13 +7,11 @@ native receiver, RP2040 Pico and XIAO ESP32 builds, and pinned Python tools.
 
 | Component | Version | License | Use | Preserved notice |
 |---|---|---|---|---|
-| wasm3 | v0.5.0 | MIT | Historical interpreter; no longer linked | [License](licenses/wasm3-v0.5.0.txt) |
 | Pico SDK | 1.5.1 | BSD-3-Clause; selected files MIT | Pico firmware | [BSD license](licenses/pico-sdk-1.5.1.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | TinyUSB | SDK submodule `86c416d4c0fb38432460b3e11b08b9de76941bf5` | MIT | USB device driver | [License](licenses/tinyusb.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | pico⚡flash PICOBOOT package | commit `230759cf32ab245decf1194f5b37b7d3c0088aed` | MIT | Browser WebUSB Pico flashing | [License](licenses/picoflash.txt), copyright 2025–2026 Piers Finlayson |
 | Pico examples WS2812 PIO | 1545dfd9a186 | BSD-3-Clause | Adapted PIO program | [License](licenses/pico-examples.txt), copyright notice in [source](platforms/pico/ws2812.pio) |
 | pySerial | 3.5 | BSD-3-Clause | Desktop serial client | [License](licenses/pyserial-3.5.txt) |
-| Wasmtime Python | 25.0.0 | Apache-2.0 WITH LLVM-exception | Historical WAT tools; no longer required | [License and exception](licenses/wasmtime-py-25.0.0.txt) |
 | Newlib | 4.3.0, Arm GNU Toolchain 13.2.Rel1 | Per-source permissive licenses for the linked ARM C/math routines | Firmware C and math libraries | [Upstream license collection](licenses/newlib-4.3.0.txt) |
 | GCC runtime | Arm GNU Toolchain 13.2.Rel1 | GPL-3.0-or-later WITH GCC-exception-3.1 | Firmware compiler support routines | [GPL](licenses/gcc-gpl-3.0.txt), [runtime exception](licenses/gcc-runtime-exception.txt) |
 | ESP-IDF | v5.5.3 (`2c211b236707889e8400c4dc5644dd5c4ee071e0`) | Apache-2.0; selected MIT/BSD components below | C3/S3/C6 SDK, USB Serial/JTAG and RMT | [Apache license](licenses/esp-idf-5.5.3.txt), [S3/C6 source notices](licenses/esp-idf-additional-notices.txt), [C3 source notices](licenses/esp-idf-c3-additional-notices.txt) |
@@ -42,7 +40,7 @@ the SDK's ROM-assisted implementation.
 ## Python animation frontend and example provenance
 
 The compiler and native interpreter are LightVM implementations under the
-repository MIT license. Color, Pattern, Wipe, and Rainbow in `examples/animations/`
+repository MIT license. Color, Pattern, Sweep, and Rainbow in `examples/animations/`
 are ports of Kaj's supplied picolights algorithms, with the accepted lifecycle and
 timing changes documented in
 [the animation API](docs/animation-profile.md). The source reference is Kaj's
@@ -52,15 +50,13 @@ The six files in `examples/animations/` are the only maintained sample implement
 the editor, tools and tests all use them directly.
 
 The GPL-marked `picolights/easing.py` is not included. No easing implementation
-is copied. Rainbow's colourwheel compatibility follows the published
+is copied. Rainbow's colourwheel arithmetic follows the published
 [CircuitPython rainbowio definition](https://github.com/adafruit/circuitpython/blob/main/shared-module/rainbowio/__init__.c);
 LightVM implements the arithmetic locally rather than linking that module.
 
-Python AST parsing uses the standard library. The compiler emits custom bytecode;
-Wasmtime and wasm3 are no longer dependencies of the normal build. Their notices
-are retained for historical artifacts. Native RGB/HSV conversion retains
-LightVM's existing MIT implementation. This does not change the licenses of the
-firmware SDKs and build dependencies above.
+Python AST parsing uses the standard library. The compiler emits custom bytecode.
+Native RGB/HSV conversion retains LightVM's MIT implementation. SDK and build
+dependency licenses remain as listed above.
 
 ## Existing dependency modifications
 
@@ -69,15 +65,6 @@ Only the single-strip program is used; the newer PIO version directive is omitte
 for SDK 1.5.1 compatibility. The Raspberry Pi copyright and BSD license identifier
 are retained. Source: https://github.com/raspberrypi/pico-examples/blob/1545dfd9a1862961904856d46a4e05f35454d4be/pio/ws2812/ws2812.pio
 
-
-Historical WASM builds added a loop-yield check to a build-local copy of wasm3's `m3_exec.h` and
-redirected its allocator calls through LightVM's tracked allocator. The upstream
-source checkout is unchanged; its MIT notice remains in the copied source and
-in the interpreter notice above.
-
-Historical WASM builds disabled strict-aliasing optimization for wasm3's
-intentional type-punned code/stack representation. This changes compile options,
-not the dependency source.
 
 `platforms/esp32/main/ws2812_encoder.c` adapts the composite byte/copy encoder
 from ESP-IDF v5.5.3's `examples/peripherals/rmt/led_strip/main/led_strip_encoder.c`.
@@ -138,11 +125,9 @@ If distributing dependency sources or Python packages, retain their original
 per-file copyright/license notices and any additional notices supplied by their
 own distributions.
 
-Upstream sources: [wasm3](https://github.com/wasm3/wasm3/tree/v0.5.0),
-[Pico SDK](https://github.com/raspberrypi/pico-sdk/tree/1.5.1),
+Upstream sources: [Pico SDK](https://github.com/raspberrypi/pico-sdk/tree/1.5.1),
 [TinyUSB](https://github.com/hathach/tinyusb/tree/86c416d4c0fb38432460b3e11b08b9de76941bf5),
 [pySerial](https://github.com/pyserial/pyserial/tree/v3.5),
-[Wasmtime Python](https://github.com/bytecodealliance/wasmtime-py),
 [Newlib 4.3.0](https://github.com/mirror/newlib-cygwin/blob/newlib-4.3.0/COPYING.NEWLIB),
 and [GCC runtime exception](https://github.com/gcc-mirror/gcc/blob/releases/gcc-13.2.0/COPYING.RUNTIME).
 

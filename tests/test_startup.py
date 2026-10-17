@@ -52,9 +52,9 @@ class StartupTests(unittest.TestCase):
             self.assertEqual(self.client.status_fields(device=entry['id'])['mode'], 'idle')
         self.restart()
         for i, duration in ((0, 3.3), (1, 7.0), (3, 60.0), (4, 60.0)):
-            args = self.client.program_parameters(device=f'lights{i}')['settings_values']
+            args = self.client.program_state(device=f'lights{i}')['settings_values']
             self.assertAlmostEqual(args['duration'], duration, places=5)
-        self.assertEqual(self.client.program_parameters(device='lights1')['settings_values']['scale'], 0)
+        self.assertEqual(self.client.program_state(device='lights1')['settings_values']['scale'], 0)
         self.assertEqual(self.client.snapshot(device='lights2')[1], bytes.fromhex('123456') * 5)
         self.assertEqual(self.client.status_fields(device='lights5')['mode'], 'idle')
         self.assertEqual(self.client.describe()['boot_error'], '')
@@ -64,7 +64,7 @@ class StartupTests(unittest.TestCase):
         self.client.save_procedure('rainbow', sample('rainbow'))
         self.client.configure(config())
         self.client.upload(color(17))
-        before = self.client.program_parameters()['generation']
+        before = self.client.program_state()['generation']
         heap = self.client.status_fields()['heap']
         candidates = []
         for field in ('targets', 'startup'):
@@ -84,7 +84,7 @@ class StartupTests(unittest.TestCase):
             with self.subTest(candidate=candidate), self.assertRaises(ProtocolError):
                 self.client.configure(candidate)
             self.assertEqual(self.client.get_config(), config())
-            self.assertEqual(self.client.program_parameters()['generation'], before)
+            self.assertEqual(self.client.program_state()['generation'], before)
             self.assertEqual(self.client.status_fields()['heap'], heap)
             self.client.require_ok(self.client.command(FRAME, bytes(4)))
             self.assertEqual(self.client.pixel_snapshot[0], 17)
@@ -129,17 +129,17 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(ctx.size,0,0))
         candidate = self.devices([{'procedure': 'rainbow', 'args': {'duration': 3.3}}, {'procedure': 'rainbow'}])
         self.client.configure(candidate, save=True)
         self.restart()
-        generations = {d['id']: self.client.program_parameters(device=d['id'])['generation'] for d in candidate['devices']}
+        generations = {d['id']: self.client.program_state(device=d['id'])['generation'] for d in candidate['devices']}
         candidate['devices'][0]['startup']['args']['duration'] = 8.0
         candidate['devices'].reverse()
         self.client.configure(candidate, save=True)
         for name, generation in generations.items():
-            self.assertEqual(self.client.program_parameters(device=name)['generation'], generation)
-        self.assertAlmostEqual(self.client.program_parameters(device='lights0')['settings_values']['duration'], 3.3, places=5)
-        self.assertEqual(self.client.program_parameters()['device'], 'lights1')
+            self.assertEqual(self.client.program_state(device=name)['generation'], generation)
+        self.assertAlmostEqual(self.client.program_state(device='lights0')['settings_values']['duration'], 3.3, places=5)
+        self.assertEqual(self.client.program_state()['device'], 'lights1')
         self.restart()
-        self.assertEqual(self.client.program_parameters(device='lights0')['settings_values']['duration'], 8.0)
-        self.assertEqual(self.client.program_parameters(device='lights1')['settings_values']['duration'], 60.0)
+        self.assertEqual(self.client.program_state(device='lights0')['settings_values']['duration'], 8.0)
+        self.assertEqual(self.client.program_state(device='lights1')['settings_values']['duration'], 60.0)
 
     def test_one_failed_startup_does_not_block_other_devices(self):
         for name in ('good', 'bad'):

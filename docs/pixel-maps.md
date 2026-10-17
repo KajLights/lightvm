@@ -60,7 +60,7 @@ range, local writes, supported operations, native signatures and data flow. Maps
 cannot write state or use an unchecked store index. Ordinary typed instruction
 verification also applies to every embedded instruction.
 
-## Compilation and compatibility
+## Compilation and target requirements
 
 Optimization is enabled by default. Compare the same source without it using:
 
@@ -70,19 +70,18 @@ python -m lightvm.compiler examples/animations/rainbow.py --no-optimize -o build
 ```
 
 Python callers can pass `compile_source(source, optimize=False)`. Target-aware
-compilation automatically retains ordinary loops when the target advertises a drawing API below 4.
+compilation checks the actual drawing requirement and rejects insufficient targets.
 
-New programs use schema 10. Optimized maps require drawing API 4, retaining LBC1/4 and execution
+New programs use schema 11. Optimized maps require drawing API 4, retaining LBC1/4 and execution
 ABI 4. Opcode 39 contains a destination reference, index register, exclusive stop
-register and the PC after its embedded body. Older drawing APIs and packages
-remain supported. `native_draw_us` includes map execution in addition to native
+register and the PC after its embedded body. Header drawing requirements 0, 2, 3 and 4 describe feature use
+within the single current package contract; they are not older package versions. `native_draw_us` includes map execution in addition to native
 drawing bindings; `dispatch_count` counts the outer VM dispatches.
 
 ## Performance
 
-The [host measurement](design/measurement-pixel-map-host.md) compares native fill,
-ordinary loops and bulk maps on identical output counts and timestamps. Run the
-reproducible benchmark with:
+Compare generic drawing kernels, ordinary loops and bulk maps on identical output
+counts and timestamps with:
 
 ```sh
 python tools/benchmark_pixel_maps.py --process build/composition-host/lightvm \

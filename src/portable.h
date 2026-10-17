@@ -3,8 +3,8 @@
 /* LBC1/4: general typed functions/resources, bound here to animation/1.
  * No guest address is a native pointer. The native caller supplies render timing.
  */
-#include "bytecode.h"
-typedef union { uint64_t stamp; uint32_t u; int32_t i; float f; } PbcValue;
+#include "bytecode_core.h"
+typedef union { uint32_t u; int32_t i; float f; } PbcValue;
 typedef struct { uint32_t first,end,rights,result,arg_start,arg_count; } PbcFunction;
 typedef struct { uint32_t kind,length,fill,seed,stream,flags; } PbcResourceSpec;
 typedef struct { uint8_t op,type; uint16_t reserved; uint32_t a,b,value; } PbcExpression;
@@ -17,8 +17,7 @@ typedef struct {
 typedef struct Portable {
     LbcRead read; void *context;
     uint32_t size,nregs,ncode,ncolors,nfunctions,nresources,nexpressions,ncalls,nsettings;
-    /* Bindings 1/2 retain stored RGB/layer semantics. Binding 3 is the
-       unified animation/1 source profile with transparent output. */
+    /* Binding 3 is animation/1 with premultiplied RGBA output. */
     uint32_t entries[2],profile,drawing_api;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
     uint8_t *metadata, *descriptors; uint16_t *register_offsets;

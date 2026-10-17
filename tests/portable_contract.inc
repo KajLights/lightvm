@@ -46,8 +46,8 @@ static void portable_contract(void){
     portable_load(&vm,&canvas,&reply,delta_lbc,sizeof(delta_lbc));p=vm.portable;
     // Delta remains precise even when absolute f32 time loses milliseconds.
     vm.control.program_us=UINT64_C(1)<<54;
-    CHECK(!control_step(&vm,1,12345)&&vm.control.committed[0]==12);
-    vm.view.generation++;CHECK(control_step(&vm,1,0)&&vm.control.faulted);vm.view.generation--;
+    CHECK(!control_step(&vm,12345)&&vm.control.committed[0]==12);
+    vm.view.generation++;CHECK(control_step(&vm,0)&&vm.control.faulted);vm.view.generation--;
     vm_destroy(&vm);CHECK(vm_heap_used()==0);
 
     portable_load(&vm,&canvas,&reply,slow_lbc,sizeof(slow_lbc));p=vm.portable;
@@ -78,7 +78,7 @@ static void portable_contract(void){
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(displayed[0]==1);
     deny_show=true;uint8_t delta[4];write_u32(delta,20);reply.snapshot_size=0;
     vm_command(&vm,CMD_FRAME,77,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_RUN&&!vm.control.faulted);
+    CHECK(reply.code==STATUS_EXECUTION&&!vm.control.faulted);
     CHECK(vm.portable->render_count==2&&vm.control.committed[0]==2&&displayed[0]==1);
     deny_show=false;vm_destroy(&vm);pixels_destroy(&physical);CHECK(vm_heap_used()==0);
 

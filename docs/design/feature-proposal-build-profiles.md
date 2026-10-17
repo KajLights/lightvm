@@ -30,7 +30,7 @@ Keep the following layers distinct:
 | Board definition | Physical capabilities, pin aliases, reserved resources and available flash/RAM |
 | Build profile | Drivers, services, transports, storage layout and resource limits selected for an instance's firmware |
 | Hardware configuration | Named peripheral instances, wiring and settings using drivers present in that firmware |
-| Program execution contract | Guest step/event and capability contract, such as proposed `control-v1`, or the legacy animation API v1 adapter |
+| Program execution contract | One selected current guest contract and its declared capabilities |
 
 A build profile is reusable, but its assignment is a choice for each physical
 board instance. Selecting a profile for one XIAO ESP32-S3 must not change the
@@ -40,7 +40,7 @@ Profiles need no credentials or hard-coded device serial numbers.
 
 Runtime configuration can instantiate an included driver or enable an included
 service. Adding an excluded driver or service requires rebuilding and installing
-native firmware. Uploading a WASM program remains independent of that process.
+native firmware. Uploading current bytecode remains independent of that process.
 
 ## Selectable features
 
@@ -59,17 +59,17 @@ feature catalogue:
 
 Select [animation composition](feature-proposal-animation-composition.md) and
 [A/B transitions](feature-proposal-ab-transitions.md) independently. A minimal
-build can run one animation; a composition build can run Rainbow plus Twinkle
+build can run one animation; a composition build can run Rainbow plus Stars
 without a transition program; an A/B build can switch between single-animation
 sources without general layer management. Combining them permits layered scene
 sources only within the declared joint limits.
 
 Composition depends on indexed frame buffers and the shared scheduling,
-publication and ownership machinery. Alpha representation and blending remain
-separate design work; profile options must follow that contract when it exists.
+publication and ownership machinery. Alpha representation and blending are
+implemented for the current scene contract; profile options must match its aggregate limits.
 Resolve limits for layers per scene, total resident colour/transition instances,
 frame/alpha/staging bytes and the aggregate frame budget. Feature selection must
-not imply arbitrary layer capacity or an implemented alpha colour format.
+not imply arbitrary layer capacity or additional output formats.
 
 Excluding a feature must remove its registration entries, native implementation,
 dedicated buffers and dependencies that no remaining feature needs. A runtime
@@ -150,8 +150,7 @@ the resolved profile. The shared engine and native adapters must see the same
 selection; SDK-specific configuration stays in the native port.
 
 Use a separate build directory for each board/profile combination and detect
-stale configuration when switching profiles. Preserve the current firmware as
-an explicit baseline profile so existing builds remain usable during migration.
+stale configuration when switching profiles. Use the current firmware feature selection as an explicit starter profile.
 Custom profile files should be usable outside the repository.
 
 ## Capacity planning and OTA
@@ -208,8 +207,7 @@ The web editor should use this descriptor when offering transports, hardware
 forms, persistence and firmware updates. Explain an excluded feature as
 requiring another firmware profile. Required imports and device capabilities
 must be checked against the connected instance, rather than assumed from its
-board model. Preserve existing API semantics and version discovery additions
-separately from the guest ABI.
+board model. Select one current guest and management contract; reject superseded PoC interfaces.
 
 Before a profile-changing update, compare the candidate manifest with the
 physical board, current boot/storage layout, hardware configuration and saved
@@ -225,7 +223,7 @@ Today, `LIGHTVM_PLATFORM`, `LIGHTVM_BOARD` in the ESP32 project and
 `LIGHTVM_BOARD_CONFIG` select native ports and board/resource headers. The shared
 core has a fixed source list; the output driver and management transport are
 selected by the native port. ESP32 defaults use a single application layout.
-There is no general instance build profile or implemented HTTP, MQTT or OTA
+HTTP management is implemented. There is no general instance build profile, MQTT or OTA
 service. Build profiles should make those future additions optional from their
 first implementation.
 
@@ -258,7 +256,7 @@ can follow the file-based workflow; neither is required initially.
   not be reported as the cost of layered scenes.
 - Rebuild from the same resolved profile and pinned inputs with identical feature
   selections, limits and layout; record any toolchain limits on binary identity.
-- Run compatible identical WASM on different profiles with unchanged import
+- Run identical current bytecode on different profiles with unchanged import
   semantics, and measure timing/RAM while selected native services are active.
 
 Before implementation, settle the profile schema/default rules, feature

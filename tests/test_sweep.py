@@ -94,9 +94,9 @@ class SweepTests(unittest.TestCase):
     def test_batched_eyes_share_frames_and_rendering_does_not_allocate(self):
         self.configure(100)
         self.load(eye_count=1)
-        single = self.client.program_parameters(device='lights', layer='eyes')
+        single = self.client.program_state(device='lights', layer='eyes')
         self.load(eye_count=4)
-        batch = self.client.program_parameters(device='lights', layer='eyes')
+        batch = self.client.program_state(device='lights', layer='eyes')
         self.assertEqual(batch['buffer_bytes'], single['buffer_bytes'])
         self.assertEqual(batch['state_bytes'] - single['state_bytes'], 3 * 104)
         heap = self.client.status_fields()['heap']

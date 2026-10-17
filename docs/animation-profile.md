@@ -1,7 +1,7 @@
 # Animation profile
 
 The proof-of-concept Python API has two decorators: `@init` and `@render`.
-The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/10`, with profile
+The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/11`, with profile
 `animation/1`. It parses source without executing it.
 
 There is one source profile. Every animation can run alone or as a [scene layer](composition.md).
@@ -91,8 +91,8 @@ and numeric types must match. Initialization validates overrides before executio
 
 Existing activation and `program_reset(settings=...)` operations initialize a
 fresh instance with supplied overrides. Reset keeps the old instance if candidate
-preparation fails. `program_parameters_get` reports `manifest.settings` and
-`settings_values`; `program_parameters_set` rejects this profile. The editor's
+preparation fails. `program_state` reports `manifest.settings` and
+`settings_values`. The editor's
 initialization settings panel applies settings through an explicit restart.
 Activation/reset inputs belong to that invocation. Per-device `startup.args` in
 configuration supplies inputs at boot; omitted arguments use the program defaults.
@@ -148,10 +148,10 @@ three typed native values: pixel count, time and delta. Context and output stora
 are instance bindings. Init may write state and use randomness; render may also
 write output. Admission independently validates these rights and signatures.
 
-All new programs use schema 10, profile binding 3, and premultiplied RGBA output.
-The public profile name remains `animation/1`. Targets must advertise schema 10 before accepting new programs.
+All new programs use schema 11, profile binding 3, and premultiplied RGBA output.
+The public profile name remains `animation/1`. Targets must advertise schema 11 before accepting new programs.
 Older firmware rejects these packages instead of using the previous RGB rules.
-Stored packages with profile bindings 1 and 2 retain their original behavior.
+Only profile binding 3 is accepted. Recompile earlier packages from source.
 The compiler no longer accepts `layer/1` source declarations.
 
 Header word 80 identifies the drawing API. Zero selects basic operations, 2 adds images and sprites,
@@ -168,109 +168,4 @@ An independent Python caller checks Color, Pattern, and Rainbow output.
 Sprite tests check Stars, Rainbow Sprite and Sweep, including transparency,
 clocks, movement, retained wipe modes and frame-independent sampled trails.
 The suite also checks seeded random ranges, arrays, variable frame rates, frozen settings,
-fault publication, and native continuation/ownership. Hardware measurements below describe the previous API;
-they are historical evidence, not measurements of LBC1/4.
-
-## Historical measurements (LBC1/3, before this API change)
-
-## Measured memory
-
-Measured on the 64-bit host build, 175 RGB pixels, default settings, fresh process
-per effect (bytes). The heap tracker includes allocation headers and the native
-output charge. State includes registers, resource descriptors and packed payload;
-register/payload columns are subsets, not additional allocations.
-
-| Example | Package | Metadata | State | Registers | Payload | Steady tracked heap | Preparation peak | Reset peak |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| color | 984 | 54 | 112 | 44 | 0 | 3093 | 4141 | 7234 |
-| pattern | 1527 | 90 | 216 | 60 | 24 | 3233 | 4481 | 7714 |
-| chase | 889 | 48 | 629 | 36 | 525 | 3604 | 4764 | 8368 |
-| wipe | 1146 | 66 | 645 | 56 | 525 | 3638 | 4814 | 8452 |
-| rainbow | 1977 | 118 | 152 | 84 | 0 | 3197 | 4245 | 7442 |
-| twinkle | 3822 | 168 | 765 | 124 | 413 | 3860 | 5268 | 9128 |
-
-Each row additionally has a 1,272-byte portable context and 40-byte continuation,
-already included in tracked heap, and 1,575 bytes of RGB buffers (working,
-committed and physical output), also included. Call storage is zero because
-helpers are inlined. Twinkle payload is 14×17 + 175 = 413 bytes.
-
-The enclosing `VmInstance` is **1,040 bytes on this host**, down from 35,680.
-It contains no package/upload array and no embedded legacy interpreter. V2
-interpreter state is allocated only for v2 packages. V3 immutable tables and
-initial values remain in flash; compact type/layout bindings use roughly three
-bytes per register. Mutable ordinary registers use four bytes, timestamps eight;
-constants have no mutable register slot. Code, palettes and immutable table size
-do not determine steady RAM consumption.
-
-The shared App is 30,488 bytes on this host, including eight 1,040-byte slot
-contexts, down from the earlier 79,992-byte single-slot App. It includes one
-336-byte upload workspace (256 bytes of page data), configuration staging and
-the store's bounded extent references. Slot contexts are embedded in App and are
-not included in steady tracked heap; replacement candidates are heap allocated and
-included in peaks. Preparation now happens before a transient upload replaces the
-old instance. The table uses fresh processes and includes that candidate in its
-preparation peak. Reset also overlaps old/new resources and admission temporaries.
-Native App/transport/driver memory and stacks are outside the VM heap figures.
-These numbers are not total firmware RAM or a cross-runtime performance benchmark.
-
-The multi-device Pico W HTTP/boot build uses 115,880 static bytes, including
-a 29,720-byte App with eight 968-byte slot contexts. Its RAM gate reserves a
-65,536-byte VM heap, 16,384-byte native stack, 6,144 bytes for aggregate Pico
-conversion buffers/drivers, and 16,384 bytes of operating headroom, leaving
-50,008 bytes. Aggregate configured pixels cannot exceed the board pixel capacity. Native SDK/driver costs remain separate from per-effect payload figures.
-ESP32-C3 HTTP/boot and ESP32-S3/C6 USB builds also pass. The changed DMA/RMT
-paths still need on-device timing, cancellation and stack high-water checks;
-cross-builds and simulated delayed-output tests do not establish those timings.
-
-Before the multi-device extension, Arm GCC 13.2 `-O3 -fstack-usage` reported the
-largest individual core frames as
-management 6,480 bytes, control management 5,848 and manifest validation 5,240.
-Decoded-key scratch is outside recursive JSON parsing, reducing each recursive
-frame from 312 bytes to at most 56 (depth remains bounded at 16). The shared
-native stack is retained during cooperative management work. Native polling
-callbacks must only enqueue commands; the command guard prevents recursive
-execution and defers upload cancellation until the current command releases its
-workspace. The 16 KiB reservation still requires hardware high-water verification.
-
-## Pico W simultaneous-device verification (2026-10-15)
-
-These historical measurements use the earlier example set. Chase and Wipe are
-now Sweep modes; Stars replaces the former Twinkle source example.
-
-On Pico W `E6614103E7236D37`, the GP16 physical output retained the original
-200-pixel Rainbow at brightness 100/255. Five additional named `virtual_rgb`
-devices each ran an independent 100-pixel Color, Pattern, Chase, Wipe or Twinkle
-instance. They use separate VM state and RGB buffers, with a timed output sink
-on the controller; only Rainbow exercised physical PIO/DMA in this test.
-
-The 60-second run passed exact fixed-step host parity for all five added
-animations, independent pause/resume, unchanged generation on A during uploads,
-and stable aggregate VM heap. Heap remained **16,632 bytes**, with a
-**20,868-byte** preparation/reset peak. Each Pico slot context is 968 bytes in
-App; the single shared upload workspace is 328 bytes including its 256-byte page.
-These figures exclude static App/transport memory, native drivers and stacks.
-
-| Slot | Device | Pixels | Average output fps |
-|---|---|---:|---:|
-| A | Physical Rainbow, GP16 | 200 | 31.25 |
-| B | Virtual Color | 100 | 48.53 |
-| C | Virtual Pattern | 100 | 35.16 |
-| D | Virtual Chase | 100 | 40.96 |
-| E | Virtual Wipe | 100 | 34.38 |
-| F | Virtual Twinkle | 100 | 34.69 |
-
-Rainbow alone measured approximately 47.6 fps in the short baseline sample.
-That historical run used the former one-shot Wipe, with a one-second update
-interval; it held its output after approximately 51 seconds. Sweep's wipe mode repeats,
-so the recorded average includes a hold that no longer occurs. That workload therefore
-does not establish six simultaneous 60 fps outputs. No device faulted. Saved
-configuration and the procedure library were unchanged; the extra devices were
-left in the active RAM configuration.
-
-The first concurrent attempt exposed excessive background work during manual
-commands; checkpoints now cap each background v3 instance at 64 dispatches.
-USB ingress now reads up to 256 bytes per scheduler pass, resolving the severe
-command latency caused by processing one byte per pass under concurrent load.
-The final run used both fixes. Reproduce with `tools/smoke_multi_device.py`.
-Electrical timing across multiple physical strips, RMT hardware behavior and
-native stack high-water measurements remain separate checks.
+fault publication, and native continuation/ownership.

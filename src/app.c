@@ -224,13 +224,12 @@ static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const cha
     if(name){strcpy(d->active_procedure,name);d->active_crc=entry->crc;}else{d->active_procedure[0]=0;d->active_crc=0;}
     return NULL;
 }
-static bool activate(App *a,const char *name,uint16_t id,const char *action,const char *export_name,const char *device,const Json *request,int settings) {
-    (void)export_name;
+static bool activate(App *a,const char *name,uint16_t id,const char *action,const char *device,const Json *request,int settings) {
     AppDevice *d=app_device(a,device);
     if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_device","device is not configured");return false;}
     const StoreEntry *entry=store_find(&a->store,name);
     if(!entry||!strcmp(name,STORE_CONFIG)||!strcmp(name,STORE_NETWORK)){error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist");return false;}
-    if(strcmp(action,"play")){error_reply(a,id,STATUS_RUN,"invalid_action","animation profiles execute through PLAY/FRAME");return false;}
+    if(strcmp(action,"play")){error_reply(a,id,STATUS_EXECUTION,"invalid_action","animation profiles execute through PLAY/FRAME");return false;}
     const char *error=install(a,d,entry,name,true,request,settings);
     if(error){if(!a->booting)error_reply(a,id,STATUS_LOAD,"activation_failed",error);return false;}
     reply(a,id,STATUS_OK,(int32_t)d->vm.control.count,"animation activated");return true;
@@ -257,7 +256,7 @@ void app_init(App *a, SendMessage send, void *transport) {
     vm_init(&a->fallback.vm,NULL,vm_send,a);
     empty_config(a);runtime_services(service,a);
     a->booting=true;
-    if (!store_mount(&a->store)) snprintf(a->boot_error,sizeof(a->boot_error),"storage: no valid snapshot or read failure");
+    if (!store_mount(&a->store)) snprintf(a->boot_error,sizeof(a->boot_error),"storage unsupported or corrupt; repair/reprovision required");
     const StoreEntry *config=store_find(&a->store,STORE_CONFIG);
     if (config) {
         HardwareConfig hardware;
@@ -272,7 +271,7 @@ void app_init(App *a, SendMessage send, void *transport) {
                 Json *args=startup_arguments(d,a->config_json);
                 if(d->args_size&&!args)startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"args: allocation failed");
                 else if(!store_find(&a->store,d->startup))startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"procedure: stored procedure does not exist");
-                else (void)activate(a,d->startup,0,"play","",d->id,args,argument_object(args));
+                else (void)activate(a,d->startup,0,"play",d->id,args,argument_object(args));
                 platform_free(args);
             }
         }
@@ -344,7 +343,6 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"error\":"); quoted(&w,a->boot_sequence.error); literal(&w,"}");
 #endif
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
-    literal(&w,",\"bytecode_format\":\"LBC1/2\"");
     literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
     literal(&w,",\"board\":"); quoted(&w,info->board);
     literal(&w,",\"device_types\":[{\"type\":\"ws2812b\",\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}],\"pins\":[");
@@ -375,8 +373,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"app_context_bytes\":"); number(&w,sizeof(App));
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
     literal(&w,",\"upload_page_bytes\":"); number(&w,STORE_PAGE_BYTES);
-    literal(&w,",\"control_abi\":"); number(&w,CONTROL_ABI_VERSION);
-    literal(&w,",\"program_schemas\":[\"lightvm.program/3\",\"lightvm.program/5\",\"lightvm.program/6\",\"lightvm.program/7\",\"lightvm.program/8\",\"lightvm.program/9\",\"lightvm.program/10\"],\"program_abis\":[2,4],\"bytecode_formats\":[\"LBC1/2\",\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"legacy_animation_api\":1,\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"parameter_limit\":8,\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
+    literal(&w,",\"program_schemas\":[\"lightvm.program/11\"],\"program_abis\":[4],\"bytecode_formats\":[\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
     literal(&w,",\"transient_settings\":true,\"preset_api\":1,\"preset_limit\":");number(&w,PRESET_LIMIT);
     literal(&w,",\"scene_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
@@ -393,17 +390,16 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"target\":\"A\",\"uploading\":"); literal(&w,a->uploading ? "true" : "false");
     literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"capabilities");
 }
-typedef struct { char op[33],name[33],action[16],export_name[64],slot[33],device[33]; uint32_t revision,saved_revision,command,delta_ms; bool has_revision,has_saved_revision; } Arguments;
+typedef struct { char op[33],name[33],action[16],slot[33],device[33]; uint32_t revision,saved_revision,command,delta_ms; bool has_revision,has_saved_revision; } Arguments;
 static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
     Json j;
-    memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->export_name,"run",4); memcpy(args->slot,"A",2);
-    static const char *const fields[]={"op","name","action","export","slot","device","expected_revision","expected_saved_revision","settings","command","delta_ms",NULL};
+    memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->slot,"A",2);
+    static const char *const fields[]={"op","name","action","slot","device","expected_revision","expected_saved_revision","settings","command","delta_ms",NULL};
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) || !json_string(&j,json_get(&j,0,"op"),args->op,sizeof(args->op))) return false;
     if(json_get(&j,0,"settings")>=0&&strcmp(args->op,"procedure_activate"))return false;
-    int name=json_get(&j,0,"name"),action=json_get(&j,0,"action"),ex=json_get(&j,0,"export");
+    int name=json_get(&j,0,"name"),action=json_get(&j,0,"action");
     if (name>=0 && (!json_string(&j,name,args->name,sizeof(args->name)) || !object_name_valid(args->name))) return false;
     if (action>=0 && !json_string(&j,action,args->action,sizeof(args->action))) return false;
-    if (ex>=0 && !json_string(&j,ex,args->export_name,sizeof(args->export_name))) return false;
     int slot=json_get(&j,0,"slot");
     if (slot>=0 && !json_string(&j,slot,args->slot,sizeof(args->slot))) return false;
     int command=json_get(&j,0,"command"),delta=json_get(&j,0,"delta_ms");
@@ -637,7 +633,7 @@ static bool scene_device_command(App *a,AppDevice *d,uint8_t command,uint16_t id
         reply(a,id,STATUS_OK,0,message);return true;
     }
     if(command==CMD_FRAME){
-        const char *error=scene_frame(s,delta);if(error){reply(a,id,STATUS_RUN,0,error);return true;}
+        const char *error=scene_frame(s,delta);if(error){reply(a,id,STATUS_EXECUTION,0,error);return true;}
         for(size_t offset=0;offset<(size_t)s->count*3;offset+=FRAME_LIMIT){size_t n=(size_t)s->count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,s->output->rgb+offset,n);}
         reply(a,id,STATUS_OK,(int32_t)s->count,"scene frame rendered");return true;
     }
@@ -731,7 +727,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         return;
     }
     if (!strcmp(args.op,"procedure_activate") && a->upload_device->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","finish or cancel the transient upload first"); return; }
-    if (!strcmp(args.op,"procedure_activate")) { Json request;if(!json_parse(&request,p,size))return;(void)activate(a,args.name,id,args.action,args.export_name,args.device,&request,json_get(&request,0,"settings")); return; }
+    if (!strcmp(args.op,"procedure_activate")) { Json request;if(!json_parse(&request,p,size))return;(void)activate(a,args.name,id,args.action,args.device,&request,json_get(&request,0,"settings")); return; }
     if (!strcmp(args.op,"config_validate") || !strcmp(args.op,"config_apply")) {
         if (!a->staged || a->object_kind!=1 || a->upload_owner!=a->source) { error_reply(a,id,STATUS_CONFIG,"no_candidate","upload and finish a configuration first"); return; }
         HardwareConfig config; char error[160];
@@ -909,7 +905,7 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         if(!l){platform_free(j);error_reply(a,id,STATUS_CONFIG,"unknown_layer","scene layer is not configured");return;}
         vm=&l->vm;
     }else if(d->scene&&d->scene->layer_count)vm=&d->scene->layers[0].vm;
-    bool read_only=!strcmp(op,"program_parameters_get")||!strcmp(op,"program_snapshot");
+    bool read_only=!strcmp(op,"program_state")||!strcmp(op,"program_snapshot");
     if(!strncmp(op,"program_",8)){
         if(!read_only)scene_invalidate(d->scene);
         platform_free(j);

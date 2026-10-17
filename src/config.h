@@ -33,17 +33,9 @@
 #ifndef VM_HEAP_LIMIT
 #define VM_HEAP_LIMIT (128u * 1024u)
 #endif
-#ifndef VM_STACK_SIZE
-#define VM_STACK_SIZE 8192u
-#endif
-#ifndef OUTPUT_LIMIT
-#define OUTPUT_LIMIT (16u * 1024u)
-#endif
 #ifndef FRAME_INTERVAL_US
 #define FRAME_INTERVAL_US 16667u
 #endif
-// Retained capability field: bytecode has no guest linear memory.
-#define LINEAR_MEMORY_LIMIT 0u
 #define LIGHTVM_ANIMATION_API_VERSION 1u
 
 #if PIXEL_CAPACITY < 1 || PIXEL_CAPACITY > 65535
@@ -52,8 +44,8 @@
 #if MODULE_LIMIT < 8 || MODULE_LIMIT > 2147483647
 #error "MODULE_LIMIT must fit a positive protocol i32 result"
 #endif
-#if VM_HEAP_LIMIT < 1 || VM_STACK_SIZE < 1 || OUTPUT_LIMIT < 1
-#error "Heap, stack and output budgets must be positive"
+#if VM_HEAP_LIMIT < 1
+#error "Heap budget must be positive"
 #endif
 #if FRAME_INTERVAL_US < 1
 #error "Frame interval must be positive"

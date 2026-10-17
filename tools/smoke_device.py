@@ -45,7 +45,7 @@ def smoke(client, board, reference):
                 client.require_ok(client.command(FRAME,bytes(4)))
                 check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'settings restart failed')
             if source.stem=='sweep':
-                state=client.program_parameters()
+                state=client.program_state()
                 check(state['render_count']>1,'Sweep did not keep rendering')
         # Use Rainbow to test autonomous playback and pause/resume.
         rainbow=compile_source((ROOT/'examples/animations/rainbow.py').read_text(),target=info)
@@ -54,11 +54,11 @@ def smoke(client, board, reference):
         before=client.status_fields();time.sleep(.1);after=client.status_fields()
         check(after['mode']=='bytecode' and int(after['frames'])>int(before['frames']),'playback stopped')
         check(after['heap']==before['heap'],'playback allocation changed')
-        client.pause_program();paused=client.program_parameters()['program_us'];time.sleep(.03)
-        check(client.program_parameters()['program_us']==paused,'pause advanced time')
+        client.pause_program();paused=client.program_state()['program_us'];time.sleep(.03)
+        check(client.program_state()['program_us']==paused,'pause advanced time')
         client.resume_program()
         deadline=time.monotonic()+1
-        while client.program_parameters()['program_us']<=paused:
+        while client.program_state()['program_us']<=paused:
             check(time.monotonic()<deadline,'resume failed')
             time.sleep(.02)
         print('All effects, identical bytecode/pixels, controls, snapshots, playback and pause/resume passed.')

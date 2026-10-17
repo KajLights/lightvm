@@ -51,7 +51,7 @@ test("a stalled discovery read aborts without opening a command session", async 
 test("framing agrees with Python zlib, including incremental CRC", () => {
   assert.equal(crc32(new TextEncoder().encode("123456789")), 0xcbf43926);
   assert.equal(Buffer.from(frame(1, 42, new TextEncoder().encode("hello"))).toString("hex"),
-    "5741534d01012a0005000000ef10d19768656c6c6f");
+    "4c564d3101012a0005000000ef10d19768656c6c6f");
   assert.throws(() => frame(1, 1, new Uint8Array(513)), /frame limit/);
 });
 
@@ -93,7 +93,9 @@ test("browser protocol uploads and plays a real animation on bytecode", { skip: 
   process.on("error", error => transport.onDisconnect(error));
   try {
     const description = await client.describe();
-    assert.equal(description.control_abi, 2);
+    assert.deepEqual(description.program_abis, [4]);
+    assert.deepEqual(description.program_schemas, ['lightvm.program/11']);
+    assert.equal(description.control_abi, undefined);
     const config = Buffer.from(JSON.stringify({ schema: "lightvm.config/1", devices: [
       { id: "lights", type: "ws2812b", config: { pin: "GP16", count: 5 } },
     ] }));
@@ -175,7 +177,7 @@ test("revision conflicts stay connected and expose the need to refresh state", a
 });
 
 
-test("parameter JSON preserves i64 boundaries and quoted numeric text", async () => {
+test("telemetry JSON preserves integer boundaries and quoted numeric text", async () => {
   const { parseJSON, encodeJSON } = await import("../web/protocol.mjs");
   const source = '{"values":{"low":-9223372036854775808,"high":9223372036854775807,"small":42,"real":1.25},"label":"9223372036854775807"}';
   const parsed = parseJSON(source);

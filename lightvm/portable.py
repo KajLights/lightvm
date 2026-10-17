@@ -1,4 +1,4 @@
-"""Opt-in animation/1 frontend for the general LBC1/4 instruction container.
+"""The animation/1 frontend for the general LBC1/4 instruction container.
 
 The function table carries explicit permissions/result types; animation entry
 selection is profile metadata. No source code runs during compilation.
@@ -9,9 +9,9 @@ import math
 import struct
 from pathlib import Path
 from .sprite_compiler import SpriteCompiler, FEATURE_NATIVES
-from .bytecode import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE, FRAME, PARAM
+from .compiler_core import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE
 
-STAMP, REF, SETTING = 5, 6, 6
+REF, SETTING = 6, 6
 P_OP = {**OP, 'LOAD_ELEM': 33, 'STORE_ELEM': 34, 'LENGTH': 35,
         'RESOURCE_FILL': 36, 'RESOURCE_COPY': 37, 'NATIVE': 38, 'PIXEL_MAP': 39}
 # name: binding ID, result type, argument types, required effect permissions
@@ -25,15 +25,6 @@ NATIVES = {
     'require': (14, 0, (B,), 0),
     'color_int': (15, I, (C,), 0), 'int_color': (16, C, (I,), 0),
     'randint': (17, I, (I, I), 8),
-    'rgba_fill': (18, 0, (REF, C, I), 4),
-    'rgba_point': (19, 0, (REF, I, C, I), 4),
-    'colorwheel_fill': (20, 0, (REF, F, F), 4),
-    'sprites_advance': (21, 0, (REF, F), 1),
-    'sprites_spawn': (22, B, (REF, C, F), 9),
-    'sprites_draw': (23, 0, (REF, REF), 4),
-    'sprites_active': (24, I, (REF,), 0),
-    'gradient_fill': (25, 0, (REF, C, C), 4),
-    'palette_fill': (26, 0, (REF, REF, F, F), 4),
 }
 NATIVES.update(FEATURE_NATIVES)
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
@@ -45,7 +36,7 @@ LIBRARIES = {'lightvm.motion', 'lightvm.easing'}
 
 class PortableCompiler(SpriteCompiler, Compiler):
     def __init__(self, source, optimize=True):
-        super().__init__(source, fuse=False)
+        super().__init__(source)
         self.optimize, self.map_used = optimize, False
         # Runtime arguments are flattened into typed input registers. Context
         # fields and array bindings belong to this instance, never module globals.
@@ -208,9 +199,6 @@ class PortableCompiler(SpriteCompiler, Compiler):
             if cap == 'runtime' and n.attr in self.inputs: return self.inputs[n.attr]
             if cap == 'pixels' and n.attr == 'count': return self.inputs['pixel_count']
             if isinstance(n.value, ast.Name) and self.imports.get(n.value.id) == 'math' and n.attr == 'pi': return self.literal(math.pi)
-            if n.attr == 'active':
-                ref, kind = self.resource(n.value)
-                if kind == 13: return self.native('sprites_active', [ref], n)
             self.fail(n, 'unknown context field or caller argument property')
         if isinstance(n, ast.Name):
             if self.imports.get(n.id) == 'math.pi': return self.literal(math.pi)
@@ -222,15 +210,12 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 if n.keywords: self.fail(n, 'math.sin takes one positional argument')
                 return self.native('sin', [self.expr(a) for a in n.args], n)
             method = n.func.attr
-            if self.capability(n.func.value) == 'pixels' and method in ('point', 'sprites', 'colorwheel', 'gradient', 'palette'):
+            if self.capability(n.func.value) == 'pixels' and method in ('point', 'colorwheel', 'gradient', 'palette'):
                 if n.keywords: self.fail(n, 'native drawing takes positional arguments')
                 args = [self.output] + [self.expr(a) for a in n.args]
                 if method == 'point' and len(args) == 3: args.append(self.literal(255))
-                return self.native({'point':'rgba_point', 'sprites':'sprites_draw', 'colorwheel':'colorwheel_fill', 'gradient':'gradient_fill', 'palette':'palette_fill'}[method], args, n)
-            if method in ('advance', 'spawn'):
-                ref, kind = self.resource(n.func.value)
-                if kind != 13 or n.keywords: self.fail(n, 'SpriteBatch method required')
-                return self.native('sprites_' + method, [ref] + [self.expr(a) for a in n.args], n)
+                self.feature_used = True
+                return self.native({'point':'image_point', 'colorwheel':'image_colorwheel', 'gradient':'image_gradient', 'palette':'image_palette'}[method], args, n)
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
             r = self.truth(self.expr(n.operand))
             out = self.reg(B); self.emit('EQ', out, r, self.literal(False)); return out
@@ -270,7 +255,6 @@ class PortableCompiler(SpriteCompiler, Compiler):
             return out
         if isinstance(n, ast.Subscript):
             ref, kind = self.resource(n.value)
-            if kind in (9, 13): self.fail(n, 'resource is not an indexable array')
             if self.regs[ref][2] == 0 and not self.rights & 4: self.fail(n, 'initialization cannot access output pixels')
             index = self.expr(n.slice)
             if self.typ(index) != I: self.fail(n, 'index must be i32')
@@ -327,7 +311,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         return super().expr(n)
 
     def element_type(self, kind):
-        return I if kind in (7, 8, 11) else C if kind in (3, 10, 12, 14, 15, 16, 17) else kind
+        return I if kind in (7, 8, 11) else C if kind in (12, 14, 15, 16, 17) else kind
 
     def random_call(self, name, node):
         args = list(node.args)
@@ -403,7 +387,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         if kind == 'setting':
             if len(call.args) != 1 or any(k.arg not in ('minimum', 'maximum') for k in call.keywords): self.fail(node, 'expected a default and optional minimum/maximum')
             external = name.removeprefix('ctx.')
-            if len(external) > 32 or external in self.setting_names or any(p['name'] == external for p in self.params): self.fail(node, 'duplicate or invalid control name')
+            if len(external) > 32 or external in self.setting_names: self.fail(node, 'duplicate or invalid control name')
             default = self.declarative(call.args[0]); typ = self.expressions[default][1]
             bounds = {k.arg: self.declarative(k.value) for k in call.keywords}
             if len(bounds) != len(call.keywords) or bounds and typ not in (I, F): self.fail(node, 'invalid bounds')
@@ -475,7 +459,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                     kws = {k.arg: k.value for k in call.keywords}
                     if 'alpha' in kws:
                         if len(kws) != len(call.keywords) or set(kws) != {'alpha'}: self.fail(n, 'alpha fill covers the whole surface')
-                        self.native('rgba_fill', [ref, self.expr(call.args[0]), self.expr(kws['alpha'])], n)
+                        self.feature_native('image_fill', [ref, self.expr(call.args[0]), self.expr(kws['alpha']), self.literal(0), self.inputs['pixel_count']], n)
                         continue
                     if len(kws) != len(call.keywords) or set(kws) - {'start', 'stop'}: self.fail(n, 'invalid fill range')
                     val = self.convert(self.expr(call.args[0]), C)
@@ -611,7 +595,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
         drawing_api = 4 if self.map_used else 3 if self.wrap_used else 2 if self.feature_used else 0
-        manifest = {'schema':'lightvm.program/10','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},'parameters':self.params,
+        manifest = {'schema':'lightvm.program/11','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
