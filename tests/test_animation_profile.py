@@ -13,7 +13,7 @@ from lightvm.compiler import compile_source
 from managed_replay import Example, Random
 from test_configuration import config
 
-PREFIX='from lightvm import profile,setting,rgb,init,render\nprofile("animation/1")\n'
+PREFIX='from lightvm import profile,setting,rgb,init,render\nprofile("animation")\n'
 NAMES=tuple(path.stem for path in sorted((ROOT/'examples/animations').glob('*.py')))
 REPLAY_NAMES=('color','pattern','rainbow')
 def source(name):
@@ -22,8 +22,7 @@ def source(name):
 
 class PortableCompilerTests(unittest.TestCase):
     def test_target_negotiation_and_deterministic_compilation(self):
-        target={'module_limit':32768,'program_abis':[4], 'bytecode_formats':['LBC1/4'],
-                'program_schemas':['lightvm.program/11'],'native_drawing_api':4,'program_profiles':['animation/1']}
+        target={'module_limit':32768,'version':'1.0.0'}
         for name in NAMES:
             result=compile_source(source(name))
             self.assertTrue(result.success,result.diagnostics)
@@ -31,10 +30,10 @@ class PortableCompilerTests(unittest.TestCase):
             self.assertEqual(result.bytecode,compile_source(source(name),target=target).bytecode)
             self.assertLess(len(result.bytecode),8192)
             self.assertLessEqual(struct.unpack_from('<I',result.bytecode,8)[0],128)
-        for key in ('program_abis','bytecode_formats','program_schemas','program_profiles'):
-            self.assertFalse(compile_source(source('color'),target={**target,key:[]}).success)
+        for version in ('0.9.0','2.0.0','1.0.0-alpha','invalid',None):
+            self.assertFalse(compile_source(source('color'),target={**target,'version':version}).success)
         self.assertFalse(compile_source(source('color'),target={**target,'module_limit':100}).success)
-        self.assertFalse(compile_source(source('color'),target={'control_abi':4,'bytecode_format':'LBC1/4','program_schemas':['lightvm.program/11']}).success)
+        self.assertFalse(compile_source(source('color'),target={'control_abi':4,'bytecode_format':'LBC1/4','program_schemas':['lightvm.program']}).success)
 
     def test_invalid_callback_signatures_and_bindings_are_rejected(self):
         cases=[

@@ -18,7 +18,6 @@ bool pbc_drawing_valid(Portable *p,const PbcCall *site,unsigned rights) {
     PbcResourceSpec first;
     if(!owned(p,site->args[0],&first)) return false;
     unsigned id=site->binding;
-    if(id==52 && p->drawing_api<3)return false;
     if(id>=37&&id<=47) return first.kind==DRAW_BATCH && !first.flags &&
         ((id==37||id==39||id==42||id==43||id==47)?(rights&1u):true);
     if(id==32||id==33) return first.kind==DRAW_STYLE && writable(first,rights);

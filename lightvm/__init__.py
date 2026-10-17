@@ -37,7 +37,13 @@ def hash01(index: int, seed: int) -> float:
 
 
 def profile(name):
-    if name != "animation/1": raise ValueError("unsupported profile; use animation/1")
+    if name != "animation": raise ValueError("unsupported profile; use animation")
+
+
+def requires(release):
+    """Declare a minimum LightVM application release without executing guest code."""
+    from .release import normalize_release
+    normalize_release(release)
 
 
 class SpriteBatch:

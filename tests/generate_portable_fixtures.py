@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 import struct
 from bytecode_fixtures import program
-prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation/1")\n'
+prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation")\n'
 fixtures={
  'library_lbc':program(prefix+"""@init
 def setup(ctx,runtime):

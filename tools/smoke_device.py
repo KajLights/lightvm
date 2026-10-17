@@ -22,11 +22,12 @@ def check(condition,message):
 def smoke(client, board, reference):
     info=client.describe()
     check(info['board']==board, 'unexpected device identity')
-    check('LBC1/4' in info.get('bytecode_formats',[]),'current bytecode firmware required')
+    from lightvm.release import BASELINE, release_error
+    check(release_error(info.get('version'), BASELINE) is None, 'compatible LightVM release required')
     original=client.get_config()
     count=min(100,info['pixel_capacity'])
     pin='D1' if board=='xiao_esp32c3' else 'D0' if board.startswith('xiao_esp32') else 'GP16'
-    config={'schema':'lightvm.config/1','devices':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}]}
+    config={'schema':'lightvm.config','devices':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}]}
     host_config={**config,'devices':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]}
     try:
         client.configure(config);reference.configure(host_config)

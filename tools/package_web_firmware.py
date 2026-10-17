@@ -7,6 +7,9 @@ import json
 from pathlib import Path
 import shutil
 import struct
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from lightvm.release import VERSION
 
 
 CHIPS = {
@@ -56,7 +59,7 @@ def validate_esp_profile(board: str, directory: Path) -> None:
             raise ValueError(f"{board}: installer requires {key}={value}; found {settings.get(key, 'missing')}")
 
 
-def package(output: Path, board_dirs: dict[str, Path], version: str, pico_files: dict[str, Path] | None = None) -> dict:
+def package(output: Path, board_dirs: dict[str, Path], pico_files: dict[str, Path] | None = None, build_id: str | None = None) -> dict:
     pico_files = pico_files or {}
     if not board_dirs and not pico_files:
         raise ValueError("at least one board build is required")
@@ -96,7 +99,7 @@ def package(output: Path, board_dirs: dict[str, Path], version: str, pico_files:
         builds.append({"chipFamily": CHIPS[board], "improv": False, "parts": parts})
     manifest = {
         "name": "LightVM",
-        "version": version,
+        "version": VERSION, "build": build_id,
         "new_install_prompt_erase": True,
         "new_install_improv_wait_time": 0,
         "builds": builds,
@@ -116,7 +119,7 @@ def package(output: Path, board_dirs: dict[str, Path], version: str, pico_files:
         pico_builds.append({"board": board, "name": PICO_BOARDS[board], "path": path,
                             "sha256": hashlib.sha256(data).hexdigest()})
     if pico_builds:
-        (output / "pico.json").write_text(json.dumps({"version": version, "builds": pico_builds}, indent=2) + "\n")
+        (output / "pico.json").write_text(json.dumps({"version": VERSION, "build": build_id, "builds": pico_builds}, indent=2) + "\n")
     root = Path(__file__).resolve().parents[1]
     shutil.copyfile(root / "LICENSE", output / "LICENSE")
     shutil.copyfile(root / "THIRD_PARTY_NOTICES.md", output / "THIRD_PARTY_NOTICES.md")
@@ -127,7 +130,7 @@ def package(output: Path, board_dirs: dict[str, Path], version: str, pico_files:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("build/editor-assets/firmware"))
-    parser.add_argument("--version", required=True, help="source revision or release version displayed to users")
+    parser.add_argument("--build-id", help="optional commit/build identifier; compatibility uses lightvm/release.json")
     parser.add_argument("--board", action="append", default=[], metavar="NAME=BUILD_DIR")
     parser.add_argument("--pico", action="append", default=[], metavar="NAME=UF2_FILE")
     args = parser.parse_args()
@@ -143,7 +146,7 @@ def main() -> None:
         if not sep or name in pico_files:
             parser.error(f"invalid or repeated Pico board: {item}")
         pico_files[name] = Path(path)
-    package(args.output, board_dirs, args.version, pico_files)
+    package(args.output, board_dirs, pico_files, args.build_id)
     print(args.output)
 
 

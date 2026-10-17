@@ -16,7 +16,7 @@ from client import Client, ProcessTransport, ProtocolError, BEGIN, CHUNK, FINISH
 
 
 def configuration(number=6, count=17):
-    return {'schema': 'lightvm.config/1', 'devices': [
+    return {'schema': 'lightvm.config', 'devices': [
         {'id': f'lights{i}', 'type': 'ws2812b', 'config': {'pin': f'GP{i}', 'count': count}}
         for i in range(number)]}
 

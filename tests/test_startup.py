@@ -34,7 +34,7 @@ class StartupTests(unittest.TestCase):
             if startup is not None:
                 entry['startup'] = startup
             entries.append(entry)
-        return {'schema': 'lightvm.config/1', 'devices': entries}
+        return {'schema': 'lightvm.config', 'devices': entries}
 
     def test_independent_arguments_defaults_and_idle_device_after_reboot(self):
         self.client.save_procedure('rainbow', sample('rainbow'))
@@ -100,7 +100,7 @@ class StartupTests(unittest.TestCase):
 
     def test_validation_uses_candidate_geometry_without_applying_it(self):
         self.client.save_procedure('sized', program('''from lightvm import profile,setting,init,render,rgb
-profile("animation/1")
+profile("animation")
 @init
 def setup(ctx,runtime):
  ctx.size=setting(1,minimum=1,maximum=runtime.pixel_count)
@@ -155,7 +155,7 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(ctx.size,0,0))
         for name in ('good', 'bad'):
             with self.assertRaisesRegex(ProtocolError, 'referenced'):
                 self.client.delete_procedure(name)
-        self.client.configure({'schema': 'lightvm.config/1', 'devices': []})
+        self.client.configure({'schema': 'lightvm.config', 'devices': []})
         for name in ('good', 'bad'):
             with self.assertRaisesRegex(ProtocolError, 'referenced'):
                 self.client.delete_procedure(name)

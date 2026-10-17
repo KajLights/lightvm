@@ -7,7 +7,7 @@ function origin(value) {
 }
 
 export function deviceList(payload) {
-  if (payload?.schema !== "lightvm.discovery/1" || !Array.isArray(payload.devices) || payload.devices.length > 8) throw new Error("This firmware does not provide a valid device list.");
+  if (payload?.schema !== "lightvm.discovery" || !Array.isArray(payload.devices) || payload.devices.length > 8) throw new Error("This firmware does not provide a valid device list.");
   const devices = new Map();
   for (const value of payload.devices) {
     const parts = typeof value.ip === "string" ? value.ip.split(".") : [];

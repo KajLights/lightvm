@@ -4,6 +4,7 @@
 #include "vm_allocator.h"
 #include "runtime.h"
 #include "animation.h"
+#include "release.h"
 #include <inttypes.h>
 #include <float.h>
 #include <math.h>
@@ -17,16 +18,19 @@ static bool setting_value(const Json *j,int token,unsigned type,PbcValue *out) {
     if(!json_i64(j,token,&i)||i<INT32_MIN||i>INT32_MAX||(type==T_COLOR&&(i<0||i>0xffffff)))return false;
     out->i=(int32_t)i;return true;
 }
-static bool manifest(const uint8_t *bytes,size_t size,Portable *p) {
-    Json j;uint32_t abi;
-    static const char *const fields[]={"schema","abi","profile","pixels","settings",NULL};
+static bool manifest(const uint8_t *bytes,size_t size,Portable *p,const char **error) {
+    Json j;char required[96],compiler[96];
     static const char *const pixel_fields[]={"format",NULL};
     static const char *const setting_fields[]={"name","type","register",NULL};
     static const char *const types[]={"","int","float","rgb8","bool"};
-    if(size>CONTROL_MANIFEST_LIMIT||!json_parse(&j,bytes,size)||!json_fields(&j,0,fields)||
-       !json_equal(&j,json_get(&j,0,"schema"),"lightvm.program/11")||
-       !json_u32(&j,json_get(&j,0,"abi"),&abi)||abi!=4||
-       !json_equal(&j,json_get(&j,0,"profile"),"animation/1"))return false;
+    if(size>CONTROL_MANIFEST_LIMIT||!json_parse(&j,bytes,size)||
+       !json_equal(&j,json_get(&j,0,"schema"),"lightvm.program")||
+       !json_string(&j,json_get(&j,0,"requires"),required,sizeof(required))||
+       !json_string(&j,json_get(&j,0,"compiler_version"),compiler,sizeof(compiler))||
+       !lightvm_release_valid(compiler,false)||
+       !json_equal(&j,json_get(&j,0,"profile"),"animation"))return false;
+    *error=lightvm_release_error(LIGHTVM_VERSION,required);if(*error)return false;
+    *error="invalid LightVM manifest";
     int pixels=json_get(&j,0,"pixels"),settings=json_get(&j,0,"settings");
     if(!json_fields(&j,pixels,pixel_fields)||!json_equal(&j,json_get(&j,pixels,"format"),"rgba8-premul")||
        settings<0||j.tokens[settings].type!=JSON_ARRAY||j.tokens[settings].children!=(int)p->nsettings)return false;
@@ -44,8 +48,9 @@ const char *control_probe(VmInstance *a) {
     uint32_t size=a->portable->manifest_size,offset=a->portable->manifest_offset;
     if(!size||size>CONTROL_MANIFEST_LIMIT)return "bytecode requires a LightVM manifest";
     uint8_t *json=demo_calloc(1,size);if(!json)return "memory allocation failed";
-    bool ok=vm_read(a,offset,json,size)&&manifest(json,size,a->portable);demo_free(json);
-    if(!ok)return "unsupported LightVM manifest; recompile source";
+    const char *error="unsupported LightVM manifest; recompile source";
+    bool ok=vm_read(a,offset,json,size)&&manifest(json,size,a->portable,&error);demo_free(json);
+    if(!ok)return error;
     c->manifest_offset=offset;c->manifest_size=size;c->enabled=true;return NULL;
 }
 void control_destroy(VmInstance *a) {
@@ -84,7 +89,7 @@ static const char *control_step_impl(VmInstance *a,uint64_t delta) {
 const char *control_settings(VmInstance *a,const Json *j,int object){
     Portable *p=a->portable;
     if(object<0)return NULL;
-    if(!p||j->tokens[object].type!=JSON_OBJECT)return "settings require animation/1 and an object";
+    if(!p||j->tokens[object].type!=JSON_OBJECT)return "settings require animation and an object";
     for(int t=object+1;t<j->tokens[object].next;t=j->tokens[t+1].next){
         char name[33];unsigned n;
         if(!json_string(j,t,name,sizeof(name)))return "invalid setting name";
@@ -99,7 +104,7 @@ const char *control_settings(VmInstance *a,const Json *j,int object){
     return NULL;
 }
 const char *control_reset_program(VmInstance *a,const Json *request,int settings){
-    if(!a->portable)return "program_reset requires animation/1";
+    if(!a->portable)return "program_reset requires animation";
     if(a->generation>=UINT32_MAX-1)return "program generation exhausted";
     VmInstance *candidate=demo_calloc(1,sizeof(*candidate));
     if(!candidate)return "replacement exceeds peak memory budget";

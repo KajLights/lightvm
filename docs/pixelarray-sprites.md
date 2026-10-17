@@ -1,8 +1,9 @@
 # PixelArray and user-defined sprites
 
 The Python frontend parses these declarations without executing Python source.
-All programs use `animation/1`, `lightvm.program/11`, LBC1/4, and execution ABI 4.
-Images and sprites use drawing API 2. Wrapped drawing uses API 3.
+All programs use profile `animation` and document kind `lightvm.program`.
+[Application releases](versioning.md) govern compatibility for drawing and all other features.
+Images, sprites and wrapped drawing are part of the LightVM 1.0.0 baseline.
 Optimized pixel loops use API 4; see [pixel maps](pixel-maps.md).
 Target-aware compilation checks the required schema. Superseded packages are rejected; recompile their source.
 New SpriteBatch source uses the general API.
@@ -176,10 +177,9 @@ existing layer scheduling/fault-publication contract.
 
 ## Package extension
 
-Header word 80 declares the minimum drawing feature set used by a current-schema
-package: 0 for basic operations, 2 for generic image/sprite kernels, 3 for periodic
-drawing, and 4 for pixel maps. These values do not select package compatibility
-paths. Words 84–92 remain zero. Native call sites have a 16-byte layout with room
+Header words 80–92 are reserved zero. Image, sprite, wrapped drawing and pixel-map
+operations use the application's minimum required release, without a separate
+drawing version. Native call sites have a 16-byte layout with room
 for eight argument registers. Bindings 27–52 implement generic drawing and
 instance storage. Resource kinds 14–17 are straight images, kind 18 is generic
 instances, and kind 19 is transform scratch. Resource flags are 0 for mutable

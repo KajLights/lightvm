@@ -1,3 +1,4 @@
+#include "release.h"
 // Link the real engine against a test port, without host or Pico native code.
 #include "session.h"
 #include "pixels.h"
@@ -210,7 +211,7 @@ static void network_transactions(void) {
     NetworkConfig setup=app.network.config; network_apply(&app.network,&setup);
     network_tick(&app.network,0); network_tick(&app.network,1); CHECK(app.network.state==NET_AP_ACTIVE);
     session_init(&session,&app,1,capture,&reply);
-    const char *candidate="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":false,\"mode\":\"ap\",\"ap\":{\"ssid\":\"saved\",\"password\":\"ap-secret\"}},\"http\":{\"enabled\":false,\"port\":8080}}";
+    const char *candidate="{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":false,\"mode\":\"ap\",\"ap\":{\"ssid\":\"saved\",\"password\":\"ap-secret\"}},\"http\":{\"enabled\":false,\"port\":8080}}";
     memcpy(app.staging,candidate,strlen(candidate)); app.expected=(uint32_t)strlen(candidate);
     app.staged=true; app.object_kind=3; app.upload_owner=1;
     const char *commit="{\"op\":\"network_commit\",\"expected_revision\":1}";
@@ -281,7 +282,7 @@ int main(void) {
     command(&session,CMD_RESET,NULL,0);
 
     char config[400], metadata[120];
-    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}]}",PIXEL_COUNT);
+    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}]}",PIXEL_COUNT);
     int metadata_size=snprintf(metadata,sizeof(metadata),"{\"kind\":\"config\",\"size\":%d,\"crc32\":%lu}",config_size,(unsigned long)crc32_bytes((const uint8_t *)config,(size_t)config_size));
     command(&session,CMD_OBJECT_BEGIN,(const uint8_t *)metadata,(size_t)metadata_size);
     CHECK(reply.code==STATUS_OK);
@@ -293,7 +294,7 @@ int main(void) {
     CHECK(shows==1 && displayed[0]==0);
     command(&session, CMD_STATUS, NULL, 0);
     CHECK(reply.code == STATUS_OK && reply.id == 42);
-    CHECK(strstr(reply.message, "api=1 protocol=1 platform=test board=virtual output=capture"));
+    CHECK(strstr(reply.message, "version=" LIGHTVM_VERSION " protocol=1 platform=test board=virtual output=capture"));
     CHECK(strstr(reply.message, "pin=16") && strstr(reply.message, "brightness=7"));
     // Decoder errors must use the same native transport context as app replies.
     uint8_t bad_header[HEADER_SIZE] = {'L','V','M','1',99,CMD_STATUS,7,0};

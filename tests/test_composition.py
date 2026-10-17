@@ -12,13 +12,13 @@ sys.path[:0]=[str(ROOT),str(ROOT/'tools')]
 from client import Client,ProcessTransport,ProtocolError,FRAME,STOP,PLAY,RESET
 from lightvm.compiler import compile_source
 
-PREFIX='from lightvm import profile,setting,rgb,init,render,SpriteBatch,Sprite,Transform,ColorTransform,PixelArray\nprofile("animation/1")\n'
+PREFIX='from lightvm import profile,setting,rgb,init,render,SpriteBatch,Sprite,Transform,ColorTransform,PixelArray\nprofile("animation")\n'
 
 class CompositionTests(unittest.TestCase):
     def setUp(self):
         self.client=Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER',str(ROOT/'build/composition-host/lightvm'))))
         self.count=17
-        self.client.configure({'schema':'lightvm.config/1','devices':[
+        self.client.configure({'schema':'lightvm.config','devices':[
             {'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':self.count}},
             {'id':'second','type':'ws2812b','config':{'pin':'GP17','count':self.count}}]})
     def tearDown(self): self.client.close()
@@ -196,7 +196,7 @@ class CompositionTests(unittest.TestCase):
 
     def test_one_profile_supports_direct_playback_and_transparent_layers(self):
         target=self.client.describe()
-        self.assertEqual(target['program_profiles'],['animation/1'])
+        self.assertTrue(target['scenes'])
         self.save('blue',' pixels.fill(rgb(0,0,255))\n')
         self.save('point',' pixels[0]=rgb(255,0,0)\n')
         self.client.activate('point',device='lights')
@@ -207,9 +207,9 @@ class CompositionTests(unittest.TestCase):
         self.assertEqual(self.layer('fg'),bytes([255,0,0,255])+bytes((self.count-1)*4))
         source=PREFIX+'@render\ndef draw(ctx,runtime,pixels): pass\n'
         self.assertTrue(compile_source(source,target=target).success)
-        old={**target,'program_schemas':[s for s in target['program_schemas'] if s!='lightvm.program/11']}
+        old={**target,'version':'0.9.0'}
         self.assertFalse(compile_source(source,target=old).success)
-        self.assertFalse(compile_source(source.replace('animation/1','layer/1')).success)
+        self.assertFalse(compile_source(source.replace('animation','layer/1')).success)
 
     def test_frames_start_blank_and_black_paint_is_explicit(self):
         self.save('blue',' pixels.fill(rgb(0,0,255))\n')
@@ -239,9 +239,9 @@ class CompositionTests(unittest.TestCase):
     def test_obsolete_rgb_and_layer_packages_are_rejected(self):
         self.save('blue',' pixels.fill(rgb(0,0,255))\n')
         self.scene([{'id':'bg','procedure':'blue'}])
-        source='from lightvm import profile,rgb,render\nprofile("animation/1")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(0,0,255))\n'
+        source='from lightvm import profile,rgb,render\nprofile("animation")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(0,0,255))\n'
         artifact=compile_source(source)
-        for binding,profile,schema,format in ((1,'animation/1',5,'rgb8'),(2,'layer/1',6,'rgba8-premul')):
+        for binding,profile,schema,format in ((1,'animation',5,'rgb8'),(2,'layer/1',6,'rgba8-premul')):
             raw=bytearray(artifact.bytecode)
             size=struct.unpack_from('<I',raw,76)[0]
             manifest={**artifact.manifest,'schema':f'lightvm.program/{schema}','profile':profile,'pixels':{'format':format}}

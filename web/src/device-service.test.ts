@@ -12,7 +12,7 @@ describe('network commit', () => {
     service.paths.attach('http', client, { device_id: 'board', boot_id: 'boot' } as Description);
     vi.spyOn(service, 'readNetwork').mockRejectedValue(new Error('HTTP port changed'));
     const config: NetworkConfig = {
-      schema: 'lightvm.network/1',
+      schema: 'lightvm.network',
       wifi: { enabled: true, country: 'XX', mode: 'ap', ap: { ssid: 'lights', password: 'ap-secret' }, networks: [{ ssid: 'studio', password: 'secret' }] },
       http: { enabled: true, port: 8080 },
     };
@@ -29,7 +29,7 @@ describe('network commit', () => {
     const store = createAppStore(), service = new DeviceService(store);
     const client = {
       manage: vi.fn().mockResolvedValue({ value: 2, data: new TextEncoder().encode(JSON.stringify({
-        schema: 'lightvm.network/1', wifi: { enabled: true, mode: 'ap', networks: [], ap: { ssid: 'lights', password: 'ap-secret' } }, http: { enabled: true, port: 80 },
+        schema: 'lightvm.network', wifi: { enabled: true, mode: 'ap', networks: [], ap: { ssid: 'lights', password: 'ap-secret' } }, http: { enabled: true, port: 80 },
       })) }),
       json: vi.fn().mockResolvedValue({ state: 'ap_active', mode: 'ap', ip: '192.168.4.1', revision: 2, http_port: 80 }),
     } as unknown as LightVMClient;
@@ -45,7 +45,7 @@ describe('network commit', () => {
     service.paths.attach('http', client, { device_id: 'board', boot_id: 'boot' } as Description);
     store.dispatch(deviceActions.networkStatus({ state: 'ap_active', recovery: true, http_port: 80, revision: 3 }));
     vi.spyOn(service, 'readNetwork').mockResolvedValue();
-    const config: NetworkConfig = { schema: 'lightvm.network/1', wifi: { enabled: false, country: 'XX', networks: [] }, http: { enabled: false, port: 8080 } };
+    const config: NetworkConfig = { schema: 'lightvm.network', wifi: { enabled: false, country: 'XX', networks: [] }, http: { enabled: false, port: 8080 } };
     expect(await service.configureNetwork(config, 3)).toBe(true);
     expect(service.client).toBe(client);
     expect(JSON.stringify(store.getState().activity)).toContain('Recovery AP remains active');
@@ -59,7 +59,7 @@ describe('selected preview output', () => {
     const description = { device_id: 'pico', boot_id: 'boot', module_limit: 32768, transient_settings: true } as Description;
     const client = { closed: false, transport: { label: 'USB' }, upload: vi.fn(), manage: vi.fn(), json: vi.fn().mockResolvedValue({ generation: 2, device: 'second', settings_values: { duration: 2 } }) } as unknown as LightVMClient;
     service.paths.attach('usb', client, description); service.syncPaths(description);
-    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config/1', devices: [
+    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
       { id: 'first', type: 'ws2812b', config: { pin: 'GP16', count: 20 } },
       { id: 'second', type: 'ws2812b', config: { pin: 'GP17', count: 20 } },
     ] }, revision: 1, savedRevision: 1 }));

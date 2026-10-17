@@ -195,10 +195,8 @@ That scene uses 24-pixel eyes and therefore requires at least 24 output pixels.
 
 ## Compatibility
 
-Scalar helpers use existing instructions and need no new runtime API. Ordinary
-All new programs use `animation/1` and schema 11. PixelArray and sprites use drawing API 2.
-Wrapped drawing adds native binding 52 and drawing API 3 in header word 80.
-Optimized [pixel loops](pixel-maps.md) use drawing API 4.
-Discovery advertises schema 11 and `native_drawing_api=4`.
-Target-aware compilation rejects targets without schema 11 support.
-The loader accepts only the current schema/profile and rejects binding 52 when its drawing requirement is below 3.
+Motion helpers, images, sprites, wrapped drawing and pixel maps are part of the
+LightVM 1.0.0 baseline. They use the same application release contract as ordinary
+animation instructions. There are no drawing API revisions or alternate runtime
+paths. Target-aware compilation checks `version` against the program's `requires`.
+See [versioning](versioning.md).

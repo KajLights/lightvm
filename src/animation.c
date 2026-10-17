@@ -1,4 +1,4 @@
-/* animation/1: one initialization and one whole-frame render callback. */
+/* animation: one initialization and one whole-frame render callback. */
 #include "animation.h"
 #include "runtime.h"
 #include "draw.h"

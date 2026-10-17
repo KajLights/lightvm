@@ -32,3 +32,5 @@ current contract. Superseded implementations are available through Git history.
 - [Web editor proposal](design/feature-proposal-web-editor.md)
 - [Animation composition proposal](design/feature-proposal-animation-composition.md)
 - [A/B transitions proposal](design/feature-proposal-ab-transitions.md)
+
+[Versioning](versioning.md) defines the shared application release and minimum program requirements.

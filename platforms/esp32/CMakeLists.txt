@@ -74,6 +74,8 @@ endif()
 # managed-component lockfiles in the source tree and build only this component's
 # dependency closure rather than unused networking examples/services.
 set(ENV{IDF_COMPONENT_MANAGER} "0")
+include("${LIGHTVM_ROOT}/cmake/lightvm_release.cmake")
+set(PROJECT_VER "${LIGHTVM_VERSION}")
 set(COMPONENTS main)
 include("$ENV{IDF_PATH}/tools/cmake/project.cmake")
 project(lightvm)

@@ -1,7 +1,6 @@
 {
   "name": "lightvm-workspace",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",

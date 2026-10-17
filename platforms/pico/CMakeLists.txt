@@ -42,3 +42,5 @@ endif()
 if(LIGHTVM_OUTPUT_PROBE)
     include("${CMAKE_SOURCE_DIR}/tests/pico_output/CMakeLists.txt")
 endif()
+
+pico_set_program_version(lightvm "${LIGHTVM_VERSION}")

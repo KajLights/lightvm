@@ -76,7 +76,7 @@ class BootSequenceTests(unittest.TestCase):
         self.require_detector()
         module = color()
         self.client.save_procedure("startup", module)
-        config = {"schema": "lightvm.config/1", "devices": [
+        config = {"schema": "lightvm.config", "devices": [
             {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}, "startup": {"procedure": "startup"}}
         ]}
         self.client.configure(config, save=True)

@@ -43,7 +43,7 @@ from lightvm import (
 from lightvm.motion import repeat, pingpong, clamp01, lerp
 from lightvm.easing import cubic_in_out
 
-profile("animation/1")
+profile("animation")
 
 
 def progress(time, duration, motion, eased, phase):

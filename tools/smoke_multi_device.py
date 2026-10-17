@@ -37,7 +37,7 @@ def run(client, reference, count, seconds, output):
     for pin, effect in enumerate(EFFECTS, 17):
         config['devices'].append({'id': effect, 'type': 'ws2812b', 'config': {
             'pin': f'GP{pin}', 'count': count, 'order': 'GRB', 'brightness_limit': 100}})
-    reference.configure({'schema': 'lightvm.config/1', 'devices': [
+    reference.configure({'schema': 'lightvm.config', 'devices': [
         {'id': 'reference', 'type': 'ws2812b', 'config': {'pin': 'GP0', 'count': count}}]})
     devices = [primary, *EFFECTS]
     report = {'device_id': info['device_id'], 'board': info['board'],

@@ -12,7 +12,7 @@ static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capa
 static void disconnect(void *ctx) { (void)ctx; }
 static uint32_t random_value(void *ctx) { (void)ctx; return 20; } // jitter midpoint = 100%
 int main(void) {
-    const char *json="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"networks\":[{\"ssid\":\"missing\",\"password\":\"\"},{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"secret123\"},{\"ssid\":\"hidden\",\"password\":\"\",\"hidden\":true}]},\"http\":{\"enabled\":true}}";
+    const char *json="{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":true,\"networks\":[{\"ssid\":\"missing\",\"password\":\"\"},{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"secret123\"},{\"ssid\":\"hidden\",\"password\":\"\",\"hidden\":true}]},\"http\":{\"enabled\":true}}";
     NetworkConfig config,copy; char error[160],bytes[2048];
     CHECK(network_parse(json,strlen(json),NULL,&config,error,sizeof(error)));
     CHECK(config.mode==NET_MODE_STATION && !config.ap_password[0]);
@@ -22,7 +22,7 @@ int main(void) {
     size=network_json(&config,false,bytes,sizeof(bytes)); CHECK(!strstr(bytes,"secret123"));
     CHECK(network_parse(bytes,size,&config,&copy,error,sizeof(error)) && !strcmp(copy.networks[1].password,"secret123"));
     CHECK(!network_parse(bytes,size,NULL,&copy,error,sizeof(error)));
-    const char *invalid="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"networks\":[{\"ssid\":\"\\ud800\",\"password\":\"\"}]},\"http\":{}}";
+    const char *invalid="{\"schema\":\"lightvm.network\",\"wifi\":{\"networks\":[{\"ssid\":\"\\ud800\",\"password\":\"\"}]},\"http\":{}}";
     CHECK(!network_parse(invalid,strlen(invalid),NULL,&copy,error,sizeof(error)));
     Radio radio={0}; Network n; network_init(&n);
     n.driver=(NetworkDriver){&radio,configure,scan,scan_poll,connect,link,disconnect,random_value}; network_apply(&n,&config);
@@ -54,25 +54,25 @@ int main(void) {
     CHECK(n.state==NET_BACKOFF && n.retry_at==3 && !n.quick_retry && rejected.connections==2);
     network_tick(&n,4); CHECK(n.state==NET_SCANNING && rejected.scans==2);
     // AP configuration can retain both station networks and AP credentials.
-    const char *ap="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"mode\":\"ap\",\"ap\":{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"ap-secret\"}},\"http\":{\"enabled\":true}}";
+    const char *ap="{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":true,\"mode\":\"ap\",\"ap\":{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"ap-secret\"}},\"http\":{\"enabled\":true}}";
     CHECK(network_parse(ap,strlen(ap),&config,&copy,error,sizeof(error)) && copy.count==config.count && copy.mode==NET_MODE_AP);
     CHECK(!strcmp(copy.networks[1].password,"secret123") && !strcmp(copy.ap_password,"ap-secret"));
     config=copy;
     size=network_json(&config,true,bytes,sizeof(bytes)); CHECK(network_parse(bytes,size,NULL,&copy,error,sizeof(error)) && !memcmp(&config,&copy,sizeof(config)));
     size=network_json(&config,false,bytes,sizeof(bytes)); CHECK(!strstr(bytes,"secret") && network_parse(bytes,size,&config,&copy,error,sizeof(error)) && !strcmp(copy.ap_password,"ap-secret"));
-    const char *station="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"mode\":\"station\"},\"http\":{}}";
+    const char *station="{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":true,\"mode\":\"station\"},\"http\":{}}";
     CHECK(network_parse(station,strlen(station),&config,&copy,error,sizeof(error)) && copy.count==3 && !strcmp(copy.ap_password,"ap-secret"));
-    const char *default_ssid="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{}},\"http\":{}}";
+    const char *default_ssid="{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"ap\",\"ap\":{}},\"http\":{}}";
     CHECK(network_parse(default_ssid,strlen(default_ssid),&config,&copy,error,sizeof(error)) && !copy.ap_ssid[0] && !strcmp(copy.ap_password,"ap-secret"));
-    const char *open="{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":true,\"mode\":\"ap\",\"ap\":{\"ssid\":\"\",\"password\":\"\"}},\"http\":{}}";
+    const char *open="{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":true,\"mode\":\"ap\",\"ap\":{\"ssid\":\"\",\"password\":\"\"}},\"http\":{}}";
     CHECK(network_parse(open,strlen(open),&config,&copy,error,sizeof(error)) && !copy.ap_password[0] && !copy.ap_ssid[0]);
     const char *bad[]={
-        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"both\"},\"http\":{}}",
-        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"short\"}},\"http\":{}}",
-        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"1234567\\n\"}},\"http\":{}}",
-        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"1234567890123456789012345678901234567890123456789012345678901234\"}},\"http\":{}}",
-        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"ssid\":\"12345678901234567890123456789012345\"}},\"http\":{}}",
-        "{\"schema\":\"lightvm.network/1\",\"wifi\":{\"mode\":\"ap\",\"ap\":null},\"http\":{}}"
+        "{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"both\"},\"http\":{}}",
+        "{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"short\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"1234567\\n\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"password\":\"1234567890123456789012345678901234567890123456789012345678901234\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"ap\",\"ap\":{\"ssid\":\"12345678901234567890123456789012345\"}},\"http\":{}}",
+        "{\"schema\":\"lightvm.network\",\"wifi\":{\"mode\":\"ap\",\"ap\":null},\"http\":{}}"
     };
     for (unsigned i=0;i<sizeof(bad)/sizeof(bad[0]);i++) CHECK(!network_parse(bad[i],strlen(bad[i]),NULL,&copy,error,sizeof(error)));
     // Bootstrap is unsaved and only enabled by embedded HTTP ports.

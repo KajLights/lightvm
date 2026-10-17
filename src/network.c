@@ -14,8 +14,8 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
     static const char *const ap_fields[]={"ssid","password",NULL};
     static const char *const http[]={"enabled","port",NULL};
     static const char *const item[]={"ssid","password","hidden",NULL};
-    if (size>CONFIG_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,root) || !json_equal(&j,json_get(&j,0,"schema"),"lightvm.network/1"))
-        return fail(error,capacity,"network: expected bounded lightvm.network/1 JSON");
+    if (size>CONFIG_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,root) || !json_equal(&j,json_get(&j,0,"schema"),"lightvm.network"))
+        return fail(error,capacity,"network: expected bounded lightvm.network JSON");
     int w=json_get(&j,0,"wifi"),h=json_get(&j,0,"http");
     if (!json_fields(&j,w,wifi) || !json_fields(&j,h,http) || !optional_bool(&j,w,"enabled",&out->wifi_enabled) || !optional_bool(&j,h,"enabled",&out->http_enabled))
         return fail(error,capacity,"network: invalid wifi/http fields");
@@ -83,7 +83,7 @@ static void quote(Writer *w,const char *s) {
 }
 size_t network_json(const NetworkConfig *c,bool secrets,char *out,size_t capacity) {
     Writer w={out,0,capacity,false};
-    put(&w,"{\"schema\":\"lightvm.network/1\",\"wifi\":{\"enabled\":%s,\"country\":\"%s\",\"networks\":[",c->wifi_enabled?"true":"false",c->country);
+    put(&w,"{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":%s,\"country\":\"%s\",\"networks\":[",c->wifi_enabled?"true":"false",c->country);
     for (unsigned i=0;i<c->count;i++) { const WifiNetwork *n=&c->networks[i]; if (i) put(&w,","); put(&w,"{\"ssid\":"); quote(&w,n->ssid);
         if (secrets) { put(&w,",\"password\":"); quote(&w,n->password); }
         put(&w,",\"hidden\":%s}",n->hidden?"true":"false");

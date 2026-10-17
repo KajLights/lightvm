@@ -1,6 +1,6 @@
 #ifndef LIGHTVM_PORTABLE_H
 #define LIGHTVM_PORTABLE_H
-/* LBC1/4: general typed functions/resources, bound here to animation/1.
+/* LBC1/4: general typed functions/resources, bound here to animation.
  * No guest address is a native pointer. The native caller supplies render timing.
  */
 #include "bytecode_core.h"
@@ -17,8 +17,8 @@ typedef struct {
 typedef struct Portable {
     LbcRead read; void *context;
     uint32_t size,nregs,ncode,ncolors,nfunctions,nresources,nexpressions,ncalls,nsettings;
-    /* Binding 3 is animation/1 with premultiplied RGBA output. */
-    uint32_t entries[2],profile,drawing_api;
+    /* Binding 3 is animation with premultiplied RGBA output. */
+    uint32_t entries[2],profile;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
     uint8_t *metadata, *descriptors; uint16_t *register_offsets;
     uint32_t functions_offset,specs_offset,expressions_offset,calls_offset,settings_offset;

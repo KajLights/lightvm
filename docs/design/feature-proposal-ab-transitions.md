@@ -31,7 +31,7 @@ Completion does not automatically pause or unload a scene.
 The [animation profile](../animation-profile.md) uses portable bytecode and initialization settings.
 Each instance owns its state.
 Its initialization settings cannot change during playback.
-New packages use LBC1/4, execution ABI 4, and schema `lightvm.program/11`.
+Packages declare a minimum [application release](../versioning.md), independently of compiler provenance.
 The compiler does not execute source code.
 
 The [scene compositor](../composition.md) combines layers over opaque black.
@@ -258,7 +258,7 @@ The profile must have these operations:
 
 The profile identifier, package version, entry points, and binding IDs are implementation decisions.
 The compiler and runtime must do capability checks for the advertised profile and package.
-Stored `animation/1` packages keep their documented contract.
+Stored `animation` packages keep their documented contract.
 
 The transition result must depend only on position, pixel geometry, initialization settings, and seed.
 The same inputs must give the same mask and paint.

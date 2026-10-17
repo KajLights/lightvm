@@ -52,7 +52,7 @@ then reconnect after the board restarts. Firmware images are absent from a plain
 To include local builds in the editor, package the matching ESP-IDF outputs and
 Pico UF2s before starting Vite or building the site:
 
-    python3 tools/package_web_firmware.py --version local \
+    python3 tools/package_web_firmware.py --build-id local \
       --board xiao_esp32c6=build/boot-sequence-c6 \
       --pico pico=build/boot-sequence-pico/lightvm.uf2 \
       --pico pico_w=build/boot-sequence-pico-w-http/lightvm.uf2
@@ -148,7 +148,7 @@ the shared compiled programs and compact recipe in flash; it does not change
 playback. Either save replaces a preset of the same name. **Run on output**
 activates a device preset on the selected output, even after reconnecting or
 rebooting. Startup remains a single stored program configured separately; saved
-presets do not automatically run at boot. Device presets require `preset_api: 1`.
+presets do not automatically run at boot. Device presets require `presets: true`.
 The device supports five presets independently of its eight program slots.
 
 **Export library** preserves editable source, versions, settings and recipes in
@@ -158,14 +158,17 @@ artifacts require recompilation from source; their saved browser data is not era
 browser; export a backup before moving browsers or computers. Source is kept off
 the microcontroller. Failed browser storage writes are reported, and unreadable
 saved data can be downloaded with **Export preserved library** until explicit
-import recovery. Recover the source and recompile obsolete artifacts. Device program storage
+import recovery. Libraries remain readable when a saved program requires newer
+firmware; the editor explains its minimum release when previewing. Pre-baseline
+artifacts remain available for source editing and export, and require recompilation
+before execution. See [versioning](versioning.md). Device program storage
 controls can remove unused compiled programs; saved presets and active/saved
 startup or playback references protect programs still in use.
 
 The playback panel addresses the selected output and its first layer, with
 generation checks for pause/resume. Settings are edited before preview or reset.
 
-The [animation/1](animation-profile.md) settings are frozen for each instance;
+The [animation](animation-profile.md) settings are frozen for each instance;
 there are no listeners or cycle notifications. Profile and
 format capability checks prevent sending new examples to unsupported firmware.
 

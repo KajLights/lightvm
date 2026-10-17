@@ -15,7 +15,8 @@ time, delta and pixels; settings are frozen at initialization.
 Every animation can run alone or as a scene layer. Frames start transparent.
 Ordinary colour writes paint solid pixels; alpha is optional. Use `clear()` to remove paint
 from an array, and `fill(rgb(0, 0, 0))` when solid black is required.
-The current compiler emits LBC1/4 packages.
+Programs declare a minimum LightVM release; compiler, editor and firmware share
+one [application SemVer contract](docs/versioning.md).
 Up to eight independent device slots run concurrently. Each output can also run
 a [native scene](docs/composition.md) with independent background and transparent
 foreground animations. The [PixelArray and sprite SDK](docs/pixelarray-sprites.md)
@@ -107,17 +108,19 @@ candidate and retains the old instance on failure. Startup resolves the current
 catalogue entry for each configured procedure name; saving a replacement changes
 what runs on the next boot. Root-level `targets` and `startup` are unsupported.
 
-LightVM is a PoC moving toward alpha and supports only the selected current
-contracts: LBC1/4, execution ABI 4, `lightvm.program/11`, `animation/1`, internal
-binding 3 and premultiplied RGBA contributions. There is no legacy compatibility.
-Recompile earlier programs from source and rebuild the browser and firmware
-together. Browser libraries reject obsolete artifacts without deleting saved data.
-The management wire format is `LVM1`, version 1; earlier framing is rejected.
-Storage accepts directory format 4 only. Unsupported committed storage stays
-untouched and unavailable for writes, with a repair/reprovision diagnostic.
-Back up data and explicitly reprovision such devices; cleanup/build tests never
-flash hardware or erase device data. Current-format interrupted-write recovery
-and content-pinned running revisions remain supported.
+The application version comes from `lightvm/release.json`, initially `1.0.0`.
+A program's `requires` field is its minimum release within that major: `1` means
+1.0.0 and `1.2` means 1.2.0. Later compatible firmware accepts it without exact
+compiler/schema matching. Unsupported requirements fail before replacing the
+running animation. The editor preserves editable libraries across releases.
+See [versioning and development](docs/versioning.md) for declarations, prereleases,
+feature floors, internal format markers and the pre-baseline cutover.
+
+The management frame and storage layouts remain fixed internal encodings.
+Unsupported committed storage stays untouched and unavailable for writes, with a
+repair/reprovision diagnostic. Back up data before explicitly reprovisioning such
+devices. Current-layout interrupted-write recovery and content-pinned running
+revisions remain supported.
 
 ## Firmware builds
 

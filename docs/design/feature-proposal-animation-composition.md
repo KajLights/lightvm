@@ -1,6 +1,6 @@
 # Composition extensions
 
-The implemented [scene contract](../composition.md) uses independent animation/1
+The implemented [scene contract](../composition.md) uses independent animation
 instances, premultiplied RGBA contributions and native over/add/screen/multiply
 composition. Stars over Color or Rainbow reuses the same foreground program.
 Black paint is opaque; unwritten pixels are transparent. Instances own settings,

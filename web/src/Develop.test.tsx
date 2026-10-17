@@ -44,13 +44,27 @@ describe('editor examples and playback status', () => {
     expect(store.getState().editor.source).toBe(originalRainbow);
   });
 
+  it('explains a newer minimum release while keeping editing and browser saves available', () => {
+    const { store, show } = workspace();
+    const description = { device_id: 'pico', version: '1.1.0' } as Description;
+    store.dispatch(deviceActions.connections({ paths: [{ key: 'http', label: 'HTTP' }], selectedPath: 'http', description }));
+    store.dispatch(editorActions.compiled({ revision: 0, bytes: 100,
+      manifest: { compiler_version: '1.5.0', requires: '1.2', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [] }, diagnostics: [] }));
+    show();
+    expect(screen.getByText(/Requires LightVM 1.2 within major 1; device runs 1.1.0/)).toBeInTheDocument();
+    expect(document.querySelector('#upload')).toBeDisabled();
+    expect(screen.getByLabelText('Animation Python source')).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('Animation name'), { target: { value: 'Future animation' } });
+    expect(screen.getByRole('button', { name: 'Save animation' })).toBeEnabled();
+  });
+
   it('polls playback without replacing the edited draft settings with a running program', async () => {
     const { store, devices, show } = workspace();
     const description = { device_id: 'pico', boot_id: 'boot', board: 'pico_w', active_revision: 0,
       saved_revision: 0, catalog_revision: 0, network_revision: 0 } as Description;
     const running: ProgramState = { generation: 1, slot: 'A', paused: false,
       faulted: false, render_count: 0, settings_values: { duration: 60 },
-      manifest: { abi: 4, schema: 'lightvm.program/11', profile: 'animation/1', pixels: { format: 'rgba8-premul' }, settings: [{ name: 'duration', type: 'float' }] } };
+      manifest: { compiler_version: '1.0.0', requires: '1.0.0', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [{ name: 'duration', type: 'float' }] } };
     const response = vi.fn().mockResolvedValue({ ...running, render_count: 3 });
     const client = { closed: false, transport: { label: 'HTTP' }, describe: vi.fn().mockResolvedValue(description), json: response } as unknown as LightVMClient;
     devices.paths.attach('http', client, description); devices.syncPaths(description);

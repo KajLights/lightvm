@@ -3,7 +3,7 @@
 #include "platform.h"
 #include "config.h"
 #include "json.h"
-#define EMPTY_CONFIG "{\"schema\":\"lightvm.config/1\",\"devices\":[]}"
+#define EMPTY_CONFIG "{\"schema\":\"lightvm.config\",\"devices\":[]}"
 typedef struct {
     char id[OBJECT_NAME_LIMIT + 1], type[17];
     char startup[OBJECT_NAME_LIMIT + 1];

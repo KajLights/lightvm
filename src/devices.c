@@ -54,7 +54,7 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
     static const char *const root[]={"schema","devices",NULL};
     if(size>CONFIG_LIMIT||!json_parse(&j,bytes,size)||!json_fields(&j,0,root))
         return failure(error,capacity,"config: invalid JSON, duplicate/unknown fields or configuration limit");
-    if(!json_equal(&j,json_get(&j,0,"schema"),"lightvm.config/1"))return failure(error,capacity,"schema: expected lightvm.config/1");
+    if(!json_equal(&j,json_get(&j,0,"schema"),"lightvm.config"))return failure(error,capacity,"schema: expected lightvm.config");
     int list=json_get(&j,0,"devices");
     if(list<0||j.tokens[list].type!=JSON_ARRAY)
         return failure(error,capacity,"devices: array exceeds device capacity");

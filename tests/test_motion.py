@@ -13,7 +13,7 @@ from lightvm.compiler import compile_source
 from lightvm import easing, motion
 
 PREFIX = '''from lightvm import profile, init, render, rgb, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform
-profile("animation/1")
+profile("animation")
 '''
 
 
@@ -31,7 +31,7 @@ class MotionCompilerTests(unittest.TestCase):
         source = '''from lightvm import profile, render, rgb
 from lightvm.motion import pingpong
 from lightvm.easing import smoothstep
-profile("animation/1")
+profile("animation")
 @render
 def draw(ctx,runtime,pixels):
  pixels.fill(rgb(int(255.0*smoothstep(pingpong(runtime.time))),0,0))
@@ -39,7 +39,7 @@ def draw(ctx,runtime,pixels):
         result = compile_source(source)
         self.assertTrue(result.success, result.diagnostics)
         self.assertEqual(result.bytecode, compile_source(source).bytecode)
-        self.assertEqual(result.manifest['schema'], 'lightvm.program/11')
+        self.assertEqual(result.manifest['schema'], 'lightvm.program')
         self.assertEqual(struct.unpack_from('<I', result.bytecode, 80)[0], 0)
         ncalls = struct.unpack_from('<I', result.bytecode, 32)[0]
         self.assertEqual(ncalls, 0)
@@ -61,7 +61,7 @@ class MotionRuntimeTests(unittest.TestCase):
 
     def configure(self, count):
         self.count = count
-        self.client.configure({'schema':'lightvm.config/1', 'devices':[
+        self.client.configure({'schema':'lightvm.config', 'devices':[
             {'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]})
 
     def load(self, source, settings=None, complete=False):
@@ -181,12 +181,12 @@ def draw(ctx,runtime,pixels):
         for i in (0,1,66):
             expected[i*4:i*4+4] = bytes([255,0,0,255])
         self.assertEqual(self.frame(), bytes(expected))
-        self.assertEqual(result.manifest['schema'], 'lightvm.program/11')
-        self.assertEqual(struct.unpack_from('<I', result.bytecode, 80)[0], 3)
+        self.assertEqual(result.manifest['schema'], 'lightvm.program')
+        self.assertEqual(struct.unpack_from('<I', result.bytecode, 80)[0], 0)
         target = self.client.describe()
         self.assertTrue(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target=target).success)
-        self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target={**target,'native_drawing_api':2}).success)
-        older = {**target,'program_schemas':[s for s in target['program_schemas'] if s != 'lightvm.program/11']}
+        self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target={**target,'version':'0.9.0'}).success)
+        older = {**target,'version':'2.0.0'}
         self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target=older).success)
         forged = bytearray(result.bytecode)
         struct.pack_into('<I', forged, 80, 2)

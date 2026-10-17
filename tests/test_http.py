@@ -66,10 +66,10 @@ class HttpTests(unittest.TestCase):
         self.directory.cleanup()
 
     def config(self):
-        return {'schema': 'lightvm.config/1', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
+        return {'schema': 'lightvm.config', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
 
     def network(self):
-        return {'schema': 'lightvm.network/1', 'wifi': {'enabled': False, 'country': 'XX', 'networks': [{'ssid': 'café🌈', 'password': 'secret123'}, {'ssid': 'open', 'password': '', 'hidden': True}]}, 'http': {'enabled': True, 'port': 8080}}
+        return {'schema': 'lightvm.network', 'wifi': {'enabled': False, 'country': 'XX', 'networks': [{'ssid': 'café🌈', 'password': 'secret123'}, {'ssid': 'open', 'password': '', 'hidden': True}]}, 'http': {'enabled': True, 'port': 8080}}
 
     def wait_network(self):
         deadline = time.monotonic() + 2
@@ -93,7 +93,7 @@ class HttpTests(unittest.TestCase):
             self.assertEqual(response.headers['Access-Control-Allow-Origin'], '*')
             self.assertEqual(response.headers['Cache-Control'], 'no-store')
             result = json.load(response)
-        self.assertEqual(result['schema'], 'lightvm.discovery/1')
+        self.assertEqual(result['schema'], 'lightvm.discovery')
         self.assertEqual(result['capacity'], 8)
         self.assertEqual(len(result['devices']), 1)
         bridge = result['devices'][0]

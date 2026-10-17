@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from lightvm.compiler import compile_source
 
-PREFIX = 'from lightvm import profile,init,render,rgb\nprofile("animation/1")\n'
+PREFIX = 'from lightvm import profile,init,render,rgb\nprofile("animation")\n'
 
 
 def program(source):

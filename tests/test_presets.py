@@ -15,7 +15,7 @@ from client import Client, ProcessTransport, ProtocolError, FRAME, STOP, OBJECT_
 from lightvm.compiler import compile_source
 
 SOURCE = '''from lightvm import profile, setting, init, render, rgb
-profile("animation/1")
+profile("animation")
 @init
 def setup(ctx, runtime):
  ctx.color = setting(rgb(255, 0, 0))
@@ -31,7 +31,7 @@ class PresetTests(unittest.TestCase):
         self.storage = Path(self.directory.name) / 'store.bin'
         self.client = None
         self.restart()
-        self.config = {'schema': 'lightvm.config/1', 'devices': [
+        self.config = {'schema': 'lightvm.config', 'devices': [
             {'id': 'first', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}},
             {'id': 'second', 'type': 'ws2812b', 'config': {'pin': 'GP17', 'count': 5}}]}
         self.client.configure(self.config, save=True)
@@ -56,7 +56,7 @@ class PresetTests(unittest.TestCase):
 
     def test_preset_survives_restart_and_runs_on_selected_output(self):
         self.client.save_preset('blue', self.layers, device='second')
-        self.assertEqual(self.client.preset('blue'), {'schema': 'lightvm.preset/1', 'layers': self.layers})
+        self.assertEqual(self.client.preset('blue'), {'schema': 'lightvm.preset', 'layers': self.layers})
         self.assertEqual([p['name'] for p in self.client.procedures()], ['brush'])
         self.restart()
         self.assertEqual([p['name'] for p in self.client.presets()], ['blue'])
@@ -109,7 +109,7 @@ class PresetTests(unittest.TestCase):
             self.client.save_procedure('program' + str(n), self.program)
         for n in range(5):
             self.client.save_preset('preset' + str(n), self.layers, device='second')
-        self.client.configure_network({'schema': 'lightvm.network/1', 'wifi': {'enabled': False, 'country': 'XX', 'networks': []}, 'http': {'enabled': False, 'port': 80}})
+        self.client.configure_network({'schema': 'lightvm.network', 'wifi': {'enabled': False, 'country': 'XX', 'networks': []}, 'http': {'enabled': False, 'port': 80}})
         with self.assertRaises(ProtocolError):
             self.client.save_preset('sixth', self.layers, device='second')
         self.restart()

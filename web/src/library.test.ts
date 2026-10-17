@@ -38,18 +38,28 @@ describe('editable library and pinned presets', () => {
     await expect(importLibrary(emptyLibrary(), JSON.stringify(library))).rejects.toThrow(/Unsupported compiled/);
   });
 
-  it('rejects obsolete schemas, profile bindings and mismatched embedded metadata without erasing saved data', async () => {
-    const { library } = await saveAnimation(emptyLibrary(), compiled, 'color.py', 'Color', {});
-    for (const schema of ['lightvm.program/3', 'lightvm.program/10']) {
-      const old = structuredClone(library); old.animations[0].manifest.schema = schema;
-      localStorage.setItem(LIBRARY_KEY, JSON.stringify(old));
-      expect(() => parseLibrary(JSON.stringify(old))).toThrow(/Recompile/);
-      expect(readLibrary().error).toBeTruthy();
-      expect(readLibrary().backup).toBe(JSON.stringify(old));
-      expect(localStorage.getItem(LIBRARY_KEY)).toBe(JSON.stringify(old));
+  it('opens and exports programs requiring newer releases while preserving preset references', async () => {
+    function withManifest(next: typeof manifest): Compilation {
+      const metadata = new TextEncoder().encode(JSON.stringify(next));
+      const bytes = new Uint8Array(bytecode.length - header.getUint32(76,true) + metadata.length);
+      bytes.set(bytecode.subarray(0, bytecode.length - header.getUint32(76,true)));
+      bytes.set(metadata, bytes.length - metadata.length);
+      new DataView(bytes.buffer).setUint32(76, metadata.length, true);
+      return { ...compiled, manifest: next, bytecode: bytes };
     }
-    const patched = new Uint8Array(compiled.bytecode); new DataView(patched.buffer).setUint32(72,1,true);
-    await expect(saveAnimation(emptyLibrary(), {...compiled,bytecode:patched}, 'x.py','X',{})).rejects.toThrow(/Recompile/);
+    const future = withManifest({ ...manifest, compiler_version: '1.10.0', requires: '1.2' });
+    const { library, animation } = await saveAnimation(emptyLibrary(), future, 'sweep.py', 'Future', {});
+    library.presets.push({ id: 'future', name: 'future', layers: [{ id: 'eye', animation: animation.id, settings: {}, opacity: 255, blend: 'over' }] });
+    writeLibrary(library);
+    expect(readLibrary().error).toBe('');
+    expect(readLibrary().library.animations[0].manifest.requires).toBe('1.2');
+    expect(await importLibrary(emptyLibrary(), JSON.stringify(library))).toEqual(library);
+    // Pre-release experiments remain editable data, without an execution adapter.
+    const obsolete = withManifest({ ...manifest, schema: 'lightvm.program/10' });
+    const saved = await saveAnimation(emptyLibrary(), obsolete, 'old.py', 'Old source', {});
+    const oldEnvelope = { ...saved.library, schema: 'lightvm.library/1' };
+    expect(parseLibrary(JSON.stringify(oldEnvelope)).animations[0].source).toBe(compiled.source);
+    expect(parseLibrary(JSON.stringify(oldEnvelope)).schema).toBe('lightvm.library');
     await expect(saveAnimation(emptyLibrary(), {...compiled,manifest:{...manifest,settings:[]}}, 'x.py','X',{})).rejects.toThrow(/Recompile/);
   });
 

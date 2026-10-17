@@ -33,7 +33,7 @@ def main():
 '''
     sprite=(ROOT/'examples/animations/rainbow_sprite.py').read_text()
     nonlinear='''from lightvm import profile,render,hsv
-profile("animation/1")
+profile("animation")
 @render
 def draw(ctx,runtime,pixels):
  phase=runtime.time%1.0
@@ -51,8 +51,9 @@ def draw(ctx,runtime,pixels):
             'variants':{}}
     try:
         target=client.describe()
-        if 'lightvm.program/11' not in target['program_schemas'] or target.get('native_drawing_api',0)<4:raise RuntimeError('build the receiver with current animation and pixel-map support first')
-        client.configure({'schema':'lightvm.config/1','devices':[{
+        from lightvm.release import BASELINE, release_error
+        if release_error(target.get('version'), BASELINE):raise RuntimeError('build the receiver with a compatible LightVM release first')
+        client.configure({'schema':'lightvm.config','devices':[{
             'id':'benchmark','type':'ws2812b','config':{'pin':'GP16','count':args.pixels}}]})
         expected={}
         for name,source,optimize in variants:

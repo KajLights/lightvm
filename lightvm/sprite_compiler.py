@@ -33,14 +33,8 @@ class SpriteCompiler:
         self.sprite_definitions, self.batches = {}, {}
         self.pending_batches, self.descriptions = [], {}
         self.sprite_context = None
-        self.feature_used = False
-        self.wrap_used = False
         self.style_ref = None
         self.artwork = {}
-
-    def feature_native(self, name, args, node):
-        self.feature_used = True
-        return self.native(name,args,node)
 
     def constant_expr(self, value):
         return self.declarative(ast.Constant(value=value))
@@ -61,7 +55,6 @@ class SpriteCompiler:
     def overflow(self, node):
         if not isinstance(node,ast.Constant) or node.value not in ('clip','wrap'):
             self.fail(node,'overflow must be clip or wrap')
-        if node.value=='wrap':self.wrap_used=True
         return 'image_draw_wrap' if node.value=='wrap' else 'image_draw'
 
     def image_declaration(self, target, call, node, module=False):
@@ -92,7 +85,6 @@ class SpriteCompiler:
         if name.startswith('ctx.'):self.fields[name[4:]]=reg
         elif module:self.artwork[name]=reg
         else:self.env[name]=reg
-        self.feature_used=True
 
     def sprite_definition(self,target,call,node):
         if not isinstance(target,ast.Name):self.fail(node,'Sprite definitions need a module name')
@@ -110,7 +102,6 @@ class SpriteCompiler:
             callbacks[role]=fn
         if target.id in self.sprite_definitions or target.id in self.imports:self.fail(node,'duplicate sprite definition')
         self.sprite_definitions[target.id]={'width':width,**callbacks}
-        self.feature_used=True
 
     def batch_declaration(self,target,call,node):
         args=self.arguments(call,('sprite','capacity'))
@@ -127,7 +118,6 @@ class SpriteCompiler:
         self.batches[ref]={'definition':definition,'fields':fields,'scratch':scratch,'ref':ref,'initialized':definition['init'] is None}
         if name.startswith('ctx.'):self.fields[name[4:]]=ref
         else:self.env[name]=ref
-        self.feature_used=True
 
     def channel(self,node):
         if not isinstance(node,ast.Constant) or node.value not in CHANNELS:self.fail(node,'channel must be r, g, b, w or a')
@@ -161,8 +151,8 @@ class SpriteCompiler:
 
     def set_style(self,geometry,color,node):
         ref=self.style(node)
-        self.feature_native('style_geometry',[ref]+geometry,node)
-        self.feature_native('style_color',[ref]+color,node)
+        self.native('style_geometry',[ref]+geometry,node)
+        self.native('style_color',[ref]+color,node)
         return ref
 
     def image_call(self,call,ref,kind):
@@ -170,17 +160,17 @@ class SpriteCompiler:
         if method=='clear':
             self.check_write(ref,call)
             _,start,stop=self.image_range(call,ref,())
-            return self.feature_native('image_fill',[ref,self.colour_constant(0),self.literal(0),start,stop],call)
+            return self.native('image_fill',[ref,self.colour_constant(0),self.literal(0),start,stop],call)
         if method=='has_channel':
-            args=self.arguments(call,('channel',));return self.feature_native('channel_has',[ref,self.channel(args['channel'])],call)
+            args=self.arguments(call,('channel',));return self.native('channel_has',[ref,self.channel(args['channel'])],call)
         if method in ('set_channel','set_alpha','multiply_alpha'):
             self.check_write(ref,call)
             args,start,stop=self.image_range(call,ref,('channel','value') if method=='set_channel' else ('value',))
             if method=='set_channel':
                 value=self.expr(args['value'])
                 if self.typ(value)!=I:self.fail(call,'channel values must be integer bytes')
-                return self.feature_native('channel_set',[ref,self.channel(args['channel']),value,start,stop],call)
-            return self.feature_native('alpha_set' if method=='set_alpha' else 'alpha_multiply',[ref,self.expr(args['value']),start,stop],call)
+                return self.native('channel_set',[ref,self.channel(args['channel']),value,start,stop],call)
+            return self.native('alpha_set' if method=='set_alpha' else 'alpha_multiply',[ref,self.expr(args['value']),start,stop],call)
         if method=='draw':
             self.check_write(ref,call)
             args=self.arguments(call,('image','transform','color','sampling','overflow'),{'transform':None,'color':None,'sampling':'linear','overflow':'clip'})
@@ -191,26 +181,26 @@ class SpriteCompiler:
             sampling=args['sampling']
             if not isinstance(sampling,ast.Constant) or sampling.value not in ('nearest','linear'):self.fail(call,'sampling must be nearest or linear')
             style=self.set_style(geometry,color,call)
-            return self.feature_native(self.overflow(args['overflow']),[ref,source,style,self.literal(int(sampling.value=='linear'))],call)
+            return self.native(self.overflow(args['overflow']),[ref,source,style,self.literal(int(sampling.value=='linear'))],call)
         if method=='copy':
             self.check_write(ref,call);args=self.arguments(call,('source',));src,_=self.resource(args['source'])
-            return self.feature_native('image_copy',[ref,src],call)
+            return self.native('image_copy',[ref,src],call)
         if method=='transform':
             self.check_write(ref,call);args,start,stop=self.image_range(call,ref,('color',))
             style=self.set_style(self.description(None,'Transform'),self.description(args['color'],'ColorTransform'),call)
-            return self.feature_native('image_transform',[ref,style,start,stop],call)
+            return self.native('image_transform',[ref,style,start,stop],call)
         if method in ('gradient','colorwheel','palette','point') and kind>=14:
             self.check_write(ref,call)
             if method=='point':
                 args=self.arguments(call,('index','color','alpha'),{'alpha':255})
-                return self.feature_native('image_point',[ref]+[self.expr(args[k]) for k in ('index','color','alpha')],call)
+                return self.native('image_point',[ref]+[self.expr(args[k]) for k in ('index','color','alpha')],call)
             if method=='palette':
                 args=self.arguments(call,('colors','phase','stride'))
                 source,_=self.resource(args['colors'])
-                return self.feature_native('image_palette',[ref,source,self.expr(args['phase']),self.expr(args['stride'])],call)
+                return self.native('image_palette',[ref,source,self.expr(args['phase']),self.expr(args['stride'])],call)
             names=('first','last') if method=='gradient' else ('phase','stride')
             args=self.arguments(call,names)
-            return self.feature_native('image_'+method,[ref]+[self.expr(args[k]) for k in names],call)
+            return self.native('image_'+method,[ref]+[self.expr(args[k]) for k in names],call)
         if method=='fill' and kind>=14:
             self.check_write(ref,call)
             args=self.arguments(call,('color','alpha','start','stop'),{'alpha':255,'start':0,'stop':None})
@@ -219,14 +209,14 @@ class SpriteCompiler:
             start=self.expr(args['start'])
             if not (isinstance(stop,ast.Constant) and stop.value is None):end=self.expr(stop)
             if self.typ(start)!=I or self.typ(end)!=I:self.fail(call,'pixel range must use integer indices')
-            return self.feature_native('image_fill',[ref,self.expr(args['color']),self.expr(args['alpha']),start,end],call)
+            return self.native('image_fill',[ref,self.expr(args['color']),self.expr(args['alpha']),start,end],call)
         return None
 
     def sprite_get(self,name,node):
         batch,slot,role=self.sprite_context
         if name not in batch['fields']:self.fail(node,'unknown sprite state field: '+name)
         index,typ=batch['fields'][name]
-        out=self.feature_native('batch_get_f' if typ==F else 'batch_get_i',[batch['ref'],slot,self.literal(index)],node)
+        out=self.native('batch_get_f' if typ==F else 'batch_get_i',[batch['ref'],slot,self.literal(index)],node)
         return self.truth(out) if typ==B else self.convert(out,C) if typ==C else out
 
     def sprite_set(self,name,value,node):
@@ -241,7 +231,7 @@ class SpriteCompiler:
         if typ==C:value=self.convert(value,I)
         if typ==B:
             out=self.reg(I);j=self.emit('JZ',value);self.emit('MOV',out,self.literal(1));end=self.emit('JMP');self.code[j][4]=len(self.code);self.emit('MOV',out,self.literal(0));self.code[end][4]=len(self.code);value=out
-        self.feature_native('batch_set_f' if typ==F else 'batch_set_i',[batch['ref'],slot,self.literal(index),value],node)
+        self.native('batch_set_f' if typ==F else 'batch_set_i',[batch['ref'],slot,self.literal(index),value],node)
 
     def callback(self,batch,slot,role,args,now):
         fn=batch['definition'][role]
@@ -250,8 +240,8 @@ class SpriteCompiler:
         self.env={};self.caps={fn.args.args[0].arg:'sprite',fn.args.args[1].arg:'runtime'}
         self.inputs={**self.inputs,'pixel_count':self.literal(batch['definition']['width'])}
         if role=='render':
-            self.inputs['time']=self.feature_native('batch_time',[batch['ref'],slot,now],fn)
-            self.inputs['delta']=self.feature_native('batch_delta',[batch['ref'],slot,now],fn)
+            self.inputs['time']=self.native('batch_time',[batch['ref'],slot,now],fn)
+            self.inputs['delta']=self.native('batch_delta',[batch['ref'],slot,now],fn)
             self.caps[fn.args.args[2].arg]='pixels';self.output=batch['scratch']
         else:
             self.inputs['time']=self.literal(0.0);self.inputs['delta']=self.literal(0.0)
@@ -271,7 +261,7 @@ class SpriteCompiler:
             fn=batch['definition']['init'];names=tuple(a.arg for a in fn.args.args[2:]) if fn else ()
             args=self.arguments(call,names)
             values=[self.expr(args[name]) for name in names]
-            slot=self.feature_native('batch_reserve',[ref,self.inputs['time']],call)
+            slot=self.native('batch_reserve',[ref,self.inputs['time']],call)
             out=self.reg(B);cond=self.reg(B);self.emit('ILT',cond,slot,self.literal(0));self.emit('EQ',out,cond,self.literal(False))
             jump=self.emit('JZ',out)
             self.callback(batch,slot,'init',values,self.inputs['time'])
@@ -296,17 +286,17 @@ class SpriteCompiler:
             self.env,self.caps,self.inputs,self.output=env,caps,inputs,output
             self.code[jump][4]=len(self.code)
             slot=self.reg(I);self.emit('MOV',slot,self.literal(0));head=len(self.code)
-            found=self.feature_native('batch_next',[batch['ref'],slot],None);self.emit('MOV',slot,found)
+            found=self.native('batch_next',[batch['ref'],slot],None);self.emit('MOV',slot,found)
             done=self.reg(B);self.emit('ILT',done,slot,self.literal(0));body=self.emit('JZ',done);leave=self.emit('JMP');self.code[body][4]=len(self.code)
             scratch=batch['scratch'];length=self.literal(batch['definition']['width'])
-            self.feature_native('image_fill',[scratch,self.colour_constant(0),self.literal(0),self.literal(0),length],None)
+            self.native('image_fill',[scratch,self.colour_constant(0),self.literal(0),self.literal(0),length],None)
             self.callback(batch,slot,'render',[],now)
-            alive=self.feature_native('batch_alive',[batch['ref'],slot],None);skip=self.emit('JZ',alive)
+            alive=self.native('batch_alive',[batch['ref'],slot],None);skip=self.emit('JZ',alive)
             self.sprite_context=(batch,slot,'render')
             geometry=[self.sprite_get("__draw_"+k,None) for k in GEOMETRY];color=[self.sprite_get("__draw_"+k,None) for k in COLOR]
             self.sprite_context=None
             style=self.set_style(geometry,color,None)
-            self.feature_native(binding,[dst,scratch,style,self.literal(sampling)],None)
+            self.native(binding,[dst,scratch,style,self.literal(sampling)],None)
             self.code[skip][4]=len(self.code)
             self.emit('IADD',slot,slot,self.literal(1));self.emit('JMP',imm=head)
             self.code[leave][4]=len(self.code);self.emit('JMP',imm=back)
@@ -325,12 +315,12 @@ class SpriteCompiler:
             if node.attr in ('count','active'):
                 try:ref,kind=self.resource(node.value)
                 except CompileError:return None
-                if node.attr=='active' and kind==18:return self.feature_native('batch_active',[ref],node)
+                if node.attr=='active' and kind==18:return self.native('batch_active',[ref],node)
                 if node.attr=='count' and kind in (14,15,16,17):out=self.reg(I);self.emit('LENGTH',out,ref);return out
         if not isinstance(node,ast.Call) or not isinstance(node.func,ast.Attribute):return None
         if self.capability(node.func.value)=='sprite' and node.func.attr=='remove':
             if node.args or node.keywords:self.fail(node,'remove takes no arguments')
-            batch,slot,_=self.sprite_context;return self.feature_native('batch_remove',[batch['ref'],slot],node)
+            batch,slot,_=self.sprite_context;return self.native('batch_remove',[batch['ref'],slot],node)
         try:ref,kind=self.resource(node.func.value)
         except CompileError:return None
         if kind==18:return self.batch_call(node,ref)
@@ -356,5 +346,5 @@ class SpriteCompiler:
                     dest=[self.reg(self.typ(r),STATE if key.startswith('ctx.') else LOCAL) for r in regs]
                 for dst,src in zip(dest,regs):self.emit('MOV',dst,src)
                 self.descriptions[key]=(kind,dest)
-            self.feature_used=True;return True
+            return True
         return False

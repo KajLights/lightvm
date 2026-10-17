@@ -1,0 +1,2 @@
+/* Generated from lightvm/release.json. */
+#define LIGHTVM_VERSION "@LIGHTVM_VERSION@"

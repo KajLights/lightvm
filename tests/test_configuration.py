@@ -17,7 +17,7 @@ from client import (Client, ProcessTransport, ProtocolError, MANAGE, OBJECT_BEGI
 
 
 def config(count=5, pin="GP16", startup=None):
-    result = {"schema": "lightvm.config/1", "devices": [
+    result = {"schema": "lightvm.config", "devices": [
         {"id": "lights", "type": "ws2812b", "config": {
             "pin": pin, "count": count, "order": "GRB", "brightness_limit": 32}}
     ]}
@@ -99,9 +99,9 @@ class ConfigurationTests(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             self.client.configure(candidate)
         with self.assertRaises(ProtocolError):
-            self.client.upload_object("config", b'{"schema":"lightvm.config/1","devices":[],"devices":[]}')
+            self.client.upload_object("config", b'{"schema":"lightvm.config","devices":[],"devices":[]}')
         with self.assertRaises(ProtocolError):
-            self.client.upload_object("config", b'{"schema":"lightvm.config/1","devices":[],"devi\\u0063es":[]}')
+            self.client.upload_object("config", b'{"schema":"lightvm.config","devices":[],"devi\\u0063es":[]}')
         self.assertEqual(self.client.get_config(), original)
 
     def test_stale_apply_and_save_revisions(self):
@@ -192,7 +192,7 @@ class ConfigurationTests(unittest.TestCase):
         self.client.configure(config(startup="effect"), save=True)
         with self.assertRaisesRegex(ProtocolError, "referenced"):
             self.client.delete_procedure("effect")
-        self.client.configure({"schema": "lightvm.config/1", "devices": []})
+        self.client.configure({"schema": "lightvm.config", "devices": []})
         with self.assertRaisesRegex(ProtocolError, "referenced"):
             self.client.delete_procedure("effect")
         self.client.save_config()
@@ -224,7 +224,7 @@ class ConfigurationTests(unittest.TestCase):
         self.client.save_procedure("effect", color(7))
         self.client.configure(config(startup="effect"), save=True)
         candidate = program('''from lightvm import profile,setting,init,render,rgb
-profile("animation/1")
+profile("animation")
 @init
 def setup(ctx, runtime):
  divisor=setting(0,minimum=0,maximum=10)

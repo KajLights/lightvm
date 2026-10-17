@@ -116,7 +116,7 @@ Clients should read configuration/discovery again after a revision conflict.
 
 ## Procedures and runtime ownership
 
-Named procedures contain validated current LBC1/4 bytecode. Upload streams bytes
+Named procedures contain bytecode validated against their minimum application release. Upload streams bytes
 to an immutable flash extent without replacing running instances. Finish checks length, CRC,
 instruction validity and the embedded control manifest; it does not execute the
 program. Activation prepares a candidate before replacing the selected instance;

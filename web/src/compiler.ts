@@ -1,14 +1,15 @@
+import { releaseError } from './release';
 import type { AppStore } from './store';
 import { activityActions, DRAFT_KEY, editorActions } from './store';
 import type { Compilation, Description, Manifest } from './types';
 
+export function programCompatibility(target: Description, manifest: Manifest): string | null {
+  if (manifest.schema !== 'lightvm.program' || manifest.profile !== 'animation' || manifest.pixels?.format !== 'rgba8-premul')
+    return 'Recompile this animation with the release-based compiler.';
+  return releaseError(target.version, manifest.requires);
+}
 export function supportsProgram(target: Description, manifest: Manifest) {
-  return manifest.abi === 4 && manifest.schema === 'lightvm.program/11' && manifest.profile === 'animation/1' &&
-    Array.isArray(target.program_abis) && target.program_abis.includes(4) &&
-    Array.isArray(target.bytecode_formats) && target.bytecode_formats.includes('LBC1/4') &&
-    Array.isArray(target.program_schemas) && target.program_schemas.includes(manifest.schema) &&
-    Array.isArray(target.program_profiles) && target.program_profiles.includes(manifest.profile);
-
+  return programCompatibility(target, manifest) === null;
 }
 
 export function assetUrl(name: string) { return new URL(name, new URL(import.meta.env.BASE_URL, document.baseURI)).href; }
@@ -56,11 +57,11 @@ export class Compiler {
     });
   }
   check() {
-    const { editor, device } = this.store.getState();
+    const { editor } = this.store.getState();
     if (editor.compiler !== 'ready' || !this.worker) return;
     clearTimeout(this.compilationDeadline);
     this.compilationDeadline = setTimeout(() => this.fail('Compilation timed out. Retry the compiler or simplify the source.'), 10000);
-    this.worker.postMessage({ id: editor.revision, source: editor.source, target: device.selectedPath ? device.description : null });
+    this.worker.postMessage({ id: editor.revision, source: editor.source, target: null });
   }
   edit(source: string, filename?: string) {
     this.store.dispatch(editorActions.edited({ source, filename }));

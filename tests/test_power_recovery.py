@@ -71,7 +71,7 @@ class PowerRecoveryTests(unittest.TestCase):
         self.directory.cleanup()
 
     def saved_profile(self):
-        return {'schema': 'lightvm.network/1', 'wifi': {
+        return {'schema': 'lightvm.network', 'wifi': {
             'enabled': False, 'mode': 'station', 'country': 'ZZ',
             'networks': [{'ssid': 'studio', 'password': 'station-secret'}],
             'ap': {'ssid': 'private-lights', 'password': 'saved-ap-secret'},
@@ -117,12 +117,12 @@ class PowerRecoveryTests(unittest.TestCase):
         self.http.save_procedure('empty', color())
         self.assertEqual(self.pipe.get_procedure('empty'), color())
         with self.http_transport.opener.open(self.url + '/api/v1/devices') as response:
-            self.assertEqual(json.load(response)['schema'], 'lightvm.discovery/1')
+            self.assertEqual(json.load(response)['schema'], 'lightvm.discovery')
 
     def test_saved_startup_is_idle_in_recovery_and_can_be_activated_manually(self):
         module = color()
         self.http.save_procedure('startup', module)
-        config = {'schema': 'lightvm.config/1', 'devices': [
+        config = {'schema': 'lightvm.config', 'devices': [
             {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'procedure': 'startup'}},
         ]}
         self.http.configure(config, save=True)

@@ -1,4 +1,4 @@
-"""The current contract is a hard cutover: obsolete encodings never execute."""
+"""Release compatibility preserves programs; retired encodings never execute."""
 import json
 import os
 from pathlib import Path
@@ -11,6 +11,7 @@ from bytecode_fixtures import ROOT, color, program, PREFIX
 sys.path.insert(0, str(ROOT / 'tools'))
 from client import Client, ProcessTransport, ProtocolError, FRAME, STOP, frame
 from test_configuration import config
+from lightvm.release import VERSION, parse_release
 
 
 def manifest_variant(raw, **changes):
@@ -46,19 +47,32 @@ class CurrentContractTests(unittest.TestCase):
         self.client.require_ok(self.client.command(FRAME, bytes(4)))
         self.assertEqual(bytes(self.client.pixel_snapshot), bytes([37, 2, 3]) * 5)
 
-    def test_only_current_package_schema_and_animation_binding_are_admitted(self):
+    def test_binary_layout_and_animation_bindings_remain_checked(self):
         original = color()
-        for version in (1, 2, 3):
-            raw = bytearray(original); struct.pack_into('<I', raw, 4, version)
-            with self.subTest(version=version): self.assert_rejected(raw)
-        for schema in range(1, 11):
-            with self.subTest(schema=schema):
-                self.assert_rejected(manifest_variant(original, schema=f'lightvm.program/{schema}'))
+        for layout in (1, 2, 3, 99):
+            raw = bytearray(original); struct.pack_into('<I', raw, 4, layout)
+            with self.subTest(layout=layout): self.assert_rejected(raw)
+        self.assert_rejected(manifest_variant(original, schema='lightvm.program/11'))
         for profile in (0, 1, 2, 4):
             raw = bytearray(original); struct.pack_into('<I', raw, 72, profile)
             with self.subTest(profile=profile): self.assert_rejected(raw)
         self.assert_rejected(manifest_variant(original, profile='layer/1'))
-        self.assert_rejected(manifest_variant(original, parameters=[]))
+
+    def test_minimum_release_is_enforced_without_replacing_running_program(self):
+        (major, minor, patch), _, _ = parse_release(VERSION)
+        for required in (f'{major}.{minor}.{patch+1}', f'{major}.{minor+1}', str(major+1), '', '1.02', '1.0.0-01', None):
+            with self.subTest(required=required):
+                self.assert_rejected(manifest_variant(color(), requires=required))
+
+    def test_compatible_programs_ignore_compiler_release_and_additive_metadata(self):
+        for required in ('1', '1.0', '1.0.0', '1.0.0+build.123', '1.0.0-alpha.2'):
+            with self.subTest(required=required):
+                raw = manifest_variant(color(37), requires=required,
+                                       compiler_version='1.25.7+development', notes={'future': True})
+                self.client.save_procedure('compatible', raw)
+                self.client.activate('compatible')
+                self.client.require_ok(self.client.command(FRAME, bytes(4)))
+                self.assertEqual(bytes(self.client.pixel_snapshot), bytes([37, 2, 3]) * 5)
 
     def test_removed_resource_and_native_encodings_cannot_claim_current_schema(self):
         original = program(PREFIX + '@render\ndef draw(ctx,runtime,pixels):\n pixels.point(0,rgb(1,2,3),128)\n')
@@ -82,10 +96,9 @@ class CurrentContractTests(unittest.TestCase):
         state = self.client.program_state()
         self.assertNotIn('values', state); self.assertNotIn('parameter_revision', state)
         description = self.client.describe()
-        self.assertEqual(description['program_abis'], [4])
-        self.assertEqual(description['program_schemas'], ['lightvm.program/11'])
-        self.assertEqual(description['bytecode_formats'], ['LBC1/4'])
-        for key in ('control_abi', 'bytecode_format', 'legacy_animation_api', 'parameter_limit'):
+        self.assertEqual(description['version'], VERSION)
+        for key in ('control_abi', 'bytecode_format', 'legacy_animation_api', 'parameter_limit',
+                    'program_abis', 'program_schemas', 'program_profiles', 'bytecode_formats', 'native_drawing_api'):
             self.assertNotIn(key, description)
 
     def test_previous_wire_magic_is_ignored_and_current_decoder_recovers(self):

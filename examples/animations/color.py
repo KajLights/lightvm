@@ -11,7 +11,7 @@ from lightvm import (
     profile, setting, init, render, rgb, pico_colorwheel,
 )
 
-profile("animation/1")
+profile("animation")
 
 
 @init

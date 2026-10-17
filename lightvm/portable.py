@@ -1,4 +1,4 @@
-"""The animation/1 frontend for the general LBC1/4 instruction container.
+"""The animation frontend for the general LBC1/4 instruction container.
 
 The function table carries explicit permissions/result types; animation entry
 selection is profile metadata. No source code runs during compilation.
@@ -9,6 +9,7 @@ import math
 import struct
 from pathlib import Path
 from .sprite_compiler import SpriteCompiler, FEATURE_NATIVES
+from .release import VERSION, BASELINE, normalize_release, release_error
 from .compiler_core import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE
 
 REF, SETTING = 6, 6
@@ -28,7 +29,7 @@ NATIVES = {
 }
 NATIVES.update(FEATURE_NATIVES)
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
-PUBLIC = {'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
+PUBLIC = {'requires', 'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
 LIBRARIES = {'lightvm.motion', 'lightvm.easing'}
@@ -37,7 +38,7 @@ LIBRARIES = {'lightvm.motion', 'lightvm.easing'}
 class PortableCompiler(SpriteCompiler, Compiler):
     def __init__(self, source, optimize=True):
         super().__init__(source)
-        self.optimize, self.map_used = optimize, False
+        self.optimize = optimize
         # Runtime arguments are flattened into typed input registers. Context
         # fields and array bindings belong to this instance, never module globals.
         self.regs, self.names = [], {}
@@ -48,7 +49,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         self.helpers, self.call_stack, self.return_stack, self.loop_stack = {}, [], [], []
         self.fields, self.caps, self.declarations, self.imports = {}, {}, {}, {}
         self.rights, self.depth = 0, 0
-        self.profile_name = 'animation/1'
+        self.profile_name = 'animation'
         self.feature_setup()
         self.expressions.append((0, I, 0, 0, 0))
         count = len(self.expressions); self.expressions.append((1, I, 0, 0, 0))
@@ -214,7 +215,6 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 if n.keywords: self.fail(n, 'native drawing takes positional arguments')
                 args = [self.output] + [self.expr(a) for a in n.args]
                 if method == 'point' and len(args) == 3: args.append(self.literal(255))
-                self.feature_used = True
                 return self.native({'point':'image_point', 'colorwheel':'image_colorwheel', 'gradient':'image_gradient', 'palette':'image_palette'}[method], args, n)
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
             r = self.truth(self.expr(n.operand))
@@ -459,7 +459,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
                     kws = {k.arg: k.value for k in call.keywords}
                     if 'alpha' in kws:
                         if len(kws) != len(call.keywords) or set(kws) != {'alpha'}: self.fail(n, 'alpha fill covers the whole surface')
-                        self.feature_native('image_fill', [ref, self.expr(call.args[0]), self.expr(kws['alpha']), self.literal(0), self.inputs['pixel_count']], n)
+                        self.native('image_fill', [ref, self.expr(call.args[0]), self.expr(kws['alpha']), self.literal(0), self.inputs['pixel_count']], n)
                         continue
                     if len(kws) != len(call.keywords) or set(kws) - {'start', 'stop'}: self.fail(n, 'invalid fill range')
                     val = self.convert(self.expr(call.args[0]), C)
@@ -539,10 +539,10 @@ class PortableCompiler(SpriteCompiler, Compiler):
             if ins[0]==P_OP['JMP']:ins[4]-=1
         end=head+1+len(body)
         self.code[head:]=[[P_OP['PIXEL_MAP'],stores[0],index,bound,end]]+body
-        self.map_used=True
 
     def compile(self):
         marked = False
+        minimum_release = None
         self.env = {}
         for n in self.tree.body:
             if isinstance(n, ast.Import):
@@ -556,8 +556,14 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 allowed = PUBLIC if n.module == 'lightvm' else {'array'} if n.module == 'array' else {'sin', 'pi'} if n.module == 'math' else {'seed', 'random', 'randint', 'randrange'} if n.module == 'random' else set()
                 if n.level or any(a.name not in allowed or a.asname for a in n.names): self.fail(n, 'unsupported import; animation decorators are @init and @render')
                 for item in n.names: self.imports[item.name] = item.name if n.module == 'lightvm' else n.module + '.' + item.name
+            elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'requires':
+                call = n.value
+                if self.imports.get('requires') != 'requires' or minimum_release is not None or call.keywords or len(call.args) != 1 or not isinstance(call.args[0], ast.Constant):
+                    self.fail(n, 'expected one requires("1.2") declaration')
+                try: minimum_release = normalize_release(call.args[0].value)
+                except ValueError as error: self.fail(n, str(error))
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'profile':
-                if self.imports.get('profile') != 'profile' or marked or n.value.keywords or len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or n.value.args[0].value != 'animation/1': self.fail(n, 'expected one animation/1 profile declaration')
+                if self.imports.get('profile') != 'profile' or marked or n.value.keywords or len(n.value.args) != 1 or not isinstance(n.value.args[0], ast.Constant) or n.value.args[0].value != 'animation': self.fail(n, 'expected one animation profile declaration')
                 self.profile_name = n.value.args[0].value
                 marked = True
             elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='PixelArray':
@@ -576,7 +582,9 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 self.funcs[role] = n
             elif not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)):
                 self.fail(n, 'module state is unsupported; initialize ctx fields in @init')
-        if not marked or 'render' not in self.funcs: raise CompileError('animation/1 requires a @render entry')
+        if not marked or 'render' not in self.funcs: raise CompileError('animation requires a @render entry')
+        if minimum_release and release_error(minimum_release, BASELINE):
+            raise CompileError('source requires a release below the supported feature floor ' + BASELINE)
         functions = []
         for self.stage, role, self.rights in ((0, 'init', 9), (1, 'render', 13)):
             self.descriptions = {k:v for k,v in self.descriptions.items() if k.startswith('ctx.')}
@@ -594,12 +602,13 @@ class PortableCompiler(SpriteCompiler, Compiler):
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
-        drawing_api = 4 if self.map_used else 3 if self.wrap_used else 2 if self.feature_used else 0
-        manifest = {'schema':'lightvm.program/11','abi':4,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
+        # All currently released features were introduced in BASELINE. New
+        # features raise their own floor, never every program's compiler floor.
+        manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or BASELINE,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
-                             0, 1, 0, 0, 0, 0, 0, 0, 3, len(metadata), drawing_api, 0, 0, 0)
+                             0, 1, 0, 0, 0, 0, 0, 0, 3, len(metadata), 0, 0, 0, 0)
         raw = header + b''.join(struct.pack('<BBHI',t,role,0,v) for t,role,v in self.regs)
         raw += b''.join(struct.pack('<BBBBI',*ins) for ins in self.code)
         raw += b''.join(struct.pack('<I',c) for c in self.table)

@@ -1,8 +1,9 @@
 # Animation profile
 
 The proof-of-concept Python API has two decorators: `@init` and `@render`.
-The compiler emits LBC1/4, execution ABI 4 and `lightvm.program/11`, with profile
-`animation/1`. It parses source without executing it.
+The compiler emits portable bytecode with document kind `lightvm.program` and
+profile `animation`. Its `requires` field names the minimum LightVM application
+release. It parses source without executing it. See [versioning](versioning.md).
 
 There is one source profile. Every animation can run alone or as a [scene layer](composition.md).
 Each frame starts blank. Unpainted pixels let lower layers remain visible.
@@ -12,7 +13,7 @@ periodic drawing, and [optimized pixel loops](pixel-maps.md).
 
 ```python
 from lightvm import profile, setting, rgb, init, render
-profile("animation/1")
+profile("animation")
 
 @init
 def setup(ctx, runtime):
@@ -148,15 +149,13 @@ three typed native values: pixel count, time and delta. Context and output stora
 are instance bindings. Init may write state and use randomness; render may also
 write output. Admission independently validates these rights and signatures.
 
-All new programs use schema 11, profile binding 3, and premultiplied RGBA output.
-The public profile name remains `animation/1`. Targets must advertise schema 11 before accepting new programs.
-Older firmware rejects these packages instead of using the previous RGB rules.
-Only profile binding 3 is accepted. Recompile earlier packages from source.
-The compiler no longer accepts `layer/1` source declarations.
+Application compatibility uses `requires` and the device’s `version`. The typed
+container’s fixed layout marker (LBC1, layout 4) and animation binding 3 describe
+how to decode and validate the bytes; neither tracks application releases.
+Premultiplied RGBA output is the supported binding. Retired bindings and native
+operations remain rejected. Pre-baseline artifacts require source recompilation.
 
-Header word 80 identifies the drawing API. Zero selects basic operations, 2 adds images and sprites,
-3 adds periodic drawing, and 4 adds compiler-generated pixel maps.
-The remaining three trailing words stay zero. Extended native sites support eight arguments in each 16-byte record.
+Words 80–92 are reserved zero. There is no drawing API revision selector. Extended native sites support eight arguments in each 16-byte record.
 
 `render_count` counts successful calls including the initial frame. `program_us`
 tracks elapsed time; snapshots are passive. The fixed-step statistics and cycle

@@ -37,7 +37,7 @@ def measure(client, board, pin, pixels, samples, seconds):
         raise ProtocolError(f"expected board {board}, got {initial.get('board')}")
     original_config = client.get_config()
     config = {
-        "schema": "lightvm.config/1",
+        "schema": "lightvm.config",
         "devices": [{"id": "benchmark", "type": "ws2812b", "config": {
             "pin": pin, "count": pixels, "order": "GRB", "brightness_limit": 32}}],
     }

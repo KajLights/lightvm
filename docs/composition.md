@@ -6,9 +6,9 @@ uses exactly the same foreground. Replacing the background retains the stars'
 state, clock, random sequence and contribution. Up to eight layers are admitted
 per scene, subject to the shared VM memory budget.
 
-All animations use `profile("animation/1")`. The single `examples/animations/`
+All animations use `profile("animation")`. The single `examples/animations/`
 directory supplies examples for both direct playback and scene composition.
-New programs use LBC1/4, ABI 4, schema `lightvm.program/11`, and `rgba8-premul` output.
+Programs use `lightvm.program`, a minimum LightVM release, and `rgba8-premul` output.
 Every animation can run directly on a device or inside a scene.
 Direct playback shows the animation over black. A scene combines it with lower layers.
 Programs receive a destination from the engine. They cannot choose GPIOs or other layers.
@@ -135,7 +135,7 @@ python tools/client.py --port PORT --device lights --scene-snapshot
 ```
 
 The Python `Client.configure_scene(layers, device=...)` stages a
-`lightvm.scene/1` document then applies it atomically. `activate(..., layer=...)`
+`lightvm.scene` document then applies it atomically. `activate(..., layer=...)`
 replaces one layer. `reset_program(settings=..., layer=...)` creates a new
 instance of that layer's program; frozen settings require this explicit restart.
 `pause_program` retains the contribution and excludes paused time; resume retains
@@ -161,13 +161,11 @@ denominators: a scene may reuse a layer contribution for several outputs.
 
 ## Management and compatibility
 
-Discovery advertises `scene_api=1`, `native_drawing_api=4`,
-`scene_layer_limit=8`, `layer_pixel_format="rgba8-premul"`, `alpha=true`,
-`composition=true`, schema 11 and the single source profile `animation/1`.
-`scene_blend_modes` lists `over`, `add`, `screen` and `multiply`. Omitted `blend`
-means `over` within the current scene schema. Target-aware compilation requires
-an explicit current descriptor. Only schema 11, internal profile binding 3 and
-RGBA contributions are accepted.
+Discovery reports the application `version`, `scenes=true`, `scene_layer_limit=8`,
+`layer_pixel_format="rgba8-premul"`, `alpha=true`, and `composition=true`.
+`scene_blend_modes` lists `over`, `add`, `screen` and `multiply`; omitted `blend`
+means `over`. Compatibility uses the program's minimum application release and
+actual resource limits. See [versioning](versioning.md).
 
 The object upload protocol accepts kind `scene`. Operations are `scene_get`,
 `scene_snapshot`, `scene_apply`, `scene_clear`, `scene_layer_activate`,
@@ -190,14 +188,14 @@ does not change playback; activation prepares the whole candidate before swappin
 Saved hardware configuration still uses single-procedure startup; reboot restores
 that startup, and saved presets can then be activated explicitly.
 
-Device presets use `lightvm.preset/1` with a `layers` array, using the same fields
+Device presets use `lightvm.preset` with a `layers` array, using the same fields
 as a scene. Each layer additionally requires `crc32`, matching the stored program.
 Scene documents may also supply `crc32` to check the expected version. The editor
 derives immutable program names from the compiled SHA-256 digest and keeps full
 digests and editable source in its browser library. Multiple presets/layers share
 one stored program; active instances retain independent settings and state.
 
-Firmware advertises `preset_api: 1` and `preset_limit: 5`. Presets have independent
+Firmware advertises `presets: true` and `preset_limit: 5`. Presets have independent
 storage slots from the eight compiled programs, and each document is limited to
 `config_limit` bytes and the JSON parser's token bound. Public preset names allow
 1–30 letters, digits, dots, underscores or hyphens. Presets reserve `$p` names in

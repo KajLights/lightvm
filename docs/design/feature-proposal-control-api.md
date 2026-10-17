@@ -1,6 +1,6 @@
 # Future control and input model
 
-Status: Proposed. The implemented contract is [animation/1](../animation-profile.md)
+Status: Proposed. The implemented contract is [animation](../animation-profile.md)
 with frozen initialization settings and [current management](../control-api.md).
 Live INPUT, general events, jobs and device capabilities below are future work.
 

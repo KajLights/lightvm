@@ -5,15 +5,17 @@ function(lightvm_add_core)
     if(NOT EXISTS "${LIGHTVM_BOARD_CONFIG}")
         message(FATAL_ERROR "Set LIGHTVM_BOARD_CONFIG to the port's board/resource header")
     endif()
+    include("${LIGHTVM_ROOT}/cmake/lightvm_release.cmake")
+    configure_file("${LIGHTVM_ROOT}/cmake/lightvm_release.h.in" "${CMAKE_CURRENT_BINARY_DIR}/generated/lightvm_release.h" @ONLY)
     add_library(lightvm_config INTERFACE)
-    target_include_directories(lightvm_config INTERFACE "${LIGHTVM_ROOT}/src")
+    target_include_directories(lightvm_config INTERFACE "${LIGHTVM_ROOT}/src" "${CMAKE_CURRENT_BINARY_DIR}/generated")
     target_compile_definitions(lightvm_config INTERFACE
         LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
         LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>)
     target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
     add_library(lightvm_core STATIC
-        "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
+        "${LIGHTVM_ROOT}/src/release.c" "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
         "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"

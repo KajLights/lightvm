@@ -19,7 +19,7 @@ from lightvm import (
     Sprite, SpriteBatch, PixelArray, Transform, ColorTransform,
 )
 
-profile("animation/1")
+profile("animation")
 
 STAR_IMAGE = PixelArray([
      64,  64,  64, 255,

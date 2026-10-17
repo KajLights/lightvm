@@ -45,7 +45,7 @@ static void scene_contract(void){
     static App app;Session session;app_init(&app,capture,&reply);
     session_init(&session,&app,1,capture,&reply);
     secondary_output_allowed=true;
-    const char *config_json="{\"schema\":\"lightvm.config/1\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":3}},{\"id\":\"other\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP17\",\"count\":3}}]}";
+    const char *config_json="{\"schema\":\"lightvm.config\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":3}},{\"id\":\"other\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP17\",\"count\":3}}]}";
     memcpy(app.staging,config_json,strlen(config_json));app.expected=(uint32_t)strlen(config_json);
     app.staged=true;app.object_kind=1;app.upload_owner=1;
     const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";

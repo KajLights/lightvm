@@ -1,4 +1,5 @@
 #include "app.h"
+#include "release.h"
 #include "runtime.h"
 #include "json.h"
 #include "vm_allocator.h"
@@ -329,7 +330,7 @@ static void resume_clock(App *a) {
 static void describe(App *a, uint16_t id) {
     Writer w={.app=a,.id=id};
     const PlatformInfo *info=platform_info();
-    literal(&w,"{\"connection_api\":1,\"management_api\":1,\"schema\":\"lightvm.config/1\",\"platform\":"); quoted(&w,info->platform);
+    literal(&w,"{\"version\":\"" LIGHTVM_VERSION "\",\"connections\":true,\"schema\":\"lightvm.config\",\"platform\":"); quoted(&w,info->platform);
     literal(&w,",\"device_id\":"); quoted(&w,a->device_id);
     literal(&w,",\"boot_id\":"); quoted(&w,a->boot_id);
     literal(&w,",\"wifi_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
@@ -373,9 +374,9 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"app_context_bytes\":"); number(&w,sizeof(App));
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
     literal(&w,",\"upload_page_bytes\":"); number(&w,STORE_PAGE_BYTES);
-    literal(&w,",\"program_schemas\":[\"lightvm.program/11\"],\"program_abis\":[4],\"bytecode_formats\":[\"LBC1/4\"],\"program_profiles\":[\"animation/1\"],\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"native_drawing_api\":4,\"scene_api\":1,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
+    literal(&w,",\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\"],\"slot_binding\":\"device\",\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"scenes\":true,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
-    literal(&w,",\"transient_settings\":true,\"preset_api\":1,\"preset_limit\":");number(&w,PRESET_LIMIT);
+    literal(&w,",\"transient_settings\":true,\"presets\":true,\"preset_limit\":");number(&w,PRESET_LIMIT);
     literal(&w,",\"scene_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
@@ -492,7 +493,7 @@ static const char *prepare_scene_data(App *a,AppDevice *d,Scene **out,const void
     if(!json_parse(j,data,size)||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),schema))goto done;
     int layers=json_get(j,0,"layers");
     if(layers<0||j->tokens[layers].type!=JSON_ARRAY||(unsigned)j->tokens[layers].children>SCENE_LAYER_LIMIT)goto done;
-    if(!strcmp(schema,"lightvm.preset/1")){
+    if(!strcmp(schema,"lightvm.preset")){
         if(!j->tokens[layers].children){error="preset requires at least one layer";goto done;}
         for(int t=layers+1;t<j->tokens[layers].next;t=j->tokens[t].next)
             if(json_get(j,t,"crc32")<0){error="preset layers require crc32 version references";goto done;}
@@ -554,7 +555,7 @@ static bool preset_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const ch
         size=entry->size;data=platform_calloc(1,size);document=data;
         if(!data||!store_read(&a->store,entry,0,data,size)){platform_free(data);error_reply(a,id,STATUS_STORAGE,"read_failed","preset read failed");return true;}
     }
-    Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,document,size,"lightvm.preset/1");
+    Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,document,size,"lightvm.preset");
     if(error){scene_destroy(candidate);platform_free(data);error_reply(a,id,STATUS_LOAD,"invalid_preset",error);return true;}
     if(saving){
         scene_destroy(candidate);bool ok=store_put(&a->store,name,document,size);resume_clock(a);
@@ -579,7 +580,7 @@ static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const cha
     if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=d->scene_revision||revision==UINT32_MAX){error_reply(a,id,STATUS_CONFIG,"stale_revision","expected scene revision must match");return true;}
     if(!strcmp(op,"scene_apply")){
         if(!a->staged||a->object_kind!=4||a->upload_owner!=a->source){error_reply(a,id,STATUS_CONFIG,"no_candidate","upload a scene document first");return true;}
-        Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,a->staging,a->expected,"lightvm.scene/1");
+        Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,a->staging,a->expected,"lightvm.scene");
         if(error){scene_destroy(candidate);error_reply(a,id,STATUS_LOAD,"scene_preparation_failed",error);return true;}
         apply_scene(d,candidate);
         a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"scene applied in RAM");return true;
@@ -629,7 +630,7 @@ static bool scene_device_command(App *a,AppDevice *d,uint8_t command,uint16_t id
     Scene *s=d->scene;if(!s)return false;
     if(command==CMD_STATUS){
         char message[FRAME_LIMIT-8];const PlatformInfo *info=platform_info();
-        snprintf(message,sizeof(message),"api=1 protocol=1 platform=%.16s board=%.24s output=ws2812 ready=1 uploading=%u module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pixels=%lu frame_interval_us=%u mode=scene frames=%lu layers=%u animation_error=%.99s",info->platform,info->board,d->vm.uploading,MODULE_LIMIT,(unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,(unsigned long)s->count,FRAME_INTERVAL_US,(unsigned long)s->frames,s->layer_count,s->error[0]?s->error:"-");
+        snprintf(message,sizeof(message),"version=" LIGHTVM_VERSION " protocol=1 platform=%.16s board=%.24s output=ws2812 ready=1 uploading=%u module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pixels=%lu frame_interval_us=%u mode=scene frames=%lu layers=%u animation_error=%.99s",info->platform,info->board,d->vm.uploading,MODULE_LIMIT,(unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,(unsigned long)s->count,FRAME_INTERVAL_US,(unsigned long)s->frames,s->layer_count,s->error[0]?s->error:"-");
         reply(a,id,STATUS_OK,0,message);return true;
     }
     if(command==CMD_FRAME){

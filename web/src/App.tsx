@@ -1,3 +1,4 @@
+import { VERSION } from './release';
 import { useEffect, useState } from 'react';
 import { Link, matchPath, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { activityActions, outputFor, useAppDispatch, useAppSelector } from './store';
@@ -28,7 +29,7 @@ export function App() {
   const knownRoute = location.pathname === '/devices' || offline || firmware || (workspace && ['develop', 'configure'].includes(route!.params.view || ''));
   return <>
     <header className="site-header">
-      <Link className="brand" to="/devices"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span className="version">LAB</span></Link>
+      <Link className="brand" to="/devices"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span className="version">{VERSION}</span></Link>
       <nav className="global-nav" aria-label="Application"><Link to="/devices" aria-current={location.pathname === '/devices' ? 'page' : undefined}>Devices</Link><Link to="/firmware" aria-current={location.pathname === '/firmware' ? 'page' : undefined}>Firmware</Link></nav>
       <span className={'badge ' + (device.selectedPath ? 'ready' : '')}><span className="status-dot" /><span>{device.selectedPath && description ? description.board : 'No device connected'}</span></span>
     </header>
@@ -36,7 +37,7 @@ export function App() {
       {activity.notice && <div id="notice" className="notice" role="alert"><span>{activity.notice}</span><button className="quiet" aria-label="Dismiss notice" onClick={() => dispatch(activityActions.notice(''))}>×</button></div>}
       {workspace && description && <>
         <section className="device-bar" aria-label="Selected device">
-          <div><p className="eyebrow">DEVICE WORKSPACE</p><strong id="board">{description.board}</strong><span className="device-id">{description.device_id}</span><p id="output-binding" className="helper">{device.config?.devices.find(item => item.id === device.selectedOutput) ? device.config.devices.find(item => item.id === device.selectedOutput)!.config.count + ' pixels · ' + device.selectedOutput : 'Output is not configured'}</p></div>
+          <div><p className="eyebrow">DEVICE WORKSPACE</p><strong id="board">{description.board}</strong><span className="device-id">{description.device_id} · LightVM {description.version}</span><p id="output-binding" className="helper">{device.config?.devices.find(item => item.id === device.selectedOutput) ? device.config.devices.find(item => item.id === device.selectedOutput)!.config.count + ' pixels · ' + device.selectedOutput : 'Output is not configured'}</p></div>
           <div className="connection-tools"><label className="sr-only" htmlFor="command-path">Command path</label>
             <select id="command-path" value={device.selectedPath || ''} disabled={busy || !device.paths.length} onChange={event => void devices.select(event.target.value as Path)}>
               {!device.selectedPath && <option value="">Choose a connection</option>}

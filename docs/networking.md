@@ -81,7 +81,7 @@ For standalone operation, save a configuration such as
 
 ```json
 {
-  "schema": "lightvm.network/1",
+  "schema": "lightvm.network",
   "wifi": {
     "enabled": true,
     "mode": "ap",
@@ -126,7 +126,7 @@ accepts a JSON file:
 
 ```json
 {
-  "schema": "lightvm.network/1",
+  "schema": "lightvm.network",
   "wifi": {
     "enabled": true,
     "country": "XX",
@@ -160,7 +160,7 @@ direct addresses remain available when multicast is blocked.
 ## Local device discovery
 
 Wi-Fi/HTTP firmware on Pico W and all XIAO ESP32 profiles advertises
-`_lightvm._tcp.local` with its command port, stable device ID, board and API version.
+`_lightvm._tcp.local` with its command port, stable device ID, board and application release.
 Each board also answers the shared `lightvm.local` IPv4 name. This bootstrap name
 may reach any LightVM board; each board retains its unique `lightvm-xxxxxx.local`
 name, probes for collisions and chooses another suffix if necessary.
@@ -180,7 +180,7 @@ The unauthenticated, read-only endpoint is also available to other tools:
 curl http://lightvm.local/api/v1/devices
 ```
 
-It returns `schema:"lightvm.discovery/1"`, `available`, `capacity:8`, `truncated`
+It returns `schema:"lightvm.discovery"`, `available`, `capacity:8`, `truncated`
 and `devices`. The first entry is the responding board; entries contain
 `hostname`, `device_id`, `board`, `ip`, `port` and `url`. The cache holds this board
 and up to seven peers. Incomplete records are hidden, graceful shutdown removes
@@ -205,7 +205,7 @@ The host simulator returns itself for HTTP/UI testing and does not advertise on
 the LAN. USB-only and Wi-Fi-only builds omit discovery entirely.
 
 Network settings have their own durable revision and do not form part of
-`lightvm.config/1`. A commit validates a staged candidate, checks its expected
+`lightvm.config`. A commit validates a staged candidate, checks its expected
 revision, atomically saves it, then schedules reconfiguration after its reply
 (or after one second if the reply cannot be delivered). A short transmit grace
 allows accepted response bytes to leave the native sender. A failed save retains
@@ -278,9 +278,10 @@ use the inactivity timeout. RESET remains an explicit device-wide runtime reset.
 New management operations are `network_get`, `network_status`,
 `network_validate`, `network_commit` and `session_close`. Network uploads use
 OBJECT_BEGIN with `kind:"network"`. Commit uses `expected_revision` from discovery's
-`network_revision`. Discovery adds `connection_api:1`, stable `device_id`,
+`network_revision`. Discovery adds `connections:true`, stable `device_id`,
 per-boot `boot_id`, feature support, network revision and the effective VM heap limit.
-The descriptor advertises the selected current execution contract.
+The descriptor reports the application `version`; compatibility follows the
+[release contract](versioning.md).
 
 Network settings share the current format-4 catalogue with programs and hardware
 configuration. Unsupported committed directory formats require explicit

@@ -272,7 +272,7 @@ class Client:
     def describe(self):
         self.manage("describe")
         description = json.loads(self.data_reply)
-        self.connection_api = description.get("connection_api", 0)
+        self.connections = description.get("connections", 0)
         return description
 
     def get_config(self, saved=False):
@@ -308,7 +308,7 @@ class Client:
         return reply
 
     def close(self):
-        if getattr(self, "connection_api", 0) and isinstance(self.transport, SerialTransport):
+        if getattr(self, "connections", 0) and isinstance(self.transport, SerialTransport):
             try:
                 self.manage("session_close")
             except (ProtocolError, OSError):
@@ -412,7 +412,7 @@ class Client:
 
     def configure_scene(self, layers, device=None):
         revision = self.scene(device=device)['revision']
-        document = {'schema':'lightvm.scene/1', 'layers':layers}
+        document = {'schema':'lightvm.scene', 'layers':layers}
         self.upload_object('scene', json.dumps(document, separators=(',',':')).encode())
         return self.manage('scene_apply', expected_revision=revision, **({'device':device} if device is not None else {}))
 
@@ -431,7 +431,7 @@ class Client:
 
     def save_preset(self, name, layers, device=None):
         revision = self.describe()['catalog_revision']
-        document = {'schema': 'lightvm.preset/1', 'layers': layers}
+        document = {'schema': 'lightvm.preset', 'layers': layers}
         try:
             self.upload_object('preset', json.dumps(document, separators=(',', ':')).encode(), name)
             return self.manage('preset_save', name=name, expected_revision=revision,
@@ -496,7 +496,7 @@ def main():
     action.add_argument("--get-procedure", metavar="NAME")
     action.add_argument("--delete-procedure", metavar="NAME")
     action.add_argument("--activate", metavar="NAME")
-    action.add_argument("--scene", type=Path, help="apply a lightvm.scene/1 JSON document in RAM")
+    action.add_argument("--scene", type=Path, help="apply a lightvm.scene JSON document in RAM")
     action.add_argument("--get-scene", action="store_true")
     action.add_argument("--scene-snapshot", action="store_true")
     action.add_argument("--clear-scene", action="store_true")
@@ -552,7 +552,7 @@ def main():
         if management:
             if args.scene:
                 document=json.loads(args.scene.read_text())
-                if document.get('schema') != 'lightvm.scene/1': raise ValueError('expected lightvm.scene/1')
+                if document.get('schema') != 'lightvm.scene': raise ValueError('expected lightvm.scene')
                 client.configure_scene(document['layers'],device=args.device)
             elif args.get_scene:
                 print(json.dumps(client.scene(device=args.device),indent=2))

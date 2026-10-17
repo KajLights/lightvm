@@ -16,7 +16,7 @@ function parseArguments(value: string): Record<string, number | boolean> | null 
 function parseConfig(value: string): HardwareConfig | null {
   try {
     const result = JSON.parse(value);
-    if (!object(result) || result.schema !== 'lightvm.config/1' || !Array.isArray(result.devices) || Object.keys(result).some(key => key !== 'schema' && key !== 'devices')) return null;
+    if (!object(result) || result.schema !== 'lightvm.config' || !Array.isArray(result.devices) || Object.keys(result).some(key => key !== 'schema' && key !== 'devices')) return null;
     return result.devices.every(item => object(item) && typeof item.id === 'string' && item.type === 'ws2812b' && object(item.config) && typeof item.config.pin === 'string' && typeof item.config.count === 'number' &&
       (item.startup === undefined || (object(item.startup) && typeof item.startup.procedure === 'string' && (item.startup.args === undefined || object(item.startup.args))))) ? result as unknown as HardwareConfig : null;
   } catch { return null; }
@@ -81,7 +81,7 @@ function Hardware() {
   return <section className="card config-card"><div className="card-heading"><div><p className="eyebrow">OUTPUT &amp; STARTUP</p><h2>Set up the lights</h2></div><button id="config-refresh" className="quiet small" disabled={!device.selectedPath || busy} onClick={() => void devices.run('Refreshing configuration', async client => devices.readConfig(devices.require(client)))}>Refresh</button></div>
     <p className="muted">Configure each output and choose the animation it runs on reboot.</p>
     {stale && <div className="stale-banner" role="alert">Device configuration changed while you were editing. Review the latest values before saving. <button className="quiet small" onClick={reload}>Load device values</button></div>}
-    {!draft && <p role="alert">Enter valid lightvm.config/1 JSON with schema and devices. Startup belongs inside each device.</p>}
+    {!draft && <p role="alert">Enter valid lightvm.config JSON with schema and devices. Startup belongs inside each device.</p>}
     <fieldset id="config-fields" disabled={!device.selectedPath || busy}>
       {draft?.devices.map((output, index) => <fieldset className="output-config" aria-label={'Output ' + (index + 1)} key={index}>
         <legend>{output.id || 'Unnamed output'}</legend>

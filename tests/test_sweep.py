@@ -26,7 +26,7 @@ class SweepTests(unittest.TestCase):
 
     def configure(self, count):
         self.count = count
-        self.client.configure({'schema': 'lightvm.config/1', 'devices': [
+        self.client.configure({'schema': 'lightvm.config', 'devices': [
             {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': count}}]})
 
     def load(self, **settings):

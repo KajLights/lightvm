@@ -1,3 +1,4 @@
+import { parseRelease } from './release';
 import { crc32 } from '../protocol.mjs';
 import type { Compilation, Manifest, Setting } from './types';
 
@@ -9,11 +10,11 @@ export interface SavedAnimation {
 }
 export interface PresetLayer { id: string; animation: string; settings: SettingsValues; opacity: number; blend: Blend }
 export interface SavedPreset { id: string; name: string; layers: PresetLayer[] }
-export interface Library { schema: 'lightvm.library/1'; animations: SavedAnimation[]; presets: SavedPreset[] }
+export interface Library { schema: 'lightvm.library'; animations: SavedAnimation[]; presets: SavedPreset[] }
 export interface DeviceLayer { id: string; procedure: string; crc32: number; settings: SettingsValues; opacity: number; blend: Blend }
 export const LIBRARY_KEY = 'lightvm.library.v1';
 export const BLENDS: Blend[] = ['over', 'add', 'screen', 'multiply'];
-export const emptyLibrary = (): Library => ({ schema: 'lightvm.library/1', animations: [], presets: [] });
+export const emptyLibrary = (): Library => ({ schema: 'lightvm.library', animations: [], presets: [] });
 export function bytesFor(animation: SavedAnimation) { return Uint8Array.from(atob(animation.bytecode), byte => byte.charCodeAt(0)); }
 export async function digestFor(bytes: Uint8Array) {
   const digest = await crypto.subtle.digest('SHA-256', new Uint8Array(bytes));
@@ -35,14 +36,15 @@ export function validateSetting(setting: Setting, value: unknown) {
 }
 export function validateArtifact(bytes: Uint8Array, manifest: Manifest) {
   const invalid = () => new Error('Unsupported compiled animation. Recompile its source with the current compiler.');
-  if (manifest.abi !== 4 || manifest.schema !== 'lightvm.program/11' || manifest.profile !== 'animation/1' ||
-      manifest.pixels?.format !== 'rgba8-premul' || !Array.isArray(manifest.settings) || 'parameters' in manifest || bytes.length < 96) throw invalid();
+  // Reading a library never requires the connected firmware (or this editor)
+  // to support execution. Keep source and recipes available across releases.
+  if (!manifest || typeof manifest.schema !== 'string' || typeof manifest.profile !== 'string' ||
+      !Array.isArray(manifest.settings) || bytes.length < 96) throw invalid();
+  if (manifest.requires !== undefined && !parseRelease(manifest.requires)) throw invalid();
+  if (manifest.compiler_version !== undefined && !parseRelease(manifest.compiler_version, false)) throw invalid();
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const u32 = (offset: number) => view.getUint32(offset, true);
-  const offset = 96 + u32(8)*8 + u32(12)*8 + u32(16)*4 + u32(20)*24 + u32(24)*24 + u32(28)*16 + u32(32)*16 + u32(36)*16;
-  if (new TextDecoder().decode(bytes.subarray(0,4)) !== 'LBC1' || u32(4) !== 4 || u32(72) !== 3 ||
-      u32(8) < 3 || u32(8) > 128 || !u32(12) || u32(12) > 2048 || u32(20) !== 2 || !u32(24) || u32(24) > 16 || u32(36) !== manifest.settings.length ||
-      offset + u32(76) !== bytes.length || ![0,2,3,4].includes(u32(80))) throw invalid();
+  const size = view.getUint32(76, true), offset = bytes.length - size;
+  if (new TextDecoder().decode(bytes.subarray(0,4)) !== 'LBC1' || !size || offset < 96) throw invalid();
   let embedded: Manifest;
   try { embedded = JSON.parse(new TextDecoder().decode(bytes.subarray(offset))); } catch { throw invalid(); }
   const canonical = (value: any): any => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
@@ -74,7 +76,9 @@ function checkSettings(value: unknown): value is SettingsValues {
 export function parseLibrary(text: string): Library {
   if (text.length > 5 * 1024 * 1024) throw new Error('Choose a library smaller than 5 MiB.');
   const library = JSON.parse(text) as Library;
-  if (library?.schema !== 'lightvm.library/1' || !Array.isArray(library.animations) || !Array.isArray(library.presets)) throw new Error('Unsupported animation library.');
+  // Recognize the library namespace for source recovery, including old saved
+  // envelopes. Structural checks below are independent of execution support.
+  if (typeof library?.schema !== 'string' || library.schema.split('/')[0] !== 'lightvm.library' || !Array.isArray(library.animations) || !Array.isArray(library.presets)) throw new Error('Unsupported animation library.');
   const ids = new Set<string>();
   for (const animation of library.animations) {
     if (!animation || typeof animation.id !== 'string' || !animation.id || ids.has(animation.id) || typeof animation.name !== 'string' || !animation.name.trim() || animation.name.length > 80 ||
@@ -97,7 +101,7 @@ export function parseLibrary(text: string): Library {
     }
     deviceLayers(library, preset.layers);
   }
-  return library;
+  return { ...library, schema: 'lightvm.library' };
 }
 export function readLibrary(): { library: Library; error: string; backup: string | null } {
   let saved: string | null = null;

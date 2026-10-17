@@ -70,12 +70,12 @@ python -m lightvm.compiler examples/animations/rainbow.py --no-optimize -o build
 ```
 
 Python callers can pass `compile_source(source, optimize=False)`. Target-aware
-compilation checks the actual drawing requirement and rejects insufficient targets.
+compilation checks the minimum application release and rejects insufficient targets.
 
-New programs use schema 11. Optimized maps require drawing API 4, retaining LBC1/4 and execution
-ABI 4. Opcode 39 contains a destination reference, index register, exclusive stop
-register and the PC after its embedded body. Header drawing requirements 0, 2, 3 and 4 describe feature use
-within the single current package contract; they are not older package versions. `native_draw_us` includes map execution in addition to native
+Pixel maps are part of the LightVM 1.0.0 baseline and use the same minimum-release
+check as other instructions. Opcode 39 contains a destination reference, index
+register, exclusive stop register and the PC after its embedded body. Header words
+80–92 remain reserved zero; there is no separate drawing API version. `native_draw_us` includes map execution in addition to native
 drawing bindings; `dispatch_count` counts the outer VM dispatches.
 
 ## Performance

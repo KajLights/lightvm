@@ -150,7 +150,7 @@ export class LightVMClient {
     return this.command(COMMAND.MANAGE, encoder.encode(encodeJSON({ op, ...fields })));
   }
 
-  async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionApi = description.connection_api; return description; }
+  async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionsSupported = description.connections; return description; }
 
   /** @param {Uint8Array} bytecode @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [device] @param {Record<string, number | boolean>} [settings] */
   async upload(bytecode, limit, onProgress = () => {}, device = '', settings = {}) {
@@ -232,7 +232,7 @@ export class LightVMClient {
   async configureScene(layers, device) {
     const state = await this.json('scene_get', { device });
     try {
-      await this.uploadObject('scene', encoder.encode(JSON.stringify({ schema: 'lightvm.scene/1', layers })));
+      await this.uploadObject('scene', encoder.encode(JSON.stringify({ schema: 'lightvm.scene', layers })));
       return await this.manage('scene_apply', { device, expected_revision: state.revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
@@ -240,7 +240,7 @@ export class LightVMClient {
   async savePreset(name, layers, device) {
     const state = await this.describe();
     try {
-      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset/1', layers })), name);
+      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset', layers })), name);
       return await this.manage('preset_save', { name, device, expected_revision: state.catalog_revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
@@ -262,7 +262,7 @@ export class LightVMClient {
 
 
   async close() {
-    if (!this.closed && !this.pending && this.connectionApi) await this.manage("session_close").catch(() => {});
+    if (!this.closed && !this.pending && this.connectionsSupported) await this.manage("session_close").catch(() => {});
     this.fail(new Error("Connection closed."));
     await this.transport.close();
   }

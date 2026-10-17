@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from .compiler_core import CompileError
 from .portable import PortableCompiler
+from .release import release_error
 
 @dataclass
 class Diagnostic:
@@ -37,16 +38,9 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
         if target is not None:
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
-            abi = manifest['abi']
-            if abi not in target.get('program_abis', []) or manifest['schema'] not in target.get('program_schemas', []):
-                raise CompileError(f'target does not advertise program ABI {abi} and {manifest["schema"]}')
-            if f'LBC1/{abi}' not in target.get('bytecode_formats', []):
-                raise CompileError(f'target does not advertise LBC1/{abi} bytecode')
-            if abi == 4 and manifest['profile'] not in target.get('program_profiles', []):
-                raise CompileError('target does not advertise ' + manifest['profile'])
-            drawing_api = int.from_bytes(bytecode[80:84], 'little')
-            if abi == 4 and drawing_api > target.get('native_drawing_api', 0):
-                raise CompileError(f'target does not advertise native drawing API {drawing_api}')
+            error = release_error(target.get('version'), manifest['requires'])
+            if error:
+                raise CompileError(error)
         return Compilation(bytecode, manifest)
     except (CompileError, SyntaxError, ValueError, OverflowError, RecursionError) as error:
         node = getattr(error, "node", None)

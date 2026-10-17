@@ -7,19 +7,19 @@ import { createAppStore, deviceActions } from './store';
 import type { Description, HardwareConfig, NetworkConfig } from './types';
 
 const description: Description = {
-  device_id: 'test-device', boot_id: 'boot-1', board: 'Test board', program_abis: [4], bytecode_formats: ['LBC1/4'], program_profiles: ['animation/1'], program_schemas: ['lightvm.program/11'], module_limit: 32768, config_limit: 8192,
+  device_id: 'test-device', boot_id: 'boot-1', board: 'Test board', version: '1.0.0', module_limit: 32768, config_limit: 8192,
   pixel_capacity: 100, pins: ['GPIO2'], slots: ['A'], storage_available: true,
   wifi_supported: true, wifi_ap_supported: true, http_supported: true, active_revision: 1, saved_revision: 1,
   catalog_revision: 0, network_revision: 1, active_procedure: '',
 };
 function hardware(count: number): HardwareConfig {
   return {
-    schema: 'lightvm.config/1',
+    schema: 'lightvm.config',
     devices: [{ id: 'lights', type: 'ws2812b', config: { pin: 'GPIO2', count } }],
   };
 }
 function network(port: number): NetworkConfig {
-  return { schema: 'lightvm.network/1', wifi: { enabled: false, country: 'XX', networks: [] }, http: { enabled: true, port } };
+  return { schema: 'lightvm.network', wifi: { enabled: false, country: 'XX', networks: [] }, http: { enabled: true, port } };
 }
 function readyStore() {
   const store = createAppStore();
@@ -60,7 +60,7 @@ describe('configuration drafts', () => {
     expect(second.getByLabelText('Startup program')).toHaveValue('color');
     expect(JSON.parse((second.getByLabelText('Startup arguments (JSON)') as HTMLTextAreaElement).value)).toEqual(config.devices[1].startup!.args);
     fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
-    await waitFor(() => expect(configure).toHaveBeenCalledWith({ schema: 'lightvm.config/1', devices: [
+    await waitFor(() => expect(configure).toHaveBeenCalledWith({ schema: 'lightvm.config', devices: [
       { ...config.devices[0], id: 'ceiling', startup: { procedure: 'rainbow', args: { duration: 6.6 } } }, config.devices[1],
     ] }, expect.objectContaining({ active_revision: 1, saved_revision: 1 }), { save: true }));
     fireEvent.change(first.getByLabelText('Startup program'), { target: { value: 'color' } });

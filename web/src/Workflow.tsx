@@ -1,8 +1,9 @@
+import { VERSION } from './release';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { LightVMClient } from '../protocol.mjs';
 import { crc32 } from '../protocol.mjs';
-import { supportsProgram } from './compiler';
+import { supportsProgram, programCompatibility } from './compiler';
 import { download } from './device-service';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
@@ -95,7 +96,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
   function moveLayer(index: number, delta: number) { const next = [...layers]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; setLayers(next); }
   async function ensurePrograms(client: LightVMClient) {
     const target = await client.describe();
-    if (!target.scene_api) throw new Error('Install firmware with scene composition support.');
+    if (!target.scenes) throw new Error('Install firmware with scene composition support.');
     if (!layers.length || layers.length > target.scene_layer_limit) throw new Error('This output supports up to ' + target.scene_layer_limit + ' layers.');
     const animations = [...new Set(layers.map(layer => layer.animation))].map(id => library.animations.find(item => item.id === id)!);
     const stored = await client.json('procedure_list') as { name: string; size: number; crc32: number }[];
@@ -104,7 +105,9 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
     for (const animation of animations) {
       const bytes = bytesFor(animation);
       if (await digestFor(bytes) !== animation.digest) throw new Error('The saved animation checksum differs. Import an intact library backup.');
-      if (!supportsProgram(target, animation.manifest) || bytes.length > target.module_limit) throw new Error(animation.name + ' is incompatible with this device.');
+      const problem = programCompatibility(target, animation.manifest);
+      if (problem) throw new Error(animation.name + ': ' + problem);
+      if (bytes.length > target.module_limit) throw new Error(animation.name + ' exceeds this device’s program limit.');
       const match = stored.find(item => item.name === programName(animation));
       if (match && (match.crc32 !== crc32(bytes) || match.size !== bytes.length)) throw new Error('A stored animation version differs from the library.');
       if (!match) {
@@ -165,12 +168,12 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
         {!output && device.selectedPath && <p className="helper"><Link to={'/devices/' + device.description?.device_id + '/configure'}>Configure an output</Link> before previewing.</p>}
         <p className="helper">Preview replaces playback on this output. Other outputs continue. Saved presets and startup settings stay as saved.</p>
         <div className="artifact"><span>Compiled animation</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div>
-        {artifact && <p id="artifact-detail" className="helper">ABI {artifact.manifest.abi} · {(artifact.manifest.settings ?? []).length} settings</p>}
-        <fieldset disabled={busy}><SettingFields manifest={artifact?.manifest ?? { abi: 4, schema: 'lightvm.program/11', profile: 'animation/1', pixels: { format: 'rgba8-premul' }, settings: [] }} values={settings} onChange={setSettings} prefix="draft" /></fieldset>
+        {artifact && <p id="artifact-detail" className="helper">LightVM {artifact.manifest.requires}+ · {(artifact.manifest.settings ?? []).length} settings</p>}
+        <fieldset disabled={busy}><SettingFields manifest={artifact?.manifest ?? { compiler_version: VERSION, requires: '1.0.0', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [] }} values={settings} onChange={setSettings} prefix="draft" /></fieldset>
         <button id="upload" className="primary full" disabled={busy || !connected || !compatible || !artifact || artifact.bytes > (device.description?.module_limit ?? 0)} onClick={() => void preview()}>Preview animation →</button>
         {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
         <div className="button-pair"><button id="download" className="quiet" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), editor.filename.replace(/\.py$/i, '') + '.lbc', 'application/octet-stream'); }}>Download .lbc</button><button id="stop" className="quiet" disabled={busy || !connected} onClick={() => void devices.stopPlayback()}>Stop output</button></div>
-        {artifact && !compatible && <p className="helper">This animation requires newer device firmware.</p>}
+        {artifact && !compatible && <p className="helper">{device.description && artifact && programCompatibility(device.description, artifact.manifest)}</p>}
         {editor.compiler === 'error' && <button id="retry-compiler" className="quiet" onClick={() => compiler.retry()}>Retry compiler</button>}
       </section>
       <section className="card"><div className="card-heading"><h2>Save animation</h2></div>
@@ -182,6 +185,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
     <div className="workflow-grid">
       <section className="card"><div className="card-heading"><h2>Animation library</h2></div>
         <label htmlFor="saved-animation">Saved animation version</label><select id="saved-animation" value={selectedAnimation} onChange={event => setSelectedAnimation(event.target.value)}><option value="">Choose an animation</option>{library.animations.map(item => <option key={item.id} value={item.id}>{item.name + ' · v' + item.version}</option>)}</select>
+        {selected && device.description && programCompatibility(device.description, selected.manifest) && <p role="status" className="helper">{programCompatibility(device.description, selected.manifest)} You can still edit and export this animation.</p>}
         <div className="button-pair"><button className="secondary" disabled={busy || !selected} onClick={() => void openAnimation()}>Edit animation</button><button className="quiet" disabled={busy || !selected} onClick={() => { if (selected) single(selected); }}>Use alone</button></div>
         <button className="secondary full" disabled={busy || !selected || layers.length >= 8} onClick={addLayer}>Add as layer</button>
         <button className="quiet full" disabled={busy || !selected || Boolean(storageError)} onClick={() => void devices.run('Deleting animation version', async () => {
@@ -206,11 +210,11 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
           </div>;
         })}</fieldset>
         {layerBytes !== null && layers.length > 0 && <p className="helper">Frame buffers: {layerBytes.toLocaleString()} bytes, plus animation state. The device checks available memory before replacing playback. Composition also stores each shared program in its library.</p>}
-        <button className="primary full" disabled={busy || !connected || !layers.length || !device.description?.scene_api} onClick={() => void previewLayers()}>Preview preset →</button>
+        <button className="primary full" disabled={busy || !connected || !layers.length || !device.description?.scenes} onClick={() => void previewLayers()}>Preview preset →</button>
         <label htmlFor="preset-name">Preset name</label><input id="preset-name" value={presetName} maxLength={30} onChange={event => setPresetName(event.target.value)} placeholder="blue-scanner" />
-        <div className="button-pair"><button className="secondary" disabled={busy || !layers.length || !presetName || Boolean(storageError)} onClick={() => void savePreset()}>Save preset</button><button className="secondary" disabled={busy || !connected || !layers.length || !presetName || !device.description?.preset_api} onClick={() => void saveToDevice()}>Save preset to device</button></div>
+        <div className="button-pair"><button className="secondary" disabled={busy || !layers.length || !presetName || Boolean(storageError)} onClick={() => void savePreset()}>Save preset</button><button className="secondary" disabled={busy || !connected || !layers.length || !presetName || !device.description?.presets} onClick={() => void saveToDevice()}>Save preset to device</button></div>
         <p className="helper">Save preset keeps an editable recipe in this browser. Save to device stores its compiled programs and recipe in flash. Saving an existing name replaces that preset. Presets run on request; startup currently uses a single stored program.</p>
-        {connected && !device.description?.preset_api && <p className="helper">Install firmware with preset storage support to save recipes on this device.</p>}
+        {connected && !device.description?.presets && <p className="helper">Install firmware with preset storage support to save recipes on this device.</p>}
       </section>
       <section className="card"><div className="card-heading"><h2>Presets</h2></div>
         <label htmlFor="saved-preset">Browser preset</label><select id="saved-preset" value={selectedPreset} onChange={event => setSelectedPreset(event.target.value)}><option value="">Choose a preset</option>{library.presets.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>

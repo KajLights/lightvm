@@ -163,7 +163,7 @@ export class DeviceService {
     if (client === this.client) this.store.dispatch(deviceActions.procedures(procedures));
   }
   async readPresets(client: LightVMClient) {
-    if (!this.snapshot.device.description?.preset_api) return;
+    if (!this.snapshot.device.description?.presets) return;
     const presets = await client.json('preset_list');
     if (client === this.client) this.store.dispatch(deviceActions.presets(presets));
   }

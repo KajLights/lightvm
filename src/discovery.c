@@ -1,4 +1,5 @@
 #include "discovery.h"
+#include "release.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -127,7 +128,7 @@ static void own_records(Discovery *d,Packet *p,uint32_t ttl,bool alias,bool lega
     bool flush=!legacy;
     size_t n=rr(p,service,PTR,false,ttl); name(p,instance); finish_rr(p,n);
     n=rr(p,instance,SRV,flush,ttl); number(p,0,2); number(p,0,2); number(p,self->port,2); name(p,host); finish_rr(p,n);
-    n=rr(p,instance,TXT,flush,ttl); text(p,"id=",self->device_id); text(p,"board=",self->board); text(p,"api=","1"); finish_rr(p,n);
+    n=rr(p,instance,TXT,flush,ttl); text(p,"id=",self->device_id); text(p,"board=",self->board); text(p,"version=",LIGHTVM_VERSION); finish_rr(p,n);
     n=rr(p,host,A,flush,ttl); put(p,self->ip,4); finish_rr(p,n);
     if (alias) { n=rr(p,bootstrap,A,false,ttl?10:0); put(p,self->ip,4); finish_rr(p,n); }
 }
@@ -185,21 +186,26 @@ void discovery_stop(Discovery *d,uint64_t now) {
     memset(d,0,sizeof(*d));
 }
 static void parse_txt(DiscoveryDevice *p,const uint8_t *bytes,size_t at,size_t end) {
-    char id[64]="",board[32]=""; bool api=false;
+    char id[64]="",board[32]=""; bool release=false;
     while (at<end) {
         unsigned n=bytes[at++]; if (n>end-at) return;
         const uint8_t *text=bytes+at; at+=n;
         char *out=NULL; size_t prefix=0,capacity=0;
         if (n>3 && !memcmp(text,"id=",3)) { out=id; prefix=3; capacity=sizeof(id); }
         else if (n>6 && !memcmp(text,"board=",6)) { out=board; prefix=6; capacity=sizeof(board); }
-        else if (n==5 && !memcmp(text,"api=1",5)) api=true;
+        else if(n>8&&!memcmp(text,"version=",8)){
+            char version[96];size_t length=n-8;if(length>=sizeof(version))return;
+            memcpy(version,text+8,length);version[length]=0;
+            if(memchr(version,0,length))return;
+            release=lightvm_release_valid(version,false);
+        }
         if (out) {
             size_t length=n-prefix; if (length>=capacity) return;
             memcpy(out,text+prefix,length); out[length]=0;
             if (memchr(out,0,length) || !label(out,capacity)) return;
         }
     }
-    if (api && id[0] && board[0]) { strcpy(p->device_id,id); strcpy(p->board,board); }
+    if (release && id[0] && board[0]) { strcpy(p->device_id,id); strcpy(p->board,board); }
 }
 void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8_t from[4],uint16_t port,uint64_t now) {
     if (!d->active || size<12 || size>DISCOVERY_PACKET_LIMIT) return;
@@ -325,7 +331,7 @@ static void json(char *out,size_t capacity,size_t *used,const char *format,...) 
 size_t discovery_json(Discovery *d,char *out,size_t capacity,uint64_t now) {
     size_t used=0; unsigned count=0;
     if (d && d->active) expire(d,now);
-    json(out,capacity,&used,"{\"schema\":\"lightvm.discovery/1\",\"capacity\":%u,\"available\":%s,\"truncated\":%s,\"devices\":[",DISCOVERY_LIMIT,d && d->active?"true":"false",d && d->truncated?"true":"false");
+    json(out,capacity,&used,"{\"schema\":\"lightvm.discovery\",\"capacity\":%u,\"available\":%s,\"truncated\":%s,\"devices\":[",DISCOVERY_LIMIT,d && d->active?"true":"false",d && d->truncated?"true":"false");
     if (d && d->active) {
         for (unsigned i=0;i<DISCOVERY_LIMIT;i++) {
             DiscoveryDevice *p=&d->devices[i]; if (i && !complete(p,now)) continue;

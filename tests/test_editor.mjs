@@ -9,7 +9,7 @@ import { crc32, frame, FrameDecoder, LightVMClient, COMMAND } from "../web/proto
 
 test("discovery bootstraps over HTTP, validates addresses and pins the bridge IP", async () => {
   const { DeviceDiscovery } = await import("../web/discovery.mjs");
-  const calls = [], payload = { schema: "lightvm.discovery/1", devices: [
+  const calls = [], payload = { schema: "lightvm.discovery", devices: [
     { hostname: "lightvm-123456.local", device_id: "pico-1234", board: "pico_w", ip: "192.168.1.20", port: 8080, url: "https://untrusted.example" },
     { hostname: "lightvm-abcdef.local", device_id: "esp32-abcdef", board: "xiao_esp32c6", ip: "192.168.1.21", port: 80 },
   ], truncated: true };
@@ -27,13 +27,13 @@ test("discovery falls back from a lost bridge and drops stale lists", async () =
   const { DeviceDiscovery, deviceList } = await import("../web/discovery.mjs");
   const calls = [], discovery = new DeviceDiscovery({ fetch: async url => {
     calls.push(url); if (!url.includes("lightvm.local")) throw new TypeError("offline");
-    return new Response(JSON.stringify({ schema: "lightvm.discovery/1", devices: [] }));
+    return new Response(JSON.stringify({ schema: "lightvm.discovery", devices: [] }));
   } });
   discovery.seed = "http://192.168.1.20";
   assert.deepEqual((await discovery.find()).devices, []);
   assert.deepEqual(calls, ["http://192.168.1.20/api/v1/devices", "http://lightvm.local/api/v1/devices"]);
-  assert.throws(() => deviceList({ schema: "lightvm.discovery/1", devices: [{ ip: "192.168.1.20", port: 0 }] }), /invalid/);
-  assert.throws(() => deviceList({ schema: "lightvm.discovery/1", devices: Array(9).fill({}) }), /valid device list/);
+  assert.throws(() => deviceList({ schema: "lightvm.discovery", devices: [{ ip: "192.168.1.20", port: 0 }] }), /invalid/);
+  assert.throws(() => deviceList({ schema: "lightvm.discovery", devices: Array(9).fill({}) }), /valid device list/);
   const offline = new DeviceDiscovery({ fetch: async () => { throw new TypeError("offline"); } });
   offline.seed = "http://192.168.1.20";
   await assert.rejects(offline.find(), /No devices found/); assert.equal(offline.seed, "");
@@ -93,10 +93,10 @@ test("browser protocol uploads and plays a real animation on bytecode", { skip: 
   process.on("error", error => transport.onDisconnect(error));
   try {
     const description = await client.describe();
-    assert.deepEqual(description.program_abis, [4]);
-    assert.deepEqual(description.program_schemas, ['lightvm.program/11']);
+    assert.equal(description.version, JSON.parse(readFileSync(new URL('../lightvm/release.json', import.meta.url))).version);
+    assert.equal(description.program_schemas, undefined);
     assert.equal(description.control_abi, undefined);
-    const config = Buffer.from(JSON.stringify({ schema: "lightvm.config/1", devices: [
+    const config = Buffer.from(JSON.stringify({ schema: "lightvm.config", devices: [
       { id: "lights", type: "ws2812b", config: { pin: "GP16", count: 5 } },
     ] }));
     await client.command(12, Buffer.from(JSON.stringify({ kind: "config", size: config.length, crc32: crc32(config) })));

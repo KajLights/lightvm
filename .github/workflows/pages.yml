@@ -89,7 +89,7 @@ jobs:
           tar -C build/firmware -xzf pico-firmware.tar.gz
       - name: Package browser firmware images
         run: |
-          python tools/package_web_firmware.py --version "${GITHUB_SHA::12}" \
+          python tools/package_web_firmware.py --build-id "${GITHUB_SHA::12}" \
             --board xiao_esp32c3=build/firmware/xiao_esp32c3 \
             --board xiao_esp32s3=build/firmware/xiao_esp32s3 \
             --board xiao_esp32c6=build/firmware/xiao_esp32c6 \

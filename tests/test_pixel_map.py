@@ -11,7 +11,7 @@ from lightvm.compiler import compile_source
 from client import Client, ProcessTransport, ProtocolError, FRAME, STOP
 
 PREFIX='''from lightvm import profile,init,render,rgb,hsv,colorwheel,hash01,PixelArray
-profile("animation/1")
+profile("animation")
 '''
 
 
@@ -24,7 +24,7 @@ class PixelMapTests(unittest.TestCase):
     def setUp(self):
         self.client=Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER',str(ROOT/'build/composition-host/lightvm'))))
         self.count=min(200,self.client.describe()['pixel_capacity'])
-        self.client.configure({'schema':'lightvm.config/1','devices':[{
+        self.client.configure({'schema':'lightvm.config','devices':[{
             'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':self.count}}]})
 
     def tearDown(self):self.client.close()
@@ -58,8 +58,8 @@ class PixelMapTests(unittest.TestCase):
 '''
         self.load(source,True,{'scale':2.3});expected=self.frames()
         self.load(native,True,{'scale':2.3});self.assertEqual(self.frames(),expected)
-        self.assertEqual(result.manifest['schema'],'lightvm.program/11')
-        self.assertEqual(struct.unpack_from('<I',result.bytecode,80)[0],4)
+        self.assertEqual(result.manifest['schema'],'lightvm.program')
+        self.assertEqual(struct.unpack_from('<I',result.bytecode,80)[0],0)
 
     def test_generic_nonlinear_hsv_helpers_integer_arithmetic_and_captured_values(self):
         bodies=[
@@ -137,7 +137,7 @@ def draw(ctx,runtime,pixels):
     def test_target_requirements_and_forged_capability_or_body_are_rejected(self):
         source=PREFIX+'@render\ndef draw(ctx,runtime,pixels):\n for i in range(pixels.count):\n  pixels[i]=hsv(i/pixels.count,1.0,1.0)\n'
         target=self.client.describe()
-        old={**target,'native_drawing_api':2}
+        old={**target,'version':'0.9.0'}
         result=compile_source(source,target=old)
         self.assertFalse(result.success)
         result=self.load(source)

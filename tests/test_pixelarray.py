@@ -11,14 +11,14 @@ from client import Client, ProcessTransport, ProtocolError, FRAME, STOP
 from lightvm.compiler import compile_source
 
 PREFIX = '''from lightvm import profile, init, render, rgb, setting, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform
-profile("animation/1")
+profile("animation")
 '''
 
 
 class PixelArrayTests(unittest.TestCase):
     def setUp(self):
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', str(ROOT/'build/composition-host/lightvm'))))
-        self.client.configure({'schema':'lightvm.config/1', 'devices':[
+        self.client.configure({'schema':'lightvm.config', 'devices':[
             {'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':67}}]})
 
     def tearDown(self):
@@ -289,9 +289,9 @@ def draw(ctx,runtime,pixels):
  pixels.draw(ART)
 ''')
         target=self.client.describe()
-        self.assertEqual(target['native_drawing_api'],4)
-        self.assertEqual(result.manifest['schema'],'lightvm.program/11')
-        old={**target,'program_schemas':['lightvm.program/6']}
+        self.assertIn('version',target)
+        self.assertEqual(result.manifest['schema'],'lightvm.program')
+        old={**target,'version':'0.9.0'}
         self.assertFalse(compile_source(PREFIX+'@init\ndef setup(ctx,runtime):\n ctx.image=PixelArray(1)\n@render\ndef draw(ctx,runtime,pixels): pass\n',target=old).success)
         # Forge the destination of image_draw to the readonly source. Admission
         # must reject the package before executing it.

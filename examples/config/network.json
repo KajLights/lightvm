@@ -1,5 +1,5 @@
 {
-  "schema": "lightvm.network/1",
+  "schema": "lightvm.network",
   "wifi": {
     "enabled": true,
     "country": "XX",

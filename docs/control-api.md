@@ -1,11 +1,12 @@
 # Bytecode control API
 
-Current Python programs use the [init/render animation API](animation-profile.md)
-and compile to LBC1/4, execution ABI 4, schema `lightvm.program/11`. Settings are
-frozen at initialization. Only this package/schema/profile combination is accepted.
-The public `animation/1` profile supports direct playback and scene composition;
-all contributions use premultiplied RGBA. Earlier packages require recompilation.
-There are no legacy loaders, automatic migrations or compatibility switches.
+Python programs use the [init/render animation API](animation-profile.md) and
+compile to portable bytecode with an unversioned `lightvm.program` document kind.
+The manifest records `compiler_version` for provenance and `requires` for its
+minimum application release. Firmware accepts the same major at or above that
+minimum, independently of the compiler's release. Settings are frozen at
+initialization; contributions use premultiplied RGBA.
+See [the release contract](versioning.md). Retired experimental runtimes remain removed.
 
 ```sh
 python -m lightvm.compiler examples/animations/rainbow.py -o build/examples/rainbow.lbc
@@ -15,7 +16,8 @@ python tools/client.py --port PORT --activate rainbow
 
 `compile_source(source, filename, target)` returns bytecode, manifest, diagnostics
 and success. The CLI writes `.lbc` plus a JSON manifest. The browser uses the same
-compiler. Target checks require advertised LBC1/4, ABI 4, schema 11 and animation/1.
+compiler. Target checks use the device’s `version`, the program’s `requires`,
+and the device’s module limit.
 Compilation never executes source.
 
 ## Execution, storage and ownership
@@ -76,14 +78,16 @@ Operations accept an optional `device` and its slot A. Each device owns its
 generation, settings and playback state.
 
 - `program_state`: manifest, generation, settings_values, playback state,
-  render count and elapsed program time. ABI 4 has no live parameters.
+  render count and elapsed program time. Settings have no live parameter writes.
 - `program_reset`: expected_generation plus optional settings overrides; prepares a
   fresh instance and replaces the old instance only after preparation succeeds.
 - `program_pause` / `program_resume`: expected_generation; retain initialized state.
 - `program_snapshot`: passive RGB output and contribution/output validity/counters.
 
 Management uses `LVM1` magic, framing version 1, a 16-byte header and CRC32.
-Only current clients are supported; rebuild them together with firmware.
+Client and firmware compatibility follows the application release contract.
+The fixed frame marker identifies the binary encoding; it is not an independently
+released API version.
 Removed command 5 and operations such as live parameter writes return an unknown
 command/operation error. `mode` reports bytecode while playing.
 See [configuration and management](configuration.md).

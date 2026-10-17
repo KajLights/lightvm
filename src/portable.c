@@ -121,7 +121,7 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     if(op==P_COPY){int x=resource_id(p,a),y=resource_id(p,b);return resource_write(p,a,fn->rights)&&y>=0&&(!(pbc_spec((Portable*)p,y).flags&1u)||(fn->rights&WRITE_OUTPUT))&&pbc_spec((Portable*)p,x).kind==pbc_spec((Portable*)p,y).kind&&!c&&!d;}
     if(op==P_MAP){
         int id=resource_id(p,a);
-        return p->drawing_api>=4&&id>=0&&draw_channels(pbc_spec(p,(unsigned)id).kind)&&resource_write(p,a,fn->rights)&&
+        return id>=0&&draw_channels(pbc_spec(p,(unsigned)id).kind)&&resource_write(p,a,fn->rights)&&
             bt==T_INT&&ct==T_INT&&pbc_role(p,b)==R_LOCAL&&d>pc+1&&d<fn->end&&
             pbc_map_valid(p,pc+1,d,a,b,c);
     }
@@ -131,7 +131,7 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
         const NativeSignature *sig=&natives[site->binding];
         if(site->argc!=sig->argc||(sig->rights&~fn->rights))return false;
         for(unsigned n=0;n<8;n++)if(n<site->argc?pbc_type(p,site->args[n])!=sig->args[n]:site->args[n]!=0)return false;
-        if(site->binding>=27){if(!p->drawing_api||!pbc_drawing_valid(p,site,fn->rights))return false;}
+        if(site->binding>=27){if(!pbc_drawing_valid(p,site,fn->rights))return false;}
 
         return sig->result ? can_write(p,a,fn->rights)&&at==sig->result : a==255;
     }
@@ -195,10 +195,9 @@ void pbc_destroy(Portable *p){if(p){demo_free(p->state);demo_free(p->metadata);d
 const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     *out=NULL;uint8_t h[96];
     if(size<96||size>32768||!read(context,0,h,96)||memcmp(h,"LBC1",4)||lbc_u32(h+4)!=4)return "invalid portable header";
-    for(unsigned n=84;n<96;n+=4)if(lbc_u32(h+n))return "reserved portable header field";
+    for(unsigned n=80;n<96;n+=4)if(lbc_u32(h+n))return "reserved portable header field";
     Portable *p=demo_calloc(1,sizeof(*p));if(!p)return "portable context exceeds memory budget";
-    p->read=read;p->context=context;p->size=(uint32_t)size;p->drawing_api=lbc_u32(h+80);
-    if(p->drawing_api&&p->drawing_api!=2&&p->drawing_api!=3&&p->drawing_api!=4){pbc_destroy(p);return "unsupported drawing API";}
+    p->read=read;p->context=context;p->size=(uint32_t)size;
     p->nregs=lbc_u32(h+8);p->ncode=lbc_u32(h+12);p->ncolors=lbc_u32(h+16);
     p->nfunctions=lbc_u32(h+20);p->nresources=lbc_u32(h+24);p->nexpressions=lbc_u32(h+28);
     p->ncalls=lbc_u32(h+32);p->nsettings=lbc_u32(h+36);
@@ -243,7 +242,7 @@ const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     if(!valid_expressions(p))goto fail;
     for(unsigned n=0;n<p->nresources;n++){
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;
-        if(!s->kind||s->kind==3||s->kind==4||s->kind==5||s->kind==6||s->kind==9||s->kind==10||s->kind==13||s->kind>DRAW_STYLE||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||(!p->drawing_api&&s->kind>13)||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
+        if(!s->kind||s->kind==3||s->kind==4||s->kind==5||s->kind==6||s->kind==9||s->kind==10||s->kind==13||s->kind>DRAW_STYLE||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
         if(pbc_expression((Portable*)p,s->length).type!=T_INT||pbc_expression((Portable*)p,s->seed).type!=T_INT||pbc_expression((Portable*)p,s->stream).type!=T_INT)goto fail;
         unsigned fill_type=pbc_expression((Portable*)p,s->fill).type;
         if(fill_type!=(s->kind==DRAW_BATCH||s->kind==DRAW_STYLE?T_INT:element_type(s->kind)))goto fail;
@@ -343,7 +342,7 @@ const char *pbc_prepare(Portable *p,LbcBuffer *output){
     unsigned count=output?output->count:0;
     size_t resource_offset=(p->register_bytes+_Alignof(PbcResource)-1)&~(size_t)(_Alignof(PbcResource)-1);
     p->state_bytes=resource_offset+p->nresources*sizeof(PbcResource);
-    if(p->drawing_api)p->state_bytes=(p->state_bytes+7u)&~(size_t)7u;
+    p->state_bytes=(p->state_bytes+7u)&~(size_t)7u;
     p->state=demo_calloc(1,p->state_bytes);if(!p->state)return "portable state exceeds memory budget";
     p->values=p->state;p->resources=(PbcResource*)(p->values+resource_offset);p->generation=output?output->generation:0;p->output=output;
     for(unsigned r=0;r<p->nregs;r++)pbc_set_value(p,r,(PbcValue){.u=pbc_initial(p,r)});
