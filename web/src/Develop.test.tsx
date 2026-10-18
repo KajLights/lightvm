@@ -123,13 +123,16 @@ describe('editor examples and playback status', () => {
     const response = vi.fn().mockResolvedValue({ ...running, render_count: 3 });
     const client = { closed: false, transport: { label: 'HTTP' }, describe: vi.fn().mockResolvedValue(description), json: response } as unknown as LightVMClient;
     controllers.paths.attach('http', client, description); controllers.syncPaths(description);
+    store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [
+      { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 20 } },
+    ] }, revision: 0, savedRevision: 0 }));
     store.dispatch(controllerActions.programState(running));
     store.dispatch(editorActions.compiled({ revision: 0, bytes: 100, manifest: running.manifest, diagnostics: [] })); show();
     fireEvent.click(screen.getByLabelText('Override duration'));
     fireEvent.change(screen.getByLabelText('duration'), { target: { value: '3' } });
 
     await act(async () => { await controllers.poll(); });
-    expect(response).toHaveBeenCalledWith('program_state');
+    expect(response).toHaveBeenCalledWith('program_state', { output: 'lights' });
     expect(document.querySelector('#playback-state')).toHaveTextContent('Running');
     expect(screen.getByRole('button', { name: /^Pause$/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Apply parameter values' })).toBeNull();

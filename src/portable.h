@@ -4,7 +4,8 @@
  * No guest address is a native pointer. The native caller supplies render timing.
  */
 #include "bytecode_core.h"
-typedef union { uint32_t u; int32_t i; float f; } PbcValue;
+#include "inputs.h"
+typedef InputValue PbcValue;
 typedef struct { uint32_t first,end,rights,result,arg_start,arg_count; } PbcFunction;
 typedef struct { uint32_t kind,length,fill,seed,stream,flags; } PbcResourceSpec;
 typedef struct { uint8_t op,type; uint16_t reserved; uint32_t a,b,value; } PbcExpression;
@@ -31,6 +32,9 @@ typedef struct Portable {
     char setting_names[16][33];
     char argument_error[33];
     PbcValue overrides[16]; uint32_t override_mask;
+    InputPort *inputs; unsigned ninputs; uint32_t input_revision;
+    InputRegistry *input_registry;
+    uint64_t input_epoch;
     uint64_t now_us,render_count,active_wall_us,random_state;
     uint64_t native_draw_us,dispatch_count,slice_count;
     bool native_pending;

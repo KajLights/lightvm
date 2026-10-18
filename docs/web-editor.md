@@ -176,12 +176,19 @@ preset**. Select a physical output for preview; preview replaces its playback an
 leaves the other outputs running. There is no in-browser LED simulation yet.
 The initial `rainbow.py` is selected in
 the dropdown and uses the same canonical source as its example. It preserves the
-original picolights Rainbow's default 60-second cycle, adjustable with its existing
-duration setting. Existing stored programs are not replaced when firmware or
+original picolights Rainbow's default 60-second cycle, adjustable with its phase
+input's timer. Existing stored programs are not replaced when firmware or
 examples change. Sweep supports moving eyes, retained chase/wipe and sampled
 trails through its initialization settings; wipe is one of its documented modes.
 Each example's opening comments describe the available modes and settings;
 see also [motion](motion.md#shared-sweep-animation).
+The separate **eye.py · live inputs** example exposes position, width, hue and
+brightness. After preview, **Live inputs** changes these values without restarting
+the instance. Dragging takes manual control; timer controls and Restore default
+select other drivers. Choose layers in A or B under **Animation to control**.
+**Use these inputs in draft** copies the running program's wiring into the current
+source's Input recipe, which is saved with animation versions and preset layers.
+See [live inputs](inputs.md) for source bindings, clocks and the wire contract.
 Animations have no automatic stop condition. The current source draft is saved
 automatically and can be exported as `.py`; compiled `.lbc` downloads remain
 available. **Preview animation** uses that draft's settings. Unchecked overrides

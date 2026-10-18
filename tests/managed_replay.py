@@ -81,6 +81,7 @@ class Example:
         settings = settings or {}
         path = ROOT / 'examples/animations' / f'{name}.py'
         api = SimpleNamespace(profile=lambda _: None, init=lambda f: f, render=lambda f: f, rgb=rgb, hsv=hsv,
+            Input=lambda name, **kwargs: SimpleNamespace(name=name, **kwargs), Ramp=lambda **kwargs: SimpleNamespace(**kwargs),
             setting=lambda default, _name=None, **bounds: settings.get(_name, default),
             pico_colorwheel=lambda hue: rgb(*pico_colorwheel(hue)), colorwheel=lambda hue: rgb(*rainbow_colorwheel(hue)),
             hue_degrees=lambda c: float(rgb_to_hsv(c >> 16, c >> 8 & 255, c & 255)[0]),
@@ -92,6 +93,15 @@ class Example:
         tree = ast.fix_missing_locations(SettingNames().visit(ast.parse(path.read_text())))
         exec(compile(tree, str(path), 'exec'), namespace)
         self.ctx, self.runtime, self.pixels = SimpleNamespace(), SimpleNamespace(time=0.0, delta=0.0, pixel_count=count), Pixels(count)
+        def input_value(port):
+            if not hasattr(port, 'driver'): return port.default
+            phase = self.runtime.time / port.driver.duration
+            if port.driver.mode == 'repeat': phase %= 1.0
+            elif port.driver.mode == 'pingpong': phase = 1.0 - abs(phase % 2.0 - 1.0)
+            else: phase = min(1.0, phase)
+            if getattr(port.driver, 'easing', 'linear') == 'smoothstep': phase = phase * phase * (3 - 2 * phase)
+            return phase
+        self.runtime.input = input_value
         namespace['setup'](self.ctx, self.runtime)
         self.draw = namespace['draw']
         self.frame(0)

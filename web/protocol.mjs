@@ -153,12 +153,13 @@ export class LightVMClient {
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionsSupported = description.connections; return description; }
 
   /** @param {Uint8Array} bytecode @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [output] @param {Record<string, number | boolean>} [settings] */
-  async upload(bytecode, limit, onProgress = () => {}, output = '', settings = {}) {
+  async upload(bytecode, limit, onProgress = () => {}, output = '', settings = {}, inputs = {}) {
     if (!Number.isInteger(limit) || limit < 8 || bytecode.length < 8 || bytecode.length > limit) {
       throw new Error(`Program must fit the output's ${limit}-byte module limit.`);
     }
     if (output && !/^[A-Za-z0-9_.-]{1,32}$/.test(output)) throw new Error('Invalid output id.');
-    const argumentsBytes = Object.keys(settings).length ? encoder.encode(encodeJSON({ settings })) : new Uint8Array();
+    const args = { ...(Object.keys(settings).length ? { settings } : {}), ...(Object.keys(inputs).length ? { inputs } : {}) };
+    const argumentsBytes = Object.keys(args).length ? encoder.encode(encodeJSON(args)) : new Uint8Array();
     if (argumentsBytes.length > FRAME_LIMIT) throw new Error('Preview settings exceed the command size limit.');
     const outputBytes = encoder.encode(output);
     const metadata = new Uint8Array(8 + outputBytes.length), view = new DataView(metadata.buffer);

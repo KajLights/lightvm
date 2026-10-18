@@ -17,7 +17,7 @@ typedef struct {
     char ha_presets[HA_PRESET_LIMIT][OBJECT_NAME_LIMIT + 1];
     unsigned ha_preset_count;
     /* Byte span in the owning configuration JSON, never an upload pointer. */
-    uint32_t settings_offset, settings_size;
+    uint32_t startup_offset, startup_size;
     TransitionSpec on_transition, off_transition;
     PixelConfig pixels;
 } HardwareOutput;

@@ -4,6 +4,7 @@ import color from '../../examples/animations/color.py?raw';
 import pattern from '../../examples/animations/pattern.py?raw';
 import rainbowSprite from '../../examples/animations/rainbow_sprite.py?raw';
 import sweep from '../../examples/animations/sweep.py?raw';
+import eye from '../../examples/animations/eye.py?raw';
 import crossfade from '../../examples/transitions/crossfade.py?raw';
 import wipe from '../../examples/transitions/wipe.py?raw';
 
@@ -13,7 +14,9 @@ export const EXAMPLES = [
   { id: 'transition_wipe', filename: 'wipe.py', label: 'wipe.py · transition', source: wipe,
     description: 'Reveal B across A. Set reverse for the opposite end, or separator for a three-pixel peak with a configurable colour at the boundary.' },
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
-    description: 'Original picolights Rainbow: one colour cycle every 60 seconds. Override duration in the preview settings for faster motion.' },
+    description: 'A colour cycle every 60 seconds. Use Live inputs to scrub phase, change spatial scale or adjust the timer.' },
+  { id: 'eye', filename: 'eye.py', label: 'eye.py · live inputs', source: eye,
+    description: 'A live-input demo: position, width, hue and brightness. Preview it, then try the controls without restarting its sprite.' },
   { id: 'stars', filename: 'stars.py', label: 'stars.py', source: stars,
     description: 'Three-pixel stars appear and fade over a transparent background. Run alone or over another animation.' },
   { id: 'color', filename: 'color.py', label: 'color.py', source: color,

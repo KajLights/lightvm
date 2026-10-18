@@ -3,7 +3,7 @@ import { HttpTransport, SerialTransport, WebSocketTransport } from '../transport
 import { Connections } from '../connections.mjs';
 import { ControllerDiscovery } from '../discovery.mjs';
 import { activityActions, controllerActions, editorActions, type AppStore } from './store';
-import type { Description, HardwareConfig, NetworkConfig, Path } from './types';
+import type { Description, HardwareConfig, InputBindings, NetworkConfig, Path } from './types';
 import type { SettingsValues } from './library';
 
 export function download(bytes: BlobPart, filename: string, type: string) {
@@ -190,12 +190,18 @@ export class ControllerService {
   }
   async readProgramState(client: LightVMClient, background = false) {
     const output = this.snapshot.controller.selectedOutput;
+    if (!output) { if (client === this.client) this.store.dispatch(controllerActions.programState(null)); return; }
     const current = () => client === this.client && output === this.snapshot.controller.selectedOutput && (!background || !this.store.getState().activity.operation);
     try {
       const transition = this.snapshot.controller.description?.ab_transitions ? await client.transition(output ?? undefined) : null;
       const fields = { ...(output ? { output } : {}), ...(transition?.recall?.power ? { slot: 'B' } : {}) };
       const programState = await client.json('program_state', ...(Object.keys(fields).length ? [fields] : []));
-      if (current()) this.store.dispatch(controllerActions.programState(serializable(programState)));
+      if (current()) {
+        const previous = this.snapshot.controller.programState;
+        if (previous && previous.generation === programState.generation && previous.layer === programState.layer && previous.slot === programState.slot &&
+          ((programState.inputs_revision ?? 0) < (previous.inputs_revision ?? 0) || (programState.render_count ?? 0) < (previous.render_count ?? 0))) return;
+        this.store.dispatch(controllerActions.programState(serializable(programState)));
+      }
     } catch (error) {
       if (client.closed || !('code' in (error as object)) || (error as { code: number }).code !== 4) throw error;
       if (current()) this.store.dispatch(controllerActions.programState(null));
@@ -269,13 +275,15 @@ export class ControllerService {
       }
     });
   }
-  async upload(bytecode: Uint8Array, source: string, revision: number, settings: SettingsValues = {}) {
+  async upload(bytecode: Uint8Array, source: string, revision: number, settings: SettingsValues = {}, inputs: InputBindings = {}) {
     return this.run('Previewing animation', async client => {
       const connection = this.require(client), state = this.store.getState();
       const output = state.controller.config?.outputs.find(item => item.id === state.controller.selectedOutput);
       if (state.editor.revision !== revision || !output) throw new Error('Wait for current code checks and select an output before previewing.');
       if (Object.keys(settings).length && !state.controller.description?.transient_settings) throw new Error('Install firmware with preview settings support before previewing overrides.');
-      await connection.upload(bytecode, state.controller.description!.module_limit, progress => this.store.dispatch(activityActions.progress(progress)), output.id, settings);
+      if (Object.keys(inputs).length && !state.controller.description?.live_inputs) throw new Error('Install firmware with live input support.');
+      const args = [bytecode, state.controller.description!.module_limit, (progress: number) => this.store.dispatch(activityActions.progress(progress)), output.id, settings] as const;
+      if (Object.keys(inputs).length) await connection.upload(...args, inputs); else await connection.upload(...args);
       await connection.manage('output_command', { output: output.id, command: COMMAND.PLAY });
       this.log('Preview running on ' + output.id + ' (' + output.config.count + ' pixels).', 'success');
       await this.readProgramState(connection);

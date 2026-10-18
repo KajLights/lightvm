@@ -12,8 +12,14 @@
       },
       "startup": {
         "program": "rainbow",
-        "settings": {
-          "duration": 3.3
+        "inputs": {
+          "phase": {
+            "driver": {
+              "kind": "ramp",
+              "duration": 3.3,
+              "mode": "repeat"
+            }
+          }
         }
       }
     }

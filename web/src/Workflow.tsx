@@ -1,6 +1,9 @@
 import { PresetTransition } from './PresetTransition';
 import { RecallTransition } from './RecallTransition';
 import { SettingFields } from './SettingFields';
+import { InputRecipeFields } from './InputRecipeFields';
+import { LiveInputs } from './LiveInputs';
+import { crc32 } from '../protocol.mjs';
 import { TransitionControls } from './Transitions';
 import { VERSION } from './release';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -10,9 +13,9 @@ import { supportsProgram, programCompatibility } from './compiler';
 import { download } from './controller-service';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
-import type { Manifest, TransitionSpec } from './types';
+import type { InputBindings, Manifest, TransitionSpec } from './types';
 import { prepareLibraryComposition } from './library-controller';
-import { BLENDS, programName, validTransitionSpec, compositionLayers, importLibrary, readLibrary, saveAnimation, settingsFor, writeLibrary,
+import { BLENDS, programName, validTransitionSpec, compositionLayers, importLibrary, inputsFor, readLibrary, saveAnimation, settingsFor, writeLibrary,
   type Blend, type Library, type PresetLayer, type SavedAnimation, type SettingsValues } from './library';
 
 
@@ -22,6 +25,8 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
   const [initial] = useState(readLibrary), [library, setLibrary] = useState(initial.library);
   const [storageError, setStorageError] = useState(initial.error);
   const [settings, setSettings] = useState<SettingsValues>({}), [animationName, setAnimationName] = useState('');
+  const [inputs, setInputs] = useState<InputBindings>({}), [validInputs, setValidInputs] = useState(true);
+  const [invalidLayers, setInvalidLayers] = useState<Record<string, boolean>>({});
   const [selectedAnimation, setSelectedAnimation] = useState(''), [layers, setLayers] = useState<PresetLayer[]>([]);
   const [presetName, setPresetName] = useState(''), [selectedPreset, setSelectedPreset] = useState(''), [storedPreset, setStoredPreset] = useState('');
   const [storedProgram, setStoredProgram] = useState('');
@@ -38,7 +43,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
   const selected = library.animations.find(item => item.id === selectedAnimation);
   // Example/file changes get their own defaults. Ordinary source edits retain overrides.
   const filename = useRef(editor.filename);
-  useEffect(() => { if (filename.current !== editor.filename) { filename.current = editor.filename; setSettings({}); } }, [editor.filename]);
+  useEffect(() => { if (filename.current !== editor.filename) { filename.current = editor.filename; setSettings({}); setInputs({}); setValidInputs(true); } }, [editor.filename]);
   useEffect(() => { setStoredPreset(''); setStoredProgram(''); }, [controller.description?.controller_id]);
   useEffect(() => { setTransitionName(editor.filename.replace(/\.py$/i, '').replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 32)); }, [editor.filename]);
 
@@ -49,13 +54,14 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
   function single(animation: SavedAnimation) {
     if (animation.manifest.profile === 'transition') return;
     setSelectedAnimation(animation.id);
-    setLayers([{ id: 'layer1', animation: animation.id, settings: { ...animation.settings }, opacity: 255, blend: 'over' }]);
+    setLayers([{ id: 'layer1', animation: animation.id, settings: { ...animation.settings }, ...(animation.inputs ? { inputs: structuredClone(animation.inputs) } : {}), opacity: 255, blend: 'over' }]);
   }
   async function preview() {
     const compiled = compiler.artifact;
     if (!compiled || compiled.id !== controllers.snapshot.editor.revision) return;
     let overrides: SettingsValues;
-    try { overrides = settingsFor(compiled.manifest, settings); }
+    let wiring: InputBindings;
+    try { if (!validInputs) throw new Error('Fix the input recipe before previewing.'); overrides = settingsFor(compiled.manifest, settings); wiring = inputsFor(compiled.manifest, inputs); }
     catch (error) { await controllers.run('Previewing animation', async () => { throw error; }); return; }
     const revision = editor.revision, outputId = output?.id;
     if (compiled.manifest.profile === 'transition') {
@@ -64,12 +70,12 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
         const connection = controllers.require(client);
         await connection.saveProgram(transitionName, compiled.bytecode);
         await controllers.readPrograms(connection);
-        await connection.selectTransition(transitionName, outputId, { settings: overrides });
+        await connection.selectTransition(transitionName, outputId, { settings: overrides, ...(Object.keys(wiring).length ? { inputs: wiring } : {}) });
         controllers.log('Saved ' + transitionName + ' to flash and selected it between A and B.', 'success');
       });
       return;
     }
-    if (await controllers.upload(compiled.bytecode, compiled.source, compiled.id, overrides) && controllers.snapshot.editor.revision === revision && controllers.snapshot.controller.selectedOutput === outputId) {
+    if (await controllers.upload(compiled.bytecode, compiled.source, compiled.id, overrides, wiring) && controllers.snapshot.editor.revision === revision && controllers.snapshot.controller.selectedOutput === outputId) {
       const resolved = controllers.snapshot.controller.programState;
       if (resolved && !resolved.layer) setSettings(resolved.settings_values ?? overrides);
     }
@@ -78,7 +84,8 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
     await controllers.run('Saving editable animation', async () => {
       const compiled = compiler.artifact;
       if (!compiled || compiled.id !== controllers.snapshot.editor.revision) throw new Error('Wait for the latest compilation.');
-      const saved = await saveAnimation(library, compiled, editor.filename, animationName, settings);
+      if (!validInputs) throw new Error('Fix the input recipe before saving.');
+      const saved = await saveAnimation(library, compiled, editor.filename, animationName, settings, inputs);
       commit(saved.library); setSelectedAnimation(saved.animation.id);
       if (layers.length <= 1) single(saved.animation);
       controllers.log('Saved ' + saved.animation.name + ' v' + saved.animation.version + ' in this browser.', 'success');
@@ -88,6 +95,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
     if (!selected) return;
     compiler.edit(selected.source, selected.filename); filename.current = selected.filename;
     setSettings({ ...selected.settings }); setAnimationName(selected.name);
+    setInputs(structuredClone(selected.inputs ?? {})); setValidInputs(true);
   }
   function addLayer() {
     if (!selected || selected.manifest.profile === 'transition' || layers.length >= 8) return;
@@ -102,6 +110,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
   async function previewLayers() {
     await controllers.run('Previewing preset', async client => {
       const connection = controllers.require(client), outputId = controller.selectedOutput;
+      if (layers.some(layer => invalidLayers[layer.id])) throw new Error('Fix the layer input recipes before previewing.');
       if (!outputId) throw new Error('Select an output first.');
       const recipe = await ensurePrograms(connection);
       await connection.configureComposition(recipe, outputId, compositionSlot); await controllers.readPrograms(connection); await controllers.readProgramState(connection);
@@ -109,6 +118,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
     });
   }
   function checkedPreset() {
+    if (layers.some(layer => invalidLayers[layer.id])) throw new Error('Fix the layer input recipes before saving.');
     if (!/^[A-Za-z0-9_.-]{1,32}$/.test(presetName)) throw new Error('Use 1–32 letters, digits, dots, underscores or hyphens for the preset name.');
     compositionLayers(library, layers);
     if (entryTransition && !validTransitionSpec(entryTransition)) throw new Error('Choose a valid entry transition and duration.');
@@ -153,6 +163,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
         <div className="artifact"><span>Compiled animation</span><strong id="artifact-size">{artifact ? artifact.bytes.toLocaleString() + ' bytes' : 'Checking…'}</strong></div>
         {artifact && <p id="artifact-detail" className="helper">LightVM {artifact.manifest.requires}+ · {(artifact.manifest.settings ?? []).length} settings</p>}
         <fieldset disabled={busy}><SettingFields manifest={artifact?.manifest ?? { compiler_version: VERSION, requires: '1.0.0', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [] }} values={settings} onChange={setSettings} prefix="draft" /></fieldset>
+        {artifact && <InputRecipeFields key={editor.filename} manifest={artifact.manifest} values={inputs} onChange={setInputs} onValidity={setValidInputs} prefix="draft" />}
         {isTransition && <><label htmlFor="transition-program-name">Stored transition name</label><input id="transition-program-name" value={transitionName} maxLength={32} onChange={event => setTransitionName(event.target.value)} /></>}
         <button id="upload" className="primary full" disabled={busy || !writable || !connected || !compatible || !artifact || artifact.bytes > (controller.description?.module_limit ?? 0)} onClick={() => void preview()}>{isTransition ? 'Save and select transition →' : 'Preview animation →'}</button>
         {activity.progress !== null && <progress id="upload-progress" max={1} value={activity.progress} aria-label="Program upload progress" />}
@@ -164,7 +175,13 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
         <p className="helper">Save editable source, compiled code and selected defaults in this browser. Each save creates a version; existing presets keep theirs.</p>
         <label htmlFor="animation-name">{isTransition ? 'Transition name' : 'Animation name'}</label><input id="animation-name" value={animationName} maxLength={80} onChange={event => setAnimationName(event.target.value)} />
         <button className="secondary full" disabled={busy || !artifact || !animationName.trim() || Boolean(storageError)} onClick={() => void save()}>{isTransition ? 'Save transition' : 'Save animation'}</button>
-      </section>{playback}
+      </section>{playback}<LiveInputs active={active} onCapture={(bindings, running) => {
+        const compiled = compiler.artifact;
+        if (!compiled || compiled.id !== controllers.snapshot.editor.revision || running.program_crc32 !== crc32(compiled.bytecode)) {
+          void controllers.run('Copying input recipe', async () => { throw new Error('Preview the current source before copying its live inputs into this draft.'); }); return;
+        }
+        setInputs(bindings); setValidInputs(true); controllers.log('Live input recipe copied into the draft. Save an animation version to keep it.', 'success');
+      }} />
     </aside></div>
     <div className="workflow-grid">
       <section className="card"><div className="card-heading"><h2>Animation library</h2></div>
@@ -191,6 +208,10 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
             <div className="card-heading"><h3>{index + 1}. {animation.name} <small>v{animation.version}</small></h3><div className="layer-actions"><button className="quiet small" aria-label={'Move layer ' + (index + 1) + ' down'} disabled={index === 0} onClick={() => moveLayer(index, -1)}>↓</button><button className="quiet small" aria-label={'Move layer ' + (index + 1) + ' up'} disabled={index === layers.length - 1} onClick={() => moveLayer(index, 1)}>↑</button><button className="quiet small" aria-label={'Remove layer ' + (index + 1)} onClick={() => setLayers(layers.filter((_, n) => n !== index))}>×</button></div></div>
             <div className="layer-controls"><label>Blend<select value={layer.blend} onChange={event => patchLayer(index, { blend: event.target.value as Blend })}>{BLENDS.map(blend => <option key={blend}>{blend}</option>)}</select></label><label>Opacity<input type="range" min={0} max={255} value={layer.opacity} onChange={event => patchLayer(index, { opacity: Number(event.target.value) })} /><span>{Math.round(layer.opacity / 255 * 100)}%</span></label></div>
             <SettingFields manifest={animation.manifest} values={layer.settings} onChange={values => patchLayer(index, { settings: values })} prefix={layer.id} />
+            <InputRecipeFields manifest={animation.manifest} values={layer.inputs ?? animation.inputs ?? {}} onChange={values => patchLayer(index, { inputs: values })} onValidity={valid => setInvalidLayers(previous => {
+              if (Boolean(previous[layer.id]) === !valid) return previous;
+              return { ...previous, [layer.id]: !valid };
+            })} prefix={layer.id} />
           </div>;
         })}</fieldset>
         {layerBytes !== null && layers.length > 0 && <p className="helper">Frame buffers: {layerBytes.toLocaleString()} bytes, plus animation state. The controller checks available memory before replacing playback. Composition also stores each shared program in its library.</p>}

@@ -123,6 +123,14 @@ describe('network commit', () => {
 });
 
 describe('selected preview output', () => {
+  it('leaves an unconfigured controller connected without querying playback', async () => {
+    const store = createAppStore(), service = new ControllerService(store);
+    const client = { closed: false, json: vi.fn(), transition: vi.fn() } as unknown as LightVMClient;
+    service.paths.attach('usb', client, { controller_id: 'new', boot_id: 'boot', ab_transitions: true } as Description);
+    await service.readProgramState(client);
+    expect(client.json).not.toHaveBeenCalled();expect(client.transition).not.toHaveBeenCalled();
+    expect(service.client).toBe(client);
+  });
   function workspace() {
     const store = createAppStore(), service = new ControllerService(store);
     const description = { controller_id: 'pico', boot_id: 'boot', module_limit: 32768, transient_settings: true } as Description;

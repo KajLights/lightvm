@@ -29,13 +29,15 @@ static bool failure(char *error, size_t capacity, const char *message) {
 bool transition_spec_parse(const Json *j,int token,TransitionSpec *spec,char *error,size_t capacity) {
     memset(spec,0,sizeof(*spec));
     if(token<0)return true;
-    static const char *const fields[]={"program","crc32","settings","seed","duration_ms",NULL};
+    static const char *const fields[]={"program","crc32","settings","inputs","seed","duration_ms",NULL};
     if(!json_fields(j,token,fields)||
        !json_string(j,json_get(j,token,"program"),spec->program,sizeof(spec->program))||!object_name_valid(spec->program)||
        !json_u32(j,json_get(j,token,"crc32"),&spec->crc)||
        !json_f64(j,json_get(j,token,"duration_ms"),&spec->duration_ms)||spec->duration_ms<0||!isfinite(spec->duration_ms*1000))
         return failure(error,capacity,"transition requires program, crc32 and finite nonnegative duration_ms");
     int seed=json_get(j,token,"seed"),settings=json_get(j,token,"settings");
+    int inputs=json_get(j,token,"inputs");
+    if(inputs>=0&&j->tokens[inputs].type!=JSON_OBJECT)return failure(error,capacity,"transition inputs must be an object");
     if((seed>=0&&!json_u32(j,seed,&spec->seed))||(settings>=0&&j->tokens[settings].type!=JSON_OBJECT))
         return failure(error,capacity,"transition settings must be an object and seed an unsigned integer");
     spec->offset=(uint32_t)j->tokens[token].start;spec->size=(uint32_t)(j->tokens[token].end-j->tokens[token].start);
@@ -113,7 +115,7 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
         }
         int startup=json_get(&j,t,"startup");
         if(startup>=0){
-            static const char *const startup_fields[]={"program","settings",NULL};
+            static const char *const startup_fields[]={"program","settings","inputs",NULL};
             if(!json_fields(&j,startup,startup_fields)||
                !json_string(&j,json_get(&j,startup,"program"),d->startup,sizeof(d->startup))||!object_name_valid(d->startup)){
                 snprintf(error,capacity,"outputs[%s].startup.program: expected a named program and optional settings",d->id);return false;
@@ -123,9 +125,11 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
                 if(j.tokens[args].type!=JSON_OBJECT){
                     snprintf(error,capacity,"outputs[%s].startup.settings: expected an object",d->id);return false;
                 }
-                d->settings_offset=(uint32_t)j.tokens[args].start;
-                d->settings_size=(uint32_t)(j.tokens[args].end-j.tokens[args].start);
             }
+            int inputs=json_get(&j,startup,"inputs");
+            if(inputs>=0&&j.tokens[inputs].type!=JSON_OBJECT)return failure(error,capacity,"startup.inputs must be an object");
+            d->startup_offset=(uint32_t)j.tokens[startup].start;
+            d->startup_size=(uint32_t)(j.tokens[startup].end-j.tokens[startup].start);
         }
         d->pixels.pin=-1;d->pixels.brightness=255;memcpy(d->pixels.order,"GRB",4);
         if(!output_type(d->type)->validate(&j,json_get(&j,t,"config"),&d->pixels,error,capacity))return false;
