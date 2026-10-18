@@ -44,8 +44,8 @@ const controllerSlice = createSlice({
     description(state, action: PayloadAction<Description>) { state.description = action.payload; },
     configuration(state, action: PayloadAction<{ config: HardwareConfig; revision: number; savedRevision: number }>) {
       state.config = action.payload.config; state.configRevision = action.payload.revision; state.savedRevision = action.payload.savedRevision;
-      if (!state.config.outputs.some(output => output.id === state.selectedOutput)) {
-        state.selectedOutput = state.config.outputs[0]?.id ?? null; state.programState = null;
+      if (!state.config.outputs.some(output => output.id === state.selectedOutput && output.mode !== 'indicators')) {
+        state.selectedOutput = state.config.outputs.find(output => output.mode !== 'indicators')?.id ?? null; state.programState = null;
       }
     },
     network(state, action: PayloadAction<{ config: NetworkConfig; revision: number }>) {
@@ -56,7 +56,7 @@ const controllerSlice = createSlice({
     presets(state, action: PayloadAction<Program[]>) { state.presets = action.payload; },
     programState(state, action: PayloadAction<ProgramState | null>) { state.programState = action.payload; },
     outputSelected(state, action: PayloadAction<string>) {
-      if (state.config?.outputs.some(output => output.id === action.payload)) { state.selectedOutput = action.payload; state.programState = null; }
+      if (state.config?.outputs.some(output => output.id === action.payload && output.mode !== 'indicators')) { state.selectedOutput = action.payload; state.programState = null; }
     },
     discoveryStarted(state) { state.discovering = true; },
     discoveryFinished(state, action: PayloadAction<{ controllers: NearbyController[]; message: string }>) {
@@ -122,4 +122,4 @@ export type RootState = ReturnType<AppStore['getState']>;
 export type AppDispatch = AppStore['dispatch'];
 export const useAppSelector = useSelector.withTypes<RootState>();
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
-export function outputFor(config: HardwareConfig | null) { return config?.outputs[0]; }
+export function outputFor(config: HardwareConfig | null) { return config?.outputs.find(output => output.mode !== 'indicators'); }

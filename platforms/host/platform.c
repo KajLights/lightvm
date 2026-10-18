@@ -29,6 +29,32 @@ void platform_pixels_close(void *driver) { free(driver); }
 bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     (void)rgb; return driver && count==((PixelConfig *)driver)->count;
 }
+bool platform_apa102_supported(void) { return true; }
+bool platform_apa102_open(const PixelConfig *c,void **p) { return platform_pixels_open(c,p); }
+void platform_apa102_close(void *p) { platform_pixels_close(p); }
+bool platform_apa102_submit(void *p,const uint8_t *rgb,size_t n) { return platform_pixels_show(p,rgb,n); }
+int platform_apa102_poll(void *p) { return p?1:-1; }
+void platform_apa102_cancel(void *p) { (void)p; }
+bool platform_apa102_show(void *p,const uint8_t *rgb,size_t n) { return platform_pixels_show(p,rgb,n); }
+bool platform_i2c_valid(int32_t sda,int32_t scl) {
+    return sda>=0&&scl>=0&&(sda&1)==0&&(scl&1)==1&&((sda>>1)&1)==((scl>>1)&1);
+}
+bool platform_i2c_open(int32_t sda,int32_t scl,void **p) {
+    if(!platform_i2c_valid(sda,scl))return false;
+    *p=malloc(1);return *p!=NULL;
+}
+void platform_i2c_close(void *p) { free(p); }
+bool platform_i2c_transfer(void *p,uint8_t address,const uint8_t *w,size_t wn,uint8_t *r,size_t rn) {
+    if(!p||!wn||address<32||address>39)return false;
+    // Host simulation: eight little-endian raw input masks, indexed by address.
+    // No file means disconnected hardware, rather than fabricated button levels.
+    const char *path=getenv("LIGHTVM_I2C_INPUTS");if(!path)return false;
+    int fd=open(path,O_RDONLY|O_NONBLOCK);if(fd<0)return false;
+    uint8_t mask[2];ssize_t n=pread(fd,mask,2,(address-32)*2);close(fd);
+    if(n!=2)return false;
+    if(rn==2&&w[0]==0){memcpy(r,mask,2);return true;}
+    return !rn&&wn==3&&(w[0]==4||w[0]==6);
+}
 static int storage_fd=-1;
 #if LIGHTVM_BOOT_SEQUENCE
 static int boot_storage_fd=-1;

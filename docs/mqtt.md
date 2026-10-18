@@ -208,6 +208,92 @@ binding while offline, remove the old discovery entries on the old broker/HA
 explicitly; no persistent discovery tombstone journal is maintained. Disabling
 MQTT retains discovery but makes the controller unavailable.
 
+## Keypad and RGB indicators
+
+Pico W can use the Pimoroni Pico RGB Keypad Base as an HA automation controller.
+Under **Configure → Output & startup**, choose **Add Pico RGB Keypad**, then
+**Apply & save for reboot**. This adds generic TCA9555 inputs and one APA102
+indicator output. The Advanced JSON editor supports custom labels and bindings.
+The same configuration is in
+[`pico-rgb-keypad.json`](../examples/config/pico-rgb-keypad.json):
+
+```sh
+python tools/client.py --port PORT --config examples/config/pico-rgb-keypad.json --save
+python tools/client.py --port PORT --network examples/config/network-mqtt.json
+```
+
+Set the actual broker credentials in the network example first. Applying the
+keypad example replaces the active output configuration; combine its `outputs`
+and `inputs` with existing outputs when keeping other lights. An original Pico
+supports the peripherals over USB, but standalone MQTT needs Pico W networking.
+
+HA discovers **one controller device**, containing sixteen RGB light entities and
+32 device triggers (press and release for each key). Existing HA output lights
+and preset selectors also belong to that same controller device. The RGB lights
+support on/off, brightness and RGB colour through the MQTT JSON light schema;
+transition and flash capabilities are explicitly disabled in discovery.
+Pressing a key does not locally toggle its indicator: HA automations decide both
+what the press does and what the indicator should display. For example, choose
+the `keypad_key_1` short-press trigger to toggle a kitchen lamp, then use another
+automation on that lamp's reported state to set Key 1 indicator green or dim.
+Use explicit light entities when targeting an automation action; targeting the
+whole keypad device would affect all its lights. No custom HA integration or
+manual discovery YAML is needed. These follow HA's official
+[device trigger](https://www.home-assistant.io/integrations/device_trigger.mqtt/)
+and [JSON RGB light](https://www.home-assistant.io/integrations/light.mqtt/#json-schema)
+contracts.
+
+The default wiring is SDA GP4, SCL GP5, expander address `0x20`, APA102 data GP19,
+clock GP18 and active-low bus enable GP17. Brightness limit defaults to 64/255
+in the example/editor preset. Drivers contain no keypad-specific pin mapping;
+see [Pimoroni's reference](https://github.com/pimoroni/pimoroni-pico/blob/main/libraries/pico_rgb_keypad/pico_rgb_keypad.cpp).
+Physical key-to-LED ordering and timing still need acceptance on the actual board.
+
+For input ID `keypad` and one-based key number `n` (1..16):
+
+| Topic | Payload / behavior |
+| --- | --- |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/event` | Non-retained `press` or `release`. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/set` | JSON light command, e.g. `{"state":"ON","brightness":128,"color":{"r":0,"g":255,"b":0}}`. Publish without retain. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/state` | Retained accepted light target, including state, brightness, RGB and `color_mode:"rgb"`. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/availability` | Retained indicator output health, combined with controller availability. |
+| `homeassistant/light/<controller_id>/i_<hex_input_id>_<n>/config` | Retained RGB-light discovery. |
+| `homeassistant/device_automation/<controller_id>/i_<hex_input_id>_<n>_press/config` | Retained press-trigger discovery; release uses `_release/config`. |
+
+The input's `home_assistant` may omit `indicators` for press/release triggers
+without lights. Each trigger's subtype is `<input_id>_key_<n>` and its type is
+`button_short_press` or `button_short_release`; long/double press recognition is
+not implemented. Physical held state and expander availability are reported by
+`describe.inputs`; loss/recovery does not manufacture presses. Triggers have no
+availability field in HA's MQTT device-trigger contract.
+
+There are 64 ordered events across all inputs, with a 250 ms publication lifetime
+and a cumulative `describe.input_event_overflow` counter. Offline, reconnected and
+HA-restarted sessions discard pending events. Publications use QoS0; this is not
+guaranteed or exactly-once automation execution. Native queue expiry precedes
+MQTT queueing; an already queued network packet cannot be recalled. Retained
+commands and malformed/unsupported light fields are rejected without partial
+state changes. Rendering continues while MQTT is unavailable.
+
+RGB state survives MQTT reconnects and HA restarts in controller RAM. Reboot
+starts indicators off; transient light values are not written to flash. HA
+automations can restore desired indications when the controller becomes available.
+Changing unrelated configuration preserves unchanged indicator hardware and state.
+Removing an HA input binding clears its light and trigger discovery and retained
+light state/availability, including retries across reconnects during the same
+firmware run. The existing limitation on offline removal followed by reboot
+applies here too.
+
+Host replay uses `LIGHTVM_I2C_INPUTS=/absolute/path/inputs.bin`: eight little-endian
+16-bit raw input masks, indexed by addresses `0x20`..`0x27`. Both simulated buses
+read that same address bank. Missing/truncated files represent disconnected
+hardware; write via atomic file replacement to avoid accidental simulated loss.
+This is a host test adapter; Pico uses the physical I2C bus.
+
+```sh
+LIGHTVM_RECEIVER="$PWD/build/mqtt-host/lightvm" python -m unittest discover -s tests -p test_keypad.py -v
+```
+
 ## Separation and verification
 
 `src/mqtt.[ch]` owns bounded MQTT framing, sessions, buffering, keepalive,

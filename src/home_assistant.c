@@ -15,6 +15,7 @@ static const char *selected(const HomeAssistant *h,const AppOutput *d) {
 }
 static void refresh(HomeAssistant *h) {
     h->available=false;
+    ha_keys_refresh(h);
     for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
         HaOutput *l=&h->outputs[i];l->discovered=false;l->selector_discovered=false;l->known=false;l->preset_known=false;l->remove_phase=0;
     }
@@ -34,6 +35,10 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
     }
     /* Retained commands must never start playback on boot/reconnect. */
     if(retained || h->app->command_active)return;
+    char indicator_command[512];
+    if(ha_keys_command(h,topic,payload,size,indicator_command,sizeof(indicator_command))){
+        app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)indicator_command,strlen(indicator_command));return;
+    }
     size_t prefix=strlen(h->root);
     if(strncmp(topic,h->root,prefix) || topic[prefix]!='/')return;
     const char *id=topic+prefix+1,*slash=strchr(id,'/');
@@ -64,6 +69,7 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
 }
 void ha_init(HomeAssistant *h,App *app,MqttStream stream) {
     memset(h,0,sizeof(*h));h->app=app;h->source=++app->connection_sequence;
+    h->keys_pending=true;
     snprintf(h->root,sizeof(h->root),"homeassistant/lightvm/%s",app->controller_id);
     char id[96],will[MQTT_TOPIC_SIZE];snprintf(id,sizeof(id),"lightvm-%s",app->controller_id);
     snprintf(will,sizeof(will),"%s/availability",h->root);
@@ -145,16 +151,18 @@ static void reconcile(HomeAssistant *h) {
 void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
     if(h->app->command_active)return;
     reconcile(h);
+    ha_keys_reconcile(h);
     mqtt_tick(&h->mqtt,&h->app->network.config.mqtt,ready && !h->app->network.recovery && !h->app->network_pending,now);
     h->app->mqtt_connected=h->mqtt.state==MQTT_ONLINE;
     if(h->mqtt.error[0])snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"%s",h->mqtt.error);
-    if(!h->app->mqtt_connected)return;
+    if(!h->app->mqtt_connected){inputs_discard_events(&h->app->inputs);return;}
     if(h->generation!=h->mqtt.generation){h->generation=h->mqtt.generation;h->phase=0;refresh(h);h->app->mqtt_error[0]=0;}
-    if(h->phase<3){
+    if(h->phase<4){
         if(h->mqtt.subscription)return;
         char filter[MQTT_TOPIC_SIZE];
         if(h->phase<2)snprintf(filter,sizeof(filter),"%s/+/%sset",h->root,h->phase?"preset/":"");
-        else snprintf(filter,sizeof(filter),"homeassistant/status");
+        else if(h->phase==2)snprintf(filter,sizeof(filter),"homeassistant/status");
+        else snprintf(filter,sizeof(filter),"%s/input/+/+/set",h->root);
         if(mqtt_subscribe(&h->mqtt,filter))h->phase++;
         return;
     }
@@ -186,5 +194,6 @@ void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
             return;
         }
     }
-    if(!h->available){char topic[MQTT_TOPIC_SIZE];snprintf(topic,sizeof(topic),"%s/availability",h->root);if(mqtt_publish(&h->mqtt,topic,"online",6,true))h->available=true;}
+    if(!h->available){char topic[MQTT_TOPIC_SIZE];snprintf(topic,sizeof(topic),"%s/availability",h->root);if(mqtt_publish(&h->mqtt,topic,"online",6,true))h->available=true;return;}
+    (void)ha_keys_tick(h,now);
 }

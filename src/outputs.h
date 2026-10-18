@@ -3,6 +3,7 @@
 #include "platform.h"
 #include "config.h"
 #include "json.h"
+#include "inputs.h"
 #define EMPTY_CONFIG "{\"schema\":\"lightvm.config\",\"outputs\":[]}"
 #define HA_PRESET_LIMIT 16u
 typedef struct {
@@ -16,6 +17,7 @@ typedef struct {
     char ha_default_preset[OBJECT_NAME_LIMIT + 1], ha_name[65];
     char ha_presets[HA_PRESET_LIMIT][OBJECT_NAME_LIMIT + 1];
     unsigned ha_preset_count;
+    bool indicators;
     /* Byte span in the owning configuration JSON, never an upload pointer. */
     uint32_t settings_offset, settings_size;
     TransitionSpec on_transition, off_transition;
@@ -25,6 +27,8 @@ typedef struct {
     unsigned count;
     HardwareOutput *outputs;
     int default_output;
+    unsigned input_count;
+    InputConfig inputs[INPUT_LIMIT];
 } HardwareConfig;
 typedef struct {
     const char *type;

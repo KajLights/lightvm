@@ -10,6 +10,7 @@
 #include "boot_sequence.h"
 #endif
 
+typedef struct { uint8_t rgb[3],brightness;bool on; } IndicatorLight;
 typedef struct {
     HardwareOutput hardware;
     VmInstance vm;
@@ -24,6 +25,9 @@ typedef struct {
     bool recall_owned, power_on;
     char selected_preset[OBJECT_NAME_LIMIT + 1];
     uint32_t selected_preset_crc;
+    IndicatorLight *indicators;
+    bool indicator_dirty,indicator_pending,indicator_fault;
+    uint64_t indicator_retry;
 } AppOutput;
 typedef struct {
 #if LIGHTVM_BOOT_SEQUENCE
@@ -44,6 +48,7 @@ typedef struct {
     AppOutput *upload_output;
     Store store;
     HardwareConfig hardware;
+    Inputs inputs;
     char config_json[CONFIG_LIMIT];
     uint32_t config_size, revision;
     uint8_t staging[CONFIG_LIMIT];
@@ -52,7 +57,7 @@ typedef struct {
     unsigned object_kind, schedule_cursor;
     uint32_t transition_sequence;
     bool uploading, staged, booting;
-    bool command_active, disconnect_pending;
+    bool command_active, disconnect_pending, hardware_changing;
     uint64_t upload_deadline;
     char object_name[OBJECT_NAME_LIMIT + 1];
     uint32_t last_code;
@@ -65,6 +70,7 @@ AppOutput *app_output(App *, const char *id);
 const char *app_output_preset(const App *, const AppOutput *);
 const char *app_output_selected_preset(const App *, const AppOutput *);
 bool app_output_power(const AppOutput *);
+size_t app_indicator_json(const AppOutput *,unsigned pixel,char *,size_t);
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);

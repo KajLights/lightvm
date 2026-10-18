@@ -1,0 +1,23 @@
+.program apa102
+.side_set 1
+.wrap_target
+out pins, 1 side 0
+nop side 1
+.wrap
+
+% c-sdk {
+static inline void apa102_program_init(PIO pio, uint sm, uint offset, uint data, uint clock, float divider) {
+    pio_gpio_init(pio, data);
+    pio_gpio_init(pio, clock);
+    pio_sm_set_consecutive_pindirs(pio, sm, data, 1, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, clock, 1, true);
+    pio_sm_config c = apa102_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, data, 1);
+    sm_config_set_sideset_pins(&c, clock);
+    sm_config_set_out_shift(&c, false, true, 8);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    sm_config_set_clkdiv(&c, divider);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

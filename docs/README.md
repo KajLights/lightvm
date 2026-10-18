@@ -16,7 +16,7 @@ animation. The guides below describe the current implementation.
 - [Control API](control-api.md)
 - [Controller configuration](configuration.md)
 - [Networking](networking.md)
-- [MQTT and Home Assistant lights](mqtt.md)
+- [MQTT, Home Assistant lights and keypad inputs](mqtt.md)
 - [Boot sequence and power recovery](boot-sequence.md)
 - [Browser workspace](web-editor.md)
 

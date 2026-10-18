@@ -66,7 +66,7 @@ static void portable_contract(void){
     CHECK(!error&&p->render_count==3&&vm.control.program_us==180000);
     vm_destroy(&vm);CHECK(vm_heap_used()==0);
 
-    PixelBuffer physical={0};PixelConfig config={16,3,255,"RGB"};
+    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=3,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     portable_load(&vm,&physical,&reply,counter_lbc,sizeof(counter_lbc));
     // A passive device snapshot remains RGB before the first presentation.

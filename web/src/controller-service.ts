@@ -190,6 +190,9 @@ export class ControllerService {
   }
   async readProgramState(client: LightVMClient, background = false) {
     const output = this.snapshot.controller.selectedOutput;
+    if (this.snapshot.controller.config && !this.snapshot.controller.config.outputs.some(item => item.mode !== 'indicators')) {
+      this.store.dispatch(controllerActions.programState(null)); return;
+    }
     const current = () => client === this.client && output === this.snapshot.controller.selectedOutput && (!background || !this.store.getState().activity.operation);
     try {
       const transition = this.snapshot.controller.description?.ab_transitions ? await client.transition(output ?? undefined) : null;

@@ -62,8 +62,8 @@ snapshot objects. They can be provisioned without configuring any light output.
 
 ## JSON configuration v1
 
-See [the Pico example](../examples/config/pico-startup.json). The only root fields are
-required `schema` and `outputs`. The outputs array may be empty. Output IDs and
+See [the Pico example](../examples/config/pico-startup.json). Root fields are
+required `schema` and `outputs`, and optional `inputs`. The outputs array may be empty. Output IDs and
 physical pins must be unique. Root-level `targets` and `startup` are rejected,
 including empty or null forms. Previously saved configurations using those fields
 report a boot error and start with empty active configuration; replace them through
@@ -102,8 +102,42 @@ of RGB. `brightness_limit` is an optional final output multiplier, an integer
 brightness changes. Logical snapshots remain unscaled RGB bytes; native drivers
 apply wire order and any configured brightness reduction at submission. At 255,
 drivers skip brightness arithmetic while retaining wire conversion.
-Only 800 kHz, three-channel WS2812B is supported. Virtual outputs,
-RGBW and pixel subsets are not implemented.
+WS2812B supports 800 kHz three-channel strips. Pico and host also support `apa102`:
+its config requires `data_pin`, `clock_pin` and `count`, with optional active-low
+`enable_pin`, `frequency` (100000..8000000 Hz; default 1000000), `order` (default
+`BGR`) and `brightness_limit`. Pico uses asynchronous PIO/DMA, including the
+count-dependent trailing clocks. Data, clock, enable and other output pins must
+be distinct. ESP32 currently rejects APA102 and TCA9555 configurations; its
+WS2812 outputs remain supported.
+
+An output with `mode: "indicators"` reserves up to sixteen pixels for independent
+RGB control through HA or the management API. It cannot have startup programs,
+HA preset bindings or power transitions. Animation commands and transient uploads
+to it are rejected. Its normal submit/poll presenter owns one shared frame;
+each indicator has on/off, brightness and RGB state, without per-pixel VMs.
+Omitted mode means `animation`, including ordinary animated APA102 strips.
+
+The optional `inputs` array accepts up to four generic `tca9555` adapters. Each
+has an `id` and `config` with advertised I2C `sda` and `scl` pins, optional
+`address` (32..39, default 32), `active_low` (default true), and `debounce_ms`
+(5..100, default 20). All sixteen channels are configured as inputs. Pico bus
+routing is checked; adapters on the same bus share its pin pair and require
+distinct addresses. Bus pins cannot overlap outputs, and bus ownership is
+reference counted. The driver uses 400 kHz transactions with a 1 ms deadline.
+Missing hardware remains configured but unavailable, retries every second, and
+does not stop other outputs. Inputs are sampled every 5 ms during normal service
+and runtime checkpoints, independently of animation pause/stop. Flash operations
+and other service stalls can interrupt sampling. Debounce establishes an initial
+level without emitting events, including when recovering from a bus failure.
+
+An input's optional `home_assistant` object enables sixteen press/release triggers.
+Its optional `indicators` names a sixteen-pixel output in indicator mode: channel
+0 pairs with pixel 0, through channel 15/pixel 15. An output may be bound once.
+Optional `names` supplies exactly sixteen labels of 1..32 UTF-8 bytes for the
+indicator lights; defaults are Key 1 through Key 16. IDs determine discovery
+identity and trigger subtypes; labels can change without changing those IDs.
+See [the keypad example](../examples/config/pico-rgb-keypad.json) and
+[HA keypad setup](mqtt.md#keypad-and-rgb-indicators).
 
 Identifiers are 1..32 ASCII letters, digits, underscores, hyphens or dots. Unknown
 fields, duplicate keys, unsupported types, malformed JSON and unsuitable
@@ -179,6 +213,9 @@ status are not part of this protocol.
 | MANAGE operation | Additional fields / result |
 |---|---|
 | `describe` | Board, output types, permitted pins, capacities, active/saved/catalog revisions, active program CRC and boot/runtime diagnostics |
+| `indicator_set` | `output`, zero-based `pixel`, `value` with optional `state` (`ON`/`OFF`), `brightness` (0..255) and `color: {r,g,b}` (0..255); atomically updates that light and returns its JSON state. |
+| `indicator_get` | `output`, zero-based `pixel`; JSON light state, including colour while off. |
+| `indicator_snapshot` | `output`; RGB bytes in PIXELS replies, after per-indicator brightness and before physical brightness limit/wire conversion. |
 | `config_get`, `config_saved` | Active or persisted JSON; absent persisted config reads as empty |
 | `config_validate` | Validate staged configuration, including startup program preparation and argument validation |
 | `config_apply` | `expected_revision` (active); apply staged config |

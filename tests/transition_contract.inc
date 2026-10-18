@@ -4,7 +4,7 @@
 static void transition_contract(void){
     clock_now=0;clock_step=0;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
-    PixelBuffer physical={0};PixelConfig config={16,67,255,"RGB"};
+    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=67,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     Transition *t=transition_create(&physical);CHECK(t);
     CHECK(transition_set(t,35));CHECK(transition_run(t,100,2000));

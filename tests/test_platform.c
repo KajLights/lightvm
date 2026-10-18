@@ -4,6 +4,9 @@
 #include "pixels.h"
 #include "vm_allocator.h"
 #include "runtime.h"
+#if LIGHTVM_MQTT
+#include "home_assistant.h"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -257,6 +260,42 @@ static unsigned service_calls;
 static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
 static void disconnect_service(void *context) { App *a=context;app_disconnect(a,a->upload_owner); }
 
+static void indicator_contract(void) {
+    static App app;Session session;Capture reply={.marker=0x12345678u};
+    storage_available=false;clock_now=0;clock_step=0;
+    app_init(&app,capture,&reply);session_init(&session,&app,1,capture,&reply);
+    const char *config="{\"schema\":\"lightvm.config\",\"outputs\":[{\"id\":\"keys\",\"type\":\"ws2812b\",\"mode\":\"indicators\",\"config\":{\"pin\":\"GP16\",\"count\":16}}]}";
+    memcpy(app.staging,config,strlen(config));app.expected=(uint32_t)strlen(config);app.object_kind=1;app.staged=true;app.upload_owner=1;
+    const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
+    command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
+    const char *red="{\"op\":\"indicator_set\",\"output\":\"keys\",\"pixel\":0,\"value\":{\"state\":\"ON\",\"color\":{\"r\":255,\"g\":0,\"b\":0}}}";
+    const char *green="{\"op\":\"indicator_set\",\"output\":\"keys\",\"pixel\":0,\"value\":{\"color\":{\"r\":0,\"g\":255,\"b\":0}}}";
+    delayed_output=true;output_ready=false;output_failed=false;
+    command(&session,CMD_MANAGE,(const uint8_t *)red,strlen(red));CHECK(reply.code==STATUS_OK);app_tick(&app);
+    CHECK(borrowed_output&&borrowed_output[0]==255&&borrowed_output[1]==0);
+    command(&session,CMD_MANAGE,(const uint8_t *)green,strlen(green));CHECK(reply.code==STATUS_OK);app_tick(&app);
+    CHECK(borrowed_output[0]==255&&borrowed_output[1]==0); // Still immutable while borrowed.
+    output_ready=true;app_tick(&app);
+    CHECK(displayed[0]==255&&borrowed_output&&borrowed_output[1]==255);
+    app_tick(&app);CHECK(!borrowed_output&&displayed[0]==0&&displayed[1]==255);
+    command(&session,CMD_MANAGE,(const uint8_t *)red,strlen(red));app_tick(&app);
+    output_failed=true;app_tick(&app);CHECK(app.outputs[0]->indicator_fault&&!borrowed_output);
+    output_failed=false;clock_now=1000000;app_tick(&app);app_tick(&app);
+    CHECK(!app.outputs[0]->indicator_fault&&displayed[0]==255&&displayed[1]==0);
+#if LIGHTVM_MQTT
+    // Exercise expiry and queue backpressure without clocks or real sockets.
+    HomeAssistant *ha=calloc(1,sizeof(*ha));CHECK(ha);ha->app=&app;strcpy(ha->root,"homeassistant/lightvm/test");ha->mqtt.state=MQTT_ONLINE;
+    strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=3;
+    app.inputs.count=1;strcpy(app.inputs.devices[0].config.id,"buttons");
+    app.inputs.queued=1;app.inputs.events[0]=(InputEvent){.time=0,.input=0,.channel=0,.pressed=true};
+    CHECK(!ha_keys_tick(ha,INPUT_EVENT_TTL_US+1)&&!app.inputs.queued&&!ha->mqtt.queued);
+    app.inputs.queued=1;app.inputs.events[app.inputs.head]=(InputEvent){.time=1000000,.input=0,.channel=0,.pressed=true};
+    ha->mqtt.queued=MQTT_BUFFER_SIZE;CHECK(ha_keys_tick(ha,1000000)&&app.inputs.queued==1);
+    ha->mqtt.queued=0;CHECK(ha_keys_tick(ha,1000000)&&!app.inputs.queued&&ha->mqtt.tx[0]==0x30);
+    free(ha);
+#endif
+    delayed_output=false;session_destroy(&session);app_destroy(&app);CHECK(!borrowed_output);
+}
 int main(void) {
     storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
     static App app;
@@ -408,7 +447,7 @@ int main(void) {
 
     // Two independently owned buffers/instances exercise the future slot boundary.
     PixelBuffer first={0}, second={0};
-    PixelConfig first_config={16,3,255,"GRB"}, second_config={16,7,255,"RGB"};
+    PixelConfig first_config={.pin=16,.count=3,.brightness=255,.order="GRB",.clock_pin=-1,.enable_pin=-1}, second_config={.pin=16,.count=7,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&first,&first_config,output_type("ws2812b")));
     CHECK(pixels_init(&second,&second_config,output_type("ws2812b")));
     CHECK(first.rgb!=second.rgb && first.driver!=second.driver);
@@ -498,5 +537,6 @@ int main(void) {
     portable_contract();
     composition_contract();
     transition_contract();
+    indicator_contract();
     return 0;
 }

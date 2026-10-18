@@ -18,8 +18,9 @@ function parseSettings(value: string): Record<string, number | boolean> | null {
 function parseConfig(value: string): HardwareConfig | null {
   try {
     const result = JSON.parse(value);
-    if (!object(result) || result.schema !== 'lightvm.config' || !Array.isArray(result.outputs) || Object.keys(result).some(key => key !== 'schema' && key !== 'outputs')) return null;
-    return result.outputs.every(item => object(item) && typeof item.id === 'string' && item.type === 'ws2812b' && object(item.config) && typeof item.config.pin === 'string' && typeof item.config.count === 'number' &&
+    if (!object(result) || result.schema !== 'lightvm.config' || !Array.isArray(result.outputs) || Object.keys(result).some(key => key !== 'schema' && key !== 'outputs' && key !== 'inputs')) return null;
+    if (result.inputs !== undefined && (!Array.isArray(result.inputs) || !result.inputs.every(item => object(item) && typeof item.id === 'string' && item.type === 'tca9555' && object(item.config)))) return null;
+    return result.outputs.every(item => object(item) && typeof item.id === 'string' && (item.type === 'ws2812b' || item.type === 'apa102') && object(item.config) && (item.type === 'ws2812b' ? typeof item.config.pin === 'string' : typeof item.config.data_pin === 'string' && typeof item.config.clock_pin === 'string') && typeof item.config.count === 'number' &&
       (item.on_transition === undefined || object(item.on_transition)) && (item.off_transition === undefined || object(item.off_transition)) &&
       (item.home_assistant === undefined || (object(item.home_assistant) && typeof item.home_assistant.default_preset === 'string' && Array.isArray(item.home_assistant.presets) && item.home_assistant.presets.every(name => typeof name === 'string') && item.home_assistant.presets.includes(item.home_assistant.default_preset))) &&
       (item.startup === undefined || (object(item.startup) && typeof item.startup.program === 'string' && (item.startup.settings === undefined || object(item.startup.settings))))) ? result as unknown as HardwareConfig : null;
@@ -57,9 +58,19 @@ function Hardware() {
     next.outputs.push({ id, type: 'ws2812b', config: { pin, count: Math.min(100, controller.description?.pixel_capacity || 100), order: 'GRB', brightness_limit: 255 } });
     update(next);
   }
+  function addKeypad() {
+    if (!draft) return;
+    const next = structuredClone(draft);
+    const id = 'keypad', output = 'key_lights';
+    if (next.inputs?.some(item => item.id === id) || next.outputs.some(item => item.id === output)) return;
+    next.outputs.push({ id: output, type: 'apa102', mode: 'indicators', config: { data_pin: 'GP19', clock_pin: 'GP18', enable_pin: 'GP17', count: 16, order: 'BGR', brightness_limit: 64 } });
+    next.inputs = [...(next.inputs || []), { id, type: 'tca9555', config: { sda: 'GP4', scl: 'GP5', address: 32, active_low: true, debounce_ms: 20 }, home_assistant: { indicators: output } }];
+    update(next);
+  }
   function removeOutput(index: number) {
     if (!draft) return;
-    const next = structuredClone(draft); next.outputs.splice(index, 1);
+    const next = structuredClone(draft), removed = next.outputs[index].id; next.outputs.splice(index, 1);
+    next.inputs?.forEach(input => { if (input.home_assistant?.indicators === removed) delete input.home_assistant.indicators; });
     setSettingDrafts(current => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value])));
     update(next);
   }
@@ -92,12 +103,14 @@ function Hardware() {
         <legend>{output.id || 'Unnamed output'}</legend>
         <div className="form-grid">
           <label htmlFor={'config-controller-id-' + index}>Output name<input id={'config-controller-id-' + index} value={output.id} onChange={event => setOutput(index, item => { item.id = event.target.value; })} autoComplete="off" /></label>
-          <label htmlFor={'config-pin-' + index}>Data pin<select id={'config-pin-' + index} value={output.config.pin} onChange={event => setOutput(index, item => { item.config.pin = event.target.value; })}>{!controller.description?.pins.includes(output.config.pin) && <option value={output.config.pin}>{output.config.pin || 'Select pin'}</option>}{controller.description?.pins.map(pin => <option key={pin} value={pin}>{pin}</option>)}</select></label>
+          <label htmlFor={'config-pin-' + index}>Data pin<select id={'config-pin-' + index} value={output.config.pin ?? output.config.data_pin ?? ''} onChange={event => setOutput(index, item => { if (item.type === 'apa102') item.config.data_pin = event.target.value; else item.config.pin = event.target.value; })}>{!controller.description?.pins.includes(output.config.pin ?? output.config.data_pin ?? '') && <option value={output.config.pin ?? output.config.data_pin ?? ''}>{output.config.pin || output.config.data_pin || 'Select pin'}</option>}{controller.description?.pins.map(pin => <option key={pin} value={pin}>{pin}</option>)}</select></label>
           <label htmlFor={'config-count-' + index}>Pixel count<input id={'config-count-' + index} type="number" min="1" max={controller.description?.pixel_capacity} value={output.config.count} onChange={event => setOutput(index, item => { item.config.count = Number(event.target.value); })} /></label>
-          <label htmlFor={'config-order-' + index}>Colour order<select id={'config-order-' + index} value={output.config.order || 'GRB'} onChange={event => setOutput(index, item => { item.config.order = event.target.value; })}>{['GRB', 'RGB', 'BRG', 'RBG', 'GBR', 'BGR'].map(order => <option key={order}>{order}</option>)}</select></label>
+          <label htmlFor={'config-order-' + index}>Colour order<select id={'config-order-' + index} value={output.config.order || (output.type === 'apa102' ? 'BGR' : 'GRB')} onChange={event => setOutput(index, item => { item.config.order = event.target.value; })}>{['GRB', 'RGB', 'BRG', 'RBG', 'GBR', 'BGR'].map(order => <option key={order}>{order}</option>)}</select></label>
           <label htmlFor={'config-brightness-' + index}>Brightness limit (0–255)<input id={'config-brightness-' + index} type="number" min="0" max="255" value={output.config.brightness_limit ?? 255} onChange={event => setOutput(index, item => { item.config.brightness_limit = Number(event.target.value); })} /></label>
         </div>
-        <label htmlFor={'startup-program-' + index}>Startup program</label><select id={'startup-program-' + index} value={output.startup?.program || ''} disabled={!controller.description?.storage_available} onChange={event => selectStartup(index, event.target.value)}><option value="">Stay idle on reboot</option>{output.startup && !controller.programs.some(item => (item.type ?? item.profile ?? 'animation') === 'animation' && item.name === output.startup?.program) && <option value={output.startup.program}>{output.startup.program + ' (unavailable)'}</option>}{controller.programs.filter(item => (item.type ?? item.profile ?? 'animation') === 'animation').map(program => <option key={program.name} value={program.name}>{program.name + ' · ' + program.size + ' bytes'}</option>)}</select>
+        {output.type === 'apa102' && <p className="helper">APA102 clock: {output.config.clock_pin}; active-low enable: {output.config.enable_pin || 'none'}. Edit bus wiring in Advanced JSON.</p>}
+        {output.mode === 'indicators' && <p className="helper">Home Assistant controls each RGB indicator independently. Configure its button input in Advanced JSON.</p>}
+        {output.mode !== 'indicators' && <><label htmlFor={'startup-program-' + index}>Startup program</label><select id={'startup-program-' + index} value={output.startup?.program || ''} disabled={!controller.description?.storage_available} onChange={event => selectStartup(index, event.target.value)}><option value="">Stay idle on reboot</option>{output.startup && !controller.programs.some(item => (item.type ?? item.profile ?? 'animation') === 'animation' && item.name === output.startup?.program) && <option value={output.startup.program}>{output.startup.program + ' (unavailable)'}</option>}{controller.programs.filter(item => (item.type ?? item.profile ?? 'animation') === 'animation').map(program => <option key={program.name} value={program.name}>{program.name + ' · ' + program.size + ' bytes'}</option>)}</select>
         {output.startup && <><label htmlFor={'startup-settings-' + index}>Startup settings (JSON)</label><textarea id={'startup-settings-' + index} className="config-code" spellCheck={false} value={settingDrafts[index] ?? JSON.stringify(output.startup.settings || {}, null, 2)} aria-invalid={settingDrafts[index] !== undefined && !parseSettings(settingDrafts[index])} onChange={event => editSettings(index, event.target.value)} />
           {settingDrafts[index] !== undefined && !parseSettings(settingDrafts[index]) && <p role="alert">Settings must be a JSON object with numeric or boolean values.</p>}
           <p className="helper">Settings are applied when the animation initializes. Omitted settings use its defaults.</p></>}
@@ -124,9 +137,12 @@ function Hardware() {
           </fieldset><label htmlFor={'ha-name-' + index}>Home Assistant name</label><input id={'ha-name-' + index} value={output.home_assistant.name || ''} placeholder={output.id} onChange={event => setOutput(index, item => { if (item.home_assistant) { if (event.target.value) item.home_assistant.name = event.target.value; else delete item.home_assistant.name; } })} /></>}
           <p className="helper">Each exposed output has an on/off light and a Preset selector. Selecting a preset starts it; ON recalls the last selected preset, or the default. OFF transitions to black. Enable MQTT in network settings.</p>
         </>}
+        </>}
         <button className="quiet small" onClick={() => removeOutput(index)}>Remove output</button>
       </fieldset>)}
       <button id="output-add" className="quiet" disabled={!draft} onClick={addOutput}>Add WS2812B output</button>
+      {controller.description?.mqtt_supported && ['GP4', 'GP5', 'GP17', 'GP18', 'GP19'].every(pin => controller.description?.pins.includes(pin)) && <button className="quiet" disabled={!draft || draft.inputs?.some(item => item.id === 'keypad') || draft.outputs.some(item => item.id === 'key_lights')} onClick={addKeypad}>Add Pico RGB Keypad</button>}
+      {draft?.inputs?.map(input => <p className="helper" key={input.id}>{input.id}: sixteen TCA9555 button inputs{input.home_assistant?.indicators ? ' with indicators on ' + input.home_assistant.indicators : ''}. Edit names and bindings in Advanced JSON.</p>)}
       <div className="form-actions"><button id="config-validate" className="quiet" disabled={!canApply} onClick={() => void submit({ validate: true })}>Validate</button><button id="config-apply" className="secondary" disabled={!canApply} onClick={() => void submit({})}>Apply in RAM</button><button id="config-save" className="primary" disabled={!canApply || !controller.description?.storage_available || controller.description?.storage_writable === false} onClick={() => void submit({ save: true })}>Apply &amp; save for reboot</button></div>
     </fieldset>
     <p className="helper">Unchanged hardware keeps playing when configuration is applied. Startup changes take effect after saving and rebooting.</p>

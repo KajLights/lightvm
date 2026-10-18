@@ -9,7 +9,10 @@ Implemented slice, 18 October 2026: the controller workspace's
 [Fader tab](../web-editor.md#fader-and-timed-transitions) supplies a virtual slider
 through the existing external transition source API and supports switching to
 native timed transitions. General signal registries, hardware adapters and live
-animation-variable bindings below remain proposed.
+animation-variable bindings below remain proposed. A separate native slice now
+implements TCA9555 digital inputs, debounced press/release events and MQTT HA
+triggers, paired with APA102 RGB indicators; see [keypad setup](../mqtt.md#keypad-and-rgb-indicators).
+It does not implement this proposal's general typed signal registry or guest inputs.
 
 ## Recommendation
 

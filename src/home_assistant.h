@@ -10,6 +10,12 @@ typedef struct {
     bool discovered, selector_discovered, known, preset_known, playing, removing;
 } HaOutput;
 typedef struct {
+    char input[OBJECT_NAME_LIMIT+1],output[OBJECT_NAME_LIMIT+1],name[33];
+    uint32_t state_crc;
+    unsigned char channel,phase,remove_phase;
+    bool removing,known,availability_known,available;
+} HaKey;
+typedef struct {
     App *app;
     Mqtt mqtt;
     uint64_t source;
@@ -18,9 +24,17 @@ typedef struct {
     bool available;
     char root[96];
     HaOutput outputs[HA_OUTPUT_LIMIT];
+    HaKey keys[INPUT_LIMIT*INPUT_CHANNELS];
+    uint32_t key_revision;
+    bool keys_pending;
 } HomeAssistant;
 void ha_init(HomeAssistant *, App *, MqttStream);
 void ha_tick(HomeAssistant *, bool network_ready, uint64_t now);
 /* Close before tearing down the native network interface. LWT marks offline. */
 void ha_close(HomeAssistant *);
+// Input/indicator discovery shares the existing controller device and MQTT session.
+void ha_keys_reconcile(HomeAssistant *);
+void ha_keys_refresh(HomeAssistant *);
+bool ha_keys_tick(HomeAssistant *,uint64_t now);
+bool ha_keys_command(HomeAssistant *,const char *,const uint8_t *,size_t,char *,size_t);
 #endif

@@ -177,6 +177,9 @@ and compact preset recipes on the controller. Preview addresses the selected out
 over HTTP/USB. The editor and example dropdown share the canonical sources.
 [MQTT control and Home Assistant lights](docs/mqtt.md) provide optional power and preset selection
 through an existing broker, with one light and one Preset selector per output.
+Pico W also supports the [Pico RGB Keypad](docs/mqtt.md#keypad-and-rgb-indicators):
+sixteen press/release inputs and sixteen independently controlled RGB indicators,
+using generic TCA9555 and APA102 drivers under the same HA controller device.
 Build with `-DLIGHTVM_MQTT=ON` (and Wi-Fi on embedded boards).
 See [configuration and management](docs/configuration.md),
 [networking](docs/networking.md) and [power recovery](docs/boot-sequence.md).

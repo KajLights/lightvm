@@ -3,7 +3,7 @@
 static void composition_contract(void){
     clock_now=0;clock_step=0;storage_available=false;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
-    PixelBuffer physical={0};PixelConfig config={16,67,255,"RGB"};
+    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=67,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     Composition *s=composition_create(&physical,2);CHECK(s);
     Capture reply={.marker=0x12345678u};

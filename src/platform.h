@@ -22,6 +22,8 @@ typedef struct {
     int32_t pin;
     uint32_t count, brightness;
     char order[4];
+    int32_t clock_pin, enable_pin;
+    uint32_t frequency;
 } PixelConfig;
 const BoardPin *platform_pins(size_t *count);
 bool platform_pixels_open(const PixelConfig *config, void **driver);
@@ -33,6 +35,20 @@ bool platform_pixels_submit(void *,const uint8_t *,size_t);
 int platform_pixels_poll(void *);
 void platform_pixels_cancel(void *);
 bool platform_pixels_show(void *driver, const uint8_t *rgb, size_t count);
+
+// Optional native peripherals. Unsupported ports reject configuration before apply.
+bool platform_apa102_supported(void);
+bool platform_apa102_open(const PixelConfig *, void **);
+void platform_apa102_close(void *);
+bool platform_apa102_submit(void *, const uint8_t *, size_t);
+int platform_apa102_poll(void *);
+void platform_apa102_cancel(void *);
+bool platform_apa102_show(void *, const uint8_t *, size_t);
+bool platform_i2c_valid(int32_t sda, int32_t scl);
+bool platform_i2c_open(int32_t sda, int32_t scl, void **);
+void platform_i2c_close(void *);
+// One bounded register transaction, including repeated start, at 400 kHz.
+bool platform_i2c_transfer(void *, uint8_t address, const uint8_t *, size_t, uint8_t *, size_t);
 
 // Native bounded block storage. Writes require erased bytes; sync is durable.
 // All ports expose 4096-byte erase units and 256-byte program units.

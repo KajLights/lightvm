@@ -146,7 +146,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
     <div className="workspace">{editorPanel}<aside className="sidebar">
       <section className="card"><div className="card-heading"><h2>Preview on lights</h2></div>
         <label htmlFor="preview-output">Preview output</label><select id="preview-output" value={controller.selectedOutput ?? ''} disabled={busy || !controller.selectedPath} onChange={event => void controllers.selectOutput(event.target.value)}>
-          {!output && <option value="">Configure an output</option>}{controller.config?.outputs.map(item => <option key={item.id} value={item.id}>{item.id + ' · ' + item.config.pin + ' · ' + item.config.count + ' pixels'}</option>)}
+          {!output && <option value="">Configure an output</option>}{controller.config?.outputs.filter(item => item.mode !== 'indicators').map(item => <option key={item.id} value={item.id}>{item.id + ' · ' + (item.config.pin ?? item.config.data_pin) + ' · ' + item.config.count + ' pixels'}</option>)}
         </select>
         {!output && controller.selectedPath && <p className="helper"><Link to={'/controllers/' + controller.description?.controller_id + '/configure'}>Configure an output</Link> before previewing.</p>}
         <p className="helper">{isTransition ? 'Save this transition to flash and select it between the prepared A and B compositions below.' : 'Preview replaces playback on this output. Other outputs continue. Saved presets and startup settings stay as saved.'}</p>

@@ -129,9 +129,11 @@ static void clear_output_composition(AppOutput *d){
 static void destroy_output(AppOutput **slot){
     AppOutput *d=*slot;*slot=NULL;
     if(!d)return;
-    clear_output_composition(d);vm_destroy(&d->vm);pixels_destroy(&d->pixels);platform_free(d);
+    if(d->indicator_pending)d->pixels.type->cancel(d->pixels.driver);
+    clear_output_composition(d);vm_destroy(&d->vm);pixels_destroy(&d->pixels);platform_free(d->indicators);platform_free(d);
 }
 static void empty_config(App *a) {
+    inputs_destroy(&a->inputs);
     hardware_destroy(&a->hardware);
     for(unsigned i=0;i<a->output_count;i++)destroy_output(&a->outputs[i]);
     platform_free(a->outputs);a->outputs=NULL;a->output_count=0;a->upload_output=&a->fallback;
@@ -195,11 +197,14 @@ static bool config_validate(App *a, const void *data, uint32_t size, HardwareCon
 }
 static bool same_output(const HardwareOutput *a,const HardwareOutput *b){
     return !strcmp(a->id,b->id)&&!strcmp(a->type,b->type)&&a->pixels.pin==b->pixels.pin&&a->pixels.count==b->pixels.count&&
-        a->pixels.brightness==b->pixels.brightness&&!strcmp(a->pixels.order,b->pixels.order);
+        a->pixels.brightness==b->pixels.brightness&&!strcmp(a->pixels.order,b->pixels.order)&&a->indicators==b->indicators&&
+        a->pixels.clock_pin==b->pixels.clock_pin&&a->pixels.enable_pin==b->pixels.enable_pin&&a->pixels.frequency==b->pixels.frequency;
 }
 static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t size){
     AppOutput **next=platform_calloc(config->count,sizeof(*next));
     if(config->count&&!next){hardware_destroy(config);return false;}
+    a->hardware_changing=true;
+    inputs_apply(&a->inputs,config->inputs,config->input_count);
     /* Output identity, not array position, owns its running instance. */
     for(unsigned n=0;n<config->count;n++)for(unsigned i=0;i<a->output_count;i++)
         if(a->outputs[i]&&same_output(&a->outputs[i]->hardware,&config->outputs[n])){next[n]=a->outputs[i];a->outputs[i]=NULL;break;}
@@ -216,13 +221,17 @@ static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t
         a->outputs[i]=d;d->hardware=a->hardware.outputs[i];vm_init(&d->vm,NULL,vm_send,a);
         strcpy(d->vm.output_id,d->hardware.id);
         if(!pixels_init(&d->pixels,&d->hardware.pixels,output_type(d->hardware.type)))goto failed;
+        if(d->hardware.indicators){
+            d->indicators=platform_calloc(d->pixels.count,sizeof(*d->indicators));if(!d->indicators)goto failed;
+            for(unsigned n=0;n<d->pixels.count;n++){memset(d->indicators[n].rgb,255,3);d->indicators[n].brightness=255;}
+        }
         d->vm.target=&d->pixels;d->vm.output=&d->pixels;
     }
     for(unsigned i=0;i<a->output_count;i++)a->outputs[i]->hardware=a->hardware.outputs[i];
-    memmove(a->config_json,data,size);a->config_size=size;a->upload_output=&a->fallback;return true;
+    memmove(a->config_json,data,size);a->config_size=size;a->upload_output=&a->fallback;a->hardware_changing=false;return true;
 failed:
     for(unsigned i=0;i<a->output_count;i++)destroy_output(&a->outputs[i]);
-    platform_free(a->outputs);a->outputs=NULL;a->output_count=0;empty_config(a);return false;
+    platform_free(a->outputs);a->outputs=NULL;a->output_count=0;empty_config(a);a->hardware_changing=false;return false;
 }
 /* Package extents are immutable and pinned independently of catalogue names. */
 static bool update_store(App *a,StoreType type,const char *name,const void *data,uint32_t size,bool remove) {
@@ -280,8 +289,10 @@ static bool activate(App *a,const char *name,uint16_t id,const char *action,cons
 }
 static void service(void *context) {
     App *a=context;
+    if(!a->hardware_changing)inputs_tick(&a->inputs,platform_time_us());
     bool previous=a->command_active;a->command_active=true;
     for(unsigned i=0;i<a->output_count;i++)if(a->outputs[i]){
+        if(a->outputs[i]->hardware.indicators)continue;
         if(a->outputs[i]->transition)transition_tick(a->outputs[i]->transition,64);
         else if(a->outputs[i]->composition)composition_tick(a->outputs[i]->composition,64);
         else if(!runtime_owns(&a->outputs[i]->vm))vm_tick_budget(&a->outputs[i]->vm,64);
@@ -347,6 +358,7 @@ bool app_boot_sequence_triggered(const App *a) {
 }
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
+    inputs_tick(&a->inputs,now);
 #if LIGHTVM_BOOT_SEQUENCE
     boot_sequence_tick(&a->boot_sequence,now);
 #endif
@@ -360,6 +372,23 @@ void app_tick(App *a) {
     unsigned first=a->output_count?a->schedule_cursor++%a->output_count:0;
     for(unsigned i=0;i<a->output_count;i++){
         AppOutput *d=a->outputs[(first+i)%a->output_count];
+        if(d->hardware.indicators){
+            if(d->indicator_pending){
+                int status=d->pixels.type->poll(d->pixels.driver);
+                if(!status)continue;
+                d->indicator_pending=false;d->indicator_fault=status<0;
+                if(status<0){d->indicator_dirty=true;d->indicator_retry=now+1000000;}
+            }
+            if(d->indicator_dirty&&now>=d->indicator_retry){
+                for(unsigned p=0;p<d->pixels.count;p++)for(unsigned c=0;c<3;c++){
+                    const IndicatorLight *l=&d->indicators[p];
+                    d->pixels.rgb[p*3+c]=l->on?(l->rgb[c]*l->brightness+127u)/255u:0;
+                }
+                if(d->pixels.type->submit(d->pixels.driver,d->pixels.rgb,d->pixels.count)){d->indicator_pending=true;d->indicator_dirty=false;}
+                else {d->indicator_fault=true;d->indicator_retry=now+1000000;}
+            }
+            continue;
+        }
         if(d->transition)transition_tick(d->transition,4096);else if(d->composition)composition_tick(d->composition,4096);else vm_tick(&d->vm);
     }
 }
@@ -393,7 +422,9 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
     literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
     literal(&w,",\"board\":"); quoted(&w,info->board);
-    literal(&w,",\"output_types\":[{\"type\":\"ws2812b\",\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}],\"pins\":[");
+    literal(&w,",\"output_types\":[{\"type\":\"ws2812b\",\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}");
+    if(platform_apa102_supported())literal(&w,",{\"type\":\"apa102\",\"required\":[\"data_pin\",\"clock_pin\",\"count\"],\"order_default\":\"BGR\",\"brightness_default\":255}");
+    literal(&w,"],\"pins\":[");
     size_t count; const BoardPin *pins=platform_pins(&count);
     for (size_t i=0;i<count;++i) { if (i) literal(&w,","); quoted(&w,pins[i].name); }
     literal(&w,"],\"pixel_capacity\":"); number(&w,PIXEL_CAPACITY);
@@ -403,6 +434,8 @@ static void describe(App *a, uint16_t id) {
         VmInstance *vm=d->composition&&d->composition->layer_count?&d->composition->layers[0].vm:&d->vm;
         if(described++)literal(&w,",");
         literal(&w,"{\"id\":");quoted(&w,hw->id);literal(&w,",\"type\":");quoted(&w,hw->type);
+        literal(&w,",\"mode\":");quoted(&w,hw->indicators?"indicators":"animation");
+        if(hw->indicators){literal(&w,",\"indicator_fault\":");literal(&w,d->indicator_fault?"true":"false");}
         literal(&w,",\"slot\":");quoted(&w,vm->slot);literal(&w,",\"pixels\":");number(&w,hw->pixels.count);
         literal(&w,",\"ready\":");literal(&w,d->transition||d->composition||vm->ready?"true":"false");
         literal(&w,",\"playing\":");literal(&w,(d->transition?d->transition->playing:d->composition?d->composition->playing:vm->playing)?"true":"false");
@@ -419,6 +452,13 @@ static void describe(App *a, uint16_t id) {
         literal(&w,"}");
     }
     literal(&w,"]");
+    literal(&w,",\"inputs\":[");
+    for(unsigned i=0;i<a->inputs.count;i++){
+        const DigitalInput *d=&a->inputs.devices[i];if(i)literal(&w,",");
+        literal(&w,"{\"id\":");quoted(&w,d->config.id);literal(&w,",\"type\":\"tca9555\",\"available\":");literal(&w,d->available?"true":"false");
+        literal(&w,",\"pressed\":");if(d->available)number(&w,d->stable);else literal(&w,"null");literal(&w,"}");
+    }
+    literal(&w,"],\"input_event_overflow\":");number(&w,a->inputs.overflow);
     literal(&w,",\"config_limit\":"); number(&w,CONFIG_LIMIT);
     literal(&w,",\"module_limit\":"); number(&w,MODULE_LIMIT);
     literal(&w,",\"instance_context_bytes\":"); number(&w,sizeof(VmInstance));
@@ -1208,6 +1248,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         if(size>8&&(!object_name_valid(output)||strlen(output)!=size-8)){reply(a,id,STATUS_CONFIG,0,"invalid output identifier");return;}
         AppOutput *destination=app_output(a,output);
         if(!destination){reply(a,id,STATUS_CONFIG,0,"unknown output");return;}
+        if(destination->hardware.indicators){reply(a,id,STATUS_CONFIG,0,"indicator output cannot run animation programs");return;}
         if(!store_upload_begin(&a->store,&a->upload,STORE_ANIMATION,"",read_u32(p),read_u32(p+4))){reply(a,id,STATUS_STORAGE,0,"no flash extent available for upload");return;}
         a->upload_output=destination;
         a->upload_output->vm.uploading=true;a->upload_owner=a->source;a->upload_deadline=platform_time_us()+30000000u;
@@ -1236,6 +1277,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     }
     if(type==CMD_RESET&&!size){a->upload_output->vm.uploading=false;a->uploading=false;a->staged=false;app_output(a,NULL)->active_program[0]=0;app_output(a,NULL)->active_crc=0;a->upload_owner=0;store_upload_cancel(&a->upload);}
     AppOutput *d=app_output(a,NULL);
+    if(d->hardware.indicators&&type!=CMD_STATUS){reply(a,id,STATUS_CONFIG,0,"indicator output is controlled through indicator_set");return;}
     if(d->composition||d->transition){
         if((type==CMD_FRAME&&size!=4)||(type!=CMD_FRAME&&size)){reply(a,id,STATUS_PROTOCOL,0,"invalid composition command payload");return;}
         if(type==CMD_FRAME&&read_u32(p)>1000){reply(a,id,STATUS_PROTOCOL,0,"FRAME requires 0..1000 milliseconds");return;}
@@ -1243,6 +1285,44 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     }
     vm_command(&d->vm,type,id,p,size);
 
+}
+size_t app_indicator_json(const AppOutput *d,unsigned pixel,char *buffer,size_t capacity) {
+    if(!d||!d->indicators||pixel>=d->pixels.count)return 0;
+    const IndicatorLight *l=&d->indicators[pixel];
+    int n=snprintf(buffer,capacity,"{\"state\":\"%s\",\"brightness\":%u,\"color_mode\":\"rgb\",\"color\":{\"r\":%u,\"g\":%u,\"b\":%u}}",l->on?"ON":"OFF",l->brightness,l->rgb[0],l->rgb[1],l->rgb[2]);
+    return n>0&&(size_t)n<capacity?(size_t)n:0;
+}
+static bool indicator_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op) {
+    if(strcmp(op,"indicator_set")&&strcmp(op,"indicator_get")&&strcmp(op,"indicator_snapshot"))return false;
+    if(!strcmp(op,"indicator_snapshot")){
+        static const char *const snapshot_fields[]={"op","output",NULL};
+        if(!d->indicators||!json_fields(j,0,snapshot_fields))goto invalid;
+        a->send(a->transport,RESP_PIXELS,id,d->pixels.rgb,d->pixels.count*3);reply(a,id,STATUS_OK,0,"indicator RGB frame");return true;
+    }
+    static const char *const fields[]={"op","output","pixel","value",NULL};
+    uint32_t pixel;
+    if(!d->indicators||!json_fields(j,0,fields)||!json_u32(j,json_get(j,0,"pixel"),&pixel)||pixel>=d->pixels.count)goto invalid;
+    int value=json_get(j,0,"value");
+    if(!strcmp(op,"indicator_set")){
+        static const char *const light_fields[]={"state","brightness","color",NULL};
+        static const char *const color_fields[]={"r","g","b",NULL};
+        if(!json_fields(j,value,light_fields)||!j->tokens[value].children)goto invalid;
+        IndicatorLight next=d->indicators[pixel];
+        int state=json_get(j,value,"state"),brightness=json_get(j,value,"brightness"),color=json_get(j,value,"color");
+        if(state>=0){if(json_equal(j,state,"ON"))next.on=true;else if(json_equal(j,state,"OFF"))next.on=false;else goto invalid;}
+        uint32_t n;
+        if(brightness>=0){if(!json_u32(j,brightness,&n)||n>255)goto invalid;next.brightness=(uint8_t)n;}
+        if(color>=0){
+            if(!json_fields(j,color,color_fields))goto invalid;
+            const char *channels[]={"r","g","b"};
+            for(unsigned c=0;c<3;c++){if(!json_u32(j,json_get(j,color,channels[c]),&n)||n>255)goto invalid;next.rgb[c]=(uint8_t)n;}
+        }
+        d->indicators[pixel]=next;d->indicator_dirty=true;
+    }else if(value>=0)goto invalid;
+    char buffer[160];size_t size=app_indicator_json(d,pixel,buffer,sizeof(buffer));
+    Writer w={.app=a,.id=id};bytes(&w,buffer,size);flush(&w);reply(a,id,STATUS_OK,0,"indicator state");return true;
+invalid:
+    error_reply(a,id,STATUS_CONFIG,"invalid_indicator","expected indicator output, pixel and valid RGB light value");return true;
 }
 __attribute__((noinline)) static AppOutput *request_output(App *a,const uint8_t *p,size_t size){
     Json j;char output[OBJECT_NAME_LIMIT+1]="";if(!json_parse(&j,p,size))return NULL;
@@ -1256,6 +1336,12 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_output","invalid request, unknown output or invalid A/B slot");return;}
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
+    if(indicator_manage(a,d,id,j,op)){platform_free(j);return;}
+    if(d->hardware.indicators&&(!strncmp(op,"transition_",11)||!strncmp(op,"composition_",12)||
+       !strcmp(op,"preset_activate")||!strcmp(op,"preset_recall")||!strcmp(op,"output_power")||
+       !strcmp(op,"program_activate")||!strcmp(op,"program_reset")||!strcmp(op,"program_pause")||!strcmp(op,"program_resume")||!strcmp(op,"output_command"))){
+        platform_free(j);error_reply(a,id,STATUS_CONFIG,"indicator_owned","indicator pixels are controlled through indicator_set");return;
+    }
     if(transition_manage(a,d,id,j,op)||recall_manage(a,d,id,j,op)||preset_manage(a,d,id,j,op)){platform_free(j);return;}
     uint32_t before_revision=d->composition_revision;
     if(composition_manage(a,d,id,j,op)){if(d->composition_revision!=before_revision)d->recall_owned=false;platform_free(j);return;}

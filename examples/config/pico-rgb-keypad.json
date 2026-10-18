@@ -1,0 +1,32 @@
+{
+  "schema": "lightvm.config",
+  "outputs": [
+    {
+      "id": "key_lights",
+      "type": "apa102",
+      "mode": "indicators",
+      "config": {
+        "data_pin": "GP19",
+        "clock_pin": "GP18",
+        "enable_pin": "GP17",
+        "count": 16,
+        "order": "BGR",
+        "brightness_limit": 64
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "keypad",
+      "type": "tca9555",
+      "config": {
+        "sda": "GP4",
+        "scl": "GP5",
+        "address": 32,
+        "active_low": true,
+        "debounce_ms": 20
+      },
+      "home_assistant": {"indicators": "key_lights"}
+    }
+  ]
+}

@@ -33,6 +33,35 @@ function readyStore() {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('configuration drafts', () => {
+  it('adds the Pico keypad as generic input and indicator output and preserves the binding through edits', async () => {
+    const store = readyStore();
+    store.dispatch(controllerActions.description({ ...description, mqtt_supported: true, pins: ['GPIO2', 'GP4', 'GP5', 'GP17', 'GP18', 'GP19'] }));
+    const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
+    render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Add Pico RGB Keypad' }));
+    const keypad = within(screen.getByRole('group', { name: 'Output 2' }));
+    expect(keypad.queryByLabelText('Startup program')).toBeNull();
+    expect(keypad.queryByLabelText('Home Assistant default preset')).toBeNull();
+    fireEvent.change(keypad.getByLabelText('Brightness limit (0–255)'), { target: { value: '48' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
+    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({
+      outputs: [expect.anything(), expect.objectContaining({ type: 'apa102', mode: 'indicators', config: expect.objectContaining({ data_pin: 'GP19', clock_pin: 'GP18', enable_pin: 'GP17', count: 16, brightness_limit: 48 }) })],
+      inputs: [{ id: 'keypad', type: 'tca9555', config: { sda: 'GP4', scl: 'GP5', address: 32, active_low: true, debounce_ms: 20 }, home_assistant: { indicators: 'key_lights' } }],
+    }), expect.anything(), { save: true }));
+  });
+
+  it('keeps indicator outputs out of animation selection', () => {
+    const store = readyStore(), config = hardware(5);
+    config.outputs.unshift({ id: 'keys', type: 'apa102', mode: 'indicators', config: { data_pin: 'GP19', clock_pin: 'GP18', count: 16 } });
+    store.dispatch(controllerActions.configuration({ config, revision: 2, savedRevision: 1 }));
+    expect(store.getState().controller.selectedOutput).toBe('lights');
+    store.dispatch(controllerActions.outputSelected('keys'));
+    expect(store.getState().controller.selectedOutput).toBe('lights');
+    const onlyIndicators = structuredClone(config); onlyIndicators.outputs.pop();
+    store.dispatch(controllerActions.configuration({ config: onlyIndicators, revision: 3, savedRevision: 1 }));
+    expect(store.getState().controller.selectedOutput).toBeNull();
+  });
+
   it('edits pinned on/off transitions and preserves their settings in output configuration', async () => {
     const store = readyStore(), wipe = deployedTransition('wipe', WIPE_SETTINGS);
     store.dispatch(controllerActions.description({ ...description, power_transitions: true }));
