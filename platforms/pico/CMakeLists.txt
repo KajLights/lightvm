@@ -7,7 +7,7 @@ endif()
 pico_sdk_init()
 option(LIGHTVM_OUTPUT_PROBE "Build the Pico hardware output verification image" OFF)
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c")
+    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S")
 target_compile_definitions(lightvm PRIVATE PICO_STACK_SIZE=16384)
 target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand hardware_pio hardware_dma hardware_flash hardware_sync)
 pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/ws2812.pio")
@@ -17,8 +17,12 @@ pico_set_double_implementation(lightvm compiler)
 pico_enable_stdio_usb(lightvm 1)
 pico_enable_stdio_uart(lightvm 0)
 pico_add_extra_outputs(lightvm)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_custom_command(TARGET lightvm POST_BUILD
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/write_storage_layout.py"
+        "${CMAKE_NM}" "$<TARGET_FILE:lightvm>" "${CMAKE_CURRENT_BINARY_DIR}/storage-layout.json" "${LIGHTVM_STORAGE_BYTES_VALUE}")
 
-# Reserve the final 512 KiB; fail the link rather than permit firmware overlap.
+# Reserve the configured region relative to the SDK board flash geometry.
 configure_file("${CMAKE_CURRENT_LIST_DIR}/storage.ld" "${CMAKE_CURRENT_BINARY_DIR}/storage.ld" COPYONLY)
 target_link_options(lightvm PRIVATE "LINKER:-T,${CMAKE_CURRENT_BINARY_DIR}/storage.ld")
 if(LIGHTVM_BOOT_SEQUENCE)

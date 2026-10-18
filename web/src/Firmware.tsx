@@ -4,7 +4,7 @@ import { decodePicoUf2 } from './PicoFirmware';
 import { Picoboot } from './vendor/picoflash/picoboot.js';
 import { Target } from './vendor/picoflash/target.js';
 
-type PicoBuild = { board: 'pico' | 'pico_w'; name: string; path: string; sha256: string };
+type PicoBuild = { board: 'pico' | 'pico_w'; name: string; path: string; sha256: string; firmware_end: number };
 const firmwareRoot = new URL('firmware/', document.baseURI);
 const espManifestUrl = new URL('manifest.json', firmwareRoot).href;
 
@@ -52,7 +52,7 @@ export function Firmware({ usbConnected }: { usbConnected: boolean }) {
       const uf2 = new Uint8Array(await response.arrayBuffer());
       const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', uf2))).map(value => value.toString(16).padStart(2, '0')).join('');
       if (digest !== build.sha256) throw new Error('Firmware image checksum did not match; nothing was written.');
-      const image = decodePicoUf2(uf2);
+      const image = decodePicoUf2(uf2, build.firmware_end);
       const connection = await device.connect();
       await connection.resetInterface();
       await connection.setExclusiveAccess(2);

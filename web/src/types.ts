@@ -11,7 +11,9 @@ export interface Description {
   animation_error?: string;
   ab_transitions?: boolean; transition_effects?: string[]; transition_programs?: boolean;
   scenes?: boolean; scene_layer_limit?: number; scene_blend_modes?: string[];
-  presets?: boolean; preset_limit?: number; procedure_limit?: number; transient_settings?: boolean;
+  presets?: boolean; transient_settings?: boolean; typed_storage?: boolean;
+  storage_backend?: string; storage_writable?: boolean; storage_bytes?: number; free_bytes?: number;
+  largest_free_bytes?: number; storage_allocation_unit?: number;
   boot_sequence_supported?: boolean;
   recovery_supported?: boolean;
   boot_sequence?: { count: number; triggered: boolean; error: string };
@@ -26,7 +28,7 @@ export interface NetworkConfig {
   http: { enabled: boolean; port: number };
 }
 export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
-export interface Procedure { name: string; size: number; crc32: number; profile?: 'animation' | 'transition' }
+export interface Procedure { name: string; size: number; crc32: number; type?: 'animation' | 'transition'; profile?: 'animation' | 'transition' }
 export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[] }
 export interface ProgramState {

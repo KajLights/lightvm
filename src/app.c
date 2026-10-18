@@ -140,7 +140,7 @@ static bool config_validate(App *a, const void *data, uint32_t size, HardwareCon
     for(unsigned i=0;!a->booting&&i<config->count;i++){
         HardwareDevice *device=&config->devices[i];
         if(!device->startup[0])continue;
-        const StoreEntry *entry=store_find(&a->store,device->startup);
+        const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,device->startup);
         if(!entry){
             snprintf(error,capacity,"devices[%s].startup.procedure: stored procedure does not exist",device->id);
             hardware_destroy(config);return false;
@@ -191,8 +191,8 @@ failed:
     platform_free(a->devices);a->devices=NULL;a->device_count=0;empty_config(a);return false;
 }
 /* Package extents are immutable and pinned independently of catalogue names. */
-static bool update_store(App *a,const char *name,const void *data,uint32_t size,bool remove) {
-    return remove?store_delete(&a->store,name):store_put(&a->store,name,data,size);
+static bool update_store(App *a,StoreType type,const char *name,const void *data,uint32_t size,bool remove) {
+    return remove?store_delete(&a->store,type,name):store_put(&a->store,type,name,data,size);
 }
 static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const char *name,bool play,const Json *request,int settings) {
     if(d->vm.generation>=UINT32_MAX-1){
@@ -237,7 +237,7 @@ static const char *install(App *a,AppDevice *d,const StoreEntry *entry,const cha
 static bool activate(App *a,const char *name,uint16_t id,const char *action,const char *device,const Json *request,int settings) {
     AppDevice *d=app_device(a,device);
     if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_device","device is not configured");return false;}
-    const StoreEntry *entry=store_find(&a->store,name);
+    const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,name);
     if(!entry||!strcmp(name,STORE_CONFIG)||!strcmp(name,STORE_NETWORK)){error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist");return false;}
     if(strcmp(action,"play")){error_reply(a,id,STATUS_EXECUTION,"invalid_action","animation profiles execute through PLAY/FRAME");return false;}
     const char *error=install(a,d,entry,name,true,request,settings);
@@ -268,7 +268,7 @@ void app_init(App *a, SendMessage send, void *transport) {
     empty_config(a);runtime_services(service,a);
     a->booting=true;
     if (!store_mount(&a->store)) snprintf(a->boot_error,sizeof(a->boot_error),"storage unsupported or corrupt; repair/reprovision required");
-    const StoreEntry *config=store_find(&a->store,STORE_CONFIG);
+    const StoreEntry *config=store_find(&a->store,STORE_CONFIGURATION,STORE_CONFIG);
     if (config) {
         HardwareConfig hardware;
         char error[160];
@@ -281,13 +281,13 @@ void app_init(App *a, SendMessage send, void *transport) {
                 if(!d->startup[0])continue;
                 Json *args=startup_arguments(d,a->config_json);
                 if(d->args_size&&!args)startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"args: allocation failed");
-                else if(!store_find(&a->store,d->startup))startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"procedure: stored procedure does not exist");
+                else if(!store_find(&a->store,STORE_ANIMATION,d->startup))startup_error(a->boot_error,sizeof(a->boot_error),d,NULL,"procedure: stored procedure does not exist");
                 else (void)activate(a,d->startup,0,"play",d->id,args,argument_object(args));
                 platform_free(args);
             }
         }
     }
-    const StoreEntry *saved_network=store_find(&a->store,STORE_NETWORK);
+    const StoreEntry *saved_network=store_find(&a->store,STORE_NETWORK_SETTINGS,STORE_NETWORK);
     if (saved_network) {
         uint8_t *data=platform_calloc(1,saved_network->size);
         NetworkConfig candidate;
@@ -302,7 +302,7 @@ void app_init(App *a, SendMessage send, void *transport) {
 void app_destroy(App *a) {
     runtime_services(NULL,NULL);
     store_upload_cancel(&a->upload);
-    empty_config(a);vm_destroy(&a->fallback.vm);
+    empty_config(a);vm_destroy(&a->fallback.vm);store_destroy(&a->store);
 }
 bool app_boot_sequence_triggered(const App *a) {
 #if LIGHTVM_BOOT_SEQUENCE
@@ -389,12 +389,16 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"animation_reset\":true,\"activation_settings\":true,\"slots\":[\"A\",\"B\"],\"slot_binding\":\"device\",\"pixel_format\":\"rgb8\",\"frame_policy\":\"transparent_before_render\",\"alpha\":true,\"scenes\":true,\"scene_layer_limit\":8,\"layer_pixel_format\":\"rgba8-premul\",\"composition\":true,\"program_generation\":"); number(&w,app_device(a,NULL)->vm.generation);
     literal(&w,",\"ab_transitions\":true,\"transition_sources\":true,\"transition_programs\":true,\"custom_transitions\":true,\"transition_effects\":[");
     for(unsigned n=0;n<TRANSITION_PROGRAM;n++){if(n)literal(&w,",");quoted(&w,transition_effect_name((TransitionEffect)n));}literal(&w,"]");
-    literal(&w,",\"procedure_limit\":"); number(&w,PROCEDURE_LIMIT);
-    literal(&w,",\"transient_settings\":true,\"presets\":true,\"preset_limit\":");number(&w,PRESET_LIMIT);
+    literal(&w,",\"transient_settings\":true,\"presets\":true,\"typed_storage\":true");
     literal(&w,",\"scene_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
-    literal(&w,",\"storage_bytes\":"); number(&w,a->store.available ? STORAGE_BYTES : 0);
-    literal(&w,",\"free_bytes\":"); number(&w,a->store.available ? store_free_bytes(&a->store) : 0);
+    StoreInfo storage=store_info(&a->store);
+    literal(&w,",\"storage_backend\":");quoted(&w,store_backend_name(&a->store));
+    literal(&w,",\"storage_writable\":");literal(&w,storage.writable?"true":"false");
+    literal(&w,",\"storage_bytes\":");number(&w,storage.total_bytes);
+    literal(&w,",\"free_bytes\":");number(&w,storage.free_bytes);
+    literal(&w,",\"largest_free_bytes\":");number(&w,storage.largest_free_bytes);
+    literal(&w,",\"storage_allocation_unit\":");number(&w,storage.allocation_unit);
     literal(&w,",\"catalog_revision\":"); number(&w,a->store.generation);
     literal(&w,",\"active_revision\":"); number(&w,a->revision);
     literal(&w,",\"saved_revision\":"); number(&w,a->store.config_revision);
@@ -405,13 +409,22 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"target\":\"A\",\"uploading\":"); literal(&w,a->uploading ? "true" : "false");
     literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"capabilities");
 }
-typedef struct { char op[33],name[33],action[16],slot[33],device[33]; uint32_t revision,saved_revision,command,delta_ms; bool has_revision,has_saved_revision; } Arguments;
+typedef struct { char op[33],name[33],action[16],slot[33],device[33]; StoreType type; uint32_t revision,saved_revision,command,delta_ms; bool has_revision,has_saved_revision; } Arguments;
+static const StoreEntry *find_procedure(const Store *store,StoreType type,const char *name) {
+    if(type!=STORE_ANY)return store_find(store,type,name);
+    const StoreEntry *animation=store_find(store,STORE_ANIMATION,name),*transition=store_find(store,STORE_TRANSITION,name);
+    return animation&&transition?NULL:animation?animation:transition;
+}
 static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
     Json j;
     memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->slot,"A",2);
-    static const char *const fields[]={"op","name","action","slot","device","expected_revision","expected_saved_revision","settings","command","delta_ms",NULL};
+    static const char *const fields[]={"op","name","type","action","slot","device","expected_revision","expected_saved_revision","settings","command","delta_ms",NULL};
     if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) || !json_string(&j,json_get(&j,0,"op"),args->op,sizeof(args->op))) return false;
     if(json_get(&j,0,"settings")>=0&&strcmp(args->op,"procedure_activate"))return false;
+    int type=json_get(&j,0,"type");char type_name[16];
+    if(type>=0&&(!json_string(&j,type,type_name,sizeof(type_name))||
+       ((args->type=store_type(type_name))!=STORE_ANIMATION&&args->type!=STORE_TRANSITION)))return false;
+    if(type>=0&&strcmp(args->op,"procedure_list")&&strcmp(args->op,"procedure_get")&&strcmp(args->op,"procedure_save")&&strcmp(args->op,"procedure_delete"))return false;
     int name=json_get(&j,0,"name"),action=json_get(&j,0,"action");
     if (name>=0 && (!json_string(&j,name,args->name,sizeof(args->name)) || !object_name_valid(args->name))) return false;
     if (action>=0 && !json_string(&j,action,args->action,sizeof(args->action))) return false;
@@ -429,9 +442,8 @@ static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
 }
 static bool preset_references(App *a,const char *name) {
     /* Only parse one flash document at a time. Saved recipes own no VM state. */
-    for(unsigned i=0;i<a->store.count;i++){
-        const StoreEntry *entry=&a->store.entries[i];
-        if(!store_preset_name(entry->name))continue;
+    uint32_t cursor=0;const StoreEntry *entry;
+    while((entry=store_list(&a->store,STORE_PRESET,&cursor))){
         uint8_t *data=platform_calloc(1,entry->size);Json *j=platform_calloc(1,sizeof(*j));
         bool found=!data||!j||!store_read(&a->store,entry,0,data,entry->size)||!json_parse(j,data,entry->size);
         if(!found){int layers=json_get(j,0,"layers");
@@ -443,16 +455,23 @@ static bool preset_references(App *a,const char *name) {
     }
     return false;
 }
-static bool referenced(App *a,const char *name) {
+static bool referenced(App *a,StoreType type,const char *name) {
+    if(type==STORE_TRANSITION){
+        for(unsigned i=0;i<a->device_count;i++){
+            Transition *t=a->devices[i]->transition;
+            if(t)for(unsigned n=0;n<2;n++)if(t->programs[n]&&t->programs[n]->vm.code.type==type&&!strcmp(t->programs[n]->name,name))return true;
+        }
+        return false;
+    }
     if(preset_references(a,name))return true;
     for(unsigned i=0;i<a->hardware.count;i++)if(!strcmp(a->hardware.devices[i].startup,name))return true;
     for(unsigned i=0;i<a->device_count;i++)if(!strcmp(a->devices[i]->active_procedure,name))return true;
     for(unsigned i=0;i<a->device_count;i++){
         AppDevice *d=a->devices[i];
         for(unsigned slot=0;slot<2;slot++){Scene *s=device_scene(d,slot);if(s)for(unsigned n=0;n<s->layer_count;n++)if(!strcmp(s->layers[n].procedure,name))return true;}
-        if(d->transition)for(unsigned n=0;n<2;n++)if(d->transition->programs[n]&&!strcmp(d->transition->programs[n]->name,name))return true;
+        if(d->transition)for(unsigned n=0;n<2;n++)if(d->transition->programs[n]&&d->transition->programs[n]->vm.code.type==type&&!strcmp(d->transition->programs[n]->name,name))return true;
     }
-    const StoreEntry *entry=store_find(&a->store,STORE_CONFIG);
+    const StoreEntry *entry=store_find(&a->store,STORE_CONFIGURATION,STORE_CONFIG);
     if (entry) {
         // Reuse staging only when there is no pending transaction/candidate.
         uint8_t *data=platform_calloc(1,entry->size);
@@ -490,7 +509,7 @@ static const char *prepare_layer(App *a,AppDevice *d,SceneLayer *layer,const Jso
     layer->opacity=(uint8_t)opacity;
     int blend=json_get(j,object,"blend");
     if(blend>=0&&!layer_blend(j,blend,&layer->blend))return "layer blend must be over, add, screen or multiply";
-    const StoreEntry *entry=store_find(&a->store,layer->procedure);
+    const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,layer->procedure);
     if(!entry||!strcmp(layer->procedure,STORE_CONFIG)||!strcmp(layer->procedure,STORE_NETWORK))return "layer procedure does not exist";
     uint32_t crc;int fingerprint=json_get(j,object,"crc32");
     if(fingerprint>=0&&(!json_u32(j,fingerprint,&crc)||crc!=entry->crc))return "layer procedure version differs from the saved preset";
@@ -565,7 +584,7 @@ static void activate_scene_slot(App *a,AppDevice *d,uint16_t id,const Json *j,un
     char name[OBJECT_NAME_LIMIT+1];
     int action=json_get(j,0,"action");
     if(!json_fields(j,0,fields)||!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)||(action>=0&&!json_equal(j,action,"play"))){error_reply(a,id,STATUS_CONFIG,"invalid_activation","expected a procedure name and play action");return;}
-    const StoreEntry *entry=store_find(&a->store,name);
+    const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,name);
     if(!entry||d->layer_generation==UINT32_MAX||d->scene_revision==UINT32_MAX){error_reply(a,id,STATUS_CONFIG,"preparation_failed","procedure missing or generation exhausted");return;}
     Scene *candidate=scene_create(&d->pixels,1);
     if(!candidate){error_reply(a,id,STATUS_LOAD,"preparation_failed","scene exceeds peak memory budget");return;}
@@ -605,7 +624,7 @@ static const char *prepare_transition_program(App *a,AppDevice *d,const Json *j,
     TransitionProgram *program=demo_calloc(1,sizeof(*program));if(!program)return "transition program exceeds memory budget";
     *out=program;
     if((!transition_profile&&!json_fields(j,token,fields))||!json_string(j,json_get(j,token,"procedure"),program->name,sizeof(program->name))||!object_name_valid(program->name))return "transition requires procedure and optional settings";
-    const StoreEntry *entry=store_find(&a->store,program->name);if(!entry)return "transition procedure does not exist";
+    const StoreEntry *entry=store_find(&a->store,transition_profile?STORE_TRANSITION:STORE_ANIMATION,program->name);if(!entry)return "transition procedure does not exist";
     vm_init(&program->vm,&d->pixels,vm_send,a);program->vm.output=NULL;
     const char *error=vm_bind_storage(&program->vm,&a->store,entry)?vm_load(&program->vm):"package reference limit exceeded";
     if(!error&&program->vm.portable->profile!=(transition_profile?4u:3u))error=transition_profile?"procedure requires the transition profile":"custom mask and paint require animation profiles";
@@ -669,26 +688,26 @@ static bool preset_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const ch
     if(!json_fields(j,0,fields)){error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid preset fields");return true;}
     if(!strcmp(op,"preset_list")){
         Writer w={.app=a,.id=id};literal(&w,"[");unsigned count=0;
-        for(unsigned i=0;i<a->store.count;i++){
-            const StoreEntry *entry=&a->store.entries[i];if(!store_preset_name(entry->name))continue;
+        uint32_t cursor=0;const StoreEntry *entry;
+        while((entry=store_list(&a->store,STORE_PRESET,&cursor))){
             if(count++)literal(&w,",");
-            literal(&w,"{\"name\":");quoted(&w,entry->name+2);
+            literal(&w,"{\"name\":");quoted(&w,entry->name);
             literal(&w,",\"size\":");number(&w,entry->size);literal(&w,",\"crc32\":");number(&w,entry->crc);literal(&w,"}");
         }
         literal(&w,"]");flush(&w);reply(a,id,STATUS_OK,(int32_t)count,"stored presets");return true;
     }
-    char name[OBJECT_NAME_LIMIT+1]={ '$','p' };
-    if(!json_string(j,json_get(j,0,"name"),name+2,sizeof(name)-2)||!object_name_valid(name+2)){
-        error_reply(a,id,STATUS_CONFIG,"invalid_name","preset name requires 1..30 letters, digits, dots, underscores or hyphens");return true;
+    char name[OBJECT_NAME_LIMIT+1];
+    if(!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)){
+        error_reply(a,id,STATUS_CONFIG,"invalid_name","preset name requires 1..32 letters, digits, dots, underscores or hyphens");return true;
     }
-    const StoreEntry *entry=store_find(&a->store,name);
+    const StoreEntry *entry=store_find(&a->store,STORE_PRESET,name);
     if(!strcmp(op,"preset_get")){if(entry)read_object(a,id,entry);else error_reply(a,id,STATUS_STORAGE,"not_found","stored preset does not exist");return true;}
     uint32_t revision;
     if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=(!strcmp(op,"preset_activate")?d->scene_revision:a->store.generation)){
         error_reply(a,id,STATUS_CONFIG,"stale_revision","expected preset catalog or scene revision must match");return true;
     }
     if(!strcmp(op,"preset_delete")){
-        bool ok=entry&&store_delete(&a->store,name);resume_clock(a);
+        bool ok=entry&&store_delete(&a->store,STORE_PRESET,name);resume_clock(a);
         if(ok)reply(a,id,STATUS_OK,(int32_t)a->store.generation,"preset deleted; running scene retained");
         else error_reply(a,id,STATUS_STORAGE,"delete_failed","preset missing or storage write failed");
         return true;
@@ -696,7 +715,7 @@ static bool preset_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const ch
     bool saving=!strcmp(op,"preset_save");
     if(!saving&&strcmp(op,"preset_activate")){error_reply(a,id,STATUS_PROTOCOL,"unknown_operation","unknown preset operation");return true;}
     if(!d->pixels.count||(!saving&&d->scene_revision==UINT32_MAX)){error_reply(a,id,STATUS_CONFIG,"invalid_output","configure an output before preparing a preset");return true;}
-    if(saving&&(!a->staged||a->object_kind!=5||a->upload_owner!=a->source||strcmp(a->object_name,name+2))){error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage this named preset first");return true;}
+    if(saving&&(!a->staged||a->object_kind!=5||a->upload_owner!=a->source||strcmp(a->object_name,name))){error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage this named preset first");return true;}
     /* Read saved documents outside staging so another session's candidate is untouched. */
     uint8_t *data=NULL;const void *document=a->staging;uint32_t size=a->expected;
     if(!saving){
@@ -707,7 +726,7 @@ static bool preset_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const ch
     Scene *candidate=NULL;const char *error=prepare_scene_data(a,d,&candidate,document,size,"lightvm.preset");
     if(error){scene_destroy(candidate);platform_free(data);error_reply(a,id,STATUS_LOAD,"invalid_preset",error);return true;}
     if(saving){
-        scene_destroy(candidate);bool ok=store_put(&a->store,name,document,size);resume_clock(a);
+        scene_destroy(candidate);bool ok=store_put(&a->store,STORE_PRESET,name,document,size);resume_clock(a);
         if(ok){a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)a->store.generation,"preset saved; playback unchanged");}
         else error_reply(a,id,STATUS_STORAGE,"save_failed","preset storage unavailable, full or write failed");
     }else{error=apply_scene_slot(a,d,candidate,request_slot(j));if(error){scene_destroy(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);}else reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"preset activated");}
@@ -771,7 +790,7 @@ static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const cha
         uint32_t generation;char name[OBJECT_NAME_LIMIT+1];
         if(!json_u32(j,json_get(j,0,"expected_generation"),&generation)||generation!=layer->vm.generation){error_reply(a,id,STATUS_CONFIG,"stale_generation","expected layer generation must match");return true;}
         if(!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)){error_reply(a,id,STATUS_CONFIG,"invalid_name","procedure name required");return true;}
-        const StoreEntry *entry=store_find(&a->store,name);
+        const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,name);
         SceneLayer *candidate=demo_calloc(1,sizeof(*candidate));
         if(!entry||!candidate||d->layer_generation==UINT32_MAX){demo_free(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed","procedure missing or peak budget exceeded");return true;}
         candidate->target.count=s->count;vm_init(&candidate->vm,&candidate->target,vm_send,a);candidate->vm.generation=++d->layer_generation;
@@ -862,7 +881,7 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         if (!strcmp(args.op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return; }
         if (!args.has_revision || args.revision!=a->store.network_revision || a->network_pending) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }
         char data[4096]; size_t count=network_json(&config,true,data,sizeof(data));
-        bool ok=count && update_store(a,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
+        bool ok=count && update_store(a,STORE_NETWORK_SETTINGS,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
         memset(data,0,sizeof(data));
         if (!ok) { error_reply(a,id,STATUS_STORAGE,"save_failed","network save failed; active settings retained"); return; }
         a->network.saved_valid=true; a->network_error[0]=0;
@@ -875,30 +894,27 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         Writer w={.app=a,.id=id}; bytes(&w,a->config_json,a->config_size); flush(&w); reply(a,id,STATUS_OK,(int32_t)a->revision,"active configuration"); return;
     }
     if (!strcmp(args.op,"config_saved")) {
-        const StoreEntry *entry=store_find(&a->store,STORE_CONFIG);
+        const StoreEntry *entry=store_find(&a->store,STORE_CONFIGURATION,STORE_CONFIG);
         if (entry) read_object(a,id,entry);
         else { Writer w={.app=a,.id=id}; literal(&w,EMPTY_CONFIG); flush(&w); reply(a,id,STATUS_OK,0,"no saved configuration"); }
         return;
     }
     if (!strcmp(args.op,"procedure_list")) {
-        Writer w={.app=a,.id=id}; literal(&w,"["); unsigned found=0;
-        for (uint32_t i=0;i<a->store.count;++i) {
-            const StoreEntry *entry=&a->store.entries[i]; if (entry->name[0]=='$') continue;
-            if (found++) literal(&w,",");
-            literal(&w,"{\"name\":"); quoted(&w,entry->name); literal(&w,",\"size\":"); number(&w,entry->size);
-            literal(&w,",\"crc32\":"); number(&w,entry->crc);
-            uint8_t header[80];
-            if(entry->size>=sizeof(header)&&store_read(&a->store,entry,0,header,sizeof(header))&&!memcmp(header,"LBC1",4)&&lbc_u32(header+4)==4){
-                unsigned profile=lbc_u32(header+72);
-                if(profile==3||profile==4){literal(&w,",\"profile\":");quoted(&w,profile==4?"transition":"animation");}
-            }
-            literal(&w,"}");
+        Writer w={.app=a,.id=id};literal(&w,"[");unsigned found=0;uint32_t cursor=0;const StoreEntry *entry;
+        while((entry=store_list(&a->store,args.type,&cursor))){
+            if(entry->type!=STORE_ANIMATION&&entry->type!=STORE_TRANSITION)continue;
+            if(found++)literal(&w,",");
+            literal(&w,"{\"name\":");quoted(&w,entry->name);
+            literal(&w,",\"size\":");number(&w,entry->size);literal(&w,",\"crc32\":");number(&w,entry->crc);
+            literal(&w,",\"type\":");quoted(&w,store_type_name(entry->type));
+            literal(&w,",\"profile\":");quoted(&w,store_type_name(entry->type));literal(&w,"}");
         }
-        literal(&w,"]"); flush(&w); reply(a,id,STATUS_OK,(int32_t)found,"stored procedures"); return;
+        literal(&w,"]");flush(&w);reply(a,id,STATUS_OK,(int32_t)found,"stored procedures");return;
     }
     if (!strcmp(args.op,"procedure_get")) {
-        const StoreEntry *entry=store_find(&a->store,args.name);
-        if (!entry) error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); else read_object(a,id,entry);
+        const StoreEntry *entry=find_procedure(&a->store,args.type,args.name);
+        if(!entry&&args.type==STORE_ANY&&store_find(&a->store,STORE_ANIMATION,args.name)&&store_find(&a->store,STORE_TRANSITION,args.name))error_reply(a,id,STATUS_STORAGE,"ambiguous_name","specify animation or transition type");
+        else if(!entry)error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist");else read_object(a,id,entry);
         return;
     }
     if (!strcmp(args.op,"procedure_activate") && a->upload_device->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","finish or cancel the transient upload first"); return; }
@@ -930,14 +946,20 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         bool ok;
         if (!strcmp(args.op,"procedure_save")) {
             if (!a->staged || a->object_kind!=2 || a->upload_owner!=a->source || strcmp(args.name,a->object_name)) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","upload and finish this named procedure first"); return; }
-            const StoreEntry *old=store_find(&a->store,args.name);
-            if(old&&(old->crc!=a->upload.entry.crc||old->size!=a->upload.entry.size)&&preset_references(a,args.name)){error_reply(a,id,STATUS_STORAGE,"referenced","saved presets pin this program version; save a new program name");return;}
+            if(args.type!=STORE_ANY&&args.type!=a->upload.entry.type){error_reply(a,id,STATUS_UPLOAD,"type_mismatch","type differs from uploaded program profile");return;}
+            const StoreEntry *old=store_find(&a->store,a->upload.entry.type,args.name);
+            if(old&&(old->crc!=a->upload.entry.crc||old->size!=a->upload.entry.size)&&a->upload.entry.type==STORE_ANIMATION&&preset_references(a,args.name)){error_reply(a,id,STATUS_STORAGE,"referenced","saved presets pin this program version; save a new program name");return;}
             ok=store_publish(&a->store,&a->upload.entry);
             if (ok) { a->staged=false; a->upload_owner=0; store_upload_cancel(&a->upload); }
         } else {
-            if (!store_find(&a->store,args.name)) { error_reply(a,id,STATUS_STORAGE,"not_found","stored procedure does not exist"); return; }
-            if (referenced(a,args.name)) { error_reply(a,id,STATUS_STORAGE,"referenced","procedure is referenced by a saved preset, active/saved configuration or runtime"); return; }
-            ok=update_store(a,args.name,NULL,0,true);
+            const StoreEntry *entry=find_procedure(&a->store,args.type,args.name);
+            if(!entry){
+                bool ambiguous=args.type==STORE_ANY&&store_find(&a->store,STORE_ANIMATION,args.name)&&store_find(&a->store,STORE_TRANSITION,args.name);
+                error_reply(a,id,STATUS_STORAGE,ambiguous?"ambiguous_name":"not_found",ambiguous?"specify animation or transition type":"stored procedure does not exist");return;
+            }
+            args.type=entry->type;
+            if (referenced(a,args.type,args.name)) { error_reply(a,id,STATUS_STORAGE,"referenced","procedure is referenced by a saved preset, active/saved configuration or runtime"); return; }
+            ok=update_store(a,args.type,args.name,NULL,0,true);
         }
         resume_clock(a);
         if (!ok) error_reply(a,id,STATUS_STORAGE,"save_failed","storage unavailable, full or write failed");
@@ -957,7 +979,7 @@ static bool object_begin(App *a,const uint8_t *p,size_t size) {
     int n=json_get(&j,0,"name");
     if ((object_kind==2||object_kind==5) && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name)||(object_kind==5&&strlen(name)>30))) return false;
     if (object_kind!=2 && object_kind!=5 && n>=0) return false;
-    if(object_kind==2&&!store_upload_begin(&a->store,&a->upload,name,expected,crc))return false;
+    if(object_kind==2&&!store_upload_begin(&a->store,&a->upload,STORE_ANIMATION,name,expected,crc))return false;
     if(object_kind!=2)store_upload_cancel(&a->upload);
     a->object_kind=object_kind; a->expected=expected; a->expected_crc=crc; a->received=0;
     memcpy(a->object_name,name,sizeof(name)); a->uploading=true; a->staged=false;
@@ -1002,6 +1024,9 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         } else if(a->object_kind==2) {
             const char * error=vm_validate_stored(&a->store,&a->upload.entry);
             if (error) { error_reply(a,id,STATUS_LOAD,"invalid_module",error); return; }
+            uint8_t header[80];
+            if(!store_read(&a->store,&a->upload.entry,0,header,sizeof(header))){error_reply(a,id,STATUS_STORAGE,"read_failed","program profile read failed");return;}
+            a->upload.entry.type=read_u32(header+72)==4?STORE_TRANSITION:STORE_ANIMATION;
         }
         a->staged=true; a->upload_deadline=platform_time_us()+30000000u; reply(a,id,STATUS_OK,(int32_t)a->expected,"object staged; not saved or activated"); return;
     }
@@ -1016,7 +1041,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         if(size>8&&(!object_name_valid(device)||strlen(device)!=size-8)){reply(a,id,STATUS_CONFIG,0,"invalid device identifier");return;}
         AppDevice *destination=app_device(a,device);
         if(!destination){reply(a,id,STATUS_CONFIG,0,"unknown device");return;}
-        if(!store_upload_begin(&a->store,&a->upload,"",read_u32(p),read_u32(p+4))){reply(a,id,STATUS_STORAGE,0,"no flash extent available for upload");return;}
+        if(!store_upload_begin(&a->store,&a->upload,STORE_ANIMATION,"",read_u32(p),read_u32(p+4))){reply(a,id,STATUS_STORAGE,0,"no flash extent available for upload");return;}
         a->upload_device=destination;
         a->upload_device->vm.uploading=true;a->upload_owner=a->source;a->upload_deadline=platform_time_us()+30000000u;
         reply(a,id,STATUS_OK,0,"flash upload started; active program retained");return;

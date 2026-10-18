@@ -56,7 +56,7 @@ jobs:
           cmake --build build/firmware/pico --parallel 2
           cmake -S . -B build/firmware/pico_w -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico_w -DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON -DLIGHTVM_BOOT_SEQUENCE=ON -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
           cmake --build build/firmware/pico_w --parallel 2
-          tar -C build/firmware -czf pico-firmware.tar.gz pico/lightvm.uf2 pico_w/lightvm.uf2
+          tar -C build/firmware -czf pico-firmware.tar.gz pico/lightvm.uf2 pico/storage-layout.json pico_w/lightvm.uf2 pico_w/storage-layout.json
       - uses: actions/upload-artifact@v4
         with:
           name: pico-firmware

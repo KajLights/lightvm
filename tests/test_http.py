@@ -216,9 +216,9 @@ class HttpTests(unittest.TestCase):
         self.stop()
         data = bytearray(self.storage.read_bytes())
         for base in (0, 256 * 1024):
-            if data[base:base + 4] != b'LVS1':
+            if data[base:base + 4] != b'LVS2':
                 continue
-            struct.pack_into('<I', data, base + 4, 1)
+            struct.pack_into('<I', data, base + 4, 99)
             checksum = zlib.crc32(data[base:base + 1020])
             struct.pack_into('<I', data, base + 1020, checksum)
             struct.pack_into('<I', data, base + 1032, checksum)

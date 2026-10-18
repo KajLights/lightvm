@@ -131,11 +131,12 @@ static bool flash_ready(void) {
     return true;
 }
 static const esp_partition_t *partition;
+uint32_t platform_storage_capacity(void) { return partition ? partition->size : 0; }
 bool platform_storage_available(void) {
     partition=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_ANY,"lightvm");
-    return partition && partition->size==STORAGE_BYTES && partition->erase_size==4096;
+    return partition && partition->size>=16384 && partition->size%8192==0 && partition->erase_size==4096;
 }
-static bool bounds(uint32_t offset,size_t size) { return partition && offset<=STORAGE_BYTES && size<=STORAGE_BYTES-offset; }
+static bool bounds(uint32_t offset,size_t size) { return partition && offset<=partition->size && size<=partition->size-offset; }
 bool platform_storage_read(uint32_t offset,void *bytes,size_t size) { return bounds(offset,size) && esp_partition_read(partition,offset,bytes,size)==ESP_OK; }
 bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {
     return flash_ready() && bounds(offset,size) && offset%256==0 && size%256==0 && esp_partition_write(partition,offset,bytes,size)==ESP_OK;

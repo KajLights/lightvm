@@ -24,6 +24,7 @@ const BoardPin *platform_pins(size_t *count) { *count=sizeof(pins)/sizeof(pins[0
 #define STORE_OFFSET (PICO_FLASH_SIZE_BYTES-STORAGE_BYTES)
 _Static_assert(PICO_FLASH_SIZE_BYTES>=STORAGE_BYTES,"flash too small for storage");
 static bool bounds(uint32_t offset,size_t size) { return offset<=STORAGE_BYTES && size<=STORAGE_BYTES-offset; }
+uint32_t platform_storage_capacity(void) { return STORAGE_BYTES; }
 bool platform_storage_available(void) { return true; }
 bool platform_storage_read(uint32_t offset,void *bytes,size_t size) {
     if (!bounds(offset,size)) return false;

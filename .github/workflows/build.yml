@@ -104,6 +104,7 @@ jobs:
           name: lightvm-${{ matrix.name }}-boot-${{ matrix.boot_sequence }}
           path: |
             build/${{ matrix.name }}/lightvm.uf2
+            build/${{ matrix.name }}/storage-layout.json
             build/${{ matrix.name }}/lightvm.elf
             build/${{ matrix.name }}/size.txt
             build/${{ matrix.name }}/LICENSE

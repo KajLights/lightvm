@@ -93,7 +93,7 @@ export function parseLibrary(text: string): Library {
   }
   const presetIds = new Set<string>();
   for (const preset of library.presets) {
-    if (!preset || typeof preset.id !== 'string' || !preset.id || presetIds.has(preset.id) || typeof preset.name !== 'string' || !/^[A-Za-z0-9_.-]{1,30}$/.test(preset.name) || !Array.isArray(preset.layers) || !preset.layers.length || preset.layers.length > 8) throw new Error('Invalid preset.');
+    if (!preset || typeof preset.id !== 'string' || !preset.id || presetIds.has(preset.id) || typeof preset.name !== 'string' || !/^[A-Za-z0-9_.-]{1,32}$/.test(preset.name) || !Array.isArray(preset.layers) || !preset.layers.length || preset.layers.length > 8) throw new Error('Invalid preset.');
     presetIds.add(preset.id); const layerIds = new Set<string>();
     for (const layer of preset.layers) {
       if (!layer || typeof layer.id !== 'string' || !/^[A-Za-z0-9_.-]{1,32}$/.test(layer.id) || layerIds.has(layer.id) || !ids.has(layer.animation) ||

@@ -140,7 +140,7 @@ saved browser presets protect their referenced animation versions.
 Layers are ordered bottom to top, with individual settings, opacity and `over`,
 `add`, `screen` or `multiply` blending. **Preview preset** saves missing compiled
 program versions on the device, then admits and activates the entire scene.
-It checks the device's program-slot limit before uploading. The displayed frame
+The device checks available storage for each upload. The displayed frame
 buffer estimate excludes VM state; device admission remains authoritative.
 
 **Save preset** stores the recipe in the browser. **Save preset to device** stores
@@ -149,7 +149,9 @@ playback. Either save replaces a preset of the same name. **Run on output**
 activates a device preset on the selected output, even after reconnecting or
 rebooting. Startup remains a single stored program configured separately; saved
 presets do not automatically run at boot. Device presets require `presets: true`.
-The device supports five presets independently of its eight program slots.
+Device presets and compiled programs share available storage without fixed count
+quotas. The storage panel shows free and total capacity and distinguishes animations
+and transitions with the same name.
 
 **Export library** preserves editable source, versions, settings and recipes in
 one JSON file. **Import library** merges current versions and checks explicit

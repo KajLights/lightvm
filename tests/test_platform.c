@@ -70,6 +70,7 @@ static uint8_t flash[STORAGE_BYTES], baseline[STORAGE_BYTES];
 static bool storage_available;
 static int fail_after=-1;
 static bool fail(void) { if (fail_after==0) return true; if (fail_after>0) --fail_after; return false; }
+uint32_t platform_storage_capacity(void) { return STORAGE_BYTES; }
 bool platform_storage_available(void) { return storage_available; }
 bool platform_storage_read(uint32_t offset,void *bytes,size_t size) {
     CHECK(offset<=STORAGE_BYTES && size<=STORAGE_BYTES-offset);
@@ -100,37 +101,38 @@ bool platform_boot_storage_sync(void) { CHECK(false); return false; }
 static void storage_faults(void) {
     storage_available=true; memset(flash,255,sizeof(flash));
     Store s; CHECK(store_mount(&s));
-    CHECK(store_put(&s,"effect","old data",8));
-    CHECK(store_put(&s,STORE_CONFIG,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG)));
-    CHECK(store_put(&s,STORE_NETWORK,"old network",11));
-    memcpy(baseline,flash,sizeof(flash));
+    CHECK(store_put(&s,STORE_ANIMATION,"effect","old data",8));
+    CHECK(store_put(&s,STORE_CONFIGURATION,STORE_CONFIG,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG)));
+    CHECK(store_put(&s,STORE_NETWORK_SETTINGS,STORE_NETWORK,"old network",11));
+    memcpy(baseline,flash,sizeof(flash));store_destroy(&s);
     unsigned interrupted=0;
     for (int point=0;point<90;++point) {
         memcpy(flash,baseline,sizeof(flash)); fail_after=-1; CHECK(store_mount(&s));
-        fail_after=point; bool ok=store_put(&s,"effect","new data",8); fail_after=-1;
+        fail_after=point; bool ok=store_put(&s,STORE_ANIMATION,"effect","new data",8); fail_after=-1;
         Store recovered; CHECK(store_mount(&recovered));
-        const StoreEntry *entry=store_find(&recovered,"effect"); char bytes[8];
+        const StoreEntry *entry=store_find(&recovered,STORE_ANIMATION,"effect"); char bytes[8];
         CHECK(entry && store_read(&recovered,entry,0,bytes,8));
         CHECK(!memcmp(bytes,"old data",8) || !memcmp(bytes,"new data",8));
-        CHECK(store_find(&recovered,STORE_CONFIG) && recovered.config_revision==1);
-        CHECK(store_find(&recovered,STORE_NETWORK) && recovered.network_revision==1);
+        CHECK(store_find(&recovered,STORE_CONFIGURATION,STORE_CONFIG) && recovered.config_revision==1);
+        CHECK(store_find(&recovered,STORE_NETWORK_SETTINGS,STORE_NETWORK) && recovered.network_revision==1);
         if (!ok) ++interrupted;
+        store_destroy(&s);store_destroy(&recovered);
     }
-    CHECK(interrupted>8 && interrupted<20);
+    CHECK(interrupted>8 && interrupted<40);
     // Configuration publication remains atomic without a separate boot selector.
     for(int point=0;point<30;point++){
         memcpy(flash,baseline,sizeof(flash));CHECK(store_mount(&s));
         fail_after=point;(void)store_put_config(&s,EMPTY_CONFIG,(uint32_t)strlen(EMPTY_CONFIG));fail_after=-1;
         Store recovered;CHECK(store_mount(&recovered));
         CHECK(recovered.config_revision==1||recovered.config_revision==2);
-        CHECK(store_find(&recovered,"effect")&&store_find(&recovered,STORE_NETWORK));
-        for(unsigned i=736;i<800;i++)CHECK(flash[(unsigned)recovered.bank*STORE_BANK_BYTES+i]==0);
+        CHECK(store_find(&recovered,STORE_ANIMATION,"effect")&&store_find(&recovered,STORE_NETWORK_SETTINGS,STORE_NETWORK));
+        store_destroy(&recovered);store_destroy(&s);
     }
     // Abandoning the very first payload leaves a blank, usable catalogue.
     memset(flash,255,sizeof(flash));CHECK(store_mount(&s));StoreUpload upload={.pin=-1};
-    CHECK(store_upload_begin(&s,&upload,"incomplete",300,0));
+    CHECK(store_upload_begin(&s,&upload,STORE_ANIMATION,"incomplete",300,0));
     CHECK(store_upload_chunk(&upload,0,baseline,256));store_upload_cancel(&upload);
-    CHECK(store_mount(&s)&&!s.count&&s.bank==-1);
+    store_destroy(&s);CHECK(store_mount(&s));uint32_t cursor=0;CHECK(!store_list(&s,STORE_ANY,&cursor));store_destroy(&s);
     storage_available=false;
 }
 void *platform_calloc(size_t count, size_t size) {
@@ -202,7 +204,7 @@ static void network_transactions(void) {
     static App app; Session session; Capture reply={.marker=0x12345678u};
     memset(flash,255,sizeof(flash)); storage_available=true; fail_after=-1; clock_now=0;
     app_init(&app,capture,&reply); CHECK(!app.network.saved_valid);
-    CHECK(store_put(&app.store,STORE_NETWORK,"invalid",7));
+    CHECK(store_put(&app.store,STORE_NETWORK_SETTINGS,STORE_NETWORK,"invalid",7));
     app_destroy(&app); app_init(&app,capture,&reply);
     CHECK(!app.network.saved_valid && app.network_error[0]);
     network_bootstrap(&app.network,true);
@@ -471,17 +473,17 @@ int main(void) {
     // Stored execution reads flash, not the resident upload array. The running
     // version remains pinned in flash through repeated catalogue replacements.
     storage_available=true;memset(flash,255,sizeof(flash));Store stored;CHECK(store_mount(&stored));
-    CHECK(store_put(&stored,"bytecode",slot_lbc,sizeof(slot_lbc)));
-    const StoreEntry *entry=store_find(&stored,"bytecode");CHECK(entry);
+    CHECK(store_put(&stored,STORE_ANIMATION,"bytecode",slot_lbc,sizeof(slot_lbc)));
+    const StoreEntry *entry=store_find(&stored,STORE_ANIMATION,"bytecode");CHECK(entry);
     vm_init(&one,&offscreen_one,capture,&first_reply);
     CHECK(vm_bind_storage(&one,&stored,entry));
     CHECK(!vm_load(&one));one.ready=true;CHECK(!control_prepare(&one));
     CHECK(!control_step(&one,5000));CHECK(one.control.committed[10]==10);
-    uint32_t pinned=one.code.offset;
-    for(unsigned k=0;k<20;k++)CHECK(store_put(&stored,"bytecode",render_lbc,sizeof(render_lbc)));
-    CHECK(one.from_storage && one.code.offset==pinned);
+    uint32_t pinned=one.code.id;
+    for(unsigned k=0;k<20;k++)CHECK(store_put(&stored,STORE_ANIMATION,"bytecode",render_lbc,sizeof(render_lbc)));
+    CHECK(one.from_storage && one.code.id==pinned);
     CHECK(!control_step(&one,7000));
-    CHECK(one.control.committed[10]==13);vm_destroy(&one);storage_available=false;
+    CHECK(one.control.committed[10]==13);vm_destroy(&one);store_destroy(&stored);storage_available=false;
 
     // Initialization failure changes the active revision and leaves no driver.
     clock_now=0; app_init(&app,capture,&reply); session_init(&session,&app,1,capture,&reply);

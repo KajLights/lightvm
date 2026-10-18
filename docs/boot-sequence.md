@@ -104,8 +104,8 @@ snapshot saves never write or erase this journal.
 
 | Port | Enabled journal location |
 |---|---|
-| Pico / Pico W (2 MiB flash) | `0x17e000..0x17ffff`, directly before the existing `0x180000..0x1fffff` snapshot store; firmware overlap fails the link |
-| ESP32-C3 / ESP32-S3 / ESP32-C6 | `lightvm_boot` partition at `0x190000`, size `0x2000`; the enabled partition table preserves every existing partition address |
+| Pico / Pico W (2 MiB flash) | 8 KiB immediately before the configured store; default `0x17e000..0x17ffff` with a 512 KiB store; firmware overlap fails the link |
+| ESP32-C3 / ESP32-S3 / ESP32-C6 | `lightvm_boot` partition follows the configured store, size `0x2000`; default `0x190000` with a 512 KiB store |
 | Host | `<storage-path>.boot-sequence`, 8192 bytes, associated with `--storage`; no storage path means detection is unavailable |
 
 On ESP32, enabling the feature requires installing the generated partition table

@@ -127,7 +127,7 @@ class CurrentContractTests(unittest.TestCase):
         self.client.save_procedure('seed', color())
         self.transport.close()
         original = self.storage.read_bytes()
-        for version in (1, 2, 3):
+        for version in (0, 2, 3):
             for bank in (0, 256*1024):
                 with self.subTest(version=version, bank=bank):
                     raw = bytearray(original)

@@ -80,7 +80,9 @@ Several presets can refer to one stored program. Each active animation instance
 needs separate state and image memory. The controller checks available memory
 before it replaces a scene.
 
-The controller currently supports five saved presets and eight stored programs.
+Stored program and preset counts are limited by available storage, with separate
+name namespaces for animations, transitions and presets. Backends and capacity are
+selected by the board/build; see [internal storage](storage.md).
 A scene supports up to eight layers, subject to available memory.
 
 ## Startup

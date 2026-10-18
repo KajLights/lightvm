@@ -44,12 +44,23 @@ set(LIGHTVM_BOARD_CONFIG "${CMAKE_CURRENT_LIST_DIR}/boards/${LIGHTVM_BOARD}.h"
 set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig" CACHE FILEPATH "Build-local ESP-IDF configuration")
 # ESP-IDF automatically loads sdkconfig.defaults.<target> alongside this file.
 set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
-# The CMake feature switch owns this partition selection. Defaults handle fresh
-# builds; update the build-local sdkconfig as well when toggling an existing build.
-if(LIGHTVM_BOOT_SEQUENCE)
-    set(LIGHTVM_PARTITION_FILENAME "partitions_boot_sequence.csv")
+include("${LIGHTVM_ROOT}/cmake/lightvm_storage.cmake")
+# A custom table may reserve OTA or other use-case-specific partitions. Without
+# one, generate the existing layout with the requested storage capacity.
+set(LIGHTVM_PARTITION_TABLE "" CACHE FILEPATH "Custom ESP32 partition table (optional)")
+if(LIGHTVM_PARTITION_TABLE)
+    get_filename_component(LIGHTVM_PARTITION_FILENAME "${LIGHTVM_PARTITION_TABLE}" ABSOLUTE)
+    if(NOT EXISTS "${LIGHTVM_PARTITION_FILENAME}")
+        message(FATAL_ERROR "LIGHTVM_PARTITION_TABLE does not exist")
+    endif()
 else()
-    set(LIGHTVM_PARTITION_FILENAME "partitions.csv")
+    set(LIGHTVM_PARTITION_FILENAME "${CMAKE_BINARY_DIR}/lightvm-partitions.csv")
+    set(LIGHTVM_PARTITION_TEXT "# Name, Type, SubType, Offset, Size, Flags\nnvs, data, nvs, 0x9000, 0x6000,\nphy_init, data, phy, 0xf000, 0x1000,\nfactory, app, factory, 0x10000, 1M,\nlightvm, data, 0x40, 0x110000, ${LIGHTVM_STORAGE_BYTES_VALUE},\n")
+    if(LIGHTVM_BOOT_SEQUENCE)
+        math(EXPR LIGHTVM_BOOT_OFFSET "0x110000 + ${LIGHTVM_STORAGE_BYTES_VALUE}" OUTPUT_FORMAT HEXADECIMAL)
+        string(APPEND LIGHTVM_PARTITION_TEXT "lightvm_boot, data, 0x41, ${LIGHTVM_BOOT_OFFSET}, 8K,\n")
+    endif()
+    file(WRITE "${LIGHTVM_PARTITION_FILENAME}" "${LIGHTVM_PARTITION_TEXT}")
 endif()
 set(LIGHTVM_PARTITION_DEFAULTS "${CMAKE_BINARY_DIR}/sdkconfig.boot_sequence.defaults")
 file(WRITE "${LIGHTVM_PARTITION_DEFAULTS}" "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"${LIGHTVM_PARTITION_FILENAME}\"\n")

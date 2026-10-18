@@ -24,9 +24,13 @@
 #define PIXEL_CAPACITY 1024u
 #endif
 #define CONFIG_LIMIT 8192u
-#define PROCEDURE_LIMIT 8u
 #define OBJECT_NAME_LIMIT 32u
+#ifndef STORAGE_BYTES
 #define STORAGE_BYTES (512u * 1024u)
+#endif
+#if STORAGE_BYTES < 16384 || STORAGE_BYTES % 8192 != 0
+#error "STORAGE_BYTES must be at least 16 KiB and a multiple of 8 KiB"
+#endif
 #ifndef MODULE_LIMIT
 #define MODULE_LIMIT (32u * 1024u)
 #endif

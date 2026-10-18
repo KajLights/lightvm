@@ -26,11 +26,11 @@ PICO_BOARDS = {"pico": "Pico", "pico_w": "Pico W"}
 UF2_MAGIC = (0x0A324655, 0x9E5D5157, 0x0AB16F30)
 PICO_FAMILY = 0xE48BFF56
 PICO_FLASH_START = 0x10000000
-# The boot-sequence journal starts at 0x17e000; the object store starts at 0x180000.
-PICO_FIRMWARE_END = 0x1017E000
 
 
-def validate_pico_uf2(data: bytes) -> None:
+def validate_pico_uf2(data: bytes, firmware_end: int) -> None:
+    if not isinstance(firmware_end, int) or firmware_end % 4096 or not PICO_FLASH_START < firmware_end <= PICO_FLASH_START + 16 * 1024 * 1024:
+        raise ValueError("invalid Pico storage boundary")
     if not data or len(data) % 512:
         raise ValueError("Pico UF2 is empty or not 512-byte aligned")
     count = len(data) // 512
@@ -43,7 +43,7 @@ def validate_pico_uf2(data: bytes) -> None:
             raise ValueError(f"Pico UF2 block {block_number}: invalid header or RP2040 family")
         if size != 256 or index != block_number or total != count or address != expected_address:
             raise ValueError(f"Pico UF2 block {block_number}: invalid order or payload")
-        if address + size > PICO_FIRMWARE_END:
+        if address + size > firmware_end:
             raise ValueError("Pico UF2 overlaps reserved flash storage")
 
 
@@ -111,13 +111,18 @@ def package(output: Path, board_dirs: dict[str, Path], pico_files: dict[str, Pat
         if board not in PICO_BOARDS:
             raise ValueError(f"unsupported Pico board: {board}")
         data = source.read_bytes()
-        validate_pico_uf2(data)
+        layout = json.loads(source.with_name("storage-layout.json").read_text())
+        firmware_end = layout["firmware_end"]
+        if (layout["storage_start"] + layout["storage_bytes"] != PICO_FLASH_START + layout["flash_bytes"] or
+                firmware_end > layout["storage_start"]):
+            raise ValueError("inconsistent Pico storage layout")
+        validate_pico_uf2(data, firmware_end)
         path = f"{board}/lightvm.uf2"
         destination = output / path
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
         pico_builds.append({"board": board, "name": PICO_BOARDS[board], "path": path,
-                            "sha256": hashlib.sha256(data).hexdigest()})
+                            "sha256": hashlib.sha256(data).hexdigest(), "firmware_end": firmware_end})
     if pico_builds:
         (output / "pico.json").write_text(json.dumps({"version": VERSION, "build": build_id, "builds": pico_builds}, indent=2) + "\n")
     root = Path(__file__).resolve().parents[1]

@@ -82,8 +82,10 @@ Discovery advertises `slots: ["A", "B"]`, `ab_transitions`, `transition_sources`
 `transition_programs`, `custom_transitions` and the legacy `transition_effects`.
 Transition packages use `lightvm.program` with `profile: "transition"`, through
 the same compiler, checked interpreter and release contract as animations.
-`procedure_list` reports each current package's `profile` so clients can filter
-stored animations and transitions without a firmware effect-name table.
+`procedure_list` reports each current package's `type` and `profile`, and accepts
+a `type` filter. Animation and transition names are unique within their own types;
+both can be called `wipe`. Transition selection resolves the transition namespace.
+See [internal storage](storage.md).
 
 All operations accept `device`. Transition controls address the output owner,
 without a slot selector. Scene and layer operations accept `slot`, defaulting to A.

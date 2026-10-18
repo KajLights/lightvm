@@ -118,3 +118,29 @@ describe('editor examples and playback status', () => {
     expect(document.querySelector('#playback-state')).toHaveTextContent('Running');
   });
 });
+
+describe('typed device storage', () => {
+  it('distinguishes same-name programs and deletes only the selected type', async () => {
+    const { store, devices, show } = workspace();
+    const description = { device_id: 'pico', boot_id: 'boot', version: '1.0.0',
+      module_limit: 32768, storage_bytes: 1048576, free_bytes: 524288 } as Description;
+    const client = { closed: false, transport: { label: 'HTTP' }, deleteProcedure: vi.fn(async () => {}) };
+    devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
+    vi.spyOn(devices, 'readProcedures').mockResolvedValue();
+    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
+      { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 5 } },
+    ] }, revision: 1, savedRevision: 1 }));
+    store.dispatch(deviceActions.procedures([
+      { name: 'wipe', type: 'animation', profile: 'animation', size: 500, crc32: 1 },
+      { name: 'wipe', type: 'transition', profile: 'transition', size: 600, crc32: 2 },
+    ]));
+    show();
+    expect(screen.getByText('512 KiB free of 1024 KiB')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'wipe (animation)' })).toHaveValue('animation:wipe');
+    expect(screen.getByRole('option', { name: 'wipe (transition)' })).toHaveValue('transition:wipe');
+    fireEvent.change(screen.getByLabelText('Stored compiled program'), { target: { value: 'transition:wipe' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete stored program' }));
+    await act(async () => {});
+    expect(client.deleteProcedure).toHaveBeenCalledWith('wipe', 'transition');
+  });
+});

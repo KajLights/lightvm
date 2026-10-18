@@ -109,7 +109,9 @@ version pinned until selected again. Referenced programs cannot be deleted.
 packages. Firmware advertises `transition_programs: true`. The browser compiles
 these same examples, saves editable versions in its library, saves and selects
 named device programs, and lists stored transitions in the A/B selector. Program
-storage has eight shared slots for animations and transitions.
+storage is limited by available capacity. Animations and transitions have separate
+name namespaces; `animation/wipe` and `transition/wipe` can coexist.
+`procedure_list` accepts a `type` filter; get/delete use the type to disambiguate names.
 
 Stored packages survive reboot. Live A/B scenes, transition selection and progress
 drivers remain RAM state, as described in [A/B transitions](transitions.md).

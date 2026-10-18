@@ -260,20 +260,15 @@ def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
         description = self.client.describe()
         data = padded_program(min(27000,description["module_limit"]))
         saved = 0
-        for i in range(8):
+        while True:
             try:
-                self.client.save_procedure(f"p{i}", data)
+                self.client.save_procedure(f"p{saved}", data)
                 saved += 1
             except ProtocolError:
                 break
-        self.assertGreaterEqual(saved, 7)
-        self.assertLessEqual(saved, 8)
+        self.assertGreater(saved, 8)
         self.assertEqual(len(self.client.procedures()), saved)
-        if saved == 8:
-            with self.assertRaises(ProtocolError):
-                self.client.save_procedure("overflow", color())
-        else:
-            self.assertLess(self.client.describe()["free_bytes"], len(data))
+        self.assertLess(self.client.describe()["free_bytes"], len(data) + 8192)
         self.restart()
         self.assertEqual(self.client.get_procedure("p0"), data)
 
@@ -367,7 +362,9 @@ def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
         self.transport = None
         raw = bytearray(self.storage.read_bytes())
         base = max((0,256*1024),key=lambda at: struct.unpack_from("<I",raw,at+8)[0])
-        raw[base+32:base+65] = b"q" + bytes(32)
+        catalog, catalog_size = struct.unpack_from("<II", raw, base+28)
+        raw[catalog:catalog+33] = b"q" + bytes(32)
+        struct.pack_into("<I", raw, base+36, zlib.crc32(raw[catalog:catalog+catalog_size]))
         crc = zlib.crc32(raw[base:base+1020])
         struct.pack_into("<I", raw, base+1020, crc)
         struct.pack_into("<I", raw, base+1024+8, crc)

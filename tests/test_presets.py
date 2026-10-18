@@ -104,17 +104,16 @@ class PresetTests(unittest.TestCase):
             self.assertEqual(self.client.status_fields()['heap'], heap)
         self.assertEqual(self.client.preset('blue')['layers'], self.layers)
 
-    def test_preset_quota_does_not_consume_program_slots_and_directory_reopens(self):
-        for n in range(7):
+    def test_programs_and_presets_share_capacity_without_count_quotas(self):
+        for n in range(12):
             self.client.save_procedure('program' + str(n), self.program)
-        for n in range(5):
+        for n in range(9):
             self.client.save_preset('preset' + str(n), self.layers, device='second')
         self.client.configure_network({'schema': 'lightvm.network', 'wifi': {'enabled': False, 'country': 'XX', 'networks': []}, 'http': {'enabled': False, 'port': 80}})
-        with self.assertRaises(ProtocolError):
-            self.client.save_preset('sixth', self.layers, device='second')
+        self.client.save_preset('another', self.layers, device='second')
         self.restart()
-        self.assertEqual(len(self.client.presets()), 5)
-        self.assertEqual(len(self.client.procedures()), 8)
+        self.assertEqual(len(self.client.presets()), 10)
+        self.assertEqual(len(self.client.procedures()), 13)
         self.client.activate_preset('preset4', device='second')
         self.assertEqual(self.frame(), bytes([0, 0, 255]) * 5)
 

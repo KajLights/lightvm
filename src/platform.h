@@ -37,6 +37,7 @@ bool platform_pixels_show(void *driver, const uint8_t *rgb, size_t count);
 // Native bounded block storage. Writes require erased bytes; sync is durable.
 // All ports expose 4096-byte erase units and 256-byte program units.
 bool platform_storage_available(void);
+uint32_t platform_storage_capacity(void);
 bool platform_storage_read(uint32_t offset, void *bytes, size_t size);
 bool platform_storage_write(uint32_t offset, const void *bytes, size_t size);
 bool platform_storage_erase(uint32_t offset, size_t size);

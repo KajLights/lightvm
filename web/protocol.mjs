@@ -272,8 +272,11 @@ export class LightVMClient {
     return this.manage('preset_delete', { name, expected_revision: state.catalog_revision });
   }
 
-  async deleteProcedure(name) {
-    const state = await this.describe(); return this.manage("procedure_delete", { name, expected_revision: state.catalog_revision });
+  async procedures(type) { return this.json('procedure_list', type ? { type } : {}); }
+  async getProcedure(name, type) { return (await this.manage('procedure_get', { name, ...(type ? { type } : {}) })).data; }
+
+  async deleteProcedure(name, type) {
+    const state = await this.describe(); return this.manage("procedure_delete", { name, ...(type ? { type } : {}), expected_revision: state.catalog_revision });
   }
 
 

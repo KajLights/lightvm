@@ -183,10 +183,10 @@ status are not part of this protocol.
 | `config_validate` | Validate staged configuration, including startup procedure preparation and argument validation |
 | `config_apply` | `expected_revision` (active); apply staged config |
 | `config_save` | `expected_revision` (active), `expected_saved_revision` |
-| `procedure_list` | Array of `{name,size,crc32}` |
-| `procedure_get` | `name`; raw bytecode bytes |
-| `procedure_save` | `name`, `expected_revision` (catalog); persist staged module |
-| `procedure_delete` | `name`, `expected_revision` (catalog) |
+| `procedure_list` | Optional `type` filter (`animation` or `transition`); array of `{name,type,profile,size,crc32}` |
+| `procedure_get` | `name`, optional `type` (required for ambiguous names); raw bytecode bytes |
+| `procedure_save` | `name`, `expected_revision` (catalog), optional `type` matching bytecode profile; persist staged module |
+| `procedure_delete` | `name`, optional `type`, `expected_revision` (catalog) |
 | `procedure_activate` | `name`, optional `action` (`play`, default play) |
 | `preset_list`, `preset_get`, `preset_save`, `preset_activate`, `preset_delete` | Persistent scene recipes; see [preset fields and revisions](composition.md). |
 
@@ -200,25 +200,25 @@ read back revisions/content rather than blindly issuing a new save.
 
 ## Persistence and failure recovery
 
-The 512 KiB region has two alternating 4 KiB directory sectors, at offsets 0
-and 256 KiB, and immutable payload extents in the remaining sectors. Directory
-format 4 contains CRCs, revisions and up to fifteen catalogue entries (configuration,
-network settings, eight procedures and five presets). Only directory format 4 is
-accepted. Unsupported committed directories are rejected without rewriting or
-erasing their contents. New payloads occupy contiguous 4 KiB extents and stream through 256-byte pages.
-Configuration and individual presets are limited to 8192 bytes; procedures to `module_limit`.
-`free_bytes` counts unoccupied payload sectors; fragmentation can prevent a
-contiguous allocation even when the total is sufficient. Running instances
-and staged uploads pin their extents until released.
+The board/build selects its storage backend and capacity. The default native
+extent backend reserves 512 KiB unless `LIGHTVM_STORAGE_BYTES` overrides it. It
+stores variable-size objects under unique `(type, name)` keys, with no program or
+preset count quotas. Configuration and presets remain limited to 8192 bytes;
+programs to `module_limit`.
 
-A save writes only its new payload and the inactive directory sector, verifies
-CRCs and directory bytes, synchronizes, writes a final commit record and
-synchronizes again. It does not rewrite retained packages. The currently committed
-directory and its payloads survive interrupted writes. Older directory snapshots
-are fallback candidates only while their payloads have not been reclaimed.
-If neither committed directory is usable, boot reports a repair/reprovision error
-and disables store writes. Management remains available. Abandoned first uploads do not turn blank storage
-into a boot error.
+Two alternating root sectors select an immutable catalogue that grows with the
+object count. Objects use contiguous extents rounded to 4 KiB, streamed through
+256-byte programming pages. Running instances and staged uploads pin their
+versions. `describe` reports the actual backend, writable capability, total/free
+capacity, allocation unit and largest free extent. Fragmentation and the room
+needed for a replacement catalogue can prevent an upload despite free bytes.
+
+Publication verifies the new object and catalogue before committing the inactive
+root. Interrupted writes preserve the current committed generation. Unsupported
+or corrupt committed stores remain unavailable until explicitly reprovisioned.
+Only the first-release `LVS2` format 1 is implemented; experimental earlier stores
+must be erased. See [internal storage](storage.md) for backend integration,
+configuration, format and recovery details.
 
 Saving configuration validates every startup invocation using its supplied
 arguments before committing the configuration. Replacing a stored procedure leaves
@@ -226,13 +226,11 @@ running instances on their original bytes, while the next boot uses the current
 catalogue entry with each device's configured arguments. Activation does not
 promote or save a boot revision. Hardware health still requires device testing.
 
-Pico reserves flash offsets `0x180000..0x1fffff` on the original 2 MiB board. The
-linker rejects firmware crossing that boundary. Flash programming copies pages to
-RAM and disables interrupts around the SDK operation; the firmware uses one core.
-[SDK flash restrictions](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash).
-ESP32 reserves the `lightvm` data partition at `0x110000`, size `0x80000`, after the
-1 MiB application partition. Partition operations report I/O errors without
-aborting the controller. [ESP-IDF partition API](https://docs.espressif.com/projects/esp-idf/en/v5.5.3/esp32s3/api-reference/storage/partition.html).
+Pico reserves the configured region at the end of its board's flash; the linker
+rejects overlapping firmware. ESP32 generates the `lightvm` partition with the
+requested capacity, or uses `LIGHTVM_PARTITION_TABLE` for a custom layout. The
+runtime reads its actual partition size. Capacity changes require reprovisioning
+and, on ESP32, installing the corresponding partition table.
 
 Persistence services playback and native ingress between sector erases and page
 writes. Individual flash operations still interrupt XIP/cache access; ESP32 drains

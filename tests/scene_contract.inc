@@ -72,7 +72,7 @@ static void scene_contract(void){
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
     /* Activation presents its initial frame before autonomous playback. The
        direct driver must receive RGB, never the RGBA contribution bytes. */
-    CHECK(store_put(&app.store,"counter",counter_lbc,sizeof(counter_lbc)));
+    CHECK(store_put(&app.store,STORE_ANIMATION,"counter",counter_lbc,sizeof(counter_lbc)));
     const char *activate="{\"op\":\"procedure_activate\",\"name\":\"counter\",\"device\":\"lights\",\"action\":\"play\"}";
     command(&session,CMD_MANAGE,(const uint8_t *)activate,strlen(activate));CHECK(reply.code==STATUS_OK);
     for(unsigned i=0;i<3;i++)CHECK(displayed[i*3]==1&&displayed[i*3+1]==0&&displayed[i*3+2]==0);

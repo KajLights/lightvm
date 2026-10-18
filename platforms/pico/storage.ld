@@ -1,1 +1,1 @@
-ASSERT(__flash_binary_end <= 0x10180000, "LightVM firmware overlaps reserved storage")
+ASSERT(__flash_binary_end <= __lightvm_storage_start, "LightVM firmware overlaps reserved storage")

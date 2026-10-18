@@ -130,6 +130,9 @@ outputs or unavailable DMA resources. Host and RP2040 use the root
 CMake project. ESP32 uses its SDK project. Resource budgets remain in board
 headers; bytecode contains no GPIO, controller or driver selection.
 The [Pico output probe](tests/pico_output/README.md) verifies the production driver.
+[Storage](docs/storage.md) supports interchangeable backends and typed names;
+`-DLIGHTVM_STORAGE_BYTES=1048576` selects a 1 MiB native region instead of the
+default 512 KiB. Stored program and preset counts follow available capacity.
 
 For Pico/Pico W, use Pico SDK 1.5.1 and an Arm GNU embedded toolchain:
 

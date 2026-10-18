@@ -343,17 +343,17 @@ class Client:
         self.upload_object("procedure", data, name)
         return self.manage("procedure_save", name=name, expected_revision=revision)
 
-    def procedures(self):
-        self.manage("procedure_list")
+    def procedures(self, program_type=None):
+        self.manage("procedure_list", **({"type": program_type} if program_type else {}))
         return json.loads(self.data_reply)
 
-    def get_procedure(self, name):
-        self.manage("procedure_get", name=name)
+    def get_procedure(self, name, program_type=None):
+        self.manage("procedure_get", name=name, **({"type": program_type} if program_type else {}))
         return bytes(self.data_reply)
 
-    def delete_procedure(self, name):
+    def delete_procedure(self, name, program_type=None):
         revision = self.describe()["catalog_revision"]
-        return self.manage("procedure_delete", name=name, expected_revision=revision)
+        return self.manage("procedure_delete", name=name, expected_revision=revision, **({"type": program_type} if program_type else {}))
 
     def activate(self, name, action="play", slot=None, settings=None, device=None, layer=None):
         if layer is not None:
@@ -572,6 +572,7 @@ def main():
     action.add_argument("--animate", action="store_true", help="start animation playback on the device")
     action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
     action.add_argument("--frame-ms", type=int, help="render one frame with this delta and report an RGB preview")
+    parser.add_argument("--procedure-type", choices=("animation", "transition"), help="Filter or disambiguate stored programs")
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("module", nargs="?", type=Path)
     args = parser.parse_args()
@@ -654,9 +655,9 @@ def main():
             elif args.get_config:
                 print(json.dumps(client.get_config(saved=args.saved), indent=2))
             elif args.procedures:
-                print(json.dumps(client.procedures(), indent=2))
+                print(json.dumps(client.procedures(args.procedure_type), indent=2))
             elif args.get_procedure:
-                data = client.get_procedure(args.get_procedure)
+                data = client.get_procedure(args.get_procedure, args.procedure_type)
                 if args.output:
                     args.output.write_bytes(data)
                 else:
@@ -671,7 +672,7 @@ def main():
             elif args.store_procedure:
                 client.save_procedure(args.store_procedure, args.module.read_bytes())
             elif args.delete_procedure:
-                client.delete_procedure(args.delete_procedure)
+                client.delete_procedure(args.delete_procedure, args.procedure_type)
             elif args.activate:
                 client.activate(args.activate, args.action, args.slot, device=args.device, layer=args.layer)
             elif args.cancel_upload:

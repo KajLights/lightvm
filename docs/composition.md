@@ -205,11 +205,11 @@ derives immutable program names from the compiled SHA-256 digest and keeps full
 digests and editable source in its browser library. Multiple presets/layers share
 one stored program; active instances retain independent settings and state.
 
-Firmware advertises `presets: true` and `preset_limit: 5`. Presets have independent
-storage slots from the eight compiled programs, and each document is limited to
-`config_limit` bytes and the JSON parser's token bound. Public preset names allow
-1–30 letters, digits, dots, underscores or hyphens. Presets reserve `$p` names in
-the flash catalog and do not appear in `procedure_list`.
+Firmware advertises `presets: true`. Presets share available storage with compiled
+programs; neither has a fixed count quota. Each document is limited to `config_limit`
+bytes and the JSON parser's token bound. Public preset names allow 1–32 letters,
+digits, dots, underscores or hyphens. They use their own typed namespace and do not
+appear in `procedure_list`. See [internal storage](storage.md).
 
 | Operation | Fields / behavior |
 | --- | --- |

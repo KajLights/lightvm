@@ -214,3 +214,18 @@ test('preset saving retains its catalog revision and scene preparation cancels r
   await assert.rejects(client.configureScene([{ id: 'eye' }], 'second'), /memory admission/);
   assert.equal(calls.at(-1), COMMAND.OBJECT_CANCEL);
 });
+
+test("stored-program clients carry type through lookup, filtering and deletion", async () => {
+  const client = new LightVMClient({ close: async () => {} });
+  const requests = [];
+  client.manage = async (op, fields = {}) => { requests.push({ op, ...fields }); return { data: op === 'procedure_list' ? new TextEncoder().encode('[]') : new Uint8Array([7]), value: 0 }; };
+  client.describe = async () => ({ catalog_revision: 12 });
+  await client.procedures('transition');
+  assert.deepEqual(await client.getProcedure('wipe', 'animation'), new Uint8Array([7]));
+  await client.deleteProcedure('wipe', 'transition');
+  assert.deepEqual(requests, [
+    { op: 'procedure_list', type: 'transition' },
+    { op: 'procedure_get', name: 'wipe', type: 'animation' },
+    { op: 'procedure_delete', name: 'wipe', type: 'transition', expected_revision: 12 },
+  ]);
+});

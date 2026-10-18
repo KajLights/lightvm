@@ -116,7 +116,7 @@ function announcedUrl(child, output) {
     assert.equal(savedLibrary.presets[0].layers[0].settings.duration, 5);
     assert.equal(savedLibrary.presets[0].layers[0].blend, 'screen');
     assert.equal(savedLibrary.presets[0].layers[1].settings.duration, 30);
-    const programName = await page.locator('#stored-program option').nth(1).getAttribute('value') || await page.locator('#stored-program option').nth(1).innerText();
+    const programName = (await page.locator('#stored-program option').nth(1).getAttribute('value')).slice('animation:'.length);
     await page.locator('#command-path').selectOption('usb');
     await page.waitForFunction(() => !document.querySelector('#command-path')?.disabled);
     await page.getByRole('button', { name: 'Run on output', exact: true }).click();

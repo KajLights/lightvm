@@ -6,6 +6,7 @@ function(lightvm_add_core)
         message(FATAL_ERROR "Set LIGHTVM_BOARD_CONFIG to the port's board/resource header")
     endif()
     include("${LIGHTVM_ROOT}/cmake/lightvm_release.cmake")
+    include("${LIGHTVM_ROOT}/cmake/lightvm_storage.cmake")
     configure_file("${LIGHTVM_ROOT}/cmake/lightvm_release.h.in" "${CMAKE_CURRENT_BINARY_DIR}/generated/lightvm_release.h" @ONLY)
     add_library(lightvm_config INTERFACE)
     target_include_directories(lightvm_config INTERFACE "${LIGHTVM_ROOT}/src" "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -14,6 +15,11 @@ function(lightvm_add_core)
         LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>)
     target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
+    target_compile_definitions(lightvm_config INTERFACE STORAGE_BYTES=${LIGHTVM_STORAGE_BYTES_VALUE} LIGHTVM_STORAGE_BACKEND=${LIGHTVM_STORAGE_BACKEND})
+    if(LIGHTVM_STORAGE_CONFIGURATION)
+        target_compile_definitions(lightvm_config INTERFACE LIGHTVM_STORAGE_CONFIGURATION=${LIGHTVM_STORAGE_CONFIGURATION})
+    endif()
+
     add_library(lightvm_core STATIC
         "${LIGHTVM_ROOT}/src/release.c" "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
@@ -21,7 +27,10 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"
         "${LIGHTVM_ROOT}/src/portable.c" "${LIGHTVM_ROOT}/src/portable_draw.c" "${LIGHTVM_ROOT}/src/portable_map.c" "${LIGHTVM_ROOT}/src/animation.c" "${LIGHTVM_ROOT}/src/draw.c" "${LIGHTVM_ROOT}/src/scene.c" "${LIGHTVM_ROOT}/src/transition.c"
         "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/devices.c"
-        "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/network.c")
+        "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/store_extent.c" "${LIGHTVM_ROOT}/src/store_assets.c" "${LIGHTVM_ROOT}/src/network.c")
+    if(LIGHTVM_STORAGE_BACKEND_SOURCES)
+        target_sources(lightvm_core PRIVATE ${LIGHTVM_STORAGE_BACKEND_SOURCES})
+    endif()
     if(LIGHTVM_HTTP)
         target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c" "${LIGHTVM_ROOT}/src/discovery.c")
     endif()

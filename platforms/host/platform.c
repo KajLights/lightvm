@@ -118,6 +118,7 @@ void host_storage_close(void) {
     boot_storage_fd=-1;
 #endif
 }
+uint32_t platform_storage_capacity(void) { return STORAGE_BYTES; }
 bool platform_storage_available(void) {
     if(storage_fd>=0)return true;
     char path[]="/tmp/lightvm-flash-XXXXXX";storage_fd=mkstemp(path);
