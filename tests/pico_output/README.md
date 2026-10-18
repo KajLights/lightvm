@@ -3,7 +3,8 @@
 The optional `output_probe` image tests the production PIO/DMA driver with on-chip
 GPIO capture, all RGB orders, brightness endpoints, busy/count rejection,
 close/reopen, DMA exhaustion, stalled-transfer cancellation/retry and late polling.
-It also reports submission and wall time for one, two and four outputs.
+It also reports submission and wall time for one, two and four outputs at
+brightness 100 and 255, covering scaled output and the full-brightness fast path.
 No alternate output driver is included.
 
 Build the normal Pico project with `-DLIGHTVM_OUTPUT_PROBE=ON`, using the same SDK,

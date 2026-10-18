@@ -88,7 +88,16 @@ void platform_pixels_cancel(void *driver) {
 bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
     Pixels *p=driver;
     if(!p||!rgb||count!=p->config.count||p->pending)return false;
-    for(size_t i=0;i<count;i++){
+    /* Full output skips scaling; wire order and DMA packing still apply. */
+    if(p->config.brightness==255)for(size_t i=0;i<count;i++){
+        uint32_t word=0;
+        for(size_t c=0;c<3;c++){
+            unsigned channel=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;
+            word=(word<<8)|rgb[i*3+channel];
+        }
+        p->words[i]=word<<8;
+    }
+    else for(size_t i=0;i<count;i++){
         uint32_t word=0;
         for(size_t c=0;c<3;c++){
             unsigned channel=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;

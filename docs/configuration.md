@@ -97,9 +97,12 @@ manual activation remains available.
 A pixel config requires a permitted string `pin` and positive integer `count`
 within `pixel_capacity` for that device. Runtime memory and native resources bound
 the combined workload. `order` defaults to `GRB` and accepts the six permutations
-of RGB. `brightness_limit` is an integer 0..255, default 255. Logical snapshots
-remain unscaled RGB bytes; native drivers apply wire order and brightness at
-submission. Only 800 kHz, three-channel WS2812B is supported. Virtual outputs,
+of RGB. `brightness_limit` is an optional final output multiplier, an integer
+0..255 defaulting to 255 (100%). Use rendering colour transforms for artistic
+brightness changes. Logical snapshots remain unscaled RGB bytes; native drivers
+apply wire order and any configured brightness reduction at submission. At 255,
+drivers skip brightness arithmetic while retaining wire conversion.
+Only 800 kHz, three-channel WS2812B is supported. Virtual outputs,
 RGBW and pixel subsets are not implemented.
 
 Identifiers are 1..32 ASCII letters, digits, underscores, hyphens or dots. Unknown

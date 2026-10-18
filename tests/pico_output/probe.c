@@ -84,15 +84,15 @@ static uint32_t median(uint32_t *values) {
     return (values[SAMPLES/2-1]+values[SAMPLES/2])/2;
 }
 
-static bool benchmark(unsigned devices) {
+static bool benchmark(unsigned devices,unsigned brightness) {
     void *outputs[4]={0};
     uint32_t submission[SAMPLES],wall[SAMPLES],work[SAMPLES];
     bool ok=true;
     for(unsigned d=0;d<devices;d++){
-        PixelConfig cfg={.pin=probe_pins[d],.count=COUNT,.brightness=100,.order="GRB"};
+        PixelConfig cfg={.pin=probe_pins[d],.count=COUNT,.brightness=brightness,.order="GRB"};
         if(!(platform_pixels_open(&cfg,&outputs[d]))){ok=false;break;}
     }
-    pattern(100,"GRB");
+    pattern(brightness,"GRB");
     if(ok)for(unsigned sample=0;sample<SAMPLES;sample++){
         uint64_t started=time_us_64();
         for(unsigned d=0;d<devices;d++)ok&=platform_pixels_submit(outputs[d],source,COUNT);
@@ -109,8 +109,8 @@ static bool benchmark(unsigned devices) {
     for(unsigned d=0;d<devices;d++){
         platform_pixels_close(outputs[d]);
     }
-    if(ok)printf("{\"benchmark\":\"%s\",\"devices\":%u,\"pixels_each\":%u,\"samples\":%u,\"submit_us_median\":%lu,\"wall_us_median\":%lu,\"background_iterations_median\":%lu}\n",
-        "dma",devices,COUNT,SAMPLES,
+    if(ok)printf("{\"benchmark\":\"%s\",\"devices\":%u,\"brightness\":%u,\"pixels_each\":%u,\"samples\":%u,\"submit_us_median\":%lu,\"wall_us_median\":%lu,\"background_iterations_median\":%lu}\n",
+        "dma",devices,brightness,COUNT,SAMPLES,
         (unsigned long)median(submission),(unsigned long)median(wall),(unsigned long)median(work));
     return ok;
 }
@@ -180,7 +180,7 @@ int main(void) {
     const unsigned brightness[]={0,100,255};
     for(unsigned b=0;b<3;b++)for(unsigned o=0;o<6;o++)ok&=capture(b==2?17:16,orders[o],brightness[b]);
     for(unsigned p=1;p<4;p++)ok&=capture((unsigned)probe_pins[p],"GRB",100);
-    for(unsigned n=1;n<=4;n*=2){ok&=benchmark(n);}
+    for(unsigned n=1;n<=4;n*=2){ok&=benchmark(n,100);ok&=benchmark(n,255);}
     ok&=lifecycle();
     ok&=fault_recovery();
     printf("{\"done\":true,\"passed\":%s}\n",ok?"true":"false");

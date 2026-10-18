@@ -98,7 +98,12 @@ bool platform_pixels_open(const PixelConfig *config,void **driver) {
 bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
     Pixels *p=driver;if(!p||count!=p->config.count||!atomic_load(&p->done))return false;
     if(!p->enabled){if(rmt_enable(p->channel)!=ESP_OK)return false;p->enabled=true;}
-    for(size_t i=0;i<count;i++)for(size_t c=0;c<3;c++){
+    /* Full output skips scaling; wire order and RMT staging still apply. */
+    if(p->config.brightness==255)for(size_t i=0;i<count;i++)for(size_t c=0;c<3;c++){
+        unsigned channel=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;
+        p->wire[i*3+c]=rgb[i*3+channel];
+    }
+    else for(size_t i=0;i<count;i++)for(size_t c=0;c<3;c++){
         unsigned channel=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;
         p->wire[i*3+c]=(rgb[i*3+channel]*p->config.brightness+127u)/255u;
     }
