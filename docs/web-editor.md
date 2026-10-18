@@ -7,6 +7,10 @@ installs and updates XIAO ESP32-C3, S3 and C6 through Web Serial, and Pico and
 Pico W from BOOTSEL through WebUSB. The Pico UF2s are also available to download.
 The app can also open Develop without a controller for editing and bytecode compilation.
 
+**Audio demo** captures microphone or line-in audio, shows its response locally,
+and can drive the running Eye animation through live inputs. See the
+[audio Eye demo guide](audio-eye-demo.md) for setup and mappings.
+
 The app reuses the existing JavaScript protocol, transport and discovery modules.
 A persistent controller service owns USB/HTTP sessions and pins each operation to its
 selected command path. Redux holds serializable controller snapshots, the editor draft

@@ -20,6 +20,7 @@ animation. The guides below describe the current implementation.
 - [MQTT and Home Assistant lights](mqtt.md)
 - [Boot sequence and power recovery](boot-sequence.md)
 - [Browser workspace](web-editor.md)
+- [Live audio Eye demo](audio-eye-demo.md)
 
 Runnable [animation examples](../examples/animations/) and
 [configuration examples](../examples/config/) live together in `examples/`.
