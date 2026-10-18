@@ -7,6 +7,7 @@
 typedef struct {
     char id[OBJECT_NAME_LIMIT + 1], type[17];
     char startup[OBJECT_NAME_LIMIT + 1];
+    char ha_preset[OBJECT_NAME_LIMIT + 1], ha_name[65];
     /* Byte span in the owning configuration JSON, never an upload pointer. */
     uint32_t args_offset, args_size;
     PixelConfig pixels;

@@ -5,7 +5,7 @@ export interface Description {
   version: string; animation_reset?: boolean; activation_settings?: boolean;
   module_limit: number; config_limit: number;
   pixel_capacity: number; pins: string[]; slots: string[];
-  storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean; websocket_supported?: boolean;
+  storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean; websocket_supported?: boolean; mqtt_supported?: boolean;
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;
@@ -20,14 +20,15 @@ export interface Description {
 }
 export interface HardwareConfig {
   schema: 'lightvm.config';
-  devices: { id: string; type: 'ws2812b'; startup?: { procedure: string; args?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
+  devices: { id: string; type: 'ws2812b'; home_assistant?: { on_preset: string; name?: string }; startup?: { procedure: string; args?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {
   schema: 'lightvm.network';
   wifi: { enabled: boolean; country: string; mode?: 'station' | 'ap'; ap?: { ssid?: string; password?: string }; networks: { ssid: string; hidden?: boolean; password?: string }[] };
   http: { enabled: boolean; port: number };
+  mqtt?: { enabled: boolean; host: string; port: number; username: string; password?: string };
 }
-export interface NetworkStatus { state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
+export interface NetworkStatus { mqtt_connected?: boolean; mqtt_error?: string; state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
 export interface Procedure { name: string; size: number; crc32: number; type?: 'animation' | 'transition'; profile?: 'animation' | 'transition' }
 export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[] }

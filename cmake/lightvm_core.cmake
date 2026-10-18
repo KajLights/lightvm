@@ -13,7 +13,7 @@ function(lightvm_add_core)
     target_compile_definitions(lightvm_config INTERFACE
         LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
         LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>
-        LIGHTVM_WEBSOCKET=$<BOOL:${LIGHTVM_WEBSOCKET}>)
+        LIGHTVM_WEBSOCKET=$<BOOL:${LIGHTVM_WEBSOCKET}> LIGHTVM_MQTT=$<BOOL:${LIGHTVM_MQTT}>)
     target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
     target_compile_definitions(lightvm_config INTERFACE STORAGE_BYTES=${LIGHTVM_STORAGE_BYTES_VALUE} LIGHTVM_STORAGE_BACKEND=${LIGHTVM_STORAGE_BACKEND})
@@ -31,6 +31,9 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/store_extent.c" "${LIGHTVM_ROOT}/src/store_assets.c" "${LIGHTVM_ROOT}/src/network.c")
     if(LIGHTVM_STORAGE_BACKEND_SOURCES)
         target_sources(lightvm_core PRIVATE ${LIGHTVM_STORAGE_BACKEND_SOURCES})
+    endif()
+    if(LIGHTVM_MQTT)
+        target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/mqtt.c" "${LIGHTVM_ROOT}/src/home_assistant.c")
     endif()
     if(LIGHTVM_HTTP)
         target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c" "${LIGHTVM_ROOT}/src/discovery.c")

@@ -1,5 +1,5 @@
-if(LIGHTVM_HTTP AND NOT LIGHTVM_WIFI)
-    message(FATAL_ERROR "Embedded HTTP requires LIGHTVM_WIFI=ON")
+if((LIGHTVM_HTTP OR LIGHTVM_MQTT) AND NOT LIGHTVM_WIFI)
+    message(FATAL_ERROR "Embedded HTTP/MQTT requires LIGHTVM_WIFI=ON")
 endif()
 if(LIGHTVM_WIFI AND NOT PICO_BOARD STREQUAL "pico_w")
     message(FATAL_ERROR "Wi-Fi requires PICO_BOARD=pico_w")
@@ -30,6 +30,9 @@ if(LIGHTVM_BOOT_SEQUENCE)
     target_link_options(lightvm PRIVATE "LINKER:-T,${CMAKE_CURRENT_BINARY_DIR}/storage_boot_sequence.ld")
 endif()
 
+if(LIGHTVM_MQTT)
+    target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/mqtt_port.c")
+endif()
 if(LIGHTVM_WIFI)
     target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/network_port.c"
         "${CMAKE_CURRENT_LIST_DIR}/dhcp_port.c" "${CMAKE_SOURCE_DIR}/src/dhcp.c")

@@ -3,4 +3,5 @@
 #include "app.h"
 void pico_network_init(App *);
 void pico_network_poll(void);
+void pico_mqtt_poll(void);
 #endif

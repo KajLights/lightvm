@@ -81,6 +81,7 @@ describe('network commit', () => {
       schema: 'lightvm.network',
       wifi: { enabled: true, country: 'XX', mode: 'ap', ap: { ssid: 'lights', password: 'ap-secret' }, networks: [{ ssid: 'studio', password: 'secret' }] },
       http: { enabled: true, port: 8080 },
+      mqtt: { enabled: true, host: '192.168.1.10', port: 1883, username: 'kaj', password: 'mqtt-secret' },
     };
 
     expect(await service.configureNetwork(config, 2)).toBe(true);
@@ -88,6 +89,7 @@ describe('network commit', () => {
     expect(store.getState().device.networkRevision).toBe(3);
     expect(store.getState().device.networkConfig?.wifi.networks[0]).toEqual({ ssid: 'studio' });
     expect(store.getState().device.networkConfig?.wifi.ap).toEqual({ ssid: 'lights' });
+    expect(store.getState().device.networkConfig?.mqtt).not.toHaveProperty('password');
     expect(JSON.stringify(store.getState())).not.toContain('secret');
     expect(store.getState().activity.notice).toMatch(/saved.*Reconnect/);
   });
@@ -95,14 +97,15 @@ describe('network commit', () => {
     const store = createAppStore(), service = new DeviceService(store);
     const client = {
       manage: vi.fn().mockResolvedValue({ value: 2, data: new TextEncoder().encode(JSON.stringify({
-        schema: 'lightvm.network', wifi: { enabled: true, mode: 'ap', networks: [], ap: { ssid: 'lights', password: 'ap-secret' } }, http: { enabled: true, port: 80 },
+        schema: 'lightvm.network', wifi: { enabled: true, mode: 'ap', networks: [], ap: { ssid: 'lights', password: 'ap-secret' } }, http: { enabled: true, port: 80 }, mqtt: { enabled: true, host: '127.0.0.1', port: 1883, username: 'kaj', password: 'mqtt-secret' },
       })) }),
       json: vi.fn().mockResolvedValue({ state: 'ap_active', mode: 'ap', ip: '192.168.4.1', revision: 2, http_port: 80 }),
     } as unknown as LightVMClient;
-    service.paths.attach('http', client, { device_id: 'board', boot_id: 'boot', wifi_supported: true } as Description);
-    store.dispatch(deviceActions.description({ device_id: 'board', boot_id: 'boot', wifi_supported: true } as Description));
+    service.paths.attach('http', client, { device_id: 'board', boot_id: 'boot', mqtt_supported: true } as Description);
+    store.dispatch(deviceActions.description({ device_id: 'board', boot_id: 'boot', mqtt_supported: true } as Description));
     await service.readNetwork(client);
     expect(store.getState().device.networkConfig?.wifi.ap).toEqual({ ssid: 'lights' });
+    expect(store.getState().device.networkConfig?.mqtt).not.toHaveProperty('password');
     expect(JSON.stringify(store.getState())).not.toContain('ap-secret');
   });
   it('keeps the current path and explains that recovery saves apply next boot', async () => {

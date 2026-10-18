@@ -32,6 +32,8 @@ typedef struct {
     bool network_pending;
     uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
     char device_id[65], boot_id[33], network_error[160];
+    char mqtt_error[160];
+    bool mqtt_connected;
     AppDevice fallback;
     AppDevice **devices;
     unsigned device_count;

@@ -62,11 +62,25 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
     if(j.tokens[list].children&&!cfg->devices)return failure(error,capacity,"devices: allocation failed");
     for(int t=list+1;t<j.tokens[list].next;t=j.tokens[t].next){
         HardwareDevice *d=&cfg->devices[cfg->count];
-        static const char *const fields[]={"id","type","config","startup",NULL};
+        static const char *const fields[]={"id","type","config","startup","home_assistant",NULL};
         if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id))
             return failure(error,capacity,"devices.id: missing or invalid identifier/fields");
         if(!json_string(&j,json_get(&j,t,"type"),d->type,sizeof(d->type))||!device_type(d->type))
             return failure(error,capacity,"devices.type: unsupported device type");
+        int ha=json_get(&j,t,"home_assistant");
+        if(ha>=0){
+            static const char *const ha_fields[]={"on_preset","name",NULL};
+            if(!json_fields(&j,ha,ha_fields) ||
+               !json_string(&j,json_get(&j,ha,"on_preset"),d->ha_preset,sizeof(d->ha_preset)) ||
+               !object_name_valid(d->ha_preset) || strlen(d->ha_preset)>30)
+                return failure(error,capacity,"home_assistant.on_preset: expected a stored preset name (1..30 bytes)");
+            int name=json_get(&j,ha,"name");
+            if(name>=0 && (!json_string(&j,name,d->ha_name,sizeof(d->ha_name)) || !d->ha_name[0]))
+                return failure(error,capacity,"home_assistant.name: expected 1..64 UTF-8 bytes");
+            unsigned exposed=1;
+            for(unsigned n=0;n<cfg->count;n++)if(cfg->devices[n].ha_preset[0])exposed++;
+            if(exposed>8)return failure(error,capacity,"home_assistant: at most eight exposed outputs");
+        }
         int startup=json_get(&j,t,"startup");
         if(startup>=0){
             static const char *const startup_fields[]={"procedure","args",NULL};

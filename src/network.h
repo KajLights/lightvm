@@ -1,6 +1,7 @@
 #ifndef LIGHTVM_NETWORK_H
 #define LIGHTVM_NETWORK_H
 #include "config.h"
+#include "mqtt.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -9,6 +10,7 @@ typedef struct { char ssid[33], password[65]; bool hidden; } WifiNetwork;
 typedef enum { NET_MODE_STATION, NET_MODE_AP } NetworkMode;
 typedef struct {
     bool wifi_enabled, http_enabled;
+    MqttConfig mqtt;
     NetworkMode mode;
     char ap_ssid[33], ap_password[64];
     char country[3];

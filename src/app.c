@@ -347,6 +347,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"wifi_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"wifi_ap_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"recovery_supported\":"); literal(&w,LIGHTVM_POWER_RECOVERY?"true":"false");
+    literal(&w,",\"mqtt_supported\":"); literal(&w,LIGHTVM_MQTT?"true":"false");
     literal(&w,",\"http_supported\":"); literal(&w,LIGHTVM_HTTP?"true":"false");
     literal(&w,",\"websocket_supported\":"); literal(&w,LIGHTVM_WEBSOCKET?"true":"false");
     literal(&w,",\"boot_sequence_supported\":"); literal(&w,LIGHTVM_BOOT_SEQUENCE?"true":"false");
@@ -730,7 +731,14 @@ static bool preset_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const ch
         scene_destroy(candidate);bool ok=store_put(&a->store,STORE_PRESET,name,document,size);resume_clock(a);
         if(ok){a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)a->store.generation,"preset saved; playback unchanged");}
         else error_reply(a,id,STATUS_STORAGE,"save_failed","preset storage unavailable, full or write failed");
-    }else{error=apply_scene_slot(a,d,candidate,request_slot(j));if(error){scene_destroy(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);}else reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"preset activated");}
+    }else{
+        /* No slot selects the physical output, replacing its presenter as well
+         * as its scene. Explicit A/B keeps the existing transition owner. */
+        if(json_get(j,0,"slot")<0){apply_scene(d,candidate);error=NULL;}
+        else error=apply_scene_slot(a,d,candidate,request_slot(j));
+        if(error){scene_destroy(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);}
+        else reply(a,id,STATUS_OK,(int32_t)d->scene_revision,"preset activated");
+    }
     platform_free(data);return true;
 }
 static bool scene_manage(App *a,AppDevice *d,uint16_t id,const Json *j,const char *op){
@@ -869,15 +877,17 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         literal(&w,",\"error\":"); quoted(&w,a->network_error[0]?a->network_error:n->error);
         literal(&w,",\"retry_ms\":"); uint64_t now=platform_time_us(); number(&w,n->state==NET_BACKOFF && n->retry_at>now?(uint32_t)((n->retry_at-now)/1000u):0);
         literal(&w,",\"revision\":"); number(&w,a->store.network_revision); literal(&w,",\"http_port\":"); number(&w,network_http_port(n));
+        literal(&w,",\"mqtt_connected\":");literal(&w,a->mqtt_connected?"true":"false");
+        literal(&w,",\"mqtt_error\":");quoted(&w,a->mqtt_error);
         literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"network status"); return;
     }
     if (!strcmp(args.op,"network_validate") || !strcmp(args.op,"network_commit")) {
         if (!a->staged || a->object_kind!=3 || a->upload_owner!=a->source) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage a network configuration in this session first"); return; }
         NetworkConfig config; char error[160];
         if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error)) ||
-            (config.wifi_enabled && !LIGHTVM_WIFI) || (config.http_enabled && !LIGHTVM_HTTP) ||
-            (config.http_enabled && !config.wifi_enabled && strcmp(platform_info()->platform,"host"))) {
-            error_reply(a,id,STATUS_CONFIG,"invalid_network",error[0]?error:"selected network feature is unavailable or HTTP requires Wi-Fi"); return;
+            (config.wifi_enabled && !LIGHTVM_WIFI) || (config.http_enabled && !LIGHTVM_HTTP) || (config.mqtt.enabled && !LIGHTVM_MQTT) ||
+            ((config.http_enabled || config.mqtt.enabled) && !config.wifi_enabled && strcmp(platform_info()->platform,"host"))) {
+            error_reply(a,id,STATUS_CONFIG,"invalid_network",error[0]?error:"selected network feature is unavailable or HTTP/MQTT requires Wi-Fi"); return;
         }
         if (!strcmp(args.op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return; }
         if (!args.has_revision || args.revision!=a->store.network_revision || a->network_pending) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }

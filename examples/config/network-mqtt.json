@@ -1,0 +1,16 @@
+{
+  "schema": "lightvm.network",
+  "wifi": {
+    "enabled": true,
+    "country": "XX",
+    "networks": [{"ssid": "studio", "password": "replace-wifi-password"}]
+  },
+  "http": {"enabled": true, "port": 80},
+  "mqtt": {
+    "enabled": true,
+    "host": "192.168.1.10",
+    "port": 1883,
+    "username": "lightvm",
+    "password": "replace-broker-password"
+  }
+}

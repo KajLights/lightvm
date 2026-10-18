@@ -216,7 +216,7 @@ appear in `procedure_list`. See [internal storage](storage.md).
 | `preset_list` | Returns `{name,size,crc32}` entries. |
 | `preset_get` | `name`; returns the recipe JSON. |
 | `preset_save` | Stage object kind `preset` with `name`, then supply `name`, `device`, `expected_revision` (catalog). Prepares against that output, then saves atomically. |
-| `preset_activate` | `name`, `device`, `expected_revision` (scene); admits a fresh scene before replacing playback. |
+| `preset_activate` | `name`, `device`, `expected_revision` (scene); admits a fresh scene before replacing playback. Omitted `slot` replaces the whole output; explicit A/B updates that slot. |
 | `preset_delete` | `name`, `expected_revision` (catalog); running instances continue. |
 
 Saved references prevent deleting or replacing the referenced program version.
