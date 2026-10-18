@@ -5,8 +5,16 @@
       "id": "bg",
       "program": "rainbow",
       "settings": {
-        "duration": 3.3,
         "random_color": false
+      },
+      "inputs": {
+        "phase": {
+          "driver": {
+            "kind": "ramp",
+            "duration": 3.3,
+            "mode": "repeat"
+          }
+        }
       }
     },
     {

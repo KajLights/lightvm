@@ -16,16 +16,17 @@ export interface Description {
   largest_free_bytes?: number; storage_allocation_unit?: number;
   boot_sequence_supported?: boolean;
   recovery_supported?: boolean;
+  live_inputs?: boolean; input_limit?: number; input_source_limit?: number;
   boot_sequence?: { count: number; triggered: boolean; error: string };
 }
 export interface TransitionSpec {
   program: string; crc32: number; duration_ms: number;
-  settings?: Record<string, number | boolean>; seed?: number;
+  settings?: Record<string, number | boolean>; inputs?: InputBindings; seed?: number;
 }
 export interface HardwareConfig {
   schema: 'lightvm.config';
   inputs?: { id: string; type: 'tca9555'; config: { sda: string; scl: string; address?: number; active_low?: boolean; debounce_ms?: number }; home_assistant?: { indicators?: string; names?: string[] } }[];
-  outputs: { id: string; type: 'ws2812b' | 'apa102'; mode?: 'animation' | 'indicators'; on_transition?: TransitionSpec; off_transition?: TransitionSpec; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { program: string; settings?: Record<string, number | boolean> }; config: { pin?: string; data_pin?: string; clock_pin?: string; enable_pin?: string; frequency?: number; count: number; order?: string; brightness_limit?: number } }[];
+  outputs: { id: string; type: 'ws2812b' | 'apa102'; mode?: 'animation' | 'indicators'; on_transition?: TransitionSpec; off_transition?: TransitionSpec; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { program: string; settings?: Record<string, number | boolean>; inputs?: InputBindings }; config: { pin?: string; data_pin?: string; clock_pin?: string; enable_pin?: string; frequency?: number; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {
   schema: 'lightvm.network';
@@ -36,12 +37,21 @@ export interface NetworkConfig {
 export interface NetworkStatus { mqtt_connected?: boolean; mqtt_error?: string; state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
 export interface Program { name: string; size: number; crc32: number; type?: 'animation' | 'transition'; profile?: 'animation' | 'transition' }
 export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
-export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[] }
+export interface RampDriver { kind: 'ramp'; duration: number; mode: 'once' | 'repeat' | 'pingpong'; easing?: 'linear' | 'smoothstep'; from?: number; to?: number; restart?: boolean }
+export type InputBinding = { value: number | boolean } | { driver: RampDriver } | { source: string; timeout_ms?: number; fallback?: 'default' | 'hold'; map?: { input_min: number; input_max: number; output_min: number; output_max: number } } | { default: true };
+export type InputBindings = Record<string, InputBinding>;
+export interface InputDeclaration extends Setting { default: number | boolean; unit?: string; driver?: RampDriver }
+export interface InputState { value: number | boolean; fallback: boolean; binding: InputBinding }
+export interface InputSource { name: string; type: Setting['type']; valid: boolean; value: number | boolean | null; age_ms: number | null }
+export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[]; inputs?: InputDeclaration[] }
 export interface ProgramState {
   output?: string; layer?: string;
+  target?: 'transition';
   manifest: Manifest;
   generation: number; slot: string; paused: boolean; faulted: boolean;
   render_count?: number; settings_values?: Record<string, number | boolean>;
+  inputs_revision?: number; inputs?: Record<string, InputState>;
+  program_crc32?: number;
 }
 export interface NearbyController { controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { message: string; line: number; column: number; end_line?: number; end_column?: number }
@@ -58,7 +68,7 @@ export interface TransitionState {
   revision: number; active: boolean; progress: number; effect: string; seed: number;
   program?: string; program_crc32?: number;
   recall?: { power: boolean; preset: string | null } | null;
-  driver: { kind: 'manual' | 'timed' | 'source'; assignment: number; source?: string; target?: number; duration_ms?: number; interval_ms?: number };
+  driver: { kind: 'manual' | 'timed' | 'source' | 'input'; assignment: number; source?: string; target?: number; duration_ms?: number; interval_ms?: number; binding?: InputBinding };
   A: CompositionState;
   B: CompositionState;
   error: string;

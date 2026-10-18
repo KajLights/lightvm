@@ -82,8 +82,11 @@ preset rather than a separate animation.
 
 Each effect has one source in `examples/animations/`, shared by the editor, build tools and
 current animation tests. `examples/animations/rainbow.py` is the picolights gradient with a
-60-second default cycle; its `duration` setting accepts startup settings such
-as `{"duration": 3.3}`.
+60-second default cycle. Its live phase input selects a timer, while spatial scale
+is another live input. The separate [Eye](examples/animations/eye.py) demo exposes
+position, width, hue and brightness. Preview it and use the editor's **Live inputs**
+panel to try these controls without restarting the sprite. See [inputs](docs/inputs.md)
+for recipes and the management API.
 
 ```sh
 build/venv/bin/python -m lightvm.compiler examples/animations/rainbow.py \

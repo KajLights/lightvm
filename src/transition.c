@@ -49,6 +49,7 @@ void transition_destroy(Transition *t){
     if(!t)return;
     if(t->pending)t->output->type->cancel(t->output->driver);
     for(unsigned n=0;n<2;n++)transition_program_destroy(t->programs[n]);
+    demo_free(t->input);
     vm_heap_uncharge((size_t)t->output->count*3);demo_free(t->allocation);demo_free(t);
 }
 /* Progress updates affect the next evaluation. A pinned, unfinished evaluation
@@ -56,27 +57,26 @@ void transition_destroy(Transition *t){
 static void unpin_compositions(Transition *t){for(unsigned n=0;n<2;n++)if(t->compositions[n])t->compositions[n]->front_pinned=false;}
 void transition_invalidate(Transition *t){if(t){unpin_compositions(t);t->composing=false;t->prepared=false;t->dirty=true;}}
 void transition_update(Transition *t,uint64_t now){
+    if(t->driver==TRANSITION_INPUT){
+        if(input_port_capture(t->input_registry,t->input,now)){t->progress=(double)t->input->snapshot.f*100;t->dirty=true;}
+        return;
+    }
     if(t->driver!=TRANSITION_TIMED)return;
     double elapsed=now>=t->started?(double)(now-t->started):0;
-    double from=t->start,to=t->target_progress,phase=elapsed;
-    if(t->interval){
-        double leg=floor(elapsed/t->interval);phase=fmod(elapsed,t->interval);
-        if(fmod(leg,2)>=1){from=t->target_progress;to=t->start;}
-    }
-    double u=t->duration?phase/t->duration:1;
-    double next=u>=1?to:from+(to-from)*u;
+    double next=input_ramp(t->start,t->target_progress,elapsed,t->duration,t->interval,t->interval?3:1);
     if(next!=t->progress){t->progress=next;t->dirty=true;}
-    if(u>=1&&!t->interval)t->driver=TRANSITION_MANUAL;
+    if(elapsed>=t->duration&&!t->interval)t->driver=TRANSITION_MANUAL;
 }
 static bool unassign(Transition *t){
     if(t->assignment==UINT32_MAX)return false;
+    demo_free(t->input);t->input=NULL;
     t->assignment++;t->driver=TRANSITION_MANUAL;t->source[0]=0;return true;
 }
 bool transition_set(Transition *t,double value){
     if(!transition_percentage(value)||t->assignment==UINT32_MAX)return false;
     unassign(t);t->progress=value;t->dirty=true;return true;
 }
-void transition_hold(Transition *t){transition_update(t,platform_time_us());t->driver=TRANSITION_MANUAL;t->source[0]=0;}
+void transition_hold(Transition *t){transition_update(t,platform_time_us());(void)unassign(t);}
 bool transition_run(Transition *t,double target,double duration_ms){return transition_run_interval(t,target,duration_ms,0);}
 bool transition_run_interval(Transition *t,double target,double duration_ms,double interval_ms){
     if(!transition_percentage(target)||!isfinite(duration_ms)||duration_ms<0||!isfinite(duration_ms*1000)||
@@ -94,6 +94,17 @@ bool transition_source(Transition *t,const char *source,uint32_t assignment,doub
     if(t->driver!=TRANSITION_SOURCE||assignment!=t->assignment||strcmp(t->source,source)||!transition_percentage(value))return false;
     t->progress=value;t->dirty=true;return true;
 }
+const char *transition_bind(Transition *t,InputRegistry *registry,const Json *j,int object){
+    if(t->assignment==UINT32_MAX)return "driver assignment exhausted";
+    InputPort *port=demo_calloc(1,sizeof(*port));if(!port)return "transition input exceeds peak memory budget";
+    strcpy(port->name,"progress");port->type=T_FLOAT;port->bounds=3;port->maximum.f=1;
+    port->initial.f=port->snapshot.f=port->driver.value.f=(float)(t->progress/100);
+    const char *error=input_port_bind(registry,port,j,object,platform_time_us());
+    if(error){demo_free(port);return error;}
+    if(port->driver.kind==INPUT_SOURCE&&json_get(j,object,"fallback")<0)port->driver.hold=true;
+    unassign(t);t->input=port;t->input_registry=registry;t->driver=TRANSITION_INPUT;
+    transition_update(t,platform_time_us());return NULL;
+}
 static void start(Transition *t){
     t->sampled_progress=t->progress;t->pixel=0;t->phase=0;t->restore_offset=0;t->dirty=false;t->composing=true;
     for(unsigned n=0;n<2;n++){
@@ -102,6 +113,7 @@ static void start(Transition *t){
     }
     if(t->effect==TRANSITION_PROGRAM&&t->programs[0]){
         Portable *p=t->programs[0]->vm.portable;p->progress=(float)(t->sampled_progress/100);
+        uint64_t now=platform_time_us();inputs_capture(p,now>=p->input_epoch?now-p->input_epoch:0,false);
         for(unsigned n=0;n<2;n++)p->composition_frames[n]=t->compositions[n]?t->compositions[n]->front:NULL;
     }
 }
@@ -196,6 +208,10 @@ void transition_tick(Transition *t,unsigned budget){
         slice(t,budget);t->ticking=false;return;
     }
     for(unsigned n=0;n<2;n++)if(t->compositions[n]){composition_tick(t->compositions[n],budget);if(t->compositions[n]->frames!=t->sampled_frames[n])t->dirty=true;}
+    if(t->effect==TRANSITION_PROGRAM&&t->programs[0]){
+        Portable *p=t->programs[0]->vm.portable;uint64_t now=platform_time_us();
+        if(inputs_changed(p,now>=p->input_epoch?now-p->input_epoch:0))t->dirty=true;
+    }
     if(t->prepared&&!t->pending){
         uint8_t *previous=t->front;t->front=t->working;t->working=previous;t->prepared=false;t->output_started=platform_time_us();
         if(t->output->type->submit(t->output->driver,t->front,t->target.count)){t->pending=true;complete(t);}

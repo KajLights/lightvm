@@ -1,7 +1,9 @@
 # External inputs for transitions and animations
 
-Status: Research and proposed design. Only the capabilities identified as current
-below are implemented. API sketches describe a possible source contract.
+Status: Scalar core implemented; remaining adapters and conditioning are proposed.
+The [live input guide](../inputs.md) is authoritative for the implemented syntax,
+drivers, snapshots, management, recipes and editor controls. Research sketches
+below include future behaviour and should not be treated as the current API.
 
 Date: 17 October 2026
 
@@ -9,10 +11,16 @@ Implemented slice, 18 October 2026: the controller workspace's
 [Fader tab](../web-editor.md#fader-and-timed-transitions) supplies a virtual slider
 through the existing external transition source API and supports switching to
 native timed transitions. General signal registries, hardware adapters and live
-animation-variable bindings below remain proposed. A separate native slice now
-implements TCA9555 digital inputs, debounced press/release events and MQTT HA
-triggers, paired with APA102 RGB indicators; see [keypad setup](../mqtt.md#keypad-and-rgb-indicators).
-It does not implement this proposal's general typed signal registry or guest inputs.
+animation-variable bindings below were proposed at that point.
+
+Implemented scalar core, 18 October 2026: static Input declarations, typed render
+snapshots inherited by sprites, constant/timed/source bindings, generation-checked
+atomic publication, persisted invocation recipes, native progress bindings and
+editor controls. Rainbow exposes phase and scale; the new Eye exposes position,
+width, hue and brightness. Sweep retains its existing history and settings.
+The separate native TCA9555 adapter supplies debounced press/release events for
+MQTT HA triggers, paired with APA102 RGB indicators; see [keypad setup](../mqtt.md#keypad-and-rgb-indicators).
+Other hardware adapters, conditioning, guest events and streams remain proposed.
 
 ## Recommendation
 
@@ -31,7 +39,10 @@ This develops the [future control and input model](feature-proposal-control-api.
 into a lighting-focused feature. It does not require the proposed general task,
 job or actuator systems.
 
-## Current capabilities
+## Baseline before the scalar implementation
+
+This table records the starting point for the proposal. See the current
+[input guide](../inputs.md) for implemented capabilities.
 
 | Area | Current behaviour | Addition needed |
 | --- | --- | --- |

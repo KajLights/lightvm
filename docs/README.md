@@ -7,6 +7,7 @@ animation. The guides below describe the current implementation.
 
 - [Controllers and development workflow](architecture.md)
 - [Animation profile and Python API](animation-profile.md)
+- [Live inputs, timed drivers and wiring](inputs.md)
 - [Native drawing and composition](composition.md)
 - [A/B compositions and transitions](transitions.md)
 - [Python transition profile and optimized helpers](transition-profile.md)
@@ -19,6 +20,7 @@ animation. The guides below describe the current implementation.
 - [MQTT, Home Assistant lights and keypad inputs](mqtt.md)
 - [Boot sequence and power recovery](boot-sequence.md)
 - [Browser workspace](web-editor.md)
+- [Live audio Eye demo](audio-eye-demo.md)
 
 Runnable [animation examples](../examples/animations/) and
 [configuration examples](../examples/config/) live together in `examples/`.

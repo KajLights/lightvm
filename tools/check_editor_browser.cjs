@@ -134,14 +134,47 @@ async function grantLocalNetwork(cdp, page, origin) {
     await page.waitForFunction(() => !document.querySelector('#preview-output')?.disabled);
     await page.locator('#upload').click();
     await page.waitForFunction(() => document.querySelector('#playback-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
-    await page.locator('#draft-duration').fill('30');
+    // Exercise the actual live-input path before saving the reusable Rainbow.
+    await page.getByLabel('Load example').selectOption('eye');
+    await page.waitForFunction(() => document.querySelector('#filename')?.textContent === 'eye.py' && !document.querySelector('#upload')?.disabled);
+    await page.locator('#upload').click();
+    await page.getByRole('heading', { name: 'Live inputs', exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('#upload')?.disabled && document.querySelector('[aria-label="hue value"]'));
+    const eyeBefore = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--program-state'], { encoding: 'utf8' }));
+    for (const [name, value] of [['position', 0.75], ['width', 0.3], ['hue', 0.5], ['brightness', 0.4]]) {
+      const applied = waitForCommand('program_inputs');
+      await page.getByLabel(name + ' value', { exact: true }).evaluate((input, value) => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(value));
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }, value);
+      await applied;
+    }
+    const eyeAfter = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--program-state'], { encoding: 'utf8' }));
+    assert.equal(eyeAfter.generation, eyeBefore.generation);
+    assert.equal(eyeAfter.inputs.position.binding.value, 0.75);
+    assert.equal(eyeAfter.inputs.hue.binding.value, 0.5);
+    assert.ok(Math.abs(eyeAfter.inputs.brightness.binding.value - 0.4) < 0.000001);
+    const live = page.getByRole('region', { name: 'Live animation inputs' });
+    await live.screenshot({ path: path.join(root, 'build/inputs-eye-desktop.png') });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await live.screenshot({ path: path.join(root, 'build/inputs-eye-mobile.png') });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    const restored = waitForCommand('program_inputs');
+    await live.getByRole('button', { name: 'Restore default' }).first().click();await restored;
+    console.log('Eye position, width, hue and brightness changed live without restarting; default timer and desktop/mobile controls: passed');
+    await page.getByLabel('Load example').selectOption('rainbow');
+    await page.waitForFunction(() => document.querySelector('#filename')?.textContent === 'rainbow.py' && !document.querySelector('#upload')?.disabled);
+    await page.locator('.input-recipe').first().locator('summary').click();
+    await page.locator('#draft-inputs').fill(JSON.stringify({ phase: { driver: { kind: 'ramp', duration: 30, mode: 'repeat' } } }));
     await page.locator('#upload').click();
     await page.waitForFunction(() => !document.querySelector('#upload')?.disabled);
     await page.locator('#animation-name').fill('Browser rainbow');
     await page.getByRole('button', { name: 'Save animation', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#saved-animation')?.value && document.querySelector('#activity')?.textContent.includes('Browser rainbow v1'));
     await page.getByRole('button', { name: 'Add as layer', exact: true }).click();
-    await page.locator('#layer2-duration').fill('5');
+    await page.locator('.layer-card').nth(1).locator('.input-recipe summary').click();
+    await page.locator('#layer2-inputs').fill(JSON.stringify({ phase: { driver: { kind: 'ramp', duration: 5, mode: 'repeat' } } }));
     await page.locator('.layer-card').nth(1).locator('.layer-controls select').selectOption('screen');
     await page.getByRole('button', { name: 'Move layer 2 down', exact: true }).click();
     await page.getByRole('button', { name: 'Preview preset →', exact: true }).click();
@@ -154,9 +187,9 @@ async function grantLocalNetwork(cdp, page, origin) {
     const savedLibrary = await page.evaluate(() => JSON.parse(localStorage.getItem('lightvm.library.v1')));
     assert.equal(savedLibrary.animations.length, 1);
     assert.equal(savedLibrary.presets[0].layers.length, 2);
-    assert.equal(savedLibrary.presets[0].layers[0].settings.duration, 5);
+    assert.equal(savedLibrary.presets[0].layers[0].inputs.phase.driver.duration, 5);
     assert.equal(savedLibrary.presets[0].layers[0].blend, 'screen');
-    assert.equal(savedLibrary.presets[0].layers[1].settings.duration, 30);
+    assert.equal(savedLibrary.presets[0].layers[1].inputs.phase.driver.duration, 30);
     const programName = (await page.locator('#stored-program option').nth(1).getAttribute('value')).slice('animation:'.length);
     await page.locator('#command-path').selectOption('usb');
     await page.waitForFunction(() => !document.querySelector('#command-path')?.disabled);

@@ -24,7 +24,7 @@ typedef struct {
     bool available;
     char root[96];
     HaOutput outputs[HA_OUTPUT_LIMIT];
-    HaKey keys[INPUT_LIMIT*INPUT_CHANNELS];
+    HaKey keys[DIGITAL_INPUT_LIMIT*DIGITAL_INPUT_CHANNELS];
     uint32_t key_revision;
     bool keys_pending;
 } HomeAssistant;

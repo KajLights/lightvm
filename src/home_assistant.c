@@ -155,7 +155,7 @@ void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
     mqtt_tick(&h->mqtt,&h->app->network.config.mqtt,ready && !h->app->network.recovery && !h->app->network_pending,now);
     h->app->mqtt_connected=h->mqtt.state==MQTT_ONLINE;
     if(h->mqtt.error[0])snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"%s",h->mqtt.error);
-    if(!h->app->mqtt_connected){inputs_discard_events(&h->app->inputs);return;}
+    if(!h->app->mqtt_connected){digital_inputs_discard_events(&h->app->digital_inputs);return;}
     if(h->generation!=h->mqtt.generation){h->generation=h->mqtt.generation;h->phase=0;refresh(h);h->app->mqtt_error[0]=0;}
     if(h->phase<4){
         if(h->mqtt.subscription)return;

@@ -2,7 +2,26 @@ import sys
 """Regenerate the small C test fixtures: python tests/generate_bytecode_fixtures.py."""
 from pathlib import Path
 from bytecode_fixtures import PREFIX, color, fault, program
+inputs_source='''from lightvm import profile,init,render,Input,Sprite,SpriteBatch,Transform,rgb
+profile("animation")
+LEVEL=Input("level",default=0.2,minimum=0.0,maximum=1.0)
+def sprite_draw(s,runtime,pixels):
+ pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),0,0))
+ s.transform=Transform(translate=1.0)
+Brush=Sprite(width=1,render=sprite_draw)
+@init
+def setup(ctx,runtime):
+ ctx.brushes=SpriteBatch(Brush,capacity=1)
+ ctx.brushes.spawn()
+@render
+def draw(ctx,runtime,pixels):
+ for i in range(pixels.count):
+  pixels[i]=rgb(int(runtime.input(LEVEL)*100.0),0,0)
+ ctx.brushes.render(runtime,pixels)
+'''
 fixtures = {
+    "inputs_lbc": program(inputs_source),
+    "transition_inputs_lbc": program(inputs_source.replace('profile("animation")','profile("transition")')),
     "fault_lbc": fault(),
     "render_lbc": color(255, 128, 0),
     "control_lbc": program(PREFIX + "@render\ndef draw(ctx,runtime,pixels):\n ms=int(runtime.delta*1000.0)\n pixels[0]=rgb(0,ms//256,ms%256)\n"),

@@ -232,6 +232,33 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 @media (max-width: 750px) { .transition-controls-grid { grid-template-columns: 1fr; gap: 8px; } }
 .fader-output { max-width: 300px; margin-bottom: 22px; }
 .fader-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
+.audio-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 22px; align-items: start; }
+.audio-results { display: grid; gap: 22px; min-width: 0; }
+.audio-demo h2 { font-size: 18px; margin-bottom: 12px; }
+.audio-demo .card-heading h2 { margin-bottom: 0; }
+.audio-demo .card-heading .badge { margin-left: auto; }
+.audio-demo p { line-height: 1.65; }
+.audio-demo input[type=range] { width: 100%; accent-color: var(--accent); }
+.audio-buttons { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+.audio-eye-strip { height: 100px; border-radius: 9px; background: repeating-linear-gradient(90deg, #0c131a 0, #0c131a 11px, #1c2934 12px, #0c131a 13px); position: relative; overflow: hidden; border: 1px solid var(--line); }
+.audio-eye-brush { position: absolute; top: 34px; height: 32px; border-radius: 5px; }
+.audio-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 24px; }
+.audio-meters > div { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr 32px; align-items: center; gap: 8px; }
+.audio-meters label { margin: 0; }
+.audio-meters meter { width: 100%; accent-color: var(--accent); }
+.audio-demo output { font: 11px 'JetBrains Mono', monospace; color: var(--accent); }
+.audio-mappings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.audio-mappings fieldset { padding: 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; margin: 0; }
+.audio-mappings legend { padding: 0 5px; }
+.audio-mappings legend output { margin-left: 8px; }
+.audio-mappings label { font-size: 10px; margin-top: 6px; }
+.audio-mappings select { padding: 8px 4px; font-size: 12px; }
+.audio-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.audio-range input { display: block; width: 100%; margin-top: 6px; padding: 7px 4px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
+.audio-controller { border-top: 1px solid var(--line); margin-top: 18px; }
+@media (max-width: 1150px) { .audio-mappings { grid-template-columns: 1fr 1fr; } .audio-meters { grid-template-columns: 1fr; } }
+@media (max-width: 750px) { .audio-layout { grid-template-columns: 1fr; } }
+@media (max-width: 400px) { .audio-mappings { grid-template-columns: 1fr; } }
 .fader-card { padding: 28px; }
 .fader-card .badge { margin-left: auto; }
 .fader-endpoints { display: flex; justify-content: space-between; gap: 20px; }
@@ -271,3 +298,11 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .fader-timed > .primary { margin-top: 20px; }
 @media (max-width: 750px) { .fader-layout { grid-template-columns: 1fr; } .fader-card { padding: 22px; } }
 @media (max-width: 420px) { .fader-slots { gap: 10px; } .fader-slot { padding: 12px; } }
+/* Live inputs remain compact enough for the editor sidebar. */
+.live-input-control { border-top: 1px solid var(--line, #29323b); padding: 12px 0; }
+.live-input-heading, .live-input-actions { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.live-input-heading output { font-variant-numeric: tabular-nums; color: var(--muted, #9aa6b2); font-size: .85rem; }
+.live-input-actions > * { min-width: 0; flex: 1; }
+.live-inputs details, .input-recipe { margin: 10px 0; }
+.live-inputs summary, .input-recipe summary { cursor: pointer; font-size: .85rem; }
+.input-recipe textarea { min-height: 7rem; font: .8rem/1.5 monospace; }

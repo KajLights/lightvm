@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import struct
 import sys
 import tempfile
 import time
@@ -12,7 +13,8 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'tools'), str(ROOT / 'tests')]
-from client import Client, ProcessTransport, ProtocolError
+from client import Client, ProcessTransport, ProtocolError, FRAME
+from lightvm.compiler import compile_source
 from test_mqtt import Broker
 
 
@@ -205,6 +207,33 @@ class KeypadTests(unittest.TestCase):
         self.masks(1)
         self.broker.wait(self.key(1) + '/event', b'press')
         self.assertEqual(self.broker.latest[self.discovery(1)], b'')
+
+    def test_live_animation_sources_coexist_with_hardware_inputs_and_rgb_indicators(self):
+        self.config['outputs'].append({'id': 'desk', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 8}})
+        self.client.configure(self.config)
+        publisher = self.client.claim_inputs({'remote.level': 'float'})
+        self.client.publish_inputs(publisher, 1, {'remote.level': .75})
+        compiled = compile_source('''from lightvm import profile,render,Input,rgb
+profile("animation")
+LEVEL=Input("level",default=0.0,minimum=0.0,maximum=1.0)
+@render
+def draw(ctx,runtime,pixels):
+ pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),0,0))
+''')
+        self.assertTrue(compiled.success, compiled.diagnostics)
+        self.client.upload(compiled.bytecode, output='desk', inputs={'level': {'source': 'remote.level', 'timeout_ms': 5000}})
+        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', 0), output='desk'))
+        self.assertEqual(bytes(self.client.pixel_snapshot[:3]), bytes([75, 0, 0]))
+        generation = self.client.program_state(output='desk')['generation']
+        self.masks(1)
+        self.broker.wait(self.key(1) + '/event', b'press')
+        self.broker.publish(self.key(1) + '/set', '{"state":"ON","color":{"r":1,"g":2,"b":3}}')
+        self.assertEqual(json.loads(self.broker.wait(self.key(1) + '/state'))['color'], {'r': 1, 'g': 2, 'b': 3})
+        self.client.publish_inputs(publisher, 2, {'remote.level': .25})
+        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', 0), output='desk'))
+        self.assertEqual(bytes(self.client.pixel_snapshot[:3]), bytes([25, 0, 0]))
+        self.assertEqual(self.client.program_state(output='desk')['generation'], generation)
+        self.assertTrue(self.client.describe()['inputs'][0]['available'])
 
 
 if __name__ == '__main__':

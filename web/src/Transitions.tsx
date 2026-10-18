@@ -3,6 +3,7 @@ import type { LightVMClient } from '../protocol.mjs';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
 import { TransitionProgram } from './TransitionProgram';
+import { LiveInputs } from './LiveInputs';
 import type { TransitionState } from './types';
 
 export function TransitionControls() {
@@ -11,6 +12,7 @@ export function TransitionControls() {
   const [state, setState] = useState<TransitionState | null>(null);
   const [progress, setProgress] = useState(0), [duration, setDuration] = useState(2000);
   const [presets, setPresets] = useState({ A: '', B: '' });
+  const [source, setSource] = useState('');
   const output = controller.selectedOutput, client = controllers.client;
   const supported = Boolean(controller.description?.ab_transitions), connected = Boolean(controller.selectedPath && output);
   const sliderTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined), editing = useRef(false);
@@ -74,7 +76,10 @@ export function TransitionControls() {
     <button className="secondary full" disabled={busy} onClick={() => void control('Holding transition', connection => connection.holdTransition(output))}>Hold</button>
     <p className="helper" role="status">Driver: {state?.driver.kind ?? 'manual'}{state?.driver.source ? ' · ' + state.driver.source : ''}</p>
     <p className="helper">Open the Fader workspace tab for continuous manual control through an external input.</p>
+    {controller.description?.live_inputs && <details><summary>Drive progress from a named input</summary><label htmlFor="transition-input-source">Progress signal (0–1)</label><input id="transition-input-source" value={source} maxLength={32} onChange={event => setSource(event.target.value)} />
+      <button className="quiet full" disabled={busy || !state || !/^[A-Za-z0-9_.-]{1,32}$/.test(source)} onClick={() => void control('Binding transition progress', connection => connection.json('transition_bind', { output, expected_assignment: state!.driver.assignment, binding: { source } }))}>Bind progress source</button></details>}
     </div></div>
     {state?.error && <p role="alert">{state.error}</p>}
+    {controller.description?.live_inputs && state?.program && <LiveInputs target="transition" />}
   </section>;
 }

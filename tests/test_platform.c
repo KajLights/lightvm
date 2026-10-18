@@ -253,6 +253,7 @@ static void network_transactions(void) {
 }
 
 #include "portable_contract.inc"
+#include "inputs_contract.inc"
 #include "composition_contract.inc"
 #include "transition_contract.inc"
 
@@ -286,12 +287,12 @@ static void indicator_contract(void) {
     // Exercise expiry and queue backpressure without clocks or real sockets.
     HomeAssistant *ha=calloc(1,sizeof(*ha));CHECK(ha);ha->app=&app;strcpy(ha->root,"homeassistant/lightvm/test");ha->mqtt.state=MQTT_ONLINE;
     strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=3;
-    app.inputs.count=1;strcpy(app.inputs.devices[0].config.id,"buttons");
-    app.inputs.queued=1;app.inputs.events[0]=(InputEvent){.time=0,.input=0,.channel=0,.pressed=true};
-    CHECK(!ha_keys_tick(ha,INPUT_EVENT_TTL_US+1)&&!app.inputs.queued&&!ha->mqtt.queued);
-    app.inputs.queued=1;app.inputs.events[app.inputs.head]=(InputEvent){.time=1000000,.input=0,.channel=0,.pressed=true};
-    ha->mqtt.queued=MQTT_BUFFER_SIZE;CHECK(ha_keys_tick(ha,1000000)&&app.inputs.queued==1);
-    ha->mqtt.queued=0;CHECK(ha_keys_tick(ha,1000000)&&!app.inputs.queued&&ha->mqtt.tx[0]==0x30);
+    app.digital_inputs.count=1;strcpy(app.digital_inputs.devices[0].config.id,"buttons");
+    app.digital_inputs.queued=1;app.digital_inputs.events[0]=(DigitalInputEvent){.time=0,.input=0,.channel=0,.pressed=true};
+    CHECK(!ha_keys_tick(ha,DIGITAL_INPUT_EVENT_TTL_US+1)&&!app.digital_inputs.queued&&!ha->mqtt.queued);
+    app.digital_inputs.queued=1;app.digital_inputs.events[app.digital_inputs.head]=(DigitalInputEvent){.time=1000000,.input=0,.channel=0,.pressed=true};
+    ha->mqtt.queued=MQTT_BUFFER_SIZE;CHECK(ha_keys_tick(ha,1000000)&&app.digital_inputs.queued==1);
+    ha->mqtt.queued=0;CHECK(ha_keys_tick(ha,1000000)&&!app.digital_inputs.queued&&ha->mqtt.tx[0]==0x30);
     free(ha);
 #endif
     delayed_output=false;session_destroy(&session);app_destroy(&app);CHECK(!borrowed_output);
@@ -535,6 +536,7 @@ int main(void) {
     session_destroy(&session); app_destroy(&app);
     network_transactions();
     portable_contract();
+    inputs_contract();
     composition_contract();
     transition_contract();
     indicator_contract();

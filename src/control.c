@@ -119,11 +119,16 @@ const char *control_reset_program(VmInstance *a,const Json *request,int settings
     const char *error=vm_load(candidate);
     if(!error){
         Portable *old=a->portable,*next=candidate->portable;
+        next->input_registry=old->input_registry;
+        if(old->ninputs){memcpy(next->inputs,old->inputs,old->ninputs*sizeof(*old->inputs));
+            for(unsigned n=0;n<next->ninputs;n++){next->inputs[n].driver.started=0;next->inputs[n].driver.phase=0;next->inputs[n].has_last=false;}
+        }
         for(unsigned n=0;n<old->nsettings;n++){
             if(old->initialized){next->overrides[n]=pbc_value(old,pbc_setting(old,n).reg);next->override_mask|=1u<<n;}
             else if(old->override_mask&(1u<<n)){next->overrides[n]=old->overrides[n];next->override_mask|=1u<<n;}
         }
         error=control_settings(candidate,request,settings);
+        if(!error)error=inputs_bind(next,request,request?json_get(request,0,"inputs"):-1,0);
 
     }
     if(!error){candidate->ready=true;error=control_prepare(candidate);}
@@ -167,6 +172,7 @@ static void bytes(ControlWriter *w,const void *data,size_t size) {
     }
 }
 static void text(ControlWriter *w,const char *s) { bytes(w,s,strlen(s)); }
+static void input_text(void *w,const char *s){text(w,s);}
 static void result(VmInstance *a,uint16_t id,enum Status code,const char *message) {
     send_status(a->send,a->transport,id,code,0,message);
 }
@@ -177,10 +183,13 @@ static void describe(ControlWriter *w,bool with_manifest) {
         a->output_id,a->slot,(unsigned long)a->generation,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
     text(w,b);
     if(a->layer[0]){snprintf(b,sizeof(b),",\"layer\":\"%s\"",a->layer);text(w,b);}
+    if(a->portable&&a->portable->profile==4)text(w,",\"target\":\"transition\"");
     if(a->portable){
         Portable *p=a->portable;
+        snprintf(b,sizeof(b),",\"program_crc32\":%" PRIu32,a->code.crc);text(w,b);
         snprintf(b,sizeof(b),",\"pixel_format\":\"%s\",\"render_total_us\":%" PRIu64 ",\"native_draw_us\":%" PRIu64 ",\"dispatch_count\":%" PRIu64 ",\"slice_count\":%" PRIu64,"rgba8-premul",a->render_total_us,p->native_draw_us,p->dispatch_count,p->slice_count);text(w,b);
         snprintf(b,sizeof(b),",\"render_count\":%" PRIu64 ",\"active_wall_us\":%" PRIu64,p->render_count,p->active_wall_us);text(w,b);
+        inputs_describe(p,input_text,w);
         snprintf(b,sizeof(b),",\"instance_context_bytes\":%zu,\"portable_context_bytes\":%zu,\"metadata_bytes\":%zu,\"state_bytes\":%zu,\"resource_payload_bytes\":%zu,\"register_bytes\":%zu,\"call_storage_bytes\":0,\"heap_used\":%zu,\"heap_peak\":%zu",
             sizeof(*a),sizeof(*p),p->metadata_bytes,p->state_bytes,p->payload_bytes,p->register_bytes,vm_heap_used(),vm_heap_peak());text(w,b);
         if(p->initialized){
@@ -210,18 +219,27 @@ static void describe(ControlWriter *w,bool with_manifest) {
 bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size) {
     Json j; char op[40];
     if (!json_parse(&j,payload,size) || !json_string(&j,json_get(&j,0,"op"),op,sizeof(op)) || strncmp(op,"program_",8)) return false;
-    bool get=!strcmp(op,"program_state"),pause=!strcmp(op,"program_pause"),resume=!strcmp(op,"program_resume"),snapshot=!strcmp(op,"program_snapshot"),reset=!strcmp(op,"program_reset");
-    if (!get && !pause && !resume && !snapshot && !reset) return false;
+    bool get=!strcmp(op,"program_state"),pause=!strcmp(op,"program_pause"),resume=!strcmp(op,"program_resume"),snapshot=!strcmp(op,"program_snapshot"),reset=!strcmp(op,"program_reset"),bind=!strcmp(op,"program_inputs");
+    if (!get && !pause && !resume && !snapshot && !reset && !bind) return false;
     if (!a->ready || !a->control.enabled) { result(a,id,STATUS_EXECUTION,"no control program loaded"); return true; }
-    static const char *const read_fields[]={"op","slot","output","layer",NULL};
+    static const char *const read_fields[]={"op","slot","output","layer","target",NULL};
     static const char *const lifecycle_fields[]={"op","slot","output","layer","expected_generation",NULL};
-    static const char *const reset_fields[]={"op","slot","output","layer","expected_generation","settings",NULL};
-    if (!json_fields(&j,0,(get || snapshot) ? read_fields : reset ? reset_fields : lifecycle_fields)) { result(a,id,STATUS_PROTOCOL,"invalid control management fields"); return true; }
+    static const char *const reset_fields[]={"op","slot","output","layer","expected_generation","settings","inputs",NULL};
+    static const char *const input_fields[]={"op","slot","output","layer","target","expected_generation","expected_inputs_revision","inputs",NULL};
+    if (!json_fields(&j,0,(get || snapshot) ? read_fields : reset ? reset_fields : bind ? input_fields : lifecycle_fields)) { result(a,id,STATUS_PROTOCOL,"invalid control management fields"); return true; }
     uint32_t generation;
-    if ((pause || resume || reset) && (!json_u32(&j,json_get(&j,0,"expected_generation"),&generation) || generation!=a->generation)) {
+    if ((pause || resume || reset || bind) && (!json_u32(&j,json_get(&j,0,"expected_generation"),&generation) || generation!=a->generation)) {
         result(a,id,STATUS_CONFIG,"stale program generation"); return true;
     }
     Control *c=&a->control;
+    if(bind){
+        uint32_t revision;int values=json_get(&j,0,"inputs");
+        if(values<0||!json_u32(&j,json_get(&j,0,"expected_inputs_revision"),&revision)||revision!=a->portable->input_revision){result(a,id,STATUS_CONFIG,"stale input revision or missing inputs");return true;}
+        uint64_t now=platform_time_us();
+        uint64_t time=a->portable->profile==4?(now>=a->portable->input_epoch?now-a->portable->input_epoch:0):c->program_us;
+        const char *error=inputs_bind(a->portable,&j,values,time);
+        if(error){result(a,id,STATUS_CONFIG,error);return true;}
+    }
     if(reset){
         const char *error=control_reset_program(a,&j,json_get(&j,0,"settings"));
         if(error){result(a,id,STATUS_CONFIG,error);return true;}

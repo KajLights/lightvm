@@ -53,11 +53,12 @@ class PixelMapTests(unittest.TestCase):
 
     def test_rainbow_matches_native_fill_and_scalar_loop(self):
         source=(ROOT/'examples/animations/rainbow.py').read_text().replace('random.seed()','random.seed(1)')
-        result=self.compare(source,{'scale':2.3})
+        source=source.replace('default=1.0, minimum=0.0, maximum=16.0','default=2.3, minimum=0.0, maximum=16.0')
+        result=self.compare(source)
         native=source[:source.index('    for i in range(pixels.count):')]+'''    pixels.colorwheel(start_hue, spatial_scale)
 '''
-        self.load(source,True,{'scale':2.3});expected=self.frames()
-        self.load(native,True,{'scale':2.3});self.assertEqual(self.frames(),expected)
+        self.load(source,True);expected=self.frames()
+        self.load(native,True);self.assertEqual(self.frames(),expected)
         self.assertEqual(result.manifest['schema'],'lightvm.program')
         self.assertEqual(struct.unpack_from('<I',result.bytecode,80)[0],0)
 

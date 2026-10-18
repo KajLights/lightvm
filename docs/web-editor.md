@@ -7,6 +7,10 @@ installs and updates XIAO ESP32-C3, S3 and C6 through Web Serial, and Pico and
 Pico W from BOOTSEL through WebUSB. The Pico UF2s are also available to download.
 The app can also open Develop without a controller for editing and bytecode compilation.
 
+**Audio demo** captures microphone or line-in audio, shows its response locally,
+and can drive the running Eye animation through live inputs. See the
+[audio Eye demo guide](audio-eye-demo.md) for setup and mappings.
+
 The app reuses the existing JavaScript protocol, transport and discovery modules.
 A persistent controller service owns USB/HTTP sessions and pins each operation to its
 selected command path. Redux holds serializable controller snapshots, the editor draft
@@ -176,12 +180,19 @@ preset**. Select a physical output for preview; preview replaces its playback an
 leaves the other outputs running. There is no in-browser LED simulation yet.
 The initial `rainbow.py` is selected in
 the dropdown and uses the same canonical source as its example. It preserves the
-original picolights Rainbow's default 60-second cycle, adjustable with its existing
-duration setting. Existing stored programs are not replaced when firmware or
+original picolights Rainbow's default 60-second cycle, adjustable with its phase
+input's timer. Existing stored programs are not replaced when firmware or
 examples change. Sweep supports moving eyes, retained chase/wipe and sampled
 trails through its initialization settings; wipe is one of its documented modes.
 Each example's opening comments describe the available modes and settings;
 see also [motion](motion.md#shared-sweep-animation).
+The separate **eye.py · live inputs** example exposes position, width, hue and
+brightness. After preview, **Live inputs** changes these values without restarting
+the instance. Dragging takes manual control; timer controls and Restore default
+select other drivers. Choose layers in A or B under **Animation to control**.
+**Use these inputs in draft** copies the running program's wiring into the current
+source's Input recipe, which is saved with animation versions and preset layers.
+See [live inputs](inputs.md) for source bindings, clocks and the wire contract.
 Animations have no automatic stop condition. The current source draft is saved
 automatically and can be exported as `.py`; compiled `.lbc` downloads remain
 available. **Preview animation** uses that draft's settings. Unchecked overrides

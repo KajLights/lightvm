@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define KEY_LIMIT (INPUT_LIMIT*INPUT_CHANNELS)
+#define KEY_LIMIT (DIGITAL_INPUT_LIMIT*DIGITAL_INPUT_CHANNELS)
 static void key_root(const HomeAssistant *h,const HaKey *k,char *out,size_t capacity) {
     snprintf(out,capacity,"%s/input/%s/%u",h->root,k->input,k->channel+1);
 }
@@ -38,23 +38,23 @@ static bool discover(HomeAssistant *h,HaKey *k,unsigned kind) {
     }
     return n>0&&(size_t)n<sizeof(payload)&&mqtt_publish(&h->mqtt,topic,payload,(size_t)n,true);
 }
-static const InputConfig *find(const HomeAssistant *h,const char *id) {
-    for(unsigned i=0;i<h->app->inputs.count;i++){
-        const InputConfig *c=&h->app->inputs.devices[i].config;
+static const DigitalInputConfig *find(const HomeAssistant *h,const char *id) {
+    for(unsigned i=0;i<h->app->digital_inputs.count;i++){
+        const DigitalInputConfig *c=&h->app->digital_inputs.devices[i].config;
         if(c->home_assistant&&!strcmp(c->id,id))return c;
     }
     return NULL;
 }
 void ha_keys_refresh(HomeAssistant *h) {
     for(unsigned i=0;i<KEY_LIMIT;i++){h->keys[i].phase=0;h->keys[i].known=false;h->keys[i].availability_known=false;h->keys[i].remove_phase=0;}
-    inputs_discard_events(&h->app->inputs);
+    digital_inputs_discard_events(&h->app->digital_inputs);
 }
 void ha_keys_reconcile(HomeAssistant *h) {
     if(h->key_revision==h->app->revision&&!h->keys_pending)return;
     h->key_revision=h->app->revision;h->keys_pending=false;
     for(unsigned i=0;i<KEY_LIMIT;i++){
         HaKey *k=&h->keys[i];if(!k->input[0])continue;
-        const InputConfig *c=find(h,k->input);
+        const DigitalInputConfig *c=find(h,k->input);
         if(!c){k->removing=true;h->keys_pending=true;continue;}
         char name[33];snprintf(name,sizeof(name),"%s",c->names[k->channel]);
         if(!name[0])snprintf(name,sizeof(name),"Key %u",k->channel+1);
@@ -65,8 +65,8 @@ void ha_keys_reconcile(HomeAssistant *h) {
             k->removing=false;k->phase=0;k->known=false;k->availability_known=false;k->remove_phase=0;
         }
     }
-    for(unsigned i=0;i<h->app->inputs.count;i++){
-        const InputConfig *c=&h->app->inputs.devices[i].config;if(!c->home_assistant)continue;
+    for(unsigned i=0;i<h->app->digital_inputs.count;i++){
+        const DigitalInputConfig *c=&h->app->digital_inputs.devices[i].config;if(!c->home_assistant)continue;
         for(unsigned channel=0;channel<16;channel++){
             HaKey *free_slot=NULL;bool found=false;
             for(unsigned n=0;n<KEY_LIMIT;n++){
@@ -110,14 +110,14 @@ bool ha_keys_tick(HomeAssistant *h,uint64_t now) {
     }
     // Expire stale events and never replay an outage backlog. Successful queueing
     // consumes an occurrence; QoS0 deliberately makes no exactly-once promise.
-    for(unsigned n=0;n<INPUT_EVENT_LIMIT&&h->app->inputs.queued;n++){
-        InputEvent e=h->app->inputs.events[h->app->inputs.head];
-        const char *id=e.input<h->app->inputs.count?h->app->inputs.devices[e.input].config.id:"";
+    for(unsigned n=0;n<DIGITAL_INPUT_EVENT_LIMIT&&h->app->digital_inputs.queued;n++){
+        DigitalInputEvent e=h->app->digital_inputs.events[h->app->digital_inputs.head];
+        const char *id=e.input<h->app->digital_inputs.count?h->app->digital_inputs.devices[e.input].config.id:"";
         HaKey *k=NULL;for(unsigned i=0;i<KEY_LIMIT;i++)if(h->keys[i].input[0]&&!h->keys[i].removing&&h->keys[i].channel==e.channel&&!strcmp(h->keys[i].input,id)){k=&h->keys[i];break;}
-        if(!k||now-e.time>INPUT_EVENT_TTL_US){inputs_event(&h->app->inputs,&e);continue;}
+        if(!k||now-e.time>DIGITAL_INPUT_EVENT_TTL_US){digital_inputs_event(&h->app->digital_inputs,&e);continue;}
         char root[160],topic[MQTT_TOPIC_SIZE];key_root(h,k,root,sizeof(root));snprintf(topic,sizeof(topic),"%s/event",root);
         const char *value=e.pressed?"press":"release";
-        if(mqtt_publish(&h->mqtt,topic,value,strlen(value),false))inputs_event(&h->app->inputs,&e);
+        if(mqtt_publish(&h->mqtt,topic,value,strlen(value),false))digital_inputs_event(&h->app->digital_inputs,&e);
         return true;
     }
     for(unsigned i=0;i<KEY_LIMIT;i++){

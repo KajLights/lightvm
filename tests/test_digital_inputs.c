@@ -1,4 +1,4 @@
-#include "inputs.h"
+#include "digital_inputs.h"
 #include "apa102.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,25 +17,25 @@ bool platform_i2c_transfer(void *p,uint8_t address,const uint8_t *w,size_t wn,ui
     return true;
 }
 int main(void) {
-    Inputs s={0};InputConfig config={.id="keys",.sda=4,.scl=5,.address=32,.active_low=true,.debounce_ms=20,.home_assistant=true};
-    inputs_apply(&s,&config,1);
+    DigitalInputs s={0};DigitalInputConfig config={.id="keys",.sda=4,.scl=5,.address=32,.active_low=true,.debounce_ms=20,.home_assistant=true};
+    digital_inputs_apply(&s,&config,1);
     // Held at boot establishes a baseline, including simultaneous keys.
-    raw=0;inputs_tick(&s,0);CHECK(s.devices[0].stable==65535&&!s.queued);
+    raw=0;digital_inputs_tick(&s,0);CHECK(s.devices[0].stable==65535&&!s.queued);
     // All releases survive independently of animation frame cadence.
-    raw=65535;inputs_tick(&s,5000);inputs_tick(&s,25000);CHECK(s.queued==16);
-    InputEvent e;
-    for(unsigned n=0;n<16;n++){CHECK(inputs_event(&s,&e));CHECK(e.channel==n&&!e.pressed&&e.time==25000);}
+    raw=65535;digital_inputs_tick(&s,5000);digital_inputs_tick(&s,25000);CHECK(s.queued==16);
+    DigitalInputEvent e;
+    for(unsigned n=0;n<16;n++){CHECK(digital_inputs_event(&s,&e));CHECK(e.channel==n&&!e.pressed&&e.time==25000);}
     // Bouncing press: only the final 20 ms stable interval generates one event.
-    raw=65534;inputs_tick(&s,30000);raw=65535;inputs_tick(&s,35000);raw=65534;inputs_tick(&s,40000);
-    inputs_tick(&s,55000);CHECK(!s.queued);inputs_tick(&s,60000);CHECK(inputs_event(&s,&e)&&e.channel==0&&e.pressed&&!s.queued);
+    raw=65534;digital_inputs_tick(&s,30000);raw=65535;digital_inputs_tick(&s,35000);raw=65534;digital_inputs_tick(&s,40000);
+    digital_inputs_tick(&s,55000);CHECK(!s.queued);digital_inputs_tick(&s,60000);CHECK(digital_inputs_event(&s,&e)&&e.channel==0&&e.pressed&&!s.queued);
     // Metadata-only apply retains the baseline and bus ownership.
-    inputs_apply(&s,&config,1);inputs_tick(&s,65000);CHECK(!s.queued&&opened==1&&closed==0);
-    connected=false;inputs_tick(&s,70000);CHECK(!s.devices[0].available);
-    connected=true;raw=0;inputs_tick(&s,1070000);CHECK(s.devices[0].available&&!s.queued);
+    digital_inputs_apply(&s,&config,1);digital_inputs_tick(&s,65000);CHECK(!s.queued&&opened==1&&closed==0);
+    connected=false;digital_inputs_tick(&s,70000);CHECK(!s.devices[0].available);
+    connected=true;raw=0;digital_inputs_tick(&s,1070000);CHECK(s.devices[0].available&&!s.queued);
     // A fixed queue preserves order and reports overflow, never overwrites history.
-    for(unsigned n=0;n<6;n++){raw=(n&1)?0:65535;inputs_tick(&s,1100000+n*30000);inputs_tick(&s,1120000+n*30000);}
-    CHECK(s.queued==64&&s.overflow==32);inputs_discard_events(&s);CHECK(!s.queued);
-    inputs_destroy(&s);CHECK(opened==closed);
+    for(unsigned n=0;n<6;n++){raw=(n&1)?0:65535;digital_inputs_tick(&s,1100000+n*30000);digital_inputs_tick(&s,1120000+n*30000);}
+    CHECK(s.queued==64&&s.overflow==32);digital_inputs_discard_events(&s);CHECK(!s.queued);
+    digital_inputs_destroy(&s);CHECK(opened==closed);
     // APA102 wire format: start frame, BGR, brightness multiplier, and enough
     // trailing clocks for strips longer than this keypad.
     PixelConfig pixels={.count=33,.brightness=128,.order="BGR"};uint8_t rgb[99],wire[139];memset(rgb,0,sizeof(rgb));

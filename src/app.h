@@ -35,6 +35,7 @@ typedef struct {
 #endif
     void (*service_io)(void *); void *service_context;
     Network network;
+    InputRegistry inputs;
     // Keep the active interface/settings intact until the commit reply has left.
     NetworkConfig pending_network;
     bool network_pending;
@@ -48,7 +49,7 @@ typedef struct {
     AppOutput *upload_output;
     Store store;
     HardwareConfig hardware;
-    Inputs inputs;
+    DigitalInputs digital_inputs;
     char config_json[CONFIG_LIMIT];
     uint32_t config_size, revision;
     uint8_t staging[CONFIG_LIMIT];
@@ -56,6 +57,7 @@ typedef struct {
     uint32_t expected, received, expected_crc;
     unsigned object_kind, schedule_cursor;
     uint32_t transition_sequence;
+    uint32_t transition_program_generation;
     bool uploading, staged, booting;
     bool command_active, disconnect_pending, hardware_changing;
     uint64_t upload_deadline;

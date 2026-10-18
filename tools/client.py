@@ -244,7 +244,7 @@ class Client:
         # animation_error may contain spaces; capability/limit tokens do not.
         return dict(item.split("=", 1) for item in reply.message.split() if "=" in item)
 
-    def upload(self, bytecode, slot=None, output=None, settings=None):
+    def upload(self, bytecode, slot=None, output=None, settings=None, inputs=None):
         fields = self.status_fields(slot=slot, output=output)
         try:
             limit = int(fields.get("module_limit", MODULE_LIMIT))
@@ -254,7 +254,8 @@ class Client:
             raise ProtocolError("receiver reported an invalid module limit")
         if not 8 <= len(bytecode) <= limit:
             raise ValueError(f"module must be 8..{limit} bytes for this receiver")
-        arguments = json.dumps({'settings': settings}, separators=(',', ':'), allow_nan=False).encode() if settings else b''
+        invocation = {**({'settings': settings} if settings else {}), **({'inputs': inputs} if inputs else {})}
+        arguments = json.dumps(invocation, separators=(',', ':'), allow_nan=False).encode() if invocation else b''
         if len(arguments) > FRAME_LIMIT:
             raise ValueError('preview settings exceed command size limit')
         self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode)) + (output.encode("ascii") if output is not None else b"")))
@@ -355,7 +356,7 @@ class Client:
         revision = self.describe()["catalog_revision"]
         return self.manage("program_delete", name=name, expected_revision=revision, **({"type": program_type} if program_type else {}))
 
-    def activate(self, name, action="play", slot=None, settings=None, output=None, layer=None):
+    def activate(self, name, action="play", slot=None, settings=None, output=None, layer=None, inputs=None):
         if layer is not None:
             if action != 'play': raise ValueError('composition layers support play activation')
             composition = self.composition(output=output, slot=slot)
@@ -364,6 +365,7 @@ class Client:
             fields = {'slot':slot or 'A', 'name':name, 'layer':layer, 'expected_revision':composition['revision'], 'expected_generation':state['generation']}
             if output is not None: fields['output'] = output
             if settings is not None: fields['settings'] = settings
+            if inputs is not None: fields['inputs'] = inputs
             return self.manage('composition_layer_activate', **fields)
         fields = {"name": name, "action": action}
         if output is not None:
@@ -372,13 +374,31 @@ class Client:
             fields["slot"] = slot
         if settings is not None:
             fields["settings"] = settings
+        if inputs is not None: fields['inputs'] = inputs
         return self.manage("program_activate", **fields)
 
-    def program_state(self, slot=None, output=None, layer=None):
-        self.manage("program_state", **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
+    def program_state(self, slot=None, output=None, layer=None, target=None):
+        self.manage("program_state", **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}), **({'target':target} if target is not None else {}))
         return json.loads(self.data_reply)
 
-    def reset_program(self, settings=None, slot=None, output=None, layer=None):
+    def set_inputs(self, inputs, slot=None, output=None, layer=None, target=None):
+        state = self.program_state(slot=slot, output=output, layer=layer, target=target)
+        self.manage('program_inputs', inputs=inputs, expected_generation=state['generation'],
+                    expected_inputs_revision=state['inputs_revision'],
+                    **({'slot': slot} if slot is not None else {}),
+                    **({'output': output} if output is not None else {}),
+                    **({'layer': layer} if layer is not None else {}),
+                    **({'target': target} if target is not None else {}))
+        return json.loads(self.data_reply)
+
+    def claim_inputs(self, signals):
+        self.manage('input_claim', signals=[{'name': name, 'type': typ} for name, typ in signals.items()])
+        return json.loads(self.data_reply)
+
+    def publish_inputs(self, publisher, sequence, values):
+        return self.manage('input_publish', boot_id=publisher['boot_id'], generation=publisher['generation'], sequence=sequence, values=values)
+
+    def reset_program(self, settings=None, slot=None, output=None, layer=None, inputs=None):
         state = self.program_state(slot=slot, output=output, layer=layer)
         fields = {"expected_generation": state["generation"]}
         if output is not None:
@@ -389,6 +409,7 @@ class Client:
             fields["settings"] = settings
         if layer is not None:
             fields["layer"] = layer
+        if inputs is not None: fields['inputs'] = inputs
         self.manage("program_reset", **fields)
         return json.loads(self.data_reply)
 
@@ -402,9 +423,9 @@ class Client:
         self.manage("program_resume", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
-    def snapshot(self, slot=None, output=None, layer=None):
+    def snapshot(self, slot=None, output=None, layer=None, target=None):
         self.pixel_snapshot.clear()
-        self.manage("program_snapshot", **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
+        self.manage("program_snapshot", **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}), **({'target':target} if target is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
 
     def composition(self, output=None, slot="A"):
@@ -447,9 +468,10 @@ class Client:
         return bool(self.manage('transition_update', source=source, assignment=assignment, progress=progress,
                                **({'output':output} if output is not None else {})).value)
 
-    def select_transition(self, program, settings=None, seed=0, output=None):
+    def select_transition(self, program, settings=None, seed=0, output=None, inputs=None):
         fields = {'program':program, 'seed':seed, 'expected_revision':self.transition(output)['revision']}
         if settings is not None: fields['settings'] = settings
+        if inputs is not None: fields['inputs'] = inputs
         return self._transition_control('transition_select', output, **fields)
 
     def select_transition_effect(self, effect='crossfade', seed=0, mask=None, paint=None, output=None):

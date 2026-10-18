@@ -22,7 +22,7 @@ def source(name):
 
 class PortableCompilerTests(unittest.TestCase):
     def test_target_negotiation_and_deterministic_compilation(self):
-        target={'module_limit':32768,'version':'1.0.0'}
+        target={'module_limit':32768,'version':'1.0.0','live_inputs':True}
         for name in NAMES:
             result=compile_source(source(name))
             self.assertTrue(result.success,result.diagnostics)

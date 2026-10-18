@@ -40,8 +40,8 @@ class StartupTests(unittest.TestCase):
         self.client.save_program('rainbow', sample('rainbow'))
         self.client.save_program('color', sample('color'))
         candidate = self.outputs([
-            {'program': 'rainbow', 'settings': {'duration': 3.3, 'random_color': False}},
-            {'program': 'rainbow', 'settings': {'duration': 7.0, 'scale': 0.0}},
+            {'program': 'rainbow', 'settings': {'random_color': False}, 'inputs': {'phase': {'driver': {'kind': 'ramp', 'duration': 3.3, 'mode': 'repeat'}}}},
+            {'program': 'rainbow', 'inputs': {'phase': {'driver': {'kind': 'ramp', 'duration': 7.0, 'mode': 'repeat'}}, 'scale': {'value': 0.0}}},
             {'program': 'color', 'settings': {'color': 0x123456, 'random_color': False}},
             {'program': 'rainbow'}, {'program': 'rainbow', 'settings': {}}, None,
         ])
@@ -52,9 +52,9 @@ class StartupTests(unittest.TestCase):
             self.assertEqual(self.client.status_fields(output=entry['id'])['mode'], 'idle')
         self.restart()
         for i, duration in ((0, 3.3), (1, 7.0), (3, 60.0), (4, 60.0)):
-            args = self.client.program_state(output=f'lights{i}')['settings_values']
-            self.assertAlmostEqual(args['duration'], duration, places=5)
-        self.assertEqual(self.client.program_state(output='lights1')['settings_values']['scale'], 0)
+            inputs = self.client.program_state(output=f'lights{i}')['inputs']
+            self.assertAlmostEqual(inputs['phase']['binding']['driver']['duration'], duration, places=5)
+        self.assertEqual(self.client.program_state(output='lights1')['inputs']['scale']['value'], 0)
         self.assertEqual(self.client.snapshot(output='lights2')[1], bytes.fromhex('123456') * 5)
         self.assertEqual(self.client.status_fields(output='lights5')['mode'], 'idle')
         self.assertEqual(self.client.describe()['boot_error'], '')
@@ -126,20 +126,20 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(ctx.size,0,0))
 
     def test_startup_edits_and_reordering_retain_instances_and_latest_args(self):
         self.client.save_program('rainbow', sample('rainbow'))
-        candidate = self.outputs([{'program': 'rainbow', 'settings': {'duration': 3.3}}, {'program': 'rainbow'}])
+        candidate = self.outputs([{'program': 'rainbow', 'inputs': {'phase': {'driver': {'kind': 'ramp', 'duration': 3.3, 'mode': 'repeat'}}}}, {'program': 'rainbow'}])
         self.client.configure(candidate, save=True)
         self.restart()
         generations = {d['id']: self.client.program_state(output=d['id'])['generation'] for d in candidate['outputs']}
-        candidate['outputs'][0]['startup']['settings']['duration'] = 8.0
+        candidate['outputs'][0]['startup']['inputs']['phase']['driver']['duration'] = 8.0
         candidate['outputs'].reverse()
         self.client.configure(candidate, save=True)
         for name, generation in generations.items():
             self.assertEqual(self.client.program_state(output=name)['generation'], generation)
-        self.assertAlmostEqual(self.client.program_state(output='lights0')['settings_values']['duration'], 3.3, places=5)
+        self.assertAlmostEqual(self.client.program_state(output='lights0')['inputs']['phase']['binding']['driver']['duration'], 3.3, places=5)
         self.assertEqual(self.client.program_state()['output'], 'lights1')
         self.restart()
-        self.assertEqual(self.client.program_state(output='lights0')['settings_values']['duration'], 8.0)
-        self.assertEqual(self.client.program_state(output='lights1')['settings_values']['duration'], 60.0)
+        self.assertEqual(self.client.program_state(output='lights0')['inputs']['phase']['binding']['driver']['duration'], 8.0)
+        self.assertEqual(self.client.program_state(output='lights1')['inputs']['phase']['binding']['driver']['duration'], 60.0)
 
     def test_one_failed_startup_does_not_block_other_devices(self):
         for name in ('good', 'bad'):
