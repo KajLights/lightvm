@@ -1,5 +1,8 @@
 # Concurrent USB and HTTP management
 
+HTTP-enabled builds can optionally include [plain WebSocket management](websocket.md)
+with `-DLIGHTVM_WEBSOCKET=ON`, on the same listener and port.
+
 Networking is optional firmware functionality. The original Pico remains USB-only.
 Pico W, XIAO ESP32-C3, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTTP. USB continues
 working when networking is disabled, unavailable or reconnecting. All paths share

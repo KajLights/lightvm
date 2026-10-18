@@ -14,20 +14,28 @@ typedef struct {
     int (*write)(void *,const uint8_t *,size_t);
     bool (*close)(void *);
 } HttpIO;
+typedef struct WebSocket WebSocket;
 typedef struct {
     char method[8],path[80],token[33];
     uint8_t body[HEADER_SIZE+FRAME_LIMIT]; size_t size;
     unsigned error;
     bool discovery_only;
     HttpIO io;
+#if LIGHTVM_WEBSOCKET
+    WebSocket *websocket;
+    uint8_t websocket_action;
+#endif
 } HttpRequest;
 typedef struct { char token[33]; uint64_t source,expires; } HttpSession;
-typedef struct {
-    App *app; Discovery *discovery; HttpSession sessions[HTTP_SESSIONS]; uint64_t sequence;
+typedef struct Http {
+    App *app; Discovery *discovery; HttpSession sessions[HTTP_SESSIONS];
     HttpRequest queue[HTTP_QUEUE],active; unsigned head,count;
     uint8_t response[HTTP_RESPONSE_LIMIT]; size_t used,sent;
     char header[512]; size_t header_size,header_sent;
     bool sending,closing,overflow,executing; uint64_t deadline,reply_source;
+#if LIGHTVM_WEBSOCKET
+    bool websocket_keep_open;
+#endif
 } Http;
 void http_init(Http *,App *);
 // All operations below run on the engine owner. Native ingress queues cross threads.

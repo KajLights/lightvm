@@ -8,6 +8,9 @@
 #include <string.h>
 #if LIGHTVM_HTTP
 #include "http.h"
+#if LIGHTVM_WEBSOCKET
+#include "websocket.h"
+#endif
 #include "lwip/udp.h"
 #include "lwip/igmp.h"
 #endif
@@ -131,7 +134,11 @@ static bool start_discovery(uint16_t port) {
 }
 static struct tcp_pcb *listener;
 static struct tcp_pcb *bootstrap_listener;
-typedef struct { struct tcp_pcb *pcb; HttpInput input; HttpRequest request; uint64_t deadline,close_deadline; bool closing; } Client;
+typedef struct { struct tcp_pcb *pcb; HttpInput input; HttpRequest request; uint64_t deadline,close_deadline; bool closing;
+#if LIGHTVM_WEBSOCKET
+    WebSocket websocket;
+#endif
+} Client;
 static Client clients[4];
 static int output(void *ctx,const uint8_t *bytes,size_t size) {
     Client *c=ctx; if (!c->pcb) return -1;
@@ -152,15 +159,30 @@ static bool close_client(void *ctx) {
         if (!c->closing) { c->closing=true; c->close_deadline=platform_time_us()+2000000u; }
         return false;
     }
-    c->pcb=NULL; return true;
+    c->pcb=NULL;
+#if LIGHTVM_WEBSOCKET
+    websocket_closed(&c->websocket);
+#endif
+    return true;
 }
-static void failed(void *ctx,err_t error) { (void)error; Client *c=ctx; c->pcb=NULL; http_cancel_io(&http,c); }
+static void failed(void *ctx,err_t error) {
+    (void)error; Client *c=ctx; c->pcb=NULL; http_cancel_io(&http,c);
+#if LIGHTVM_WEBSOCKET
+    websocket_closed(&c->websocket);
+#endif
+}
 static err_t receive(void *ctx,struct tcp_pcb *pcb,struct pbuf *p,err_t error) {
     Client *c=ctx;
+#if LIGHTVM_WEBSOCKET
+    if (!p && c->request.websocket_action==WS_UPGRADE) { http_cancel_io(&http,c); close_client(c); return ERR_OK; }
+#endif
     if (!p && c->input.ready) return ERR_OK; // A complete request can half-close its input.
     if (!p || error!=ERR_OK) { if (p) pbuf_free(p); http_cancel_io(&http,c); close_client(c); return ERR_OK; }
     tcp_recved(pcb,p->tot_len);
     for (struct pbuf *part=p;part;part=part->next) {
+#if LIGHTVM_WEBSOCKET
+        if (c->websocket.upgraded) { if (!c->closing) websocket_feed(&c->websocket,part->payload,part->len,platform_time_us()); continue; }
+#endif
         if (c->input.ready) break;
         c->deadline=platform_time_us()+2000000u;
         if (http_input(&c->input,part->payload,part->len,&c->request) && !http_submit(&http,&c->request)) {
@@ -172,9 +194,17 @@ static err_t receive(void *ctx,struct tcp_pcb *pcb,struct pbuf *p,err_t error) {
 }
 static err_t accept_client(void *ctx,struct tcp_pcb *pcb,err_t error) {
     (void)ctx; if (error!=ERR_OK) return error;
-    Client *c=NULL; for (unsigned i=0;i<4;i++) if (!clients[i].pcb) { c=&clients[i]; break; }
+    Client *c=NULL; for (unsigned i=0;i<4;i++) if (!clients[i].pcb
+#if LIGHTVM_WEBSOCKET
+        && !clients[i].websocket.source
+#endif
+    ) { c=&clients[i]; break; }
     if (!c) { tcp_abort(pcb); return ERR_ABRT; }
     memset(c,0,sizeof(*c)); c->pcb=pcb; c->deadline=platform_time_us()+2000000u; c->request.io=(HttpIO){c,output,close_client};
+#if LIGHTVM_WEBSOCKET
+    tcp_nagle_disable(pcb);
+    websocket_init(&c->websocket,&http,c->request.io,NULL); c->request.websocket=&c->websocket;
+#endif
     c->request.discovery_only=pcb->local_port==80 && network_http_port(&engine->network)!=80;
     tcp_arg(pcb,c); tcp_recv(pcb,receive); tcp_err(pcb,failed); return ERR_OK;
 }
@@ -182,7 +212,11 @@ static void stop_http(void) {
     stop_discovery();
     for (unsigned i=0;i<4;i++) {
         Client *c=&clients[i]; http_cancel_io(&http,c);
-        if (!close_client(c) && c->pcb) { tcp_arg(c->pcb,NULL); tcp_err(c->pcb,NULL); tcp_abort(c->pcb); c->pcb=NULL; }
+        if (!close_client(c) && c->pcb) { tcp_arg(c->pcb,NULL); tcp_err(c->pcb,NULL); tcp_abort(c->pcb); c->pcb=NULL;
+#if LIGHTVM_WEBSOCKET
+            websocket_closed(&c->websocket);
+#endif
+        }
     }
     if (listener) { tcp_close(listener); listener=NULL; }
     if (bootstrap_listener) { tcp_close(bootstrap_listener); bootstrap_listener=NULL; }
@@ -236,8 +270,15 @@ void pico_network_poll(void) {
     }
     for (unsigned i=0;i<4;i++) {
         Client *c=&clients[i];
+#if LIGHTVM_WEBSOCKET
+        websocket_tick(&c->websocket,now);
+#endif
         if (c->pcb && !c->input.ready && now>=c->deadline) { http_cancel_io(&http,c); close_client(c); }
-        if (c->pcb && c->closing && !close_client(c) && now>=c->close_deadline) { tcp_arg(c->pcb,NULL); tcp_err(c->pcb,NULL); tcp_abort(c->pcb); c->pcb=NULL; }
+        if (c->pcb && c->closing && !close_client(c) && now>=c->close_deadline) { tcp_arg(c->pcb,NULL); tcp_err(c->pcb,NULL); tcp_abort(c->pcb); c->pcb=NULL;
+#if LIGHTVM_WEBSOCKET
+            websocket_closed(&c->websocket);
+#endif
+        }
     }
     if (listener) http_tick(&http,now);
 #endif

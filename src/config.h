@@ -7,6 +7,12 @@
 #ifndef LIGHTVM_HTTP
 #define LIGHTVM_HTTP 0
 #endif
+#ifndef LIGHTVM_WEBSOCKET
+#define LIGHTVM_WEBSOCKET 0
+#endif
+#if LIGHTVM_WEBSOCKET && !LIGHTVM_HTTP
+#error "WebSocket management requires HTTP"
+#endif
 #ifndef LIGHTVM_BOOT_SEQUENCE
 #define LIGHTVM_BOOT_SEQUENCE 0
 #endif

@@ -63,6 +63,8 @@ procedures unchanged.
 
 Enable the existing HTTP and power-recovery profiles with
 `-DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON -DLIGHTVM_BOOT_SEQUENCE=ON`.
+Add `-DLIGHTVM_WEBSOCKET=ON` for the optional plain
+[WebSocket command server](docs/websocket.md); it is excluded by default.
 Use `-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h"` in a separate build
 directory to exercise the 175-pixel, 16 KiB program-budget profile.
 
