@@ -12,6 +12,19 @@ static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capa
 static void disconnect(void *ctx) { (void)ctx; }
 static uint32_t random_value(void *ctx) { (void)ctx; return 20; } // jitter midpoint = 100%
 int main(void) {
+    static const struct {const char *host;bool valid;} hosts[]={
+        {"mqtt.example.com",true},{"localhost",true},{"192.168.1.10",true},
+        {"a-b.example",true},{"",false},{"256.0.0.1",false},{"127.00.0.1",false},
+        {"broker.local:1883",false},{"mqtt://broker.local",false},{"a..b",false},
+        {"-a.example",false},{"a-.example",false},{"a_b.example",false},{"[::1]",false},
+        {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example",false}
+    };
+    for(unsigned i=0;i<sizeof(hosts)/sizeof(hosts[0]);i++){
+        char document[512],error[160];NetworkConfig candidate;
+        int n=snprintf(document,sizeof(document),"{\"schema\":\"lightvm.network\",\"wifi\":{\"networks\":[]},\"http\":{},\"mqtt\":{\"enabled\":true,\"host\":\"%s\"}}",hosts[i].host);
+        CHECK(network_parse(document,(size_t)n,NULL,&candidate,error,sizeof(error))==hosts[i].valid);
+    }
+
     const char *json="{\"schema\":\"lightvm.network\",\"wifi\":{\"enabled\":true,\"networks\":[{\"ssid\":\"missing\",\"password\":\"\"},{\"ssid\":\"caf\\u00e9\\ud83c\\udf08\",\"password\":\"secret123\"},{\"ssid\":\"hidden\",\"password\":\"\",\"hidden\":true}]},\"http\":{\"enabled\":true}}";
     NetworkConfig config,copy; char error[160],bytes[2048];
     CHECK(network_parse(json,strlen(json),NULL,&config,error,sizeof(error)));

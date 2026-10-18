@@ -43,7 +43,7 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
 }
 void ha_init(HomeAssistant *h,App *app,MqttStream stream) {
     memset(h,0,sizeof(*h));h->app=app;h->source=++app->connection_sequence;
-    snprintf(h->root,sizeof(h->root),"lightvm/%s",app->device_id);
+    snprintf(h->root,sizeof(h->root),"homeassistant/lightvm/%s",app->device_id);
     char id[96],will[MQTT_TOPIC_SIZE];snprintf(id,sizeof(id),"lightvm-%s",app->device_id);
     snprintf(will,sizeof(will),"%s/availability",h->root);
     mqtt_init(&h->mqtt,stream,id,will,message,h);

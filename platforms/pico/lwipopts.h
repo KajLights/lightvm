@@ -6,7 +6,10 @@
 #define LWIP_TCP (LIGHTVM_HTTP || LIGHTVM_MQTT)
 #define LWIP_UDP 1
 #define LWIP_DHCP 1
-#define LWIP_DNS 0
+#define LWIP_DNS LIGHTVM_MQTT
+#define DNS_TABLE_SIZE 2
+#define DNS_MAX_NAME_LENGTH 128
+#define DNS_MAX_SOURCE_PORTS 2
 #define LWIP_IPV4 1
 #define LWIP_IPV6 0
 #define LWIP_ICMP 1
@@ -20,7 +23,7 @@
 #define MEMP_NUM_TCP_PCB (5 + LIGHTVM_MQTT)
 #define MEMP_NUM_TCP_PCB_LISTEN 2
 #define MEMP_NUM_TCP_SEG 24
-#define MEMP_NUM_UDP_PCB 4
+#define MEMP_NUM_UDP_PCB (4 + 2 * LIGHTVM_MQTT)
 #define PBUF_POOL_SIZE 8
 #define TCP_MSS 1460
 #define TCP_WND (2 * TCP_MSS)

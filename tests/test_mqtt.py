@@ -179,11 +179,11 @@ def draw(ctx, runtime, pixels):
         self.client.save_procedure('brush', program)
         self.client.save_preset('blue', [{'id': 'base', 'procedure': 'brush', 'crc32': zlib.crc32(program)}], device='desk')
         self.network = {'schema': 'lightvm.network', 'wifi': {'enabled': False, 'networks': []},
-                        'http': {'enabled': False}, 'mqtt': {'enabled': True, 'host': '127.0.0.1',
+                        'http': {'enabled': False}, 'mqtt': {'enabled': True, 'host': 'localhost',
                         'port': self.broker.port, 'username': 'kaj', 'password': 'broker-secret'}}
         self.client.configure_network(self.network)
         self.device_id = self.client.describe()['device_id']
-        self.root = f'lightvm/{self.device_id}'
+        self.root = f'homeassistant/lightvm/{self.device_id}'
         self.discovery = f'homeassistant/light/{self.device_id}/{b"desk".hex()}/config'
         self.broker.wait(f'{self.root}/availability', b'online')
 
@@ -306,7 +306,7 @@ def draw(ctx, runtime, pixels):
         self.assertTrue(self.client.scene('desk')['playing'])
 
     def test_validation_and_secret_preservation(self):
-        for field, value in [('host', 'broker.local'), ('port', 0), ('enabled', 'yes'), ('extra', 1)]:
+        for field, value in [('host', 'http://broker.local'), ('host', 'broker.local:1883'), ('host', 'a..b'), ('host', '256.0.0.1'), ('port', 0), ('enabled', 'yes'), ('extra', 1)]:
             config = copy.deepcopy(self.network)
             config['mqtt'][field] = value
             with self.assertRaises(ProtocolError):

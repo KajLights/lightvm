@@ -1,8 +1,15 @@
 #include "mqtt_port.h"
 #include "lwip/tcp.h"
+#include "lwip/dns.h"
 #include <string.h>
+/* Cancelled lookups retain their callback record until lwIP completes them.
+ * Closing or reconfiguring a connection cannot let an old reply connect it to
+ * a previous broker. Two records match the bounded DNS request table. */
+typedef struct { PicoMqtt *owner; bool pending; } Lookup;
+static Lookup lookups[2];
 static void close_stream(void *context) {
     PicoMqtt *s=context;
+    for(unsigned i=0;i<2;i++)if(lookups[i].owner==s)lookups[i].owner=NULL;
     if(s->pcb){tcp_arg(s->pcb,NULL);tcp_recv(s->pcb,NULL);tcp_err(s->pcb,NULL);tcp_abort(s->pcb);s->pcb=NULL;}
     if(s->input)pbuf_free(s->input);
     s->input=NULL;s->offset=0;s->state=-1;
@@ -19,13 +26,29 @@ static err_t received(void *context,struct tcp_pcb *pcb,struct pbuf *p,err_t err
 static err_t connected(void *context,struct tcp_pcb *pcb,err_t error) {
     PicoMqtt *s=context;(void)pcb;s->state=error==ERR_OK?1:-1;return ERR_OK;
 }
-static bool open_stream(void *context,const char *host,uint16_t port) {
-    PicoMqtt *s=context;close_stream(s);ip_addr_t ip;
-    if(!ipaddr_aton(host,&ip))return false;
+static bool connect_address(PicoMqtt *s,const ip_addr_t *ip) {
     s->pcb=tcp_new_ip_type(IPADDR_TYPE_V4);if(!s->pcb)return false;
     s->state=0;tcp_arg(s->pcb,s);tcp_err(s->pcb,error_stream);tcp_recv(s->pcb,received);
-    if(tcp_connect(s->pcb,&ip,port,connected)!=ERR_OK){close_stream(s);return false;}
+    if(tcp_connect(s->pcb,ip,s->port,connected)!=ERR_OK){close_stream(s);return false;}
     return true;
+}
+static void resolved(const char *name,const ip_addr_t *ip,void *context) {
+    Lookup *lookup=context;PicoMqtt *s=lookup->owner;(void)name;
+    lookup->owner=NULL;lookup->pending=false;
+    if(s && (!ip || !connect_address(s,ip)))s->state=-1;
+}
+static bool open_stream(void *context,const char *host,uint16_t port) {
+    PicoMqtt *s=context;close_stream(s);ip_addr_t ip;s->port=port;s->state=0;
+    if(ipaddr_aton(host,&ip))return connect_address(s,&ip);
+    for(unsigned i=0;i<2;i++)if(!lookups[i].pending){
+        Lookup *lookup=&lookups[i];lookup->owner=s;lookup->pending=true;
+        err_t result=dns_gethostbyname(host,&ip,resolved,lookup);
+        if(result==ERR_INPROGRESS)return true;
+        lookup->owner=NULL;lookup->pending=false;
+        if(result==ERR_OK)return connect_address(s,&ip);
+        s->state=-1;return false;
+    }
+    s->state=-1;return false;
 }
 static int poll_stream(void *context) {return ((PicoMqtt *)context)->state;}
 static int read_stream(void *context,uint8_t *out,size_t capacity) {

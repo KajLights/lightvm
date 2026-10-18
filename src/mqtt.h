@@ -4,12 +4,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Broker settings are independent of both LightVM and Home Assistant. The
- * first port profile uses a numeric IPv4 address and unencrypted MQTT 3.1.1. */
+/* Broker settings are independent of both LightVM and Home Assistant. Brokers
+ * use IPv4 addresses or DNS hostnames and unencrypted MQTT 3.1.1. */
+#define MQTT_HOST_CAPACITY 128u
 typedef struct {
     bool enabled;
     uint16_t port;
-    char host[16], username[65], password[65];
+    char host[MQTT_HOST_CAPACITY], username[65], password[65];
 } MqttConfig;
 
 /* Nonblocking byte stream. open starts connecting; poll returns -1=failed,

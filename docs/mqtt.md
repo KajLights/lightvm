@@ -36,7 +36,7 @@ that boot and retains the saved broker settings.
 2. Under **Configure → Output & startup**, choose **Home Assistant ON preset**
    for each output to expose. Optionally set its Home Assistant display name.
    Apply in RAM to try it, or apply and save for reboot.
-3. Under the network settings, enable MQTT and enter the broker IPv4 address,
+3. Under the network settings, enable MQTT and enter the broker hostname or IPv4 address,
    port and credentials. Save and reconnect the network.
 4. Connect Home Assistant's MQTT integration to that broker with discovery
    enabled and its default `homeassistant` discovery prefix and status topic.
@@ -72,7 +72,7 @@ Network settings extend `lightvm.network` with a separate `mqtt` object:
   "http": {"enabled": true, "port": 80},
   "mqtt": {
     "enabled": true,
-    "host": "192.168.1.10",
+    "host": "mqtt.example.com",
     "port": 1883,
     "username": "lightvm",
     "password": "replace-broker-password"
@@ -100,8 +100,14 @@ explicit empty password clears it. Readbacks omit the password, and the editor
 keeps attempted passwords out of Redux/browser persistence and clears them after
 saving. Credentials remain in device storage/RAM, as with Wi-Fi credentials.
 
-This iteration uses **plain TCP MQTT 3.1.1 with numeric IPv4 broker addresses**.
-It is intended for the trusted LAN. DNS names, TLS, MQTT 5 properties, QoS2,
+This iteration uses **plain TCP MQTT 3.1.1 over IPv4**. Broker addresses may be
+numeric IPv4 addresses or DNS hostnames up to 127 ASCII bytes, with labels up to
+63 bytes. Do not include a scheme or port in `host`; set the separate `port`
+field. Pico W uses DHCP-provided DNS servers and asynchronous lwIP resolution.
+Host and ESP32 use their system resolver on a bounded background worker, so DNS
+does not block playback. Cancelled or timed-out lookups cannot connect to an old
+broker after settings change. A failed lookup follows the MQTT reconnect policy.
+It is intended for the trusted LAN. TLS, MQTT 5 properties, QoS2,
 custom discovery prefixes, brightness, colour and additional channels are outside
 this iteration. Home Assistant and LightVM may use different supported protocol
 versions on the same broker.
@@ -112,11 +118,16 @@ versions on the same broker.
 
 | Topic | Payload / behavior |
 | --- | --- |
-| `lightvm/<device_id>/<output_id>/set` | Exact `ON` or `OFF`; publish without retain. |
-| `lightvm/<device_id>/<output_id>/state` | Retained actual playback state, `ON` or `OFF`. |
-| `lightvm/<device_id>/availability` | Retained `online`; retained Last Will `offline`. |
+| `homeassistant/lightvm/<device_id>/<output_id>/set` | Exact `ON` or `OFF`; publish without retain. |
+| `homeassistant/lightvm/<device_id>/<output_id>/state` | Retained actual playback state, `ON` or `OFF`. |
+| `homeassistant/lightvm/<device_id>/availability` | Retained `online`; retained Last Will `offline`. |
 | `homeassistant/light/<device_id>/<hex_output_id>/config` | Retained MQTT light discovery document. |
 | `homeassistant/status` | HA's `online` birth message triggers discovery/state/availability refresh. |
+
+All binding topics use the default `homeassistant/` namespace. Allow the device
+account to read and write `homeassistant/#` on brokers with topic ACLs. Home
+Assistant learns command, state and availability topics from discovery; no manual
+entity YAML or topic configuration is needed.
 
 Discovery encodes the output ID as lowercase UTF-8 hex to satisfy HA's topic
 identifier restrictions without collisions (for example `desk` becomes
@@ -161,8 +172,8 @@ MQTT retains discovery but makes the controller unavailable.
 `src/mqtt.[ch]` owns bounded MQTT framing, sessions, buffering, keepalive,
 subscriptions, publications and reconnect policy. It knows nothing about App,
 outputs, presets or HA. Its nonblocking stream contract has a shared host/ESP32
-socket adapter and a Pico W lwIP raw adapter. No network callbacks run engine
-commands, and no worker thread owns the VM.
+socket adapter and a Pico W lwIP raw adapter with asynchronous DNS. No network
+callbacks run engine commands, and no worker thread owns the VM.
 
 `src/home_assistant.[ch]` owns topic/discovery conventions, output bindings and
 state observation. It dispatches power commands through the ordinary application
@@ -183,11 +194,20 @@ LIGHTVM_RECEIVER="$PWD/build/mqtt-host/lightvm" python -m unittest discover -s t
 ```
 
 C transport tests use fragmented and stalled streams, malformed/oversized packets,
-rejected handshakes/subscriptions and timeouts. Python tests use a local observable
+rejected handshakes/subscriptions and timeouts. Pico DNS tests cover cached and
+asynchronous results, failures, cancellation, late replies after reconfiguration,
+and bounded outstanding lookups. Python tests use a local observable
 MQTT peer with the real runtime, flash storage and compiled animation/preset. They
 cover independent lights, black output on OFF, A/B takeover, concurrent HTTP, WebSocket and
 serial control, retained/invalid commands, missing presets, HA restart, reconnect,
 reboot, credential redaction and discovery removal. Editor tests cover preset
 assignment and broker-password handling. CI builds both MQTT-only and combined
-HTTP/MQTT profiles. Physical radios and a real Home Assistant installation still
-need an end-to-end acceptance check.
+HTTP/MQTT profiles.
+
+Pico W hardware acceptance verified hostname resolution through DHCP-provided
+DNS, authenticated broker connection, retained HA discovery and availability,
+MQTT OFF with all 200 pixels black, ON activating the selected preset, serial
+changes reflected in MQTT state, and concurrent HTTP/WebSocket access. Saved
+programs, network credentials and output bindings survived firmware deployment.
+ESP32 C6 and S3 profiles cross-build successfully; their physical radios and the
+Home Assistant frontend still need an end-to-end acceptance check.

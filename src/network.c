@@ -7,6 +7,37 @@ static bool fail(char *error,size_t capacity,const char *message) { snprintf(err
 static bool optional_bool(const Json *j,int object,const char *key,bool *value) {
     int t=json_get(j,object,key); return t<0 || json_bool(j,t,value);
 }
+static bool broker_host(const char *host) {
+    size_t size=strlen(host);
+    if(!size || size>=MQTT_HOST_CAPACITY)return false;
+    if(strspn(host,"0123456789.")==size){
+        unsigned parts=0,value=0,digits=0;
+        for(const char *s=host;;s++){
+            if(*s>='0'&&*s<='9'){
+                if(digits==1&&!value)return false;
+                value=value*10u+(unsigned)(*s-'0');
+                if(++digits>3||value>255)return false;
+            }else if(*s=='.'||!*s){
+                if(!digits||++parts>4)return false;
+                value=digits=0;if(!*s)break;
+            }else return false;
+        }
+        return parts==4;
+    }
+    unsigned label=0;char previous=0;
+    for(const char *s=host;;s++){
+        char c=*s;
+        if(!c||c=='.'){
+            if(!label||previous=='-')return false;
+            if(!c)return true;
+            label=0;
+        }else{
+            bool alnum=(c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9');
+            if((!alnum&&c!='-')||(!label&&c=='-')||++label>63)return false;
+        }
+        previous=c;
+    }
+}
 bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity) {
     Json j; memset(out,0,sizeof(*out)); strcpy(out->country,"XX"); out->port=80;
     static const char *const root[]={"schema","wifi","http","mqtt",NULL};
@@ -76,7 +107,7 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
         if(!json_fields(&j,mqtt,fields) || !optional_bool(&j,mqtt,"enabled",&out->mqtt.enabled))
             return fail(error,capacity,"mqtt: invalid fields");
         int host=json_get(&j,mqtt,"host"),user=json_get(&j,mqtt,"username"),password=json_get(&j,mqtt,"password"),port_token=json_get(&j,mqtt,"port");
-        if(host>=0 && !json_string(&j,host,out->mqtt.host,sizeof(out->mqtt.host)))return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");
+        if(host>=0 && !json_string(&j,host,out->mqtt.host,sizeof(out->mqtt.host)))return fail(error,capacity,"mqtt.host: expected IPv4 address or DNS hostname (at most 127 bytes)");
         if(user>=0 && !json_string(&j,user,out->mqtt.username,sizeof(out->mqtt.username)))return fail(error,capacity,"mqtt.username: expected at most 64 UTF-8 bytes");
         if(password>=0 && !json_string(&j,password,out->mqtt.password,sizeof(out->mqtt.password)))return fail(error,capacity,"mqtt.password: expected at most 64 UTF-8 bytes");
         uint32_t mqtt_port=out->mqtt.port;
@@ -84,13 +115,7 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
         out->mqtt.port=(uint16_t)mqtt_port;
     }
     if(out->mqtt.enabled){
-        unsigned parts=0,value=0,digits=0;
-        for(const char *s=out->mqtt.host;;s++){
-            if(*s>='0'&&*s<='9'){value=value*10u+(unsigned)(*s-'0');if(++digits>3||value>255)return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");}
-            else if(*s=='.'||!*s){if(!digits||++parts>4)return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");value=digits=0;if(!*s)break;}
-            else return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");
-        }
-        if(parts!=4)return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");
+        if(!broker_host(out->mqtt.host))return fail(error,capacity,"mqtt.host: expected IPv4 address or DNS hostname (at most 127 bytes)");
         if(out->mqtt.password[0]&&!out->mqtt.username[0])return fail(error,capacity,"mqtt.username: required with a password");
     }
     error[0]=0; return true;

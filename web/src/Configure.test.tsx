@@ -53,7 +53,7 @@ describe('configuration drafts', () => {
     render(<Provider store={store}><Configure /></Provider>);
     fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi, HTTP & MQTT' }));
     fireEvent.click(screen.getByLabelText('Enable MQTT control'));
-    fireEvent.change(screen.getByLabelText('Broker IPv4 address'), { target: { value: '192.168.1.10' } });
+    fireEvent.change(screen.getByLabelText('Broker hostname or IPv4 address'), { target: { value: '192.168.1.10' } });
     fireEvent.change(screen.getByLabelText('MQTT username'), { target: { value: 'kaj' } });
     fireEvent.change(screen.getByLabelText('MQTT password'), { target: { value: 'mqtt-secret' } });
     expect(JSON.stringify(store.getState())).not.toContain('mqtt-secret');
