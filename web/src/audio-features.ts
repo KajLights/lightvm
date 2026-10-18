@@ -109,8 +109,10 @@ export class MicrophoneAudio {
       const extractor = new AudioFeatureExtractor();
       this.timer = setInterval(() => {
         if (context.state !== 'running') { this.frame({ ...SILENCE }); return; }
-        analyser.getFloatTimeDomainData(waveform); analyser.getFloatFrequencyData(spectrum);
-        this.frame(extractor.extract(waveform, spectrum, context.sampleRate, performance.now(), this.response()));
+        try {
+          analyser.getFloatTimeDomainData(waveform); analyser.getFloatFrequencyData(spectrum);
+          this.frame(extractor.extract(waveform, spectrum, context.sampleRate, performance.now(), this.response()));
+        } catch (error) { this.stop(); this.failed(error as Error); }
       }, 33);
     } catch (error) { this.stop(); throw error; }
   }

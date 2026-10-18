@@ -50,7 +50,7 @@ describe('microphone lifecycle', () => {
     vi.stubGlobal('AudioContext', class { constructor() { return context; } });
     const track = { stop, addEventListener: vi.fn() };
     const stream = { getTracks: () => [track], getAudioTracks: () => [track] } as unknown as MediaStream;
-    return { context, stream, stop, close, connect, disconnect };
+    return { context, stream, stop, close, connect, disconnect, analyser };
   }
   it('disables speech processing, never routes to speakers, and closes on stop', async () => {
     vi.useFakeTimers();
@@ -75,5 +75,14 @@ describe('microphone lifecycle', () => {
     vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn().mockRejectedValue(new Error('Permission denied')) } });
     await expect(new MicrophoneAudio(vi.fn(), vi.fn(), () => DEFAULT_RESPONSE).start('')).rejects.toThrow('Permission denied');
     expect(mock.close).toHaveBeenCalled();
+  });
+  it('releases capture and reports an audio sampling failure', async () => {
+    vi.useFakeTimers(); const mock = audio();
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn(async () => mock.stream) } });
+    const failed = vi.fn(), capture = new MicrophoneAudio(vi.fn(), failed, () => DEFAULT_RESPONSE);
+    mock.analyser.getFloatTimeDomainData.mockImplementationOnce(() => { throw new Error('Audio input failed'); });
+    await capture.start(''); await vi.advanceTimersByTimeAsync(33);
+    expect(failed).toHaveBeenCalledWith(expect.objectContaining({ message: 'Audio input failed' }));
+    expect(mock.stop).toHaveBeenCalled(); expect(mock.close).toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
   });
 });
