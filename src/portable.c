@@ -53,6 +53,10 @@ static const NativeSignature natives[]={
     {0,4,{P_REF,P_REF,P_REF,T_INT},0}, /* 52: periodic destination drawing */
     {0,4,{P_REF,T_FLOAT,T_INT,T_INT},0}, /* 53: complementary composition blend */
     {0,4,{P_REF,T_INT,T_INT,T_INT},0}, /* 54: composition range copy */
+    {T_INT,1,{T_INT},WRITE_OUTPUT}, /* 55..58: immutable render input snapshot */
+    {T_FLOAT,1,{T_INT},WRITE_OUTPUT},
+    {T_COLOR,1,{T_INT},WRITE_OUTPUT},
+    {T_BOOL,1,{T_INT},WRITE_OUTPUT},
 };
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}
@@ -133,7 +137,8 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
         const NativeSignature *sig=&natives[site->binding];
         if(site->argc!=sig->argc||(sig->rights&~fn->rights))return false;
         for(unsigned n=0;n<8;n++)if(n<site->argc?pbc_type(p,site->args[n])!=sig->args[n]:site->args[n]!=0)return false;
-        if(site->binding>=27){if(!pbc_drawing_valid(p,site,fn->rights))return false;}
+        if(site->binding>=55){if(!inputs_call_valid(p,site->binding,site->args[0]))return false;}
+        else if(site->binding>=27){if(!pbc_drawing_valid(p,site,fn->rights))return false;}
 
         return sig->result ? can_write(p,a,fn->rights)&&at==sig->result : a==255;
     }
@@ -193,7 +198,7 @@ static bool valid_expressions(Portable *p){
     }
     runtime_checkpoint();return true;
 }
-void pbc_destroy(Portable *p){if(p){demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
+void pbc_destroy(Portable *p){if(p){demo_free(p->inputs);demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
 const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     *out=NULL;uint8_t h[96];
     if(size<96||size>32768||!read(context,0,h,96)||memcmp(h,"LBC1",4)||lbc_u32(h+4)!=4)return "invalid portable header";
@@ -233,12 +238,15 @@ const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
         if(type==P_REF&&((role==R_CONST&&value>=p->nresources)||(role!=R_CONST&&role!=R_INPUT&&role!=R_LOCAL)||(role!=R_CONST&&value)))goto fail;
         if(role==P_SETTING&&(type>T_BOOL||value))goto fail;
     }
+    error=inputs_load(p);if(error)goto fail;
+    error="invalid input read site";
     for(unsigned n=0;n<p->ncalls;n++){
         PbcCall item=pbc_call(p,n);const PbcCall *call=&item;
         if((call->binding<3||(call->binding>=18&&call->binding<=26))||call->binding>=sizeof(natives)/sizeof(*natives)){error="invalid native binding";goto fail;}
         const NativeSignature *sig=&natives[call->binding];
         if(call->argc!=sig->argc)goto fail;
         for(unsigned k=0;k<8;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
+        if(call->binding>=55&&!inputs_call_valid(p,call->binding,call->args[0]))goto fail;
     }
     error="invalid portable declarations";
     if(!valid_expressions(p))goto fail;
@@ -448,6 +456,7 @@ static bool random_range(Portable *p,int64_t start,int64_t stop,int64_t step,Pbc
  * Bodies below implement library versions, not compiler-specific AST behaviour. */
 static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
     PbcValue a[8]={{0}};for(unsigned k=0;k<site->argc;k++)a[k]=pbc_value(p,site->args[k]);
+    if(site->binding>=55){if(a[0].u>=p->ninputs)return false;*result=p->inputs[a[0].u].snapshot;return true;}
     if(site->binding>=18){uint64_t started=platform_time_us();bool ok=pbc_drawing_call(p,site,a,result);p->native_draw_us+=platform_time_us()-started;return ok;}
     switch(site->binding){
     case 3:result->f=(random_word(p)>>8)*0x1p-24f;return true;

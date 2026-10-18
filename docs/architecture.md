@@ -25,7 +25,8 @@ These terms have specific meanings:
 | **Preset** | A named, saved composition definition, including animation versions and layer settings. |
 | **Transition** | A method of combining compositions A and B at a given progress, such as crossfade or wipe. |
 | **Settings** | Initialization values for an animation or transition instance. |
-| **Controls** | User interface inputs; future live bindings will use this term rather than calling them settings. |
+| **Inputs** | Declared live values on a program instance, driven by constants, timers or named sources. |
+| **Controls** | User interface controls for settings, input values and wiring. |
 
 For example, one composition can contain two Sweep layers. One layer produces a red
 eye. The other layer produces a blue eye. Both layers can use the same stored

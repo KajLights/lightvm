@@ -7,6 +7,7 @@ export function programCompatibility(target: Description, manifest: Manifest): s
   if (manifest.schema !== 'lightvm.program' || !['animation', 'transition'].includes(manifest.profile) || manifest.pixels?.format !== 'rgba8-premul')
     return 'Recompile this program with the release-based compiler.';
   if (manifest.profile === 'transition' && !target.transition_programs) return 'Install firmware with Python transition support.';
+  if (manifest.inputs?.length && !target.live_inputs) return 'Install firmware with live input support.';
   return releaseError(target.version, manifest.requires);
 }
 export function supportsProgram(target: Description, manifest: Manifest) {

@@ -1,17 +1,17 @@
 import { parseRelease } from './release';
 import { crc32 } from '../protocol.mjs';
-import type { Compilation, Manifest, Setting, TransitionSpec } from './types';
+import type { Compilation, InputBindings, Manifest, Setting, TransitionSpec } from './types';
 
 export type SettingsValues = Record<string, number | boolean>;
 export type Blend = 'over' | 'add' | 'screen' | 'multiply';
 export interface SavedAnimation {
   id: string; name: string; version: number; filename: string; source: string;
-  bytecode: string; digest: string; manifest: Manifest; settings: SettingsValues;
+  bytecode: string; digest: string; manifest: Manifest; settings: SettingsValues; inputs?: InputBindings;
 }
-export interface PresetLayer { id: string; animation: string; settings: SettingsValues; opacity: number; blend: Blend }
+export interface PresetLayer { id: string; animation: string; settings: SettingsValues; inputs?: InputBindings; opacity: number; blend: Blend }
 export interface SavedPreset { id: string; name: string; layers: PresetLayer[]; entry_transition?: TransitionSpec }
 export interface Library { schema: 'lightvm.library'; animations: SavedAnimation[]; presets: SavedPreset[] }
-export interface CompositionLayer { id: string; program: string; crc32: number; settings: SettingsValues; opacity: number; blend: Blend }
+export interface CompositionLayer { id: string; program: string; crc32: number; settings: SettingsValues; inputs?: InputBindings; opacity: number; blend: Blend }
 export const LIBRARY_KEY = 'lightvm.library.v1';
 export const BLENDS: Blend[] = ['over', 'add', 'screen', 'multiply'];
 export const emptyLibrary = (): Library => ({ schema: 'lightvm.library', animations: [], presets: [] });
@@ -33,6 +33,37 @@ export function validateSetting(setting: Setting, value: unknown) {
     (setting.type !== 'rgb8' || (value >= 0 && value <= 0xffffff)) &&
     (setting.minimum === undefined || value >= setting.minimum) && (setting.maximum === undefined || value <= setting.maximum);
   if (!valid) throw new Error('Enter a valid ' + setting.type + ' value for ' + setting.name + '.');
+}
+export function inputsFor(manifest: Manifest, bindings: InputBindings): InputBindings {
+  if (!bindings || typeof bindings !== 'object' || Array.isArray(bindings)) throw new Error('Input bindings must be an object.');
+  for (const [name, binding] of Object.entries(bindings)) {
+    const declaration = manifest.inputs?.find(input => input.name === name);
+    if (!declaration) throw new Error('Unknown input: ' + name + '.');
+    if (!binding || typeof binding !== 'object' || Array.isArray(binding)) throw new Error('Invalid binding for ' + name + '.');
+    const keys = Object.keys(binding);
+    if ('value' in binding) { if (keys.length !== 1) throw new Error('Use one driver for ' + name + '.'); validateSetting(declaration, binding.value); }
+    else if ('default' in binding) { if (keys.length !== 1 || binding.default !== true) throw new Error('default must be true.'); }
+    else if ('driver' in binding) {
+      const driver = binding.driver;
+      if (keys.length !== 1 || declaration.type !== 'float' || !driver || driver.kind !== 'ramp' || !Number.isFinite(driver.duration) || driver.duration <= 0 || driver.duration > 1e9 ||
+        !['once', 'repeat', 'pingpong'].includes(driver.mode) || (driver.easing !== undefined && !['linear', 'smoothstep'].includes(driver.easing)) ||
+        (driver.restart !== undefined && typeof driver.restart !== 'boolean') || Object.keys(driver).some(key => !['kind','duration','mode','easing','from','to','restart'].includes(key))) throw new Error('Invalid timer for ' + name + '.');
+      validateSetting(declaration, driver.from ?? 0); validateSetting(declaration, driver.to ?? 1);
+    } else if ('source' in binding) {
+      if (!/^[A-Za-z0-9_.-]{1,32}$/.test(binding.source) || keys.some(key => !['source','timeout_ms','fallback','map'].includes(key)) ||
+        (binding.timeout_ms !== undefined && (!Number.isInteger(binding.timeout_ms) || binding.timeout_ms < 0 || binding.timeout_ms > 0xffffffff)) ||
+        (binding.fallback !== undefined && !['default','hold'].includes(binding.fallback))) throw new Error('Invalid source binding for ' + name + '.');
+      if (binding.map !== undefined) {
+        const map = binding.map;
+        if (!['int','float'].includes(declaration.type) || !map || Object.keys(map).length !== 4 ||
+          ![map.input_min,map.input_max,map.output_min,map.output_max].every(value => typeof value === 'number' && Number.isFinite(value)) || map.input_min >= map.input_max) throw new Error('Invalid mapping for ' + name + '.');
+        const nearest = (value: number) => Math.sign(value) * Math.floor(Math.abs(value) + 0.5);
+        validateSetting(declaration, declaration.type === 'int' ? nearest(map.output_min) : map.output_min);
+        validateSetting(declaration, declaration.type === 'int' ? nearest(map.output_max) : map.output_max);
+      }
+    } else throw new Error('Choose a value, timer, source or default for ' + name + '.');
+  }
+  return structuredClone(bindings);
 }
 export function programManifest(bytes: Uint8Array): Manifest {
   const invalid = () => new Error('Unsupported compiled program. Recompile its source with the current compiler.');
@@ -62,7 +93,7 @@ export function validateArtifact(bytes: Uint8Array, manifest: Manifest) {
   const canonical = (value: any): any => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
   if (JSON.stringify(canonical(embedded)) !== JSON.stringify(canonical(manifest))) throw invalid();
 }
-export async function saveAnimation(library: Library, compiled: Compilation, filename: string, name: string, settings: SettingsValues) {
+export async function saveAnimation(library: Library, compiled: Compilation, filename: string, name: string, settings: SettingsValues, inputs: InputBindings = {}) {
   validateArtifact(compiled.bytecode, compiled.manifest);
   if (!name.trim() || name.length > 80) throw new Error('Give the animation a name of 1–80 characters.');
   const version = Math.max(0, ...library.animations.filter(item => item.name === name.trim()).map(item => item.version)) + 1;
@@ -70,6 +101,7 @@ export async function saveAnimation(library: Library, compiled: Compilation, fil
     id: crypto.randomUUID(), name: name.trim(), version, filename, source: compiled.source,
     bytecode: btoa(Array.from(compiled.bytecode, byte => String.fromCharCode(byte)).join('')),
     digest: await digestFor(compiled.bytecode), manifest: compiled.manifest, settings: settingsFor(compiled.manifest, settings),
+    ...(Object.keys(inputs).length ? { inputs: inputsFor(compiled.manifest, inputs) } : {}),
   };
   return { animation, library: { ...library, animations: [...library.animations, animation] } };
 }
@@ -79,7 +111,9 @@ export function compositionLayers(library: Library, layers: PresetLayer[]): Comp
     const animation = library.animations.find(item => item.id === layer.animation);
     if (!animation) throw new Error('The saved animation for layer ' + layer.id + ' is missing.');
     if (animation.manifest.profile === 'transition') throw new Error('A transition combines A and B; it cannot be a composition layer.');
-    return { id: layer.id, program: programName(animation), crc32: crc32(bytesFor(animation)), settings: settingsFor(animation.manifest, layer.settings), opacity: layer.opacity, blend: layer.blend };
+    const inputs = inputsFor(animation.manifest, layer.inputs ?? animation.inputs ?? {});
+    return { id: layer.id, program: programName(animation), crc32: crc32(bytesFor(animation)), settings: settingsFor(animation.manifest, layer.settings), opacity: layer.opacity, blend: layer.blend,
+      ...(Object.keys(inputs).length ? { inputs } : {}) };
   });
 }
 
@@ -109,6 +143,7 @@ export function parseLibrary(text: string): Library {
     for (const setting of animation.manifest.settings ?? []) if (!setting || typeof setting.name !== 'string' || !['bool', 'int', 'rgb8', 'float'].includes(setting.type)) throw new Error('Invalid animation setting.');
     validateArtifact(bytesFor(animation), animation.manifest);
     settingsFor(animation.manifest, animation.settings);
+    inputsFor(animation.manifest, animation.inputs ?? {});
   }
   const presetIds = new Set<string>();
   for (const preset of library.presets) {

@@ -53,6 +53,18 @@ class SpriteBatch:
         raise RuntimeError("SpriteBatch is provided by the compiled native runtime")
 
 
+class Input:
+    """Static typed live-input declaration, read with runtime.input(handle)."""
+    def __init__(self, name, *, default=0.0, minimum=None, maximum=None, unit="", driver=None):
+        raise RuntimeError("Input is provided by the compiled native runtime")
+
+
+class Ramp:
+    """Default normalized timed driver; duration is seconds per traversal."""
+    def __init__(self, *, duration, mode="once", easing="linear"):
+        raise RuntimeError("Ramp is a compiled driver description")
+
+
 class Sprite:
     """Compile-time definition: init(s, runtime, ...), render(s, runtime, pixels)."""
     def __init__(self, *, width, render, init=None):

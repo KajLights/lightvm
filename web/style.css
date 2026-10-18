@@ -315,3 +315,11 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .fader-timed > .primary { margin-top: 20px; }
 @media (max-width: 750px) { .fader-layout { grid-template-columns: 1fr; } .fader-card { padding: 22px; } }
 @media (max-width: 420px) { .fader-slots { gap: 10px; } .fader-slot { padding: 12px; } }
+/* Live inputs remain compact enough for the editor sidebar. */
+.live-input-control { border-top: 1px solid var(--line, #29323b); padding: 12px 0; }
+.live-input-heading, .live-input-actions { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.live-input-heading output { font-variant-numeric: tabular-nums; color: var(--muted, #9aa6b2); font-size: .85rem; }
+.live-input-actions > * { min-width: 0; flex: 1; }
+.live-inputs details, .input-recipe { margin: 10px 0; }
+.live-inputs summary, .input-recipe summary { cursor: pointer; font-size: .85rem; }
+.input-recipe textarea { min-height: 7rem; font: .8rem/1.5 monospace; }

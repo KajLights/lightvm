@@ -100,10 +100,10 @@ later manual edit. A controller that loses the browser's publications falls back
 to the Eye's declared values after one second. Start listening and take control
 again explicitly after returning to the page.
 
-The live input core and canonical `eye.py` are implemented in the companion
-**Plan wireable animation inputs** change. This demo is an independent browser
-adapter for that protocol; local preview and capture also work before that
-firmware is installed.
+The repository includes the live input core and canonical `eye.py` example.
+This demo is a browser adapter for the same protocol; local preview and capture
+also work without a controller. A connected Pico must run matching firmware
+that reports `live_inputs: true`.
 
 Run `npm test` and `npm run build` for browser checks. To also exercise the
 adapter against the companion native core, compile its Eye example and run:

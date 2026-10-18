@@ -39,13 +39,17 @@ There are no implicit `time`, `delta`, `count`, `index` or `pixels` globals.
 `ctx` holds per-instance scalar fields and managed arrays. Declare fields directly
 in init, before using them. Their types and array bindings stay fixed. Render may
 change ordinary context fields and array elements. Mutable module-level state and `global`
-are unsupported; readonly PixelArray artwork and Sprite definitions may be
-declared at module scope.
+are unsupported; readonly PixelArray artwork, Sprite definitions and static Input
+declarations may be declared at module scope.
 
 `runtime.time` is the pausable elapsed program time in seconds. `runtime.delta`
 is the actual elapsed time supplied for this render, also in seconds.
 `runtime.pixel_count` is available during initialization and rendering.
 Runtime properties are read-only. `pixels.count` describes the output buffer.
+Programs can additionally declare [live inputs](inputs.md) and read their stable
+per-render snapshots with `runtime.input(HANDLE)`, including in sprite renders.
+Default timed drivers allow a program to run autonomously until a recipe replaces
+its input wiring. These controls are distinct from initialization settings.
 Pixels support indexed reads/writes and `fill(color, start=0, stop=pixels.count)`;
 stop is exclusive. Each render starts with transparent working pixels.
 
@@ -139,7 +143,7 @@ access to the caller objects. The subset supports scalar arithmetic, comparisons
 conditionals, `range(bound)` loops, break/continue, int/float and two-argument
 min/max. Numbers use signed wrapping i32, binary32 floats, bool and packed RGB8.
 General Python objects, arbitrary imports, exceptions and dynamic allocation are
-unsupported. Sprite, PixelArray, Transform and ColorTransform are statically
+unsupported. Input, Ramp, Sprite, PixelArray, Transform and ColorTransform are statically
 compiled SDK descriptions rather than arbitrary Python objects. Standard-library support is limited to the forms above.
 
 ## Package and validation
@@ -164,7 +168,7 @@ tracks elapsed time; snapshots are passive. The fixed-step statistics and cycle
 fields have been removed. FRAME keeps its existing wire range of 0..1000 ms;
 autonomous playback supplies its complete elapsed delta without clamping it.
 
-Tests compile the six Python examples in `examples/animations/`.
+Tests compile the Python examples in `examples/animations/`.
 An independent Python caller checks Color, Pattern, and Rainbow output.
 Sprite tests check Stars, Rainbow Sprite and Sweep, including transparency,
 clocks, movement, retained wipe modes and frame-independent sampled trails.

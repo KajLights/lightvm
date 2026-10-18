@@ -9,6 +9,7 @@ import math
 import struct
 from pathlib import Path
 from .sprite_compiler import SpriteCompiler, FEATURE_NATIVES
+from .input_compiler import InputCompiler
 from .release import VERSION, BASELINE, normalize_release, release_error
 from .compiler_core import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE
 
@@ -31,15 +32,17 @@ NATIVES.update(FEATURE_NATIVES)
 NATIVES.update({
     'composition_mix': (53, 0, (6, F, I, I), 0),
     'composition_copy': (54, 0, (6, I, I, I), 0),
+    'input_int': (55, I, (I,), 4), 'input_float': (56, F, (I,), 4),
+    'input_color': (57, C, (I,), 4), 'input_bool': (58, B, (I,), 4),
 })
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
-PUBLIC = {'requires', 'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
+PUBLIC = {'requires', 'profile', 'setting', 'Input', 'Ramp', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
 LIBRARIES = {'lightvm.motion', 'lightvm.easing', 'lightvm.transitions'}
 
 
-class PortableCompiler(SpriteCompiler, Compiler):
+class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
     def __init__(self, source, optimize=True):
         super().__init__(source)
         self.optimize = optimize
@@ -61,6 +64,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         self.fields, self.caps, self.declarations, self.imports = {}, {}, {}, {}
         self.rights, self.depth = 0, 0
         self.feature_setup()
+        self.input_setup()
         self.expressions.append((0, I, 0, 0, 0))
         count = len(self.expressions); self.expressions.append((1, I, 0, 0, 0))
         black = self.declarative(ast.Call(func=ast.Name(id='rgb'), args=[ast.Constant(value=0)]*3, keywords=[]))
@@ -200,6 +204,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
             self.fail(node, 'stage cannot mutate this resource')
 
     def expr(self, n):
+        live_input = self.input_read(n)
+        if live_input is not None: return live_input
         feature = self.feature_expr(n)
         if feature is not None: return feature
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id.startswith('lightvm.builtin.'):
@@ -371,6 +377,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         return self.native(name, regs, node)
 
     def assign(self, name, value, node):
+        if name in self.input_symbols: self.fail(node, 'Input declarations cannot be rebound')
         if name in self.caps or name in self.imports: self.fail(node, 'cannot rebind a caller argument or import')
         target = self.env.get(name)
         if target is None: target = self.reg(self.typ(value)); self.env[name] = target
@@ -380,6 +387,7 @@ class PortableCompiler(SpriteCompiler, Compiler):
         self.emit('MOV', target, value)
 
     def assign_target(self, target, value, node):
+        if isinstance(target, ast.Name) and target.id in self.input_symbols: self.fail(node, 'Input declarations cannot be rebound')
         if isinstance(target, ast.Name): return self.assign(target.id, value, node)
         if isinstance(target, ast.Attribute) and self.capability(target.value) == 'sprite':
             return self.sprite_set(target.attr, value, node)
@@ -594,10 +602,13 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 self.image_declaration(n.targets[0],n.value,n,module=True)
             elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='Sprite':
                 self.sprite_definition(n.targets[0],n.value,n)
+            elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='Input':
+                self.input_declaration(n.targets[0],n.value,n)
             elif isinstance(n, ast.FunctionDef):
                 if n.args.posonlyargs or n.args.kwonlyargs or n.args.vararg or n.args.kwarg or n.args.defaults or n.args.kw_defaults: self.fail(n, 'simple positional functions required')
                 if len({a.arg for a in n.args.args}) != len(n.args.args): self.fail(n, 'duplicate argument')
-                if n.name in self.helpers or any(fn.name == n.name for fn in self.funcs.values()) or n.name in self.imports: self.fail(n, 'duplicate function name')
+                if n.name in self.helpers or any(fn.name == n.name for fn in self.funcs.values()) or n.name in self.imports or n.name in self.input_symbols: self.fail(n, 'duplicate function name')
+                if any(a.arg in self.input_symbols for a in n.args.args): self.fail(n, 'function argument shadows an Input declaration')
                 if not n.decorator_list: self.helpers[n.name] = n; continue
                 if len(n.decorator_list) != 1 or not isinstance(n.decorator_list[0], ast.Name): self.fail(n, 'use @init or @render without arguments')
                 role = n.decorator_list[0].id
@@ -607,6 +618,8 @@ class PortableCompiler(SpriteCompiler, Compiler):
             elif not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)):
                 self.fail(n, 'module state is unsupported; initialize ctx fields in @init')
         if not marked or 'render' not in self.funcs: raise CompileError('program requires a profile and @render entry')
+        for fn in (*self.helpers.values(), *self.funcs.values()):
+            if any(arg.arg in self.input_symbols for arg in fn.args.args): self.fail(fn, 'function argument shadows an Input declaration')
         if minimum_release and release_error(minimum_release, BASELINE):
             raise CompileError('source requires a release below the supported feature floor ' + BASELINE)
         functions = []
@@ -630,6 +643,12 @@ class PortableCompiler(SpriteCompiler, Compiler):
         # features raise their own floor, never every program's compiler floor.
         manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or BASELINE,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
+        if self.input_manifest: manifest['inputs'] = self.input_manifest
+        def json_tokens(value):
+            if isinstance(value, dict): return 1 + sum(1 + json_tokens(item) for item in value.values())
+            if isinstance(value, list): return 1 + sum(map(json_tokens, value))
+            return 1
+        if json_tokens(manifest) > 256: raise CompileError('program metadata exceeds the native JSON token limit (256)')
         metadata = json.dumps(manifest,separators=(',',':'),allow_nan=False).encode()
         header = struct.pack('<4s23I', b'LBC1', 4, len(self.regs), len(self.code), len(self.table), len(functions), len(self.resources), len(self.expressions), len(self.calls), len(self.settings),
                              0, 1, 0, 0, 0, 0, 0, 0, 4 if self.profile_name == 'transition' else 3, len(metadata), 0, 0, 0, 0)

@@ -133,7 +133,8 @@ export function Fader() {
     if (canDrop(event)) void loadAnimation(event.dataTransfer.getData(ANIMATION_DRAG_TYPE), slot);
   }
   const driver = owned ? 'Fader controls the transition' : state?.driver.kind === 'timed' ? 'Timed transition running'
-    : state?.driver.kind === 'source' ? state.driver.source === FADER_SOURCE ? 'Fader released · Use fader to reconnect' : 'Controlled by ' + state.driver.source : 'Holding current position';
+    : state?.driver.kind === 'source' ? state.driver.source === FADER_SOURCE ? 'Fader released · Use fader to reconnect' : 'Controlled by ' + state.driver.source
+    : state?.driver.kind === 'input' ? 'Controlled by an input binding' : 'Holding current position';
   const develop = '/controllers/' + encodeURIComponent(controller.description?.controller_id ?? '') + '/develop';
   function compositionLabel(slot: 'A' | 'B') {
     const selected = slotLabels[slot];

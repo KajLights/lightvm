@@ -52,6 +52,9 @@ static const char *start(VmInstance *a,uint64_t delta,bool manual){
     if(!manual&&p->active_wall_us>UINT64_MAX-delta)return "wall clock overflow";
     memset(c->working,0,control_frame_bytes(a));
     a->render_cpu_us=0;
+    /* A transition owner captures progress, fronts and live controls together.
+       Its preparation uses defaults; subsequent evaluations retain that capture. */
+    if(p->profile!=4||!c->initialized)inputs_capture(p,c->program_us+delta,p->profile==4);
     if(!invoke(a,1,c->program_us+delta,delta))return fault(a,"portable invocation rejected");
     if(!manual)p->active_wall_us+=delta;
     c->in_step=true;return NULL;
@@ -62,6 +65,7 @@ static const char *complete_render(VmInstance *a){
     return status<0?fault(a,"portable execution fault"):finish(a);
 }
 const char *animation_prepare(VmInstance *a){
+    if(a->portable->profile==4)a->portable->input_epoch=platform_time_us();
     const char *error=pbc_prepare(a->portable,&a->view);
     if(!error&&!invoke(a,0,0,0))error="portable invocation rejected";
     if(!error){

@@ -38,6 +38,8 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
         if target is not None:
             if manifest['profile'] == 'transition' and not target.get('transition_programs'):
                 raise CompileError('target requires Python transition support')
+            if manifest.get('inputs') and not target.get('live_inputs'):
+                raise CompileError('target requires live input support')
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
             error = release_error(target.get('version'), manifest['requires'])

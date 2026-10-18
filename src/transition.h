@@ -4,7 +4,7 @@
 typedef enum { TRANSITION_CROSSFADE, TRANSITION_WIPE, TRANSITION_SOFT_WIPE,
     TRANSITION_DISSOLVE, TRANSITION_DIP, TRANSITION_FLASH, TRANSITION_CUSTOM,
     TRANSITION_PROGRAM, TRANSITION_EFFECT_COUNT } TransitionEffect;
-typedef enum { TRANSITION_MANUAL, TRANSITION_TIMED, TRANSITION_SOURCE } TransitionDriver;
+typedef enum { TRANSITION_MANUAL, TRANSITION_TIMED, TRANSITION_SOURCE, TRANSITION_INPUT } TransitionDriver;
 typedef struct {
     VmInstance vm;
     uint8_t *baseline;
@@ -21,6 +21,7 @@ typedef struct {
     double progress, sampled_progress, start, target_progress, duration, interval;
     TransitionEffect effect;
     TransitionDriver driver;
+    InputPort *input; InputRegistry *input_registry;
     char source[OBJECT_NAME_LIMIT+1], error[100];
     bool playing, composing, prepared, pending, dirty, ticking, command_active;
     /* Named transition in [0], or legacy reveal mask [0] and RGBA paint [1]. */
@@ -39,6 +40,7 @@ bool transition_run(Transition *, double target, double duration_ms);
 bool transition_run_interval(Transition *, double target, double duration_ms, double interval_ms);
 bool transition_assign(Transition *, const char *source);
 bool transition_source(Transition *, const char *source, uint32_t assignment, double);
+const char *transition_bind(Transition *,InputRegistry *,const Json *,int);
 void transition_hold(Transition *);
 void transition_tick(Transition *, unsigned budget);
 void transition_play(Transition *, bool);

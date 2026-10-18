@@ -250,6 +250,7 @@ static void network_transactions(void) {
 }
 
 #include "portable_contract.inc"
+#include "inputs_contract.inc"
 #include "composition_contract.inc"
 #include "transition_contract.inc"
 
@@ -496,6 +497,7 @@ int main(void) {
     session_destroy(&session); app_destroy(&app);
     network_transactions();
     portable_contract();
+    inputs_contract();
     composition_contract();
     transition_contract();
     return 0;
