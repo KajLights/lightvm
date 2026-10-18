@@ -23,6 +23,7 @@ export function App() {
   const configure = validController && route?.params.view === 'configure';
   const fader = validController && route?.params.view === 'fader';
   const audio = location.pathname === '/audio' || (validController && route?.params.view === 'audio');
+  const meyda = location.pathname === '/meyda' || (validController && route?.params.view === 'meyda');
   const firmware = location.pathname === '/firmware' || (validController && route?.params.view === 'firmware');
   const [openedDevelop, setOpenedDevelop] = useState(false), [openedConfigure, setOpenedConfigure] = useState(false);
   useEffect(() => { if (develop) setOpenedDevelop(true); if (configure) setOpenedConfigure(true); }, [develop, configure]);
@@ -30,11 +31,11 @@ export function App() {
   const busy = Boolean(activity.operation), description = controller.description;
 
   if (location.pathname === '/') return <Navigate to="/controllers" replace />;
-  const knownRoute = location.pathname === '/controllers' || offline || firmware || audio || (workspace && ['develop', 'fader', 'configure'].includes(route!.params.view || ''));
+  const knownRoute = location.pathname === '/controllers' || offline || firmware || audio || meyda || (workspace && ['develop', 'fader', 'configure'].includes(route!.params.view || ''));
   return <>
     <header className="site-header">
       <Link className="brand" to="/controllers"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span className="version">{VERSION}</span></Link>
-      <nav className="global-nav" aria-label="Application"><Link to="/controllers" aria-current={location.pathname === '/controllers' ? 'page' : undefined}>Controllers</Link><Link to="/audio" aria-current={audio ? 'page' : undefined}>Audio demo</Link><Link to="/firmware" aria-current={location.pathname === '/firmware' ? 'page' : undefined}>Firmware</Link></nav>
+      <nav className="global-nav" aria-label="Application"><Link to="/controllers" aria-current={location.pathname === '/controllers' ? 'page' : undefined}>Controllers</Link><Link to="/audio" aria-current={audio || meyda ? 'page' : undefined}>Audio demo</Link><Link to="/firmware" aria-current={location.pathname === '/firmware' ? 'page' : undefined}>Firmware</Link></nav>
       <span className={'badge ' + (controller.selectedPath ? 'ready' : '')}><span className="status-dot" /><span>{controller.selectedPath && description ? description.board : 'No controller connected'}</span></span>
     </header>
     <main>
@@ -58,7 +59,7 @@ export function App() {
         <nav className="workspace-tabs" aria-label="Controller workspace">
           <Link to={controllerRoute(description.controller_id, 'develop')} aria-current={develop ? 'page' : undefined}>Develop</Link>
           <Link to={controllerRoute(description.controller_id, 'fader')} aria-current={fader ? 'page' : undefined}>Fader</Link>
-          <Link to={controllerRoute(description.controller_id, 'audio')} aria-current={audio ? 'page' : undefined}>Audio demo</Link>
+          <Link to={controllerRoute(description.controller_id, 'audio')} aria-current={audio || meyda ? 'page' : undefined}>Audio demo</Link>
           <Link to={controllerRoute(description.controller_id, 'configure')} aria-current={configure ? 'page' : undefined}>Configure</Link>
           <Link to={controllerRoute(description.controller_id, 'firmware')} aria-current={firmware ? 'page' : undefined}>Firmware</Link>
         </nav>
@@ -71,7 +72,7 @@ export function App() {
       {openedDevelop && <div hidden={!develop}><Develop active={develop} /></div>}
       {openedConfigure && <div hidden={!configure}><Configure key={description?.controller_id || 'none'} /></div>}
       {fader && <Fader />}
-      {audio && <AudioEye />}
+      {(audio || meyda) && <AudioEye engine={meyda ? 'meyda' : 'web-audio'} />}
       {firmware && <Firmware usbConnected={controller.paths.some(path => path.key === 'usb')} />}
       {!knownRoute && <section className="empty-state"><h1>Select a controller to continue.</h1><p>Connect to a controller to open its workspace.</p><Link className="button primary" to="/controllers">Choose a controller</Link></section>}
       {develop && <span id="compiler-state" className="sr-only">{editor.compiler === 'ready' ? 'Compiler ready' : editor.compiler === 'error' ? 'Compiler unavailable' : 'Loading compiler'}</span>}

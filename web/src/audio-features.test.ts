@@ -76,4 +76,17 @@ describe('microphone lifecycle', () => {
     await expect(new MicrophoneAudio(vi.fn(), vi.fn(), () => DEFAULT_RESPONSE).start('')).rejects.toThrow('Permission denied');
     expect(mock.close).toHaveBeenCalled();
   });
+  it('feeds captured samples to the selected processor and stops if extraction fails', async () => {
+    vi.useFakeTimers(); const mock = audio();
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: vi.fn(async () => mock.stream) } });
+    const frame = vi.fn(), failed = vi.fn(), analysis = { features: { ...SILENCE, flatness: 0.5 } };
+    const processor = vi.fn(() => analysis), capture = new MicrophoneAudio(frame, failed, () => DEFAULT_RESPONSE, processor);
+    await capture.start(''); await vi.advanceTimersByTimeAsync(33);
+    expect(processor).toHaveBeenCalledWith(expect.any(Float32Array), expect.any(Float32Array), 48000, expect.any(Number), DEFAULT_RESPONSE);
+    expect(frame).toHaveBeenCalledWith(analysis.features, analysis);
+    processor.mockImplementationOnce(() => { throw new Error('Analysis failed'); });
+    await vi.advanceTimersByTimeAsync(33);
+    expect(failed).toHaveBeenCalledWith(expect.objectContaining({ message: 'Analysis failed' }));
+    expect(mock.stop).toHaveBeenCalled(); expect(mock.close).toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
+  });
 });

@@ -32,8 +32,48 @@ It sums linear spectral power within each band before normalizing. Spectral
 centroid weights frequency by amplitude. The onset signal is an energy-rise
 pulse with warmup and a refractory interval. It is not a beat tracker, BPM
 estimate or musical phase. Native Web Audio is sufficient for this demo;
-Meyda or a dedicated rhythm analyzer can supply richer signals later without
-changing the Eye's declared input contract.
+The separate Meyda page supplies richer signals through the same Eye input
+contract. A dedicated rhythm analyzer could add beat tracking later.
+
+## Meyda comparison
+
+Choose **Meyda comparison** beside **Web Audio**, or open `/#/meyda`. This page
+uses the pinned Meyda 5.6.3 package. A single microphone capture supplies both
+analyzers about 30 times per second. The main Eye and its input mappings use
+Meyda, while the comparison table and reference Eye show the native adapter's
+response to the same captured sound. Both paths share the same sensitivity,
+noise floor, smoothing, band boundaries and level-rise onset detector.
+
+Meyda also exposes these normalized mapping signals:
+
+| Signal | Normalization |
+|---|---|
+| Spectral flatness | Meyda's 0–1 flatness |
+| Spectral roll-off | 99% magnitude roll-off frequency / Nyquist frequency |
+| Zero-crossing rate | Crossings / (frame sample count − 1) |
+
+The page shows raw RMS, centroid and roll-off in Hz, flatness, crossings per
+frame, Meyda loudness, twelve chroma pitch classes and 24 Bark loudness bands.
+Chroma values indicate relative pitch-class strengths; they do not identify a
+key. Bark bar heights are relative to the strongest current band; the raw total
+loudness is in Meyda units and is not calibrated SPL or LUFS.
+
+Extraction calls Meyda's synchronous `extract()` on the same 2,048 PCM samples
+captured for the native analyzer. It does not use Meyda's ScriptProcessor-based
+real-time wrapper. A local Meyda instance owns its sample rate and cached
+filters. Both FFTs use Blackman windows, and the adapter divides Meyda's FFT
+magnitudes by the buffer length to match Web Audio's scaling. RMS uses Meyda's
+extractor on unwindowed PCM so both level controls agree. Small window and
+sampling differences remain; Meyda's centroid also includes the full spectrum,
+where the native adapter considers 40–12,000 Hz. Timings show main-thread
+feature work; the browser performs the native FFT separately.
+
+The reference Eye is shown when all four mappings use shared signals. When a
+mapping uses flatness, roll-off or zero crossings, the table still compares the
+six shared signals. Both pages can drive the running controller Eye. Switching
+pages stops capture and releases controller input ownership; common response
+controls and mappings remain while the component stays open. Meyda-specific
+mappings return to defaults when switching to Web Audio.
 
 To drive physical lights:
 
@@ -79,3 +119,5 @@ bindings. It uses an isolated temporary controller store.
 
 API references: [Web Audio AnalyserNode](https://www.w3.org/TR/webaudio/#the-analysernode-interface)
 and [Media Capture getUserMedia](https://w3c.github.io/mediacapture-main/#dom-mediadevices-getusermedia).
+Meyda references: [feature definitions](https://meyda.js.org/audio-features)
+and [source and API](https://github.com/meyda/meyda).

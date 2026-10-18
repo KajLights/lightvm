@@ -11,17 +11,18 @@ import { EYE_INPUTS, SILENCE } from './audio-features';
 import type { Description, ProgramState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
 
-const microphone = vi.hoisted(() => ({ frame: (_: any) => {}, start: vi.fn(async (_device: string) => {}), stop: vi.fn() }));
+const microphone = vi.hoisted(() => ({ frame: (_: any, _details?: any) => {}, processor: undefined as unknown,
+  start: vi.fn(async (_device: string) => {}), stop: vi.fn() }));
 vi.mock('./audio-features', async original => ({ ...await original<typeof import('./audio-features')>(),
   MicrophoneAudio: class {
-    constructor(frame: (value: any) => void) { microphone.frame = frame; }
+    constructor(frame: (value: any, details?: any) => void, _failed: unknown, _response: unknown, processor: unknown) { microphone.frame = frame; microphone.processor = processor; }
     start(device: string) { return microphone.start(device); }
     stop() { microphone.stop(); }
   },
 }));
 afterEach(async () => { cleanup(); await act(async () => {}); localStorage.clear(); vi.clearAllMocks(); vi.restoreAllMocks(); });
 
-function workspace(connected = false) {
+function workspace(connected = false, engine: 'web-audio' | 'meyda' = 'web-audio') {
   const store = createAppStore(), compiler = new Compiler(store), controllers = new ControllerService(store);
   const running = { output: 'lights', slot: 'B', layer: 'eye', generation: 7, paused: false, faulted: false,
     inputs_revision: 2, inputs: Object.fromEntries(EYE_INPUTS.map(name => [name, { value: 0, binding: { default: true }, fallback: false }])),
@@ -36,8 +37,9 @@ function workspace(connected = false) {
     controllers.paths.attach('usb', client as unknown as LightVMClient, description); controllers.syncPaths(description);
     store.dispatch(controllerActions.programState(running as unknown as ProgramState));
   }
-  const view = render(<Provider store={store}><MemoryRouter><RuntimeContext.Provider value={{ compiler, controllers }}><AudioEye /></RuntimeContext.Provider></MemoryRouter></Provider>);
-  return { ...view, store, client };
+  const element = (selected: 'web-audio' | 'meyda') => <Provider store={store}><MemoryRouter><RuntimeContext.Provider value={{ compiler, controllers }}><AudioEye engine={selected} /></RuntimeContext.Provider></MemoryRouter></Provider>;
+  const view = render(element(engine));
+  return { ...view, store, client, switchEngine: (selected: 'web-audio' | 'meyda') => view.rerender(element(selected)) };
 }
 describe('audio Eye workspace', () => {
   it('allows local audio preview without a controller and maps the incoming measurements', async () => {
@@ -77,5 +79,28 @@ describe('audio Eye workspace', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Release Eye' })).toBeEnabled());
     unmount();
     await waitFor(() => expect(client.json).toHaveBeenCalledTimes(3)); expect(microphone.stop).toHaveBeenCalled();
+  });
+  it('offers Meyda signals, measurements and simultaneous native readings', async () => {
+    workspace(false, 'meyda');
+    expect(screen.getByRole('heading', { name: 'Hear the difference with Meyda.' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · about 30/);
+    expect(microphone.processor).toBeTypeOf('function');
+    act(() => microphone.frame({ ...SILENCE, level: 0.8, flatness: 0.5 }, { features: { ...SILENCE, level: 0.8 }, reference: { ...SILENCE, level: 0.6 }, measurements: { centroidHz: 1200, rolloffHz: 3200, flatness: 0.5, rms: 0.1, crossings: 12, loudness: 3 } }));
+    expect(screen.getByLabelText('Web Audio level')).toHaveAttribute('value', '0.6');
+    expect(screen.getByLabelText('Meyda level')).toHaveAttribute('value', '0.8');
+    expect(screen.getByText('1200 Hz')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Signal for brightness'), { target: { value: 'flatness' } });
+    expect(screen.getByRole('img', { name: /^Eye preview/ })).toHaveAccessibleName(/brightness 0.50/);
+    expect(screen.queryByRole('img', { name: /^Web Audio reference Eye/ })).not.toBeInTheDocument();
+  });
+  it('stops capture on engine changes and retains common response controls', async () => {
+    const { switchEngine } = workspace(false, 'meyda');
+    fireEvent.change(screen.getByLabelText(/Sensitivity/), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('Signal for brightness'), { target: { value: 'flatness' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · about 30/);
+    switchEngine('web-audio');
+    expect(microphone.stop).toHaveBeenCalled(); expect(screen.getByText('Microphone off')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Sensitivity/)).toHaveValue('12');
+    expect(screen.getByLabelText('Signal for brightness')).toHaveValue('level');
   });
 });
