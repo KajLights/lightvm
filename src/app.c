@@ -348,6 +348,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"wifi_ap_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"recovery_supported\":"); literal(&w,LIGHTVM_POWER_RECOVERY?"true":"false");
     literal(&w,",\"http_supported\":"); literal(&w,LIGHTVM_HTTP?"true":"false");
+    literal(&w,",\"websocket_supported\":"); literal(&w,LIGHTVM_WEBSOCKET?"true":"false");
     literal(&w,",\"boot_sequence_supported\":"); literal(&w,LIGHTVM_BOOT_SEQUENCE?"true":"false");
 #if LIGHTVM_BOOT_SEQUENCE
     literal(&w,",\"boot_sequence\":{\"count\":"); number(&w,a->boot_sequence.count);

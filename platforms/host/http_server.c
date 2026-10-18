@@ -1,7 +1,11 @@
 #define _POSIX_C_SOURCE 200809L
 #include "http_server.h"
+#if LIGHTVM_WEBSOCKET
+#include "websocket.h"
+#endif
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -12,14 +16,25 @@
 static Http server;
 static Discovery discovery;
 static int listener=-1;
-typedef struct { int fd; HttpInput input; HttpRequest request; uint64_t deadline; } Connection;
+typedef struct { int fd; HttpInput input; HttpRequest request; uint64_t deadline;
+#if LIGHTVM_WEBSOCKET
+    WebSocket websocket;
+#endif
+} Connection;
 static Connection clients[8];
 static int output(void *ctx,const uint8_t *bytes,size_t size) {
     Connection *c=ctx; ssize_t n=send(c->fd,bytes,size,0);
     if (n<0 && (errno==EAGAIN || errno==EWOULDBLOCK || errno==EINTR)) return 0;
     return (int)n;
 }
-static bool close_connection(void *ctx) { Connection *c=ctx; if (c->fd>=0) close(c->fd); c->fd=-1; return true; }
+static bool close_connection(void *ctx) {
+    Connection *c=ctx;
+#if LIGHTVM_WEBSOCKET
+    websocket_closed(&c->websocket);
+#endif
+    if (c->fd>=0) close(c->fd);
+    c->fd=-1; return true;
+}
 void host_http_stop(void) {
     if (listener>=0) close(listener);
     listener=-1;
@@ -47,11 +62,31 @@ void host_http_poll(void) {
     uint64_t now=platform_time_us();
     int fd=accept(listener,NULL,NULL);
     if (fd>=0) {
-        Connection *c=NULL; for (unsigned i=0;i<8;i++) if (clients[i].fd<0) { c=&clients[i]; break; }
-        if (!c) close(fd); else { memset(c,0,sizeof(*c)); c->fd=fd; int send_buffer=4096; setsockopt(fd,SOL_SOCKET,SO_SNDBUF,&send_buffer,sizeof(send_buffer)); c->deadline=now+2000000u; fcntl(fd,F_SETFL,O_NONBLOCK); c->request.io=(HttpIO){c,output,close_connection}; }
+        Connection *c=NULL; for (unsigned i=0;i<8;i++) if (clients[i].fd<0
+#if LIGHTVM_WEBSOCKET
+            && !clients[i].websocket.source
+#endif
+        ) { c=&clients[i]; break; }
+        if (!c) close(fd); else { memset(c,0,sizeof(*c)); c->fd=fd; int send_buffer=4096; setsockopt(fd,SOL_SOCKET,SO_SNDBUF,&send_buffer,sizeof(send_buffer)); c->deadline=now+2000000u; fcntl(fd,F_SETFL,O_NONBLOCK); c->request.io=(HttpIO){c,output,close_connection};
+#if LIGHTVM_WEBSOCKET
+            int no_delay=1; setsockopt(fd,IPPROTO_TCP,TCP_NODELAY,&no_delay,sizeof(no_delay));
+            websocket_init(&c->websocket,&server,c->request.io,NULL); c->request.websocket=&c->websocket;
+#endif
+        }
     }
     for (unsigned i=0;i<8;i++) {
-        Connection *c=&clients[i]; if (c->fd<0 || c->input.ready) continue;
+        Connection *c=&clients[i];
+#if LIGHTVM_WEBSOCKET
+        websocket_tick(&c->websocket,now);
+        if (c->fd>=0 && c->websocket.upgraded) {
+            if (c->websocket.close_queued || c->websocket.failure) continue;
+            uint8_t bytes[512]; ssize_t n=recv(c->fd,bytes,sizeof(bytes),0);
+            if (n>0) websocket_feed(&c->websocket,bytes,(size_t)n,now);
+            else if (!n || (n<0 && errno!=EAGAIN && errno!=EWOULDBLOCK && errno!=EINTR)) close_connection(c);
+            continue;
+        }
+#endif
+        if (c->fd<0 || c->input.ready) continue;
         uint8_t bytes[512]; ssize_t n=recv(c->fd,bytes,sizeof(bytes),0);
         if (n>0) {
             c->deadline=now+2000000u;

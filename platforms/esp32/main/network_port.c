@@ -13,6 +13,10 @@
 #include <string.h>
 #if LIGHTVM_HTTP
 #include "http.h"
+#if LIGHTVM_WEBSOCKET
+#include "websocket.h"
+#include <errno.h>
+#endif
 #include "esp_http_server.h"
 #include "lwip/sockets.h"
 #include "lwip/inet.h"
@@ -206,16 +210,29 @@ static void poll_discovery(uint64_t now,uint16_t port) {
     discovery_tick(&discovery,now);
 }
 static QueueHandle_t ingress,transmit;
-typedef struct { httpd_req_t *request; atomic_bool occupied,failed,done; bool closing; } Client;
+typedef struct { httpd_req_t *request; atomic_bool occupied,failed,done; bool closing;
+#if LIGHTVM_WEBSOCKET
+    WebSocket websocket;
+    atomic_bool websocket_ready,flushed;
+    bool flush_pending;
+#endif
+} Client;
 static Client clients[6];
 static atomic_bool stopping;
 typedef struct { Client *client; HttpRequest request; } Incoming;
-typedef struct { Client *client; size_t size; uint8_t bytes[512]; } Outgoing;
+typedef struct { Client *client; size_t size; uint8_t bytes[512];
+#if LIGHTVM_WEBSOCKET
+    bool flush;
+#endif
+} Outgoing;
 static void sender(void *ctx) {
     (void)ctx; Outgoing job;
     for (;;) {
         if (!xQueueReceive(transmit,&job,portMAX_DELAY)) continue;
         Client *c=job.client;
+#if LIGHTVM_WEBSOCKET
+        if (job.flush) { atomic_store(&c->flushed,true); continue; }
+#endif
         if (!job.size) {
             int fd=httpd_req_to_sockfd(c->request); httpd_handle_t server=c->request->handle;
             httpd_req_async_handler_complete(c->request); httpd_sess_trigger_close(server,fd);
@@ -238,14 +255,39 @@ static bool close_client(void *ctx) {
     Client *c=ctx;
     if (!c->closing) { Outgoing job={.client=c}; if (xQueueSend(transmit,&job,0)!=pdTRUE) return false; c->closing=true; }
     if (!atomic_load(&c->done)) return false;
+#if LIGHTVM_WEBSOCKET
+    if (atomic_load(&c->websocket_ready)) {
+        websocket_closed(&c->websocket);
+        if (c->websocket.source) return false;
+        atomic_store(&c->websocket_ready,false);
+    }
+#endif
+    c->closing=false;
     atomic_store(&c->occupied,false); return true;
 }
+#if LIGHTVM_WEBSOCKET
+static bool flush_client(void *ctx) {
+    Client *c=ctx;
+    if (atomic_load(&c->failed)) return false;
+    if (!c->flush_pending) {
+        atomic_store(&c->flushed,false);
+        Outgoing job={.client=c,.flush=true};
+        if (xQueueSend(transmit,&job,0)!=pdTRUE) return false;
+        c->flush_pending=true;
+    }
+    if (!atomic_load(&c->flushed)) return false;
+    c->flush_pending=false; return true;
+}
+#endif
 static esp_err_t request(httpd_req_t *r) {
     if (atomic_load(&stopping)) { httpd_resp_set_status(r,"503 Service Unavailable"); return httpd_resp_send(r,NULL,0); }
     Client *c=NULL;
     for (unsigned i=0;i<6;i++) { bool empty=false; if (atomic_compare_exchange_strong(&clients[i].occupied,&empty,true)) { c=&clients[i]; break; } }
     if (!c) { httpd_resp_set_status(r,"503 Service Unavailable"); return httpd_resp_send(r,NULL,0); }
-    atomic_store(&c->failed,false); atomic_store(&c->done,false); c->closing=false;
+    atomic_store(&c->failed,false); atomic_store(&c->done,false);
+#if LIGHTVM_WEBSOCKET
+    atomic_store(&c->websocket_ready,false);
+#endif
     Incoming incoming={.client=c}; HttpRequest *q=&incoming.request;
     q->discovery_only=r->handle==bootstrap_handle;
     snprintf(q->method,sizeof(q->method),"%s",r->method==HTTP_POST?"POST":r->method==HTTP_DELETE?"DELETE":r->method==HTTP_GET?"GET":"OPTIONS");
@@ -256,12 +298,27 @@ static esp_err_t request(httpd_req_t *r) {
         if (httpd_req_get_hdr_value_str(r,"Content-Type",type,sizeof(type))!=ESP_OK || strcmp(type,"application/octet-stream")) q->error=415;
         if (httpd_req_get_hdr_value_str(r,"X-LightVM-Session",q->token,sizeof(q->token))!=ESP_OK) q->error=400;
     }
+#if LIGHTVM_WEBSOCKET
+    q->websocket=&c->websocket;
+    if (!q->error && !strcmp(q->path,WEBSOCKET_PATH)) {
+        WebSocketHandshake handshake={0};
+        static const char *const fields[]={"Host","Upgrade","Connection","Sec-WebSocket-Version","Sec-WebSocket-Key"};
+        for (unsigned i=0;i<5;i++) {
+            char value[128];
+            if (httpd_req_get_hdr_value_str(r,fields[i],value,sizeof(value))==ESP_OK) websocket_header(&handshake,fields[i],value);
+        }
+        if (r->content_len) q->error=400; else q->error=websocket_upgrade(q,&handshake);
+    }
+#endif
     if (!q->error) while (q->size<r->content_len) {
         int n=httpd_req_recv(r,(char *)q->body+q->size,r->content_len-q->size);
         if (n<=0) { q->error=400; break; } q->size+=(size_t)n;
     }
     if (httpd_req_async_handler_begin(r,&c->request)!=ESP_OK) { atomic_store(&c->occupied,false); return ESP_FAIL; }
     q->io=(HttpIO){c,output,close_client};
+#if LIGHTVM_WEBSOCKET
+    if (q->websocket_action==WS_UPGRADE) { int enabled=1; setsockopt(httpd_req_to_sockfd(c->request),IPPROTO_TCP,TCP_NODELAY,&enabled,sizeof(enabled)); }
+#endif
     if (xQueueSend(ingress,&incoming,0)!=pdTRUE) {
         httpd_resp_set_status(c->request,"503 Service Unavailable"); httpd_resp_send(c->request,NULL,0);
         httpd_req_async_handler_complete(c->request); atomic_store(&c->occupied,false);
@@ -340,11 +397,31 @@ void esp32_network_poll(void) {
     poll_discovery(platform_time_us(),listening_port);
     if (handle) {
         Incoming incoming;
-        // Ingress is the four-command queue. Transfer only when the shared
-        // engine can execute it, so the two queues do not double capacity.
-        if (!http.sending && !http.count && xQueueReceive(ingress,&incoming,0)==pdTRUE) http_submit(&http,&incoming.request);
+        // Transfer native HTTP ingress only when the shared engine is free.
+        // WebSocket frames enter the portable queue on this engine owner.
+        if (!http.sending && !http.count && xQueueReceive(ingress,&incoming,0)==pdTRUE) {
+#if LIGHTVM_WEBSOCKET
+            Client *c=incoming.client;
+            c->flush_pending=false;
+            websocket_init(&c->websocket,&http,incoming.request.io,flush_client);
+            atomic_store(&c->websocket_ready,true);
+#endif
+            http_submit(&http,&incoming.request);
+        }
+#if LIGHTVM_WEBSOCKET
+        for (unsigned i=0;i<6;i++) {
+            Client *c=&clients[i];
+            if (!atomic_load(&c->occupied) || !atomic_load(&c->websocket_ready) || c->closing) continue;
+            websocket_tick(&c->websocket,platform_time_us());
+            if (atomic_load(&c->failed)) { http_cancel_io(&http,c); close_client(c); continue; }
+            if (!c->websocket.upgraded || c->websocket.close_queued || c->websocket.failure) continue;
+            uint8_t bytes[512]; int n=recv(httpd_req_to_sockfd(c->request),bytes,sizeof(bytes),MSG_DONTWAIT);
+            if (n>0) websocket_feed(&c->websocket,bytes,(size_t)n,platform_time_us());
+            else if (!n || (n<0 && errno!=EAGAIN && errno!=EWOULDBLOCK && errno!=EINTR)) { http_cancel_io(&http,c); close_client(c); }
+        }
+#endif
         http_tick(&http,platform_time_us());
-        for (unsigned i=0;i<6;i++) if (clients[i].closing && atomic_load(&clients[i].done) && (!http.sending || http.active.io.context!=&clients[i])) atomic_store(&clients[i].occupied,false);
+        for (unsigned i=0;i<6;i++) if (clients[i].closing && atomic_load(&clients[i].done) && (!http.sending || http.active.io.context!=&clients[i])) close_client(&clients[i]);
     }
 #endif
 }

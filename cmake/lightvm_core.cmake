@@ -12,7 +12,8 @@ function(lightvm_add_core)
     target_include_directories(lightvm_config INTERFACE "${LIGHTVM_ROOT}/src" "${CMAKE_CURRENT_BINARY_DIR}/generated")
     target_compile_definitions(lightvm_config INTERFACE
         LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
-        LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>)
+        LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>
+        LIGHTVM_WEBSOCKET=$<BOOL:${LIGHTVM_WEBSOCKET}>)
     target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
     target_compile_definitions(lightvm_config INTERFACE STORAGE_BYTES=${LIGHTVM_STORAGE_BYTES_VALUE} LIGHTVM_STORAGE_BACKEND=${LIGHTVM_STORAGE_BACKEND})
@@ -33,6 +34,9 @@ function(lightvm_add_core)
     endif()
     if(LIGHTVM_HTTP)
         target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/http.c" "${LIGHTVM_ROOT}/src/discovery.c")
+    endif()
+    if(LIGHTVM_WEBSOCKET)
+        target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/websocket.c")
     endif()
     if(LIGHTVM_BOOT_SEQUENCE)
         target_sources(lightvm_core PRIVATE "${LIGHTVM_ROOT}/src/boot_sequence.c")
