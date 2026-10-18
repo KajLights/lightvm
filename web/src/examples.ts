@@ -11,7 +11,7 @@ export const EXAMPLES = [
   { id: 'transition_crossfade', filename: 'crossfade.py', label: 'crossfade.py · transition', source: crossfade,
     description: 'A Python transition that blends the prepared A and B scenes at the supplied progress.' },
   { id: 'transition_wipe', filename: 'wipe.py', label: 'wipe.py · transition', source: wipe,
-    description: 'Reveal B across A. Set reverse for the opposite end, or separator for a three-pixel white peak at the boundary.' },
+    description: 'Reveal B across A. Set reverse for the opposite end, or separator for a three-pixel peak with a configurable colour at the boundary.' },
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
     description: 'Original picolights Rainbow: one colour cycle every 60 seconds. Override duration in the preview settings for faster motion.' },
   { id: 'stars', filename: 'stars.py', label: 'stars.py', source: stars,

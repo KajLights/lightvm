@@ -21,8 +21,10 @@ The [crossfade](../examples/transitions/crossfade.py) and
 [wipe](../examples/transitions/wipe.py) examples are the canonical sources.
 The wipe exposes frozen boolean `reverse` and `separator` settings through
 `@init`, using the same initialization and settings conventions as animations.
-`separator: true` draws a three-pixel white Sprite at the wipe boundary with
-RGB intensities 85, 255, 85 (33%, 100%, 33%). Both settings default to false.
+`separator: true` draws a three-pixel Sprite at the wipe boundary with
+intensities 33%, 100%, 33%. Both boolean settings default to false. The `rgb8`
+setting `color` tints the separator and defaults to white (RGB intensities
+85, 255, 85).
 
 ## Inputs and evaluation
 
@@ -95,6 +97,8 @@ python tools/client.py --port PORT --store-procedure wipe build/examples/wipe.lb
 python tools/client.py --port PORT --transition wipe --settings '{"reverse": true}' --device lights
 # Add the white separator; reverse remains optional.
 python tools/client.py --port PORT --transition wipe --settings '{"separator": true}' --device lights
+# Choose an orange separator (packed RGB8 0xff6600).
+python tools/client.py --port PORT --transition wipe --settings '{"separator": true, "color": 16737792}' --device lights
 ```
 
 Or call `client.save_procedure(name, compiled.bytecode)` then
@@ -108,7 +112,8 @@ version pinned until selected again. Referenced programs cannot be deleted.
 `procedure_list` includes `profile: "animation"` or `"transition"` for supported
 packages. Firmware advertises `transition_programs: true`. The browser compiles
 these same examples, saves editable versions in its library, saves and selects
-named device programs, and lists stored transitions in the A/B selector. Program
+named device programs, and lists stored transitions with their settings in the
+Fader and A/B selectors. Program
 storage is limited by available capacity. Animations and transitions have separate
 name namespaces; `animation/wipe` and `transition/wipe` can coexist.
 `procedure_list` accepts a `type` filter; get/delete use the type to disambiguate names.

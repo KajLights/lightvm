@@ -25,9 +25,21 @@ device-only programs use their defaults. Saved transition programs are excluded.
 Loading replaces that slot with one animation while preserving the other scene,
 transition percentage and current manual or timed driver. Failed preparation
 retains the running scenes. For layered scenes, prepare either slot in Develop's
-A/B panel. The fader uses the currently selected transition program and keeps
-both scenes running. Opening the tab does not interrupt an existing timed
-transition.
+A/B panel. Both scenes keep running. Opening the tab does not interrupt an
+existing timed transition.
+
+Choose a deployed program under **Transition program**, adjust its exposed
+settings if needed, then **Apply transition**. The list comes from transitions
+stored on the connected device, including any separately named variants.
+Unchecked settings use the program defaults; colour settings have a colour picker.
+Applying retains both scenes, the percentage and the current fader or timed driver.
+The same selector is available in Develop's A/B panel.
+
+For the wipe example, leave `separator` at its default for a plain wipe. Override
+`separator` to True for the three-pixel separator, and override `color` to choose
+its colour (white by default). `reverse` changes the reveal direction. Compile
+and save the updated wipe example in Develop to deploy these settings; an
+already stored older wipe exposes only the settings it was compiled with.
 
 **Use fader** takes control at the current percentage. Move the slider from A at
 0% to B at 100%, using the pointer or keyboard. The browser supplies an external

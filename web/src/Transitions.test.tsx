@@ -8,10 +8,12 @@ import { createAppStore, deviceActions } from './store';
 import { TransitionControls } from './Transitions';
 import type { LightVMClient } from '../protocol.mjs';
 import type { Description, TransitionState } from './types';
+import { deployedTransition, WIPE_SETTINGS } from '../../tests/web-transitions';
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function setup() {
+  const programs = [deployedTransition('crossfade'), deployedTransition('wipe', WIPE_SETTINGS)];
   const store = createAppStore(), devices = new DeviceService(store), compiler = new Compiler(store);
   const description = { device_id: 'controller', boot_id: 'boot', board: 'simulator', ab_transitions: true,
     transition_programs: true } as Description;
@@ -22,6 +24,7 @@ function setup() {
     setProgress: vi.fn(async (progress: number) => { state = { ...state, progress, driver: { kind: 'manual', assignment: 3 } }; }),
     runTransition: vi.fn(async () => {}), holdTransition: vi.fn(async () => {}),
     activatePreset: vi.fn(async () => {}), selectTransition: vi.fn(async () => {}),
+    getProcedure: vi.fn(async (name: string, _type: string) => programs.find(program => program.procedure.name === name)!.bytes),
   };
   devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
   store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
@@ -29,8 +32,7 @@ function setup() {
   ] }, revision: 1, savedRevision: 0 }));
   store.dispatch(deviceActions.presets([{ name: 'stars', size: 100, crc32: 1 }]));
   store.dispatch(deviceActions.procedures([
-    { name: 'crossfade', size: 474, crc32: 1, profile: 'transition' },
-    { name: 'wipe', size: 751, crc32: 2, profile: 'transition' },
+    ...programs.map(program => program.procedure),
     { name: 'rainbow', size: 1000, crc32: 3, profile: 'animation' },
   ]));
   render(<Provider store={store}><RuntimeContext.Provider value={{ compiler, devices }}><TransitionControls /></RuntimeContext.Provider></Provider>);
@@ -73,8 +75,9 @@ it('recalls a stored Python transition by name and excludes animation programs',
   await screen.findByText('1 layer ready');
   expect(screen.queryByRole('option', { name: 'rainbow' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Apply transition' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Apply transition' }));
-  await waitFor(() => expect(client.selectTransition).toHaveBeenCalledWith('wipe', 'lights'));
+  await waitFor(() => expect(client.selectTransition).toHaveBeenCalledWith('wipe', 'lights', { settings: {} }));
 });
 
 it('Hold cancels an unsent slider update', async () => {

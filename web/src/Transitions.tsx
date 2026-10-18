@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { LightVMClient } from '../protocol.mjs';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
+import { TransitionProgram } from './TransitionProgram';
 import type { TransitionState } from './types';
 
 export function TransitionControls() {
@@ -10,20 +11,18 @@ export function TransitionControls() {
   const [state, setState] = useState<TransitionState | null>(null);
   const [progress, setProgress] = useState(0), [duration, setDuration] = useState(2000);
   const [presets, setPresets] = useState({ A: '', B: '' });
-  const [effect, setEffect] = useState('');
   const output = device.selectedOutput, client = devices.client;
   const supported = Boolean(device.description?.ab_transitions), connected = Boolean(device.selectedPath && output);
-  const observedEffect = useRef<string | null>(null);
   const sliderTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined), editing = useRef(false);
   useEffect(() => {
     let active = true, polling = false;
-    observedEffect.current = null; setState(null); setProgress(0); setPresets({ A: '', B: '' });
+    setState(null); setProgress(0); setPresets({ A: '', B: '' });
     async function read() {
       if (!active || !client || !supported || !output || polling || devices.snapshot.activity.operation) return;
       polling = true;
       try {
         const next = await client.transition(output) as TransitionState;
-        if (active) { setState(next); if (observedEffect.current !== (next.procedure ?? '')) { observedEffect.current = next.procedure ?? ''; setEffect(next.procedure ?? ''); } if (!editing.current) setProgress(next.progress); }
+        if (active) { setState(next); if (!editing.current) setProgress(next.progress); }
       } catch { /* Connection errors are reported by the shared connection service. */ }
       finally { polling = false; }
     }
@@ -39,7 +38,7 @@ export function TransitionControls() {
       await action(connection);
       const next = await connection.transition(output) as TransitionState;
       if (devices.client === connection && devices.snapshot.device.selectedOutput === output) {
-        setState(next); setProgress(next.progress); setEffect(next.procedure ?? '');
+        setState(next); setProgress(next.progress);
       }
     });
   }
@@ -61,13 +60,8 @@ export function TransitionControls() {
       <button className="secondary full" disabled={busy || !presets[slot]} onClick={() => void control('Preparing scene ' + slot, connection => connection.activatePreset(presets[slot], output, slot))}>Load {slot}</button>
       <p className="helper">{state?.[slot]?.active ? state[slot].layers?.length ? state[slot].layers!.length + (state[slot].layers!.length === 1 ? ' layer ready' : ' layers ready') : 'Empty scene' : 'Empty slot'}</p>
     </div>)}</div>
-    <label htmlFor="transition-effect">Transition program</label>
-    <select id="transition-effect" value={effect} onChange={event => setEffect(event.target.value)}>
-      <option value="">Choose a stored transition</option>
-      {device.procedures.filter(program => program.profile === 'transition').map(program => <option key={program.name}>{program.name}</option>)}
-    </select>
-    <button className="secondary" disabled={busy || !effect || !device.description?.transition_programs} onClick={() => void control('Selecting transition', connection => connection.selectTransition(effect, output))}>Apply transition</button>
-    <p className="helper">Compile a transition example and save it to device flash to recall it here by name.</p>
+    <TransitionProgram key={[device.selectedPath, output, device.description?.boot_id].join(':')} state={state} busy={busy || !state}
+      onApply={(procedure, settings) => control('Selecting transition', connection => connection.selectTransition(procedure, output, { settings }))} />
     </div><div>
     <label htmlFor="transition-progress">Progress · {progress.toFixed(1)}%</label>
     <input id="transition-progress" type="range" min="0" max="100" step="0.1" value={progress} disabled={busy} onChange={event => slide(Number(event.target.value))} />

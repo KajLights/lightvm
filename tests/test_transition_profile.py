@@ -119,6 +119,20 @@ class TransitionProfileTests(unittest.TestCase):
             reads.append(sum(struct.unpack_from('<I',result.bytecode,at+i*16)[0] in (40,41) for i in range(calls)))
         self.assertGreaterEqual(reads[0]-reads[1],5)
 
+    def test_wipe_separator_colour_setting_preserves_endpoints_and_seeking(self):
+        for reverse in (False, True):
+            self.client.select_transition('wipe', settings={'reverse': reverse, 'separator': True, 'color': 0xff6600}, device='lights')
+            for p in (0, 35, 75, 100, 35):
+                n = int(p / 100 * self.count)
+                a, b = (200, 100, 20), (20, 40, 220)
+                expected = [a] * (self.count-n) + [b] * n if reverse else [b] * n + [a] * (self.count-n)
+                if 0 < p < 100:
+                    boundary = self.count-n if reverse else n
+                    for offset, color in ((-1, (85, 34, 0)), (0, (255, 102, 0)), (1, (85, 34, 0))):
+                        if 0 <= boundary+offset < self.count:
+                            expected[boundary+offset] = color
+                self.assertEqual(self.frame(p), bytes(c for pixel in expected for c in pixel))
+
     def test_transition_sprite_callbacks_have_no_animation_clock(self):
         for prop in ('time', 'delta'):
             result = compile_source('from lightvm import profile,init,render,Sprite,SpriteBatch,rgb\n'

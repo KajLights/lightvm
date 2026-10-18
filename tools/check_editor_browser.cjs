@@ -144,7 +144,7 @@ function announcedUrl(child, output) {
       await page.waitForFunction(() => !document.querySelector('#upload')?.disabled);
       await page.getByLabel('Stored transition name').fill(name);
       await page.getByRole('button', { name: 'Save and select transition →', exact: true }).click();
-      await page.waitForFunction(name => document.querySelector('#transition-effect')?.value === name, name);
+      await page.waitForFunction(name => document.querySelector('#transition-program')?.value === name, name);
     }
     await page.getByLabel('Transition program').selectOption('crossfade');
     await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
@@ -165,6 +165,19 @@ function announcedUrl(child, output) {
 
     await page.getByRole('link', { name: 'Fader', exact: true }).click();
     await page.getByRole('button', { name: 'Use fader', exact: true }).waitFor();
+    const transitionPicker = page.getByRole('region', { name: 'Deployed transitions' });
+    await transitionPicker.getByLabel('Transition program').selectOption('wipe');
+    await transitionPicker.getByLabel('Override separator', { exact: true }).check();
+    await transitionPicker.getByLabel('separator', { exact: true }).selectOption('true');
+    await transitionPicker.getByLabel('Override color', { exact: true }).check();
+    await transitionPicker.getByLabel('color', { exact: true }).fill('#ff6600');
+    await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
+    await transitionPicker.getByText('Active transition: wipe', { exact: true }).waitFor();
+    await page.screenshot({ path: path.join(root, 'build/fader-settings-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Fader mobile layout overflows');
+    await page.screenshot({ path: path.join(root, 'build/fader-settings-mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1200 });
     await page.waitForFunction(() => !document.querySelector('#fader-duration')?.disabled && document.querySelector('#transition-fader')?.disabled);
     await page.locator('#fader-duration').fill('50');
     await page.locator('#fader-interval').fill('100');
@@ -174,6 +187,17 @@ function announcedUrl(child, output) {
     assert.equal(timed.driver.kind, 'timed'); assert.equal(timed.driver.interval_ms, 100);
     await page.getByRole('button', { name: 'Use fader', exact: true }).click();
     await page.getByText('Fader controls the transition', { exact: true }).waitFor();
+    const identity = scene => scene.layers.map(layer => ({ id: layer.id, procedure: layer.procedure, generation: layer.generation }));
+    const beforeSelect = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    await transitionPicker.getByLabel('Transition program').selectOption('crossfade');
+    await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
+    await transitionPicker.getByText('Active transition: crossfade', { exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);
+    const afterSelect = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    assert.equal(afterSelect.procedure, 'crossfade'); assert.deepEqual(afterSelect.driver, beforeSelect.driver);
+    assert.equal(afterSelect.progress, beforeSelect.progress);
+    assert.deepEqual(identity(afterSelect.A), identity(beforeSelect.A)); assert.deepEqual(identity(afterSelect.B), identity(beforeSelect.B));
+    console.log('Selected deployed wipe with colour settings and switched programs while retaining fader control: passed');
     for (const progress of [0, 35, 100]) {
       if (Number(await page.locator('#transition-fader').inputValue()) !== progress) {
         const applied = page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_update"'));
@@ -192,7 +216,6 @@ function announcedUrl(child, output) {
     await page.keyboard.press('Home'); await keyboard;
 
     const beforeDrops = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    const identity = scene => scene.layers.map(layer => ({ id: layer.id, procedure: layer.procedure, generation: layer.generation }));
     await page.getByRole('article', { name: 'Browser color v1' }).dragTo(page.getByRole('region', { name: 'Scene B' }));
     await page.getByRole('region', { name: 'Scene B' }).getByText('Browser color v1', { exact: true }).waitFor();
     await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);

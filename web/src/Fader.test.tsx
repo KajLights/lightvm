@@ -15,6 +15,7 @@ import { FADER_SOURCE } from './transition-fader';
 import { ANIMATION_DRAG_TYPE } from './Fader';
 import { emptyLibrary, programName, saveAnimation, writeLibrary, type DeviceLayer } from './library';
 import type { Compilation, Description, Procedure, TransitionState } from './types';
+import { deployedTransition, WIPE_SETTINGS } from '../../tests/web-transitions';
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => { cleanup(); localStorage.clear(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -41,16 +42,23 @@ function drag(animation: HTMLElement, slot: HTMLElement) {
 }
 
 function setup(initialDriver: TransitionState['driver'] = { kind: 'timed', assignment: 1 }) {
+  const programs = [deployedTransition('crossfade'), deployedTransition('wipe', WIPE_SETTINGS), deployedTransition('wipe_with_colour')];
   const store = createAppStore(), devices = new DeviceService(store), compiler = new Compiler(store);
   const description = { device_id: 'controller', boot_id: 'boot', board: 'simulator', ab_transitions: true,
     transition_sources: true, transition_programs: true, scenes: true, scene_layer_limit: 8, module_limit: 32768, version: '1.0.0' } as Description;
   let state = { revision: 1, active: true, progress: 35, effect: 'program', procedure: 'crossfade', seed: 0,
     driver: initialDriver, A: { active: true, layers: [{ id: 'base', procedure: 'rainbow' }] },
     B: { active: true, layers: [{ id: 'base', procedure: 'stars' }] }, error: '' } as TransitionState;
-  let sequence = 1, generation = 10, procedures: Procedure[] = [];
+  let sequence = 1, generation = 10, procedures: Procedure[] = programs.map(program => program.procedure);
   const client = {
     closed: false, transport: { label: 'HTTP' }, transition: vi.fn(async () => state),
-    describe: vi.fn(async () => description), json: vi.fn(async () => procedures),
+    describe: vi.fn(async () => description), json: vi.fn(async (_op: string, options?: { type?: string }) =>
+      procedures.filter(procedure => !options?.type || procedure.type === options.type).map(procedure => ({ ...procedure }))),
+    getProcedure: vi.fn(async (name: string, _type: string) => programs.find(program => program.procedure.name === name)!.bytes),
+    selectTransition: vi.fn(async (procedure: string, _output: string, _options: unknown) => {
+      state = { ...state, procedure, revision: state.revision + 1, program_crc32: procedures.find(program => program.name === procedure)?.crc32 };
+      return state;
+    }),
     saveProcedure: vi.fn(async (name: string, bytes: Uint8Array) => { procedures = [...procedures, { name, crc32: crc32(bytes), size: bytes.length, profile: 'animation', type: 'animation' }]; }),
     configureScene: vi.fn(async (layers: DeviceLayer[], _output: string, slot: 'A' | 'B') => {
       state = { ...state, revision: state.revision + 1, [slot]: { active: true, layers: layers.map(layer => ({ id: layer.id, procedure: layer.procedure, generation: ++generation })) } };
@@ -67,6 +75,7 @@ function setup(initialDriver: TransitionState['driver'] = { kind: 'timed', assig
     { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 67 } },
     { id: 'other', type: 'ws2812b', config: { pin: 'GP17', count: 5 } },
   ] }, revision: 1, savedRevision: 0 }));
+  store.dispatch(deviceActions.procedures(procedures));
   vi.spyOn(devices, 'readProgramState').mockResolvedValue();
   const view = render(<Provider store={store}><MemoryRouter initialEntries={['/devices/controller/fader']}>
     <RuntimeContext.Provider value={{ compiler, devices }}><App /></RuntimeContext.Provider>
@@ -231,4 +240,101 @@ it('does not label a replacement instance with the previously selected saved ver
   const state = workspace.getState();
   workspace.setState({ ...state, A: { ...state.A, layers: state.A.layers!.map(layer => ({ ...layer, generation: 99 })) } });
   await waitFor(() => expect(screen.getByRole('region', { name: 'Scene A' })).not.toHaveTextContent('Ember v1'));
+});
+
+it('chooses deployed transitions without interrupting playback until Apply', async () => {
+  const workspace = setup(); await screen.findByText('Timed transition running');
+  const before = workspace.getState();
+  expect(screen.queryByRole('option', { name: 'rainbow' })).not.toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'wipe_with_colour' })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe_with_colour' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Apply transition' })).toBeEnabled());
+  expect(workspace.client.selectTransition).not.toHaveBeenCalled();
+  expect(workspace.getState()).toEqual(before);
+  fireEvent.click(screen.getByRole('button', { name: 'Apply transition' }));
+  await screen.findByText('Active transition: wipe_with_colour');
+  expect(workspace.client.selectTransition).toHaveBeenCalledWith('wipe_with_colour', 'lights', { settings: {} });
+  expect(workspace.getState()).toMatchObject({ A: before.A, B: before.B, progress: before.progress, driver: before.driver });
+  expect(workspace.client.runTransition).not.toHaveBeenCalled();
+  expect(workspace.client.holdTransition).not.toHaveBeenCalled();
+});
+
+it('applies wipe settings and a separator colour while retaining fader ownership', async () => {
+  const workspace = setup(); await claim();
+  const before = workspace.getState();
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  await screen.findByLabelText('Override separator');
+  expect(workspace.client.getProcedure).toHaveBeenCalledWith('wipe', 'transition');
+  fireEvent.click(screen.getByLabelText('Override separator'));
+  fireEvent.change(screen.getByLabelText('separator'), { target: { value: 'true' } });
+  fireEvent.click(screen.getByLabelText('Override color'));
+  fireEvent.change(screen.getByLabelText('color'), { target: { value: '#ff8800' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Apply transition' }));
+  await screen.findByText('Active transition: wipe');
+  await waitFor(() => expect(screen.getByRole('slider')).toBeEnabled());
+  expect(workspace.client.selectTransition).toHaveBeenCalledWith('wipe', 'lights', { settings: { separator: true, color: 0xff8800 } });
+  expect(workspace.getState()).toMatchObject({ A: before.A, B: before.B, progress: before.progress, driver: before.driver });
+  expect(screen.getByLabelText('color')).toHaveValue('#ff8800');
+  expect(screen.getByLabelText('separator')).toHaveValue('true');
+  expect(screen.getByLabelText('Override reverse')).not.toBeChecked();
+  expect(workspace.client.assignTransitionSource).toHaveBeenCalledTimes(1);
+  vi.useFakeTimers();
+  fireEvent.change(screen.getByRole('slider'), { target: { value: '75' } });
+  await act(async () => { await vi.advanceTimersByTimeAsync(33); });
+  expect(workspace.client.updateTransitionSource).toHaveBeenCalledWith(FADER_SOURCE, before.driver.assignment, 75, 'lights');
+});
+
+it('keeps the active transition, scenes and fader when transition preparation fails', async () => {
+  const workspace = setup(); await claim();
+  const before = workspace.getState();
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Apply transition' })).toBeEnabled());
+  workspace.client.selectTransition.mockRejectedValueOnce(new Error('Transition exceeds memory budget'));
+  fireEvent.click(screen.getByRole('button', { name: 'Apply transition' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Transition exceeds memory budget');
+  expect(workspace.getState()).toEqual(before);
+  expect(screen.getByRole('slider')).toBeEnabled();
+  expect(screen.getByText('Active transition: crossfade')).toBeInTheDocument();
+  expect(screen.getByLabelText('Transition program')).toHaveValue('wipe');
+});
+
+it('retains transition drafts across polling and follows an externally selected program', async () => {
+  const workspace = setup(); await screen.findByText('Timed transition running');
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  await screen.findByLabelText('Override reverse');
+  fireEvent.click(screen.getByLabelText('Override reverse'));
+  fireEvent.change(screen.getByLabelText('reverse'), { target: { value: 'true' } });
+  await waitFor(() => expect(workspace.client.transition).toHaveBeenCalledTimes(2));
+  expect(screen.getByLabelText('Transition program')).toHaveValue('wipe');
+  expect(screen.getByLabelText('reverse')).toHaveValue('true');
+  workspace.setState({ ...workspace.getState(), procedure: 'wipe_with_colour', program_crc32: 5 });
+  await waitFor(() => expect(screen.getByLabelText('Transition program')).toHaveValue('wipe_with_colour'));
+  expect(screen.queryByLabelText('Override reverse')).not.toBeInTheDocument();
+});
+
+it('ignores stale settings reads and refuses a package that differs from the deployed catalogue', async () => {
+  const workspace = setup(); await screen.findByText('Timed transition running');
+  let complete!: (bytes: Uint8Array<ArrayBuffer>) => void;
+  workspace.client.getProcedure.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  expect(screen.getByRole('button', { name: 'Apply transition' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe_with_colour' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Apply transition' })).toBeEnabled());
+  await act(async () => complete(deployedTransition('wipe', WIPE_SETTINGS).bytes));
+  expect(screen.queryByLabelText('Override separator')).not.toBeInTheDocument();
+  workspace.client.getProcedure.mockResolvedValueOnce(deployedTransition('different').bytes);
+  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  expect(await screen.findByRole('alert')).toHaveTextContent('The stored transition changed');
+  expect(screen.getByRole('button', { name: 'Apply transition' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry settings' }));
+  await screen.findByLabelText('Override separator');
+  expect(screen.getByRole('button', { name: 'Apply transition' })).toBeEnabled();
+});
+
+it('explains when no transitions have been deployed and disables Apply', async () => {
+  const workspace = setup(); await screen.findByText('Timed transition running');
+  await act(async () => workspace.setPrograms([]));
+  expect(screen.getByText('Save a transition to the device in Develop to choose it here.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Transition program')).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Apply transition' })).toBeDisabled();
 });

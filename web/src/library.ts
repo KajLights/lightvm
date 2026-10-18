@@ -34,6 +34,18 @@ export function validateSetting(setting: Setting, value: unknown) {
     (setting.minimum === undefined || value >= setting.minimum) && (setting.maximum === undefined || value <= setting.maximum);
   if (!valid) throw new Error('Enter a valid ' + setting.type + ' value for ' + setting.name + '.');
 }
+export function programManifest(bytes: Uint8Array): Manifest {
+  const invalid = () => new Error('Unsupported compiled program. Recompile its source with the current compiler.');
+  if (bytes.length < 96 || new TextDecoder().decode(bytes.subarray(0, 4)) !== 'LBC1') throw invalid();
+  const size = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(76, true);
+  if (!size || size > bytes.length - 96) throw invalid();
+  let manifest: Manifest;
+  try { manifest = JSON.parse(new TextDecoder().decode(bytes.subarray(bytes.length - size))); }
+  catch { throw invalid(); }
+  if (!manifest || manifest.schema !== 'lightvm.program' || !Array.isArray(manifest.settings) ||
+    manifest.settings.some(setting => !setting || typeof setting.name !== 'string' || !['bool', 'int', 'float', 'rgb8'].includes(setting.type))) throw invalid();
+  return manifest;
+}
 export function validateArtifact(bytes: Uint8Array, manifest: Manifest) {
   const invalid = () => new Error('Unsupported compiled animation. Recompile its source with the current compiler.');
   // Reading a library never requires the connected firmware (or this editor)

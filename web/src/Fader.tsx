@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import type { LightVMClient } from '../protocol.mjs';
 import { useRuntime } from './runtime';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
-import { programName, readLibrary, type DeviceLayer, type SavedAnimation } from './library';
+import { programName, readLibrary, type DeviceLayer, type SavedAnimation, type SettingsValues } from './library';
 import { prepareLibraryScene } from './library-device';
 import { FADER_SOURCE, TransitionFaderInput } from './transition-fader';
+import { TransitionProgram } from './TransitionProgram';
 import type { Procedure, TransitionState } from './types';
 
 export const ANIMATION_DRAG_TYPE = 'application/x-lightvm-animation';
@@ -114,6 +115,18 @@ export function Fader() {
       });
     } finally { setLoading(null); }
   }
+  async function selectTransition(procedure: string, settings: SettingsValues) {
+    if (busy || !input || !output) return;
+    const epoch = ++command.current;
+    await devices.run('Selecting transition', async current => {
+      const connection = devices.require(current);
+      await connection.selectTransition(procedure, output, { settings });
+      const revision = input.revision, next = await connection.transition(output) as TransitionState;
+      if (active.current !== input || epoch !== command.current || devices.client !== connection || devices.snapshot.device.selectedOutput !== output) return;
+      input.observe(next); setState(next);
+      if (revision === input.revision && !input.pending) setProgress(next.progress);
+    });
+  }
   function canDrop(event: DragEvent) { return !busy && Array.from(event.dataTransfer.types).includes(ANIMATION_DRAG_TYPE); }
   function drop(event: DragEvent, slot: 'A' | 'B') {
     event.preventDefault(); setOver(null);
@@ -160,10 +173,14 @@ export function Fader() {
             <button className="secondary" disabled={busy} onClick={() => void control('Holding transition', connection => connection.holdTransition(output))}>Hold</button></div>
           <p id="fader-driver" className="helper" role="status">{driver}</p>
           <p className="helper">Use fader takes over at the current position. Drag or use the arrow keys to move between A and B. Hold releases control at the current position.</p>
-          {state && <p className="helper">Transition: {state.procedure || state.effect}</p>}
           {state?.error && <p className="connection-banner" role="alert">{state.error}</p>}
         </section>
         <div className="fader-sidebar">
+        <section className="card" aria-label="Deployed transitions">
+          <div className="card-heading"><h2>Transition</h2></div>
+          <p className="muted">Choose how A changes into B for the fader and timed runs.</p>
+          <TransitionProgram id="fader-transition-program" key={[device.selectedPath, output, device.description?.boot_id].join(':')} state={state} busy={busy} onApply={selectTransition} />
+        </section>
         <section className="card fader-library" aria-label="Saved animations">
           <div className="card-heading"><h2>Saved animations</h2><span className="muted">{animations.length}</span></div>
           <p className="muted">Drag an animation onto A or B, or use its Load buttons.</p>
