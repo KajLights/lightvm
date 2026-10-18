@@ -2,7 +2,7 @@
 
 The browser app is a static React, TypeScript and Redux Toolkit application built
 with Vite. **Devices** is the entry point. Connect to a LightVM board over HTTP or
-USB, then use the **Develop** and **Configure** views for that device. **Firmware**
+USB, then use the **Develop**, **Fader** and **Configure** views for that device. **Firmware**
 installs and updates XIAO ESP32-C3, S3 and C6 through Web Serial, and Pico and
 Pico W from BOOTSEL through WebUSB. The Pico UF2s are also available to download.
 The app can also open Develop without a device for editing and bytecode compilation.
@@ -12,6 +12,43 @@ A persistent device service owns USB/HTTP sessions and pins each operation to it
 selected command path. Redux holds serializable device snapshots, the editor draft
 and operation state. Connection and worker objects stay outside the store. Wi-Fi
 passwords remain in the network form and are cleared after an attempted save.
+
+## Fader and timed transitions
+
+Open the device workspace's **Fader** tab and select the output. Drag an animation
+from **Saved animations** onto **Scene A** or **Scene B**, or use that animation's
+**Load A** / **Load B** buttons. The list includes browser animation versions and
+animations already stored on the device. Browser versions use their saved
+initialization settings and upload their compiled program only when missing;
+device-only programs use their defaults. Saved transition programs are excluded.
+
+Loading replaces that slot with one animation while preserving the other scene,
+transition percentage and current manual or timed driver. Failed preparation
+retains the running scenes. For layered scenes, prepare either slot in Develop's
+A/B panel. The fader uses the currently selected transition program and keeps
+both scenes running. Opening the tab does not interrupt an existing timed
+transition.
+
+**Use fader** takes control at the current percentage. Move the slider from A at
+0% to B at 100%, using the pointer or keyboard. The browser supplies an external
+input named `desktop.fader` through the selected USB or HTTP connection. Updates
+use the assignment token returned by the controller. The browser sends at most
+one update every 33 ms, with one request in flight and only the latest pending
+position, so slow connections do not build a backlog of obsolete positions.
+
+**Hold** releases the driver and retains its current position. **Run to A** and
+**Run to B** start a timed fade from the current position. **Start timed demo**
+starts at A and alternates between A and B, using the configured fade duration
+and repeat interval. The interval includes the fade and must be at least its
+duration. Timed playback runs on the controller and continues after navigation
+or disconnection.
+
+Starting a timed movement releases the fader. If another controller replaces its
+assignment, this slider releases control and does not reclaim it automatically.
+Leaving the Fader tab, changing outputs or disconnecting discards unsent slider
+values; the last accepted position remains. Return and choose **Use fader** to
+take control again. This input controls transition progress only; live animation
+variable bindings remain future work.
 
 ## Run locally
 

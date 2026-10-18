@@ -135,8 +135,11 @@ The CLI supports `--slot B --scene FILE`, `--get-transition`, `--progress 35`,
 `--run-to 100 --duration-ms 2000` (add `--interval-ms 10000` to alternate), `--hold-transition`, `--transition wipe --settings '{"reverse": true}'`,
 `--assign-source NAME`, and `--source-value P --source-name NAME --assignment TOKEN`.
 The browser's A/B panel loads saved device presets into either slot, selects a
-stored transition program, sets progress, cuts to endpoints, starts timed movements and assigns a
-management source. The preset composer can preview into A or B.
+stored transition program, sets progress, cuts to endpoints and starts timed
+movements. The separate **Fader** workspace tab supplies continuous external
+input through USB or HTTP, with explicit takeover and Hold, and can start the
+repeating timed demo. See [fader controls](web-editor.md#fader-and-timed-transitions).
+The preset composer can preview into A or B.
 
 ## Legacy custom mask and paint programs
 

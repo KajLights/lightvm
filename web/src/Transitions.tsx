@@ -9,7 +9,6 @@ export function TransitionControls() {
   const device = useAppSelector(state => state.device), operation = useAppSelector(state => state.activity.operation);
   const [state, setState] = useState<TransitionState | null>(null);
   const [progress, setProgress] = useState(0), [duration, setDuration] = useState(2000);
-  const [source, setSource] = useState('slider'), [sourceValue, setSourceValue] = useState(35);
   const [presets, setPresets] = useState({ A: '', B: '' });
   const [effect, setEffect] = useState('');
   const output = device.selectedOutput, client = devices.client;
@@ -79,15 +78,7 @@ export function TransitionControls() {
       <button disabled={busy || !Number.isFinite(duration) || duration < 0} onClick={() => void control('Transitioning to B', connection => connection.runTransition(100, duration, output))}>Run to B</button></div>
     <button className="secondary full" disabled={busy} onClick={() => void control('Holding transition', connection => connection.holdTransition(output))}>Hold</button>
     <p className="helper" role="status">Driver: {state?.driver.kind ?? 'manual'}{state?.driver.source ? ' · ' + state.driver.source : ''}</p>
-    <details><summary>External source</summary>
-      <label htmlFor="transition-source">Source name</label><input id="transition-source" value={source} onChange={event => setSource(event.target.value)} />
-      <button className="secondary" disabled={busy || !/^[A-Za-z0-9_.-]{1,32}$/.test(source)} onClick={() => void control('Assigning transition source', connection => connection.assignTransitionSource(source, output))}>Assign source</button>
-      <label htmlFor="transition-source-value">Source percentage</label><input id="transition-source-value" type="number" min="0" max="100" step="any" value={sourceValue} onChange={event => setSourceValue(Number(event.target.value))} />
-      <button className="secondary" disabled={busy || state?.driver.kind !== 'source' || !Number.isFinite(sourceValue) || sourceValue < 0 || sourceValue > 100} onClick={() => {
-        if (state?.driver.source) void control('Updating transition source', connection => connection.updateTransitionSource(state.driver.source!, state.driver.assignment, sourceValue, output));
-      }}>Send source value</button>
-      <p className="helper">Send percentages from a sensor, slider or incoming message. Hold or a manual change releases the source.</p>
-    </details>
+    <p className="helper">Open the Fader workspace tab for continuous manual control through an external input.</p>
     </div></div>
     {state?.error && <p role="alert">{state.error}</p>}
   </section>;

@@ -3,13 +3,13 @@ import { VERSION } from './release';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { LightVMClient } from '../protocol.mjs';
-import { crc32 } from '../protocol.mjs';
 import { supportsProgram, programCompatibility } from './compiler';
 import { download } from './device-service';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
-import type { Manifest, Procedure } from './types';
-import { BLENDS, bytesFor, deviceLayers, digestFor, importLibrary, programName, readLibrary, saveAnimation, settingsFor, writeLibrary,
+import type { Manifest } from './types';
+import { prepareLibraryScene } from './library-device';
+import { BLENDS, deviceLayers, importLibrary, readLibrary, saveAnimation, settingsFor, writeLibrary,
   type Blend, type Library, type PresetLayer, type SavedAnimation, type SettingsValues } from './library';
 
 function SettingFields({ manifest, values, onChange, prefix }: { manifest: Manifest; values: SettingsValues; onChange: (values: SettingsValues) => void; prefix: string }) {
@@ -34,7 +34,7 @@ function SettingFields({ manifest, values, onChange, prefix }: { manifest: Manif
   })}</div>;
 }
 
-export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: ReactNode; playback: ReactNode }) {
+export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { editorPanel: ReactNode; playback: ReactNode; active?: boolean }) {
   const { compiler, devices } = useRuntime();
   const editor = useAppSelector(state => state.editor), device = useAppSelector(state => state.device), activity = useAppSelector(state => state.activity);
   const [initial] = useState(readLibrary), [library, setLibrary] = useState(initial.library);
@@ -114,25 +114,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
   function patchLayer(index: number, patch: Partial<PresetLayer>) { setLayers(layers.map((layer, n) => n === index ? { ...layer, ...patch } : layer)); }
   function moveLayer(index: number, delta: number) { const next = [...layers]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; setLayers(next); }
   async function ensurePrograms(client: LightVMClient) {
-    const target = await client.describe();
-    if (!target.scenes) throw new Error('Install firmware with scene composition support.');
-    if (!layers.length || layers.length > target.scene_layer_limit) throw new Error('This output supports up to ' + target.scene_layer_limit + ' layers.');
-    const animations = [...new Set(layers.map(layer => layer.animation))].map(id => library.animations.find(item => item.id === id)!);
-    const stored = (await client.json('procedure_list', { type: 'animation' })) as Procedure[];
-    for (const animation of animations) {
-      const bytes = bytesFor(animation);
-      if (await digestFor(bytes) !== animation.digest) throw new Error('The saved animation checksum differs. Import an intact library backup.');
-      const problem = programCompatibility(target, animation.manifest);
-      if (problem) throw new Error(animation.name + ': ' + problem);
-      if (bytes.length > target.module_limit) throw new Error(animation.name + ' exceeds this device’s program limit.');
-      const match = stored.find(item => item.name === programName(animation));
-      if (match && (match.crc32 !== crc32(bytes) || match.size !== bytes.length)) throw new Error('A stored animation version differs from the library.');
-      if (!match) {
-        await client.saveProcedure(programName(animation), bytes);
-        stored.push({ name: programName(animation), size: bytes.length, crc32: crc32(bytes) });
-      }
-    }
-    return deviceLayers(library, layers);
+    return prepareLibraryScene(client, library, layers);
   }
   async function previewLayers() {
     await devices.run('Previewing preset', async client => {
@@ -264,7 +246,7 @@ export function DevelopmentWorkflow({ editorPanel, playback }: { editorPanel: Re
           <button className="quiet full" disabled={busy || !writable || !device.selectedPath || !storedProgram} onClick={() => void devices.run('Deleting stored program', async client => { const connection = devices.require(client); if (!storedSelection) return; await connection.deleteProcedure(storedSelection.name, storedSelection.type ?? storedSelection.profile ?? 'animation'); await devices.readProcedures(connection); setStoredProgram(''); })}>Delete stored program</button>
         </details>
       </section>
-      <TransitionControls />
+      {active && <TransitionControls />}
     </div>
   </>;
 }

@@ -9,7 +9,7 @@ export interface Description {
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;
-  ab_transitions?: boolean; transition_effects?: string[]; transition_programs?: boolean;
+  ab_transitions?: boolean; transition_sources?: boolean; transition_effects?: string[]; transition_programs?: boolean;
   scenes?: boolean; scene_layer_limit?: number; scene_blend_modes?: string[];
   presets?: boolean; transient_settings?: boolean; typed_storage?: boolean;
   storage_backend?: string; storage_writable?: boolean; storage_bytes?: number; free_bytes?: number;
@@ -47,7 +47,7 @@ export interface TransitionState {
   revision: number; active: boolean; progress: number; effect: string; seed: number;
   procedure?: string; program_crc32?: number;
   driver: { kind: 'manual' | 'timed' | 'source'; assignment: number; source?: string; target?: number; duration_ms?: number; interval_ms?: number };
-  A: { active: boolean; layers?: { id: string; procedure: string }[] };
-  B: { active: boolean; layers?: { id: string; procedure: string }[] };
+  A: { active: boolean; layers?: { id: string; procedure: string; generation?: number }[] };
+  B: { active: boolean; layers?: { id: string; procedure: string; generation?: number }[] };
   error: string;
 }

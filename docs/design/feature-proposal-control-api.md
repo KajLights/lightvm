@@ -4,6 +4,10 @@ Status: Proposed. The implemented contract is [animation](../animation-profile.m
 with frozen initialization settings and [current management](../control-api.md).
 Live INPUT, general events, jobs and device capabilities below are future work.
 
+The [external input research and design](feature-proposal-inputs.md) develops
+the scalar INPUT path for transition progress and live animation/sprite controls,
+including native sensors, peripherals, serial bridges and network datagrams.
+
 ## Common resources
 
 A resource has an identity, generation, owner and bounded lifetime. A capability

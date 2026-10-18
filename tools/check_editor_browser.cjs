@@ -155,6 +155,73 @@ function announcedUrl(child, output) {
     assert.deepEqual(programs.filter(program => ['crossfade', 'wipe'].includes(program.name)).map(program => program.profile), ['transition', 'transition']);
     console.log('Compiled both Python transition examples in the browser, stored them by name, and recalled crossfade: passed');
 
+    await page.getByLabel('Load example').selectOption('color');
+    await page.waitForFunction(() => document.querySelector('#check-state')?.textContent === 'All checks passed' && !document.querySelector('#upload')?.disabled);
+    await page.locator('#animation-name').fill('Browser color');
+    await page.getByRole('button', { name: 'Save animation', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Browser color v1'));
+    const faderLibrary = await page.evaluate(() => JSON.parse(localStorage.getItem('lightvm.library.v1')));
+    assert.equal(faderLibrary.animations.length, 2);
+
+    await page.getByRole('link', { name: 'Fader', exact: true }).click();
+    await page.getByRole('button', { name: 'Use fader', exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('#fader-duration')?.disabled && document.querySelector('#transition-fader')?.disabled);
+    await page.locator('#fader-duration').fill('50');
+    await page.locator('#fader-interval').fill('100');
+    await page.getByRole('button', { name: 'Start timed demo' }).click();
+    await page.getByText('Timed transition running', { exact: true }).waitFor();
+    const timed = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    assert.equal(timed.driver.kind, 'timed'); assert.equal(timed.driver.interval_ms, 100);
+    await page.getByRole('button', { name: 'Use fader', exact: true }).click();
+    await page.getByText('Fader controls the transition', { exact: true }).waitFor();
+    for (const progress of [0, 35, 100]) {
+      if (Number(await page.locator('#transition-fader').inputValue()) !== progress) {
+        const applied = page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_update"'));
+        await page.locator('#transition-fader').evaluate((input, progress) => {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(progress));
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }, progress);
+        await applied;
+      }
+      const manual = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+      assert.equal(manual.driver.kind, 'source'); assert.equal(manual.driver.source, 'desktop.fader');
+      assert.equal(manual.progress, progress); assert.equal(manual.A.layers.length, 2); assert.equal(manual.B.layers.length, 2);
+    }
+    await page.locator('#transition-fader').focus();
+    const keyboard = page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_update"'));
+    await page.keyboard.press('Home'); await keyboard;
+
+    const beforeDrops = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    const identity = scene => scene.layers.map(layer => ({ id: layer.id, procedure: layer.procedure, generation: layer.generation }));
+    await page.getByRole('article', { name: 'Browser color v1' }).dragTo(page.getByRole('region', { name: 'Scene B' }));
+    await page.getByRole('region', { name: 'Scene B' }).getByText('Browser color v1', { exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);
+    const loadedB = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    const colorAnimation = faderLibrary.animations.find(animation => animation.name === 'Browser color');
+    assert.equal(loadedB.B.layers.length, 1); assert.equal(loadedB.B.layers[0].procedure, 'a' + colorAnimation.digest.slice(0, 31));
+    assert.deepEqual(identity(loadedB.A), identity(beforeDrops.A));
+    assert.deepEqual(loadedB.driver, beforeDrops.driver); assert.equal(loadedB.progress, 0);
+    await page.getByRole('article', { name: 'Browser rainbow v1' }).dragTo(page.getByRole('region', { name: 'Scene A' }));
+    await page.getByRole('region', { name: 'Scene A' }).getByText('Browser rainbow v1', { exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);
+    const loadedA = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    assert.equal(loadedA.A.layers.length, 1); assert.equal(loadedA.A.layers[0].procedure, programName);
+    assert.deepEqual(identity(loadedA.B), identity(loadedB.B));
+    assert.deepEqual(loadedA.driver, beforeDrops.driver); assert.equal(loadedA.progress, 0);
+    console.log('Dragged different saved browser animations into A and B while preserving the other scene, progress, and external-source assignment: passed');
+
+    await page.screenshot({ path: path.join(root, 'build/fader-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Fader mobile layout overflows');
+    await page.screenshot({ path: path.join(root, 'build/fader-mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    await page.getByRole('button', { name: 'Hold', exact: true }).click();
+    await page.getByText('Holding current position', { exact: true }).waitFor();
+    const held = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
+    assert.equal(held.driver.kind, 'manual'); assert.equal(held.progress, 0);
+    await page.getByRole('link', { name: 'Develop', exact: true }).click();
+    await page.locator('#saved-animation').selectOption(savedLibrary.animations[0].id);
+    console.log('Fader tab took over the repeating timed demo, supplied external input at 0/35/100%, accepted keyboard input, and held without replacing scenes: passed');
 
     await page.evaluate(() => {
       const editor = document.querySelector('.CodeMirror')?.CodeMirror;
@@ -208,11 +275,11 @@ function announcedUrl(child, output) {
     assert.equal(overflow, false, 'Mobile layout overflows');
     await page.getByRole('button', { name: 'Delete animation version', exact: true }).click();
     await page.getByRole('alert').filter({ hasText: 'A saved browser preset uses this version' }).waitFor();
-    assert.equal(await page.locator('#saved-animation option').count(), 2);
+    assert.equal(await page.locator('#saved-animation option').count(), 3);
     await page.getByRole('button', { name: 'Delete browser preset', exact: true }).click();
     await page.waitForFunction(() => document.querySelector('#saved-preset')?.options.length === 1);
     await page.getByRole('button', { name: 'Delete animation version', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#saved-animation')?.options.length === 1);
+    await page.waitForFunction(() => document.querySelector('#saved-animation')?.options.length === 2);
     assert.equal(await page.locator('#device-preset option').count(), 2);
     console.log('Browser deletion protects referenced versions and leaves device presets intact: passed');
     await page.getByRole('navigation', { name: 'Device workspace' }).getByRole('link', { name: /Firmware/ }).click();

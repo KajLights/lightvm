@@ -22,8 +22,6 @@ function setup() {
     setProgress: vi.fn(async (progress: number) => { state = { ...state, progress, driver: { kind: 'manual', assignment: 3 } }; }),
     runTransition: vi.fn(async () => {}), holdTransition: vi.fn(async () => {}),
     activatePreset: vi.fn(async () => {}), selectTransition: vi.fn(async () => {}),
-    assignTransitionSource: vi.fn(async (source: string) => { state = { ...state, driver: { kind: 'source', source, assignment: 7 } }; }),
-    updateTransitionSource: vi.fn(async () => true),
   };
   devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
   store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
@@ -55,16 +53,6 @@ it('prepares B and sends cuts, timed runs and Hold to the selected output', asyn
   await waitFor(() => expect(screen.getByRole('button', { name: 'Hold' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Hold' }));
   await waitFor(() => expect(client.holdTransition).toHaveBeenCalledWith('lights'));
-});
-
-it('uses the current external assignment token for source updates', async () => {
-  const { client } = setup();
-  await screen.findByText('1 layer ready');
-  fireEvent.click(screen.getByRole('button', { name: 'Assign source' }));
-  await waitFor(() => expect(client.assignTransitionSource).toHaveBeenCalledWith('slider', 'lights'));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Send source value' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Send source value' }));
-  await waitFor(() => expect(client.updateTransitionSource).toHaveBeenCalledWith('slider', 7, 35, 'lights'));
 });
 
 it('coalesces slider input and preserves an effect draft across polling', async () => {

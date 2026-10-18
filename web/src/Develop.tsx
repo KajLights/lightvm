@@ -96,6 +96,6 @@ export function Develop({ active }: { active: boolean }) {
   useEffect(() => { if (active) compiler.start(); }, [active, compiler]);
   return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Edit, preview on your lights, save an animation, then compose and save a preset.</p></div><div className="pipeline" aria-label="Development workflow"><span>Edit</span><span>→</span><span>Preview</span><span>→</span><span>Save</span><span>→</span><span>Compose</span><span>→</span><span>Preset</span></div></div>
     {description && !connected && <p className="connection-banner">Connect the device to upload. The editor and downloads remain available.</p>}
-    <DevelopmentWorkflow editorPanel={<Editor />} playback={<Playback />} />
+    <DevelopmentWorkflow editorPanel={<Editor />} playback={<Playback />} active={active} />
   </>;
 }

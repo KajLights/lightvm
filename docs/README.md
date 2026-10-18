@@ -29,6 +29,7 @@ The [design directory](design/) describes future requirements on top of the
 current contract. Superseded implementations are available through Git history.
 
 - [Control API proposal](design/feature-proposal-control-api.md)
+- [External inputs for transitions and animations](design/feature-proposal-inputs.md)
 - [Device support proposal](design/feature-proposal-device-support.md)
 - [Build profiles proposal](design/feature-proposal-build-profiles.md)
 - [Web editor proposal](design/feature-proposal-web-editor.md)

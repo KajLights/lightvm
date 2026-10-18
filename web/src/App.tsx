@@ -7,6 +7,7 @@ import type { Path } from './types';
 import { Develop } from './Develop';
 import { Configure } from './Configure';
 import { Firmware } from './Firmware';
+import { Fader } from './Fader';
 
 export function deviceRoute(id: string, view: string) { return '/devices/' + encodeURIComponent(id) + '/' + view; }
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
   const validDevice = route?.params.deviceId === device.description?.device_id;
   const develop = offline || (validDevice && route?.params.view === 'develop');
   const configure = validDevice && route?.params.view === 'configure';
+  const fader = validDevice && route?.params.view === 'fader';
   const firmware = location.pathname === '/firmware' || (validDevice && route?.params.view === 'firmware');
   const [openedDevelop, setOpenedDevelop] = useState(false), [openedConfigure, setOpenedConfigure] = useState(false);
   useEffect(() => { if (develop) setOpenedDevelop(true); if (configure) setOpenedConfigure(true); }, [develop, configure]);
@@ -26,7 +28,7 @@ export function App() {
   const busy = Boolean(activity.operation), description = device.description;
 
   if (location.pathname === '/') return <Navigate to="/devices" replace />;
-  const knownRoute = location.pathname === '/devices' || offline || firmware || (workspace && ['develop', 'configure'].includes(route!.params.view || ''));
+  const knownRoute = location.pathname === '/devices' || offline || firmware || (workspace && ['develop', 'fader', 'configure'].includes(route!.params.view || ''));
   return <>
     <header className="site-header">
       <Link className="brand" to="/devices"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span className="version">{VERSION}</span></Link>
@@ -50,6 +52,7 @@ export function App() {
         </section>
         <nav className="workspace-tabs" aria-label="Device workspace">
           <Link to={deviceRoute(description.device_id, 'develop')} aria-current={develop ? 'page' : undefined}>Develop</Link>
+          <Link to={deviceRoute(description.device_id, 'fader')} aria-current={fader ? 'page' : undefined}>Fader</Link>
           <Link to={deviceRoute(description.device_id, 'configure')} aria-current={configure ? 'page' : undefined}>Configure</Link>
           <Link to={deviceRoute(description.device_id, 'firmware')} aria-current={firmware ? 'page' : undefined}>Firmware</Link>
         </nav>
@@ -61,6 +64,7 @@ export function App() {
       }} />}
       {openedDevelop && <div hidden={!develop}><Develop active={develop} /></div>}
       {openedConfigure && <div hidden={!configure}><Configure key={description?.device_id || 'none'} /></div>}
+      {fader && <Fader />}
       {firmware && <Firmware usbConnected={device.paths.some(path => path.key === 'usb')} />}
       {!knownRoute && <section className="empty-state"><h1>Select a device to continue.</h1><p>Connect to a device to open its workspace.</p><Link className="button primary" to="/devices">Choose a device</Link></section>}
       {develop && <span id="compiler-state" className="sr-only">{editor.compiler === 'ready' ? 'Compiler ready' : editor.compiler === 'error' ? 'Compiler unavailable' : 'Loading compiler'}</span>}
