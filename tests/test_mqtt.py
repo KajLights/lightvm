@@ -219,7 +219,7 @@ def draw(ctx, runtime, pixels):
         self.broker.publish(f'{self.root}/desk/preset/set', 'dim', qos=1)
         self.broker.wait(f'{self.root}/desk/state', b'ON')
         self.broker.wait(f'{self.root}/desk/preset/state', b'dim')
-        composition = self.client.composition('desk')
+        composition = self.client.composition('desk', slot='B')
         self.assertEqual(composition['preset'], 'dim')
         self.assertFalse(self.client.composition('other')['active'])
         self.broker.publish(f'{self.root}/desk/preset/set', 'dim', qos=1)
@@ -227,11 +227,11 @@ def draw(ctx, runtime, pixels):
         self.assertEqual(self.client.composition('desk')['revision'], composition['revision'])
         self.broker.publish(f'{self.root}/desk/set', 'OFF')
         self.broker.wait(f'{self.root}/desk/state', b'OFF')
-        self.assertEqual(self.client.composition('desk')['preset'], 'dim')
+        self.assertEqual(self.client.describe()['outputs'][0]['selected_preset'], 'dim')
         self.broker.publish(f'{self.root}/desk/set', 'ON')
         self.broker.wait(f'{self.root}/desk/state', b'ON')
         self.broker.wait(f'{self.root}/desk/preset/state', b'dim')
-        self.assertEqual(self.client.composition('desk')['preset'], 'dim')
+        self.assertEqual(self.client.describe()['outputs'][0]['selected_preset'], 'dim')
         self.broker.publish(f'{self.root}/other/preset/set', 'dim')
         time.sleep(.05)
         self.assertFalse(self.client.composition('other')['active'])
@@ -307,6 +307,44 @@ def draw(ctx, runtime, pixels):
         self.broker.publish(f'{self.root}/{output["id"]}/preset/set', names[-1])
         self.broker.wait(f'{self.root}/{output["id"]}/preset/state', names[-1].encode())
 
+    def test_ha_recalls_complete_previous_target_and_publish_power_independently(self):
+        program = compile_source((ROOT / 'examples/transitions/crossfade.py').read_text()).bytecode
+        self.client.save_program('fade', program)
+        spec = {'program': 'fade', 'crc32': zlib.crc32(program), 'duration_ms': 100000}
+        self.client.save_preset('blue', self.client.preset('blue')['layers'], output='desk', entry_transition=spec)
+        self.config['outputs'][0].update(on_transition=spec, off_transition=spec)
+        self.client.configure(self.config)
+        self.broker.publish(f'{self.root}/desk/set', 'ON')
+        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        on = self.client.transition('desk')
+        self.assertEqual(on['program'], 'fade')
+        self.assertFalse(on['A']['active'])
+        self.assertEqual(on['B']['preset'], 'blue')
+        self.broker.publish(f'{self.root}/desk/set', 'OFF')
+        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        off = self.client.transition('desk')
+        self.assertTrue(off['playing'])
+        self.assertEqual(off['A']['preset'], 'blue')
+        self.assertFalse(off['B']['active'])
+        self.assertEqual(off['recall'], {'power': False, 'preset': 'blue'})
+        self.broker.publish(f'{self.root}/desk/preset/set', 'blue')
+        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        again = self.client.transition('desk')
+        self.assertFalse(again['A']['active'])
+        self.assertEqual(again['B']['preset'], 'blue')
+        self.assertEqual(again['driver']['start'], 0)
+
+    def test_on_uses_exposed_default_when_last_recall_is_not_exposed(self):
+        self.client.save_preset('private', self.client.preset('blue')['layers'], output='desk')
+        self.client.recall_preset('private', 'desk')
+        self.client.set_power(False, 'desk')
+        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.broker.publish(f'{self.root}/desk/set', 'ON')
+        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.assertEqual(self.client.transition('desk')['recall']['preset'], 'blue')
+
     def test_ha_binding_validation(self):
         for changes in ({'presets': []}, {'presets': ['blue', 'blue']}, {'presets': ['other']},
                         {'presets': ['blue', 'bad/name']}, {'presets': ['blue', 'None']},
@@ -330,7 +368,7 @@ def draw(ctx, runtime, pixels):
         self.assertIn(b'broker-secret', connect)
         self.broker.publish(f'{self.root}/desk/set', 'ON', qos=1)
         self.broker.wait(f'{self.root}/desk/state', b'ON')
-        composition = self.client.composition('desk')
+        composition = self.client.composition('desk', slot='B')
         self.assertTrue(composition['playing'])
         self.assertFalse(self.client.composition('other')['active'])
         self.broker.publish(f'{self.root}/desk/set', 'ON', qos=1)
@@ -338,11 +376,11 @@ def draw(ctx, runtime, pixels):
         self.assertEqual(self.client.composition('desk')['revision'], composition['revision'])
         self.broker.publish(f'{self.root}/desk/set', 'OFF')
         self.broker.wait(f'{self.root}/desk/state', b'OFF')
-        self.assertFalse(self.client.composition('desk')['playing'])
+        self.assertFalse(self.client.describe()['outputs'][0]['power'])
         self.assertEqual(self.client.composition_snapshot(output='desk')[1], bytes(15))
         self.broker.publish(f'{self.root}/other/set', 'ON')
         self.broker.wait(f'{self.root}/other/state', b'ON')
-        self.assertTrue(self.client.composition('other')['playing'])
+        self.assertTrue(self.client.transition('other')['playing'])
         self.client.require_ok(self.client.command(STOP, output='other'))
         self.broker.wait(f'{self.root}/other/state', b'OFF')
 
@@ -364,7 +402,7 @@ def draw(ctx, runtime, pixels):
             for peer in peers:
                 self.broker.publish(f'{self.root}/desk/set', 'ON')
                 self.broker.wait(f'{self.root}/desk/state', b'ON')
-                self.assertTrue(peer.composition('desk')['playing'])
+                self.assertTrue(peer.transition('desk')['playing'])
                 peer.require_ok(peer.command(STOP, output='desk'))
                 self.broker.wait(f'{self.root}/desk/state', b'OFF')
                 self.assertEqual(self.client.composition_snapshot(output='desk')[1], bytes(15))
@@ -384,7 +422,7 @@ def draw(ctx, runtime, pixels):
         self.assertNotEqual(first, second)
         self.assertEqual(json.loads(self.broker.latest[first])['command_topic'], f'{self.root}/desk.v1/set')
 
-    def test_on_replaces_a_stopped_ab_presenter(self):
+    def test_on_recalls_into_ab_from_black_after_stop(self):
         self.client.activate_preset('blue', output='desk', slot='A')
         self.client.activate_preset('blue', output='desk', slot='B')
         self.client.set_progress(100, output='desk')
@@ -392,8 +430,8 @@ def draw(ctx, runtime, pixels):
         self.broker.wait(f'{self.root}/desk/state', b'OFF')
         self.broker.publish(f'{self.root}/desk/set', 'ON')
         self.broker.wait(f'{self.root}/desk/state', b'ON')
-        self.assertFalse(self.client.transition(output='desk')['active'])
-        self.assertTrue(self.client.composition('desk')['playing'])
+        self.assertTrue(self.client.transition(output='desk')['active'])
+        self.assertTrue(self.client.transition('desk')['playing'])
         self.assertEqual(self.client.composition_snapshot(output='desk')[1], bytes([0, 0, 255]) * 5)
 
     def test_retained_invalid_unknown_commands_and_failed_preset(self):
@@ -430,7 +468,7 @@ def draw(ctx, runtime, pixels):
         self.broker.wait(f'{self.root}/desk/preset/state', b'')
         self.broker.publish(f'{self.root}/desk/set', 'OFF')
         time.sleep(.05)
-        self.assertTrue(self.client.composition('desk')['playing'])
+        self.assertTrue(self.client.transition('desk')['playing'])
 
     def test_validation_and_secret_preservation(self):
         for field, value in [('host', 'http://broker.local'), ('host', 'broker.local:1883'), ('host', 'a..b'), ('host', '256.0.0.1'), ('port', 0), ('enabled', 'yes'), ('extra', 1)]:

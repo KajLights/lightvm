@@ -134,7 +134,7 @@ versions on the same broker.
 | `homeassistant/lightvm/<controller_id>/<output_id>/set` | Exact `ON` or `OFF`; publish without retain. |
 | `homeassistant/lightvm/<controller_id>/<output_id>/preset/set` | Preset name from this output’s list; starts it, without retain. |
 | `homeassistant/lightvm/<controller_id>/<output_id>/preset/state` | Retained preset name, or `None` for unknown. |
-| `homeassistant/lightvm/<controller_id>/<output_id>/state` | Retained actual playback state, `ON` or `OFF`. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/state` | Retained accepted power target, `ON` or `OFF`; rendering may continue during a fade. |
 | `homeassistant/lightvm/<controller_id>/availability` | Retained `online`; retained Last Will `offline`. |
 | `homeassistant/light/<controller_id>/<hex_output_id>/config` | Retained MQTT light discovery document. |
 | `homeassistant/select/<controller_id>/<hex_output_id>_preset/config` | Retained MQTT Select discovery document. |
@@ -156,21 +156,26 @@ and [MQTT light](https://www.home-assistant.io/integrations/light.mqtt/) contrac
 The accompanying [MQTT Select](https://www.home-assistant.io/integrations/select.mqtt/)
 entity is named `<output name> Preset` and reports confirmed state.
 
-Selecting a preset prepares and starts it on the entire output, replacing any
-A/B presenter. ON while stopped recalls the last identifiable, exposed preset;
-if there is none, it uses `default_preset`. OFF stops playback and presents black
-pixels, retaining the preset selection. Repeated ON or selection of the already
-playing preset does not restart it. Failed preparation preserves the old runtime
-and selection. A reboot starts with no selection until a preset is activated;
-startup remains a separately configured program.
+Selecting a preset invokes the application's recall operation: it completes the
+previous destination, moves it into A if necessary, prepares the new preset in B,
+and runs its entry transition forward. ON recalls the last identifiable, exposed
+selection or `default_preset`, using the output's on transition when configured.
+OFF transitions to black using the off transition and retains the selection.
+Preset entry and output power transition configuration are described in
+[recall transitions](transitions.md#preset-recalls-and-power).
+
+Repeated ON/OFF or selection of the current target does not restart it. Failed
+preparation preserves the old runtime, driver and selection. A reboot starts with
+no selection until a preset is activated; startup remains separately configured.
 
 Power and preset state reflect changes through MQTT, HTTP, WebSocket and serial.
-Editing a layer or its initialization settings, running an unsaved composition,
-replacing/deleting the saved recipe, or mixing A/B at an intermediate percentage
-reports unknown preset state rather than claiming the old preset is still active.
-At A/B endpoints the visible slot's unmodified preset can be identified. Entire
-output pause/stop retains identity. `describe.outputs[].preset` and
-`composition_get.preset` report the saved identity or JSON null.
+Recall publishes the accepted preset and logical power target even while the
+physical transition is running. OFF does not mean the rendering engine has stopped.
+Manual A/B controls keep fixed slots and release recall ownership. An intermediate
+manual mix, edited layers, unsaved compositions or changed/deleted recipe versions
+report unknown preset state; an endpoint can identify its unmodified preset.
+`describe.outputs[].preset` remains the actual visible endpoint identity, while
+`selected_preset` and `transition_get.recall` expose the recall selection separately.
 
 For example, turn on an output and recall a preset in HA:
 
@@ -214,9 +219,9 @@ callbacks run engine commands, and no worker thread owns the VM.
 `src/home_assistant.[ch]` owns topic/discovery conventions, output bindings and
 state observation. It dispatches power and preset commands through the ordinary application
 command boundary. The runtime, recipe validation, peak-memory admission and
-failure behavior remain shared with HTTP/WebSocket/serial. Calling `preset_activate`
-without a slot replaces the complete output; explicitly selecting `A` or `B`
-updates that slot under the existing transition owner.
+failure behavior remain shared with HTTP/WebSocket/serial. HA uses `preset_recall`
+and `output_power`. `preset_activate` prepares a fixed slot (A by default),
+retaining its transition owner and progress.
 
 The generic client reserves 2 KiB for receive and 2 KiB for transmit buffers. Work
 per tick and published messages per binding tick are bounded; buffer pressure

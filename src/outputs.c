@@ -3,6 +3,7 @@
 #include "runtime.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 static bool validate_pixels(const Json *, int, PixelConfig *, char *, size_t);
 static const OutputType types[] = {
     {"ws2812b",validate_pixels,platform_pixels_open,platform_pixels_close,platform_pixels_show,platform_pixels_submit,platform_pixels_poll,platform_pixels_cancel}
@@ -24,6 +25,21 @@ bool object_name_valid(const char *name) {
 }
 static bool failure(char *error, size_t capacity, const char *message) {
     snprintf(error, capacity, "%s", message); return false;
+}
+bool transition_spec_parse(const Json *j,int token,TransitionSpec *spec,char *error,size_t capacity) {
+    memset(spec,0,sizeof(*spec));
+    if(token<0)return true;
+    static const char *const fields[]={"program","crc32","settings","seed","duration_ms",NULL};
+    if(!json_fields(j,token,fields)||
+       !json_string(j,json_get(j,token,"program"),spec->program,sizeof(spec->program))||!object_name_valid(spec->program)||
+       !json_u32(j,json_get(j,token,"crc32"),&spec->crc)||
+       !json_f64(j,json_get(j,token,"duration_ms"),&spec->duration_ms)||spec->duration_ms<0||!isfinite(spec->duration_ms*1000))
+        return failure(error,capacity,"transition requires program, crc32 and finite nonnegative duration_ms");
+    int seed=json_get(j,token,"seed"),settings=json_get(j,token,"settings");
+    if((seed>=0&&!json_u32(j,seed,&spec->seed))||(settings>=0&&j->tokens[settings].type!=JSON_OBJECT))
+        return failure(error,capacity,"transition settings must be an object and seed an unsigned integer");
+    spec->offset=(uint32_t)j->tokens[token].start;spec->size=(uint32_t)(j->tokens[token].end-j->tokens[token].start);
+    return true;
 }
 static bool validate_pixels(const Json *j, int c, PixelConfig *cfg, char *error, size_t capacity) {
     static const char *const pixel_fields[] = {"pin", "count", "order", "brightness_limit", NULL};
@@ -62,11 +78,13 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
     if(j.tokens[list].children&&!cfg->outputs)return failure(error,capacity,"outputs: allocation failed");
     for(int t=list+1;t<j.tokens[list].next;t=j.tokens[t].next){
         HardwareOutput *d=&cfg->outputs[cfg->count];
-        static const char *const fields[]={"id","type","config","startup","home_assistant",NULL};
+        static const char *const fields[]={"id","type","config","startup","home_assistant","on_transition","off_transition",NULL};
         if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id))
             return failure(error,capacity,"outputs.id: missing or invalid identifier/fields");
         if(!json_string(&j,json_get(&j,t,"type"),d->type,sizeof(d->type))||!output_type(d->type))
             return failure(error,capacity,"outputs.type: unsupported output type");
+        if(!transition_spec_parse(&j,json_get(&j,t,"on_transition"),&d->on_transition,error,capacity)||
+           !transition_spec_parse(&j,json_get(&j,t,"off_transition"),&d->off_transition,error,capacity))return false;
         int ha=json_get(&j,t,"home_assistant");
         if(ha>=0){
             static const char *const ha_fields[]={"default_preset","presets","name",NULL};

@@ -13,6 +13,74 @@ A or B replaces only that composition. Transient preview uploads retain their ex
 whole-output replacement behavior. A/B state is held in RAM; startup remains the
 configured single program.
 
+## Preset recalls and power
+
+Manual A/B controls keep fixed slots, including timed `transition_run` movements.
+Reaching an endpoint never swaps or unloads either composition. `preset_activate`
+loads a named recipe into a slot (A by default) without moving progress or selecting
+its entry transition. `transition_swap` explicitly exchanges the instances and
+complements progress at an endpoint; it preserves clocks, settings and RNG state.
+It rejects intermediate progress, where a directional effect need not preserve
+its image under a swap.
+
+`preset_recall` is a separate output operation. It prepares a preset and its
+optional `entry_transition`, then always runs from A (outgoing) to B (incoming),
+0 to 100. If another recall arrives, the previous destination becomes full
+immediately, moves into A without restarting, and the new destination is placed
+in B. A held manual mix has no recall target; takeover completes toward B when
+progress is above zero, or retains A at zero. No snapshot or queue is used.
+A manual STOP followed by recall starts from black. Directional transition
+settings therefore have the same meaning for every recall. At completion the
+slots remain in place until the next recall or explicit swap.
+
+Preset documents accept this optional invocation, with a pinned transition program
+version and frozen initialization settings:
+
+```json
+"entry_transition": {
+  "program": "wipe",
+  "crc32": 123456789,
+  "settings": {"reverse": false},
+  "duration_ms": 1500
+}
+```
+
+Use the real CRC32 from `program_list` with `type: "transition"`. `program`,
+`crc32` and finite, nonnegative `duration_ms` are required. `settings` and unsigned
+`seed` are optional. Omission means an immediate cut; duration zero also cuts.
+Saved recipes and active/saved output configuration protect these program versions
+from replacement and deletion, independently of the animation namespace.
+
+Each output in `lightvm.config` accepts `on_transition` and `off_transition` with
+the same invocation format, outside its optional `home_assistant` binding.
+`output_power` with `action: "off"` recalls black and remembers the selected preset.
+`action: "on"` recalls optional `name`, otherwise the remembered preset, then the
+output's HA default when no selection is known. HA supplies its exposed selection
+or default explicitly. Turning on uses `on_transition` when configured,
+otherwise the recalled preset's entry transition. Selecting a preset while off
+uses the same rule. Turning off uses `off_transition`, or an immediate cut.
+Exactly one transition runs for each operation.
+
+Both recall operations require `expected_revision` matching the output's shared
+composition revision, and accept `output`. They admit the whole candidate and
+transition before committing. Invalid references, settings, resource admission or
+stale revisions preserve the old playback and driver. Repeating the same target
+is a no-op. A recall revokes old source assignment tokens. Manual transition and
+composition controls release recall ownership without enabling automatic swaps.
+
+`describe.outputs[].power` is logical destination power, separate from `playing`:
+the presenter continues rendering a fade to black. `selected_preset` remembers
+the accepted selection, including while off; `preset` remains the identity of the
+actual endpoint composition and is null for a mix or black. `transition_get.recall`
+is `{power,preset}` while recall owns the output, otherwise null. Selection and
+power changes are RAM state; reboot retains existing startup behavior.
+
+The Python client provides `recall_preset`, `set_power` and `swap_transition`.
+The CLI exposes `--recall-preset NAME`, `--power on|off` and `--swap-transition`.
+The editor provides entry transition settings in the preset composer and on/off
+transition settings under **Configure → Output & startup**. **Run on output** and
+HA use recalls; the A/B and Fader panels keep fixed manual slots.
+
 ## Progress and effects
 
 Progress is a finite number from 0 to 100. Setting it selects that percentage
@@ -94,6 +162,9 @@ Preparation failures and stale revisions preserve both compositions and the acti
 
 | Operation | Fields / response |
 | --- | --- |
+| `transition_swap` | `expected_revision`; swap A/B and complement progress at an endpoint, release the driver. |
+| `preset_recall` | `name`, `expected_revision`; prepare the destination and its entry transition, run A to B. |
+| `output_power` | `action: "on"` or `"off"`, `expected_revision`, optional on `name`; recall preset or black. |
 | `transition_get` | State with A, B, program, pinned program CRC32, progress, driver, counters and errors. |
 | `transition_set` | `progress`; releases the driver. |
 | `transition_run` | `target`, `duration_ms`, optional `interval_ms`; replaces the driver after validation. |

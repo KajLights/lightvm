@@ -472,9 +472,11 @@ class Client:
         self.manage('preset_get', name=name)
         return json.loads(self.data_reply)
 
-    def save_preset(self, name, layers, output=None):
+    def save_preset(self, name, layers, output=None, entry_transition=None):
         revision = self.describe()['catalog_revision']
         document = {'schema': 'lightvm.preset', 'layers': layers}
+        if entry_transition is not None:
+            document['entry_transition'] = entry_transition
         try:
             self.upload_object('preset', json.dumps(document, separators=(',', ':')).encode(), name)
             return self.manage('preset_save', name=name, expected_revision=revision,
@@ -487,6 +489,21 @@ class Client:
         revision = self.composition(output=output, slot=slot)['revision']
         return self.manage('preset_activate', **({'slot':slot} if slot is not None else {}), name=name, expected_revision=revision,
                            **({'output': output} if output is not None else {}))
+
+    def recall_preset(self, name, output=None):
+        revision = self.transition(output)['revision']
+        return self.manage('preset_recall', name=name, expected_revision=revision,
+                           **({'output': output} if output is not None else {}))
+
+    def set_power(self, on, output=None, preset=None):
+        revision = self.transition(output)['revision']
+        return self.manage('output_power', action='on' if on else 'off', expected_revision=revision,
+                           **({'name': preset} if preset is not None else {}),
+                           **({'output': output} if output is not None else {}))
+
+    def swap_transition(self, output=None):
+        revision = self.transition(output)['revision']
+        return self._transition_control('transition_swap', output, expected_revision=revision)
 
     def delete_preset(self, name):
         revision = self.describe()['catalog_revision']
@@ -546,6 +563,9 @@ def main():
     action.add_argument("--layer-opacity", type=int, metavar="U8")
     action.add_argument("--layer-blend", choices=("over", "add", "screen", "multiply"))
     action.add_argument("--remove-layer", action="store_true")
+    action.add_argument("--recall-preset", metavar="NAME", help="recall a preset using its entry transition")
+    action.add_argument("--power", choices=("on", "off"), help="transition output power")
+    action.add_argument("--swap-transition", action="store_true", help="swap A/B at an endpoint")
     action.add_argument("--get-transition", action="store_true")
     action.add_argument("--progress", type=float, help="set an absolute percentage and release its driver")
     action.add_argument("--run-to", type=float, metavar="PERCENT", help="run from current progress to target")
@@ -586,7 +606,7 @@ def main():
         parser.error("--save-to requires --get-program")
     if args.store_program and args.module is None:
         parser.error("--store-program requires a .lbc program")
-    management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
+    management = (args.recall_preset or args.power or args.swap_transition or args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
                   args.store_program or args.programs or args.get_program or args.delete_program or
                   args.activate or args.cancel_upload or args.program_state or
                   args.pause or args.resume or args.snapshot or args.composition or args.get_composition or args.composition_snapshot or args.clear_composition or args.layer_opacity is not None or args.layer_blend or args.remove_layer or args.get_transition or args.progress is not None or args.run_to is not None or args.hold_transition or args.transition_effect or args.transition or args.assign_source or args.source_value is not None)
@@ -610,7 +630,13 @@ def main():
         connection = SerialTransport(args.port, no_reset=args.no_reset) if args.port else HttpTransport(args.url, args.timeout) if args.url else ProcessTransport(args.process, storage=args.storage)
         client = Client(connection, timeout=args.timeout)
         if management:
-            if args.get_transition:
+            if args.recall_preset:
+                print(client.recall_preset(args.recall_preset, output=args.output))
+            elif args.power:
+                print(client.set_power(args.power == 'on', output=args.output))
+            elif args.swap_transition:
+                print(json.dumps(client.swap_transition(output=args.output), indent=2))
+            elif args.get_transition:
                 print(json.dumps(client.transition(output=args.output),indent=2))
             elif args.progress is not None:
                 print(json.dumps(client.set_progress(args.progress,output=args.output),indent=2))

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -151,6 +151,26 @@ describe('editor examples and playback status', () => {
 });
 
 describe('typed controller storage', () => {
+  it('recalls controller presets and routes power through the recall API', async () => {
+    const { store, controllers, show } = workspace();
+    const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0', storage_available: true } as Description;
+    const client = { closed: false, transport: { label: 'USB' }, recallPreset: vi.fn(async () => {}), setPower: vi.fn(async () => {}),
+      describe: vi.fn(async () => ({ catalog_revision: 1 })), json: vi.fn(async () => ({ layers: [] })) };
+    controllers.paths.attach('usb', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+    vi.spyOn(controllers, 'readProgramState').mockResolvedValue();
+    store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [
+      { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 5 } },
+    ] }, revision: 1, savedRevision: 1 }));
+    store.dispatch(controllerActions.presets([{ name: 'blue', size: 100, crc32: 1 }]));
+    show();
+    fireEvent.change(screen.getByLabelText('Controller preset'), { target: { value: 'blue' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Run on output' }));
+    await waitFor(() => expect(client.recallPreset).toHaveBeenCalledWith('blue', 'lights'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Turn off' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off' }));
+    await waitFor(() => expect(client.setPower).toHaveBeenCalledWith(false, 'lights'));
+  });
+
   it('distinguishes same-name programs and deletes only the selected type', async () => {
     const { store, controllers, show } = workspace();
     const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0',

@@ -170,6 +170,7 @@ export function Fader() {
             aria-valuetext={progress.toFixed(1) + '% towards composition B'} onChange={event => slide(Number(event.target.value))} />
           <div className="fader-endpoints"><span>A · 0%</span><span>B · 100%</span></div>
           <div className="fader-actions"><button className="primary" disabled={busy || owned} onClick={() => void control('Connecting fader', connection => connection.assignTransitionSource(FADER_SOURCE, output), true)}>Use fader</button>
+            <button className="secondary" disabled={busy || (state?.progress !== 0 && state?.progress !== 100)} onClick={() => void control('Swapping A and B', connection => connection.swapTransition(output))}>Swap A and B</button>
             <button className="secondary" disabled={busy} onClick={() => void control('Holding transition', connection => connection.holdTransition(output))}>Hold</button></div>
           <p id="fader-driver" className="helper" role="status">{driver}</p>
           <p className="helper">Use fader takes over at the current position. Drag or use the arrow keys to move between A and B. Hold releases control at the current position.</p>

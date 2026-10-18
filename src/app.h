@@ -20,6 +20,10 @@ typedef struct {
     uint32_t layer_generation;
     char active_program[OBJECT_NAME_LIMIT + 1];
     uint32_t active_crc;
+    /* Recall owns destination semantics; manual A/B operations release ownership. */
+    bool recall_owned, power_on;
+    char selected_preset[OBJECT_NAME_LIMIT + 1];
+    uint32_t selected_preset_crc;
 } AppOutput;
 typedef struct {
 #if LIGHTVM_BOOT_SEQUENCE
@@ -59,6 +63,8 @@ typedef struct {
 AppOutput *app_output(App *, const char *id);
 /* Saved identity of the visible, unmodified composition, or NULL. */
 const char *app_output_preset(const App *, const AppOutput *);
+const char *app_output_selected_preset(const App *, const AppOutput *);
+bool app_output_power(const AppOutput *);
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);

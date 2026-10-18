@@ -1,3 +1,5 @@
+import { RecallTransition } from './RecallTransition';
+import { validTransitionSpec } from './library';
 import { useEffect, useMemo, useState } from 'react';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
 import { useRuntime } from './runtime';
@@ -18,6 +20,7 @@ function parseConfig(value: string): HardwareConfig | null {
     const result = JSON.parse(value);
     if (!object(result) || result.schema !== 'lightvm.config' || !Array.isArray(result.outputs) || Object.keys(result).some(key => key !== 'schema' && key !== 'outputs')) return null;
     return result.outputs.every(item => object(item) && typeof item.id === 'string' && item.type === 'ws2812b' && object(item.config) && typeof item.config.pin === 'string' && typeof item.config.count === 'number' &&
+      (item.on_transition === undefined || object(item.on_transition)) && (item.off_transition === undefined || object(item.off_transition)) &&
       (item.home_assistant === undefined || (object(item.home_assistant) && typeof item.home_assistant.default_preset === 'string' && Array.isArray(item.home_assistant.presets) && item.home_assistant.presets.every(name => typeof name === 'string') && item.home_assistant.presets.includes(item.home_assistant.default_preset))) &&
       (item.startup === undefined || (object(item.startup) && typeof item.startup.program === 'string' && (item.startup.settings === undefined || object(item.startup.settings))))) ? result as unknown as HardwareConfig : null;
   } catch { return null; }
@@ -35,9 +38,10 @@ function Hardware() {
     setBase({ active_revision: controller.configRevision, saved_revision: controller.savedRevision, boot_id: controller.description?.boot_id });
   }, [controller.config, controller.configRevision, controller.savedRevision, controller.description?.boot_id, dirty]);
   const draft = useMemo(() => parseConfig(text), [text]);
+  const invalidTransitions = draft?.outputs.some(item => (item.on_transition !== undefined && !validTransitionSpec(item.on_transition)) || (item.off_transition !== undefined && !validTransitionSpec(item.off_transition)));
   const invalidSettings = Object.values(settingDrafts).some(value => !parseSettings(value));
   const stale = dirty && (base.active_revision !== controller.configRevision || base.saved_revision !== controller.savedRevision || base.boot_id !== controller.description?.boot_id);
-  const canApply = Boolean(controller.selectedPath && draft && !invalidSettings && !busy && !stale);
+  const canApply = Boolean(controller.selectedPath && draft && !invalidSettings && !invalidTransitions && !busy && !stale);
   function update(config: HardwareConfig) { setText(JSON.stringify(config, null, 2)); setDirty(true); }
   function setOutput(index: number, change: (item: HardwareConfig['outputs'][number]) => void) {
     if (!draft) return;
@@ -75,7 +79,7 @@ function Hardware() {
     dispatch(activityActions.notice(''));
   }
   async function submit(options: { save?: boolean; validate?: boolean }) {
-    if (!draft || invalidSettings) { dispatch(activityActions.notice('Enter valid configuration and startup settings before continuing.')); return; }
+    if (!draft || invalidSettings || invalidTransitions) { dispatch(activityActions.notice('Enter valid configuration and startup settings before continuing.')); return; }
     const success = await controllers.configure(draft, base, options);
     if (success && !options.validate) setDirty(false);
   }
@@ -97,6 +101,11 @@ function Hardware() {
         {output.startup && <><label htmlFor={'startup-settings-' + index}>Startup settings (JSON)</label><textarea id={'startup-settings-' + index} className="config-code" spellCheck={false} value={settingDrafts[index] ?? JSON.stringify(output.startup.settings || {}, null, 2)} aria-invalid={settingDrafts[index] !== undefined && !parseSettings(settingDrafts[index])} onChange={event => editSettings(index, event.target.value)} />
           {settingDrafts[index] !== undefined && !parseSettings(settingDrafts[index]) && <p role="alert">Settings must be a JSON object with numeric or boolean values.</p>}
           <p className="helper">Settings are applied when the animation initializes. Omitted settings use its defaults.</p></>}
+        {controller.description?.power_transitions && <>
+          <RecallTransition id={'on-transition-' + index} label="On transition" value={output.on_transition} disabled={busy} emptyLabel="Use preset entry transition" onChange={value => setOutput(index, item => { if (value) item.on_transition = value; else delete item.on_transition; })} />
+          <RecallTransition id={'off-transition-' + index} label="Off transition" value={output.off_transition} disabled={busy} onChange={value => setOutput(index, item => { if (value) item.off_transition = value; else delete item.off_transition; })} />
+          <p className="helper">On recalls the selected preset from black. Off transitions to black and remembers the selected preset.</p>
+        </>}
         {controller.description?.mqtt_supported && <>
           <label htmlFor={'ha-preset-' + index}>Home Assistant default preset</label>
           <select id={'ha-preset-' + index} value={output.home_assistant?.default_preset || ''} onChange={event => setOutput(index, item => { if (event.target.value) item.home_assistant = { ...item.home_assistant, default_preset: event.target.value, presets: Array.from(new Set([...(item.home_assistant?.presets || []), event.target.value])) }; else delete item.home_assistant; })}>
@@ -113,7 +122,7 @@ function Hardware() {
             </label>)}
             <p className="helper">Choose up to 16 presets. The default is always included. Unavailable presets appear in HA after they are saved on this controller.</p>
           </fieldset><label htmlFor={'ha-name-' + index}>Home Assistant name</label><input id={'ha-name-' + index} value={output.home_assistant.name || ''} placeholder={output.id} onChange={event => setOutput(index, item => { if (item.home_assistant) { if (event.target.value) item.home_assistant.name = event.target.value; else delete item.home_assistant.name; } })} /></>}
-          <p className="helper">Each exposed output has an on/off light and a Preset selector. Selecting a preset starts it; ON recalls the last selected preset, or the default. OFF clears the LEDs. Enable MQTT in network settings.</p>
+          <p className="helper">Each exposed output has an on/off light and a Preset selector. Selecting a preset starts it; ON recalls the last selected preset, or the default. OFF transitions to black. Enable MQTT in network settings.</p>
         </>}
         <button className="quiet small" onClick={() => removeOutput(index)}>Remove output</button>
       </fieldset>)}

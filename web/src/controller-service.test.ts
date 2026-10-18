@@ -147,6 +147,19 @@ describe('selected preview output', () => {
     expect(client.manage).toHaveBeenLastCalledWith('output_command', { output: 'second', command: 8 });
   });
 
+  it('inspects a recall destination in B while manual controls continue to inspect A', async () => {
+    const { store, service, client } = workspace();
+    const description = { controller_id: 'pico', ab_transitions: true } as Description;
+    store.dispatch(controllerActions.description(description));
+    const transition = vi.fn().mockResolvedValue({ recall: { power: true, preset: 'blue' } });
+    Object.assign(client, { transition });
+    await service.readProgramState(client);
+    expect(client.json).toHaveBeenLastCalledWith('program_state', { output: 'first', slot: 'B' });
+    transition.mockResolvedValue({ recall: null });
+    await service.readProgramState(client);
+    expect(client.json).toHaveBeenLastCalledWith('program_state', { output: 'first' });
+  });
+
   it('ignores a program-state response for an output deselected during a background read', async () => {
     const { store, service, client } = workspace();
     let complete!: (state: unknown) => void;

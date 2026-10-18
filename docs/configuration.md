@@ -188,7 +188,8 @@ status are not part of this protocol.
 | `program_save` | `name`, `expected_revision` (catalog), optional `type` matching bytecode profile; persist staged module |
 | `program_delete` | `name`, optional `type`, `expected_revision` (catalog) |
 | `program_activate` | `name`, optional `action` (`play`, default play) |
-| `preset_list`, `preset_get`, `preset_save`, `preset_activate`, `preset_delete` | Persistent composition recipes; see [preset fields and revisions](composition.md). |
+| `output_power` | `action: "on"` or `"off"`, optional on `name`, `expected_revision` (composition); see [power transitions](transitions.md#preset-recalls-and-power). |
+| `preset_list`, `preset_get`, `preset_save`, `preset_activate`, `preset_recall`, `preset_delete` | Persistent composition recipes; see [preset fields and revisions](composition.md). |
 
 One object transfer is allowed at a time and shares the installer with transient preview uploads.
 Chunks are ordered; identical already-received chunks can be retried. Conflicting
@@ -298,6 +299,11 @@ are STATUS (1), RESET (6), PLAY (7), STOP (8) and FRAME (9, with `delta_ms`). Ea
 output has composition slots A and B; global B–H output bindings are unsupported.
 
 ## Home Assistant bindings
+
+Each output may include `on_transition` and `off_transition` invocations with
+`program`, `crc32`, `duration_ms`, optional `settings` and `seed`. These apply to
+application power recalls through every transport, independently of HA exposure.
+See [recall transitions](transitions.md#preset-recalls-and-power).
 
 Each output may include a `home_assistant` object with `default_preset`, an
 explicit `presets` list and an optional `name`. It exposes one on/off light and

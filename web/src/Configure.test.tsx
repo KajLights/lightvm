@@ -1,3 +1,5 @@
+import { deployedTransition, WIPE_SETTINGS } from '../../tests/web-transitions';
+import type { LightVMClient } from '../protocol.mjs';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +33,32 @@ function readyStore() {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('configuration drafts', () => {
+  it('edits pinned on/off transitions and preserves their settings in output configuration', async () => {
+    const store = readyStore(), wipe = deployedTransition('wipe', WIPE_SETTINGS);
+    store.dispatch(controllerActions.description({ ...description, power_transitions: true }));
+    store.dispatch(controllerActions.programs([wipe.program]));
+    vi.spyOn(runtime.controllers, 'client', 'get').mockReturnValue({ getProgram: vi.fn(async () => wipe.bytes) } as unknown as LightVMClient);
+    const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
+    render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.change(screen.getByLabelText('On transition'), { target: { value: 'wipe' } });
+    const on = within(screen.getByRole('group', { name: 'On transition settings' }));
+    fireEvent.click(await on.findByLabelText('Override reverse'));
+    fireEvent.change(on.getByLabelText('reverse'), { target: { value: 'true' } });
+    fireEvent.change(screen.getByLabelText('On transition duration (ms)'), { target: { value: '750' } });
+    fireEvent.change(screen.getByLabelText('Off transition'), { target: { value: 'wipe' } });
+    fireEvent.change(screen.getByLabelText('Off transition duration (ms)'), { target: { value: '1250' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
+    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({ outputs: [expect.objectContaining({
+      on_transition: { program: 'wipe', crc32: wipe.program.crc32, duration_ms: 750, settings: { reverse: true } },
+      off_transition: { program: 'wipe', crc32: wipe.program.crc32, duration_ms: 1250, settings: {} },
+    })] }), expect.anything(), { save: true }));
+    fireEvent.change(screen.getByLabelText('Off transition duration (ms)'), { target: { value: '-1' } });
+    expect(screen.getByLabelText('Off transition duration (ms)')).toHaveValue(-1);
+    expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Off transition'), { target: { value: '' } });
+    expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeEnabled();
+  });
+
   it('assigns a default and selectable HA presets per output and preserves them through other edits', async () => {
     const store = readyStore();
     store.dispatch(controllerActions.description({ ...description, mqtt_supported: true }));

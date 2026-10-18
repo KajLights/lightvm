@@ -1,6 +1,6 @@
 import { parseRelease } from './release';
 import { crc32 } from '../protocol.mjs';
-import type { Compilation, Manifest, Setting } from './types';
+import type { Compilation, Manifest, Setting, TransitionSpec } from './types';
 
 export type SettingsValues = Record<string, number | boolean>;
 export type Blend = 'over' | 'add' | 'screen' | 'multiply';
@@ -9,7 +9,7 @@ export interface SavedAnimation {
   bytecode: string; digest: string; manifest: Manifest; settings: SettingsValues;
 }
 export interface PresetLayer { id: string; animation: string; settings: SettingsValues; opacity: number; blend: Blend }
-export interface SavedPreset { id: string; name: string; layers: PresetLayer[] }
+export interface SavedPreset { id: string; name: string; layers: PresetLayer[]; entry_transition?: TransitionSpec }
 export interface Library { schema: 'lightvm.library'; animations: SavedAnimation[]; presets: SavedPreset[] }
 export interface CompositionLayer { id: string; program: string; crc32: number; settings: SettingsValues; opacity: number; blend: Blend }
 export const LIBRARY_KEY = 'lightvm.library.v1';
@@ -86,6 +86,13 @@ export function compositionLayers(library: Library, layers: PresetLayer[]): Comp
 function checkSettings(value: unknown): value is SettingsValues {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value) && Object.values(value).every(item => typeof item === 'boolean' || (typeof item === 'number' && Number.isFinite(item))));
 }
+export function validTransitionSpec(value: unknown): value is TransitionSpec {
+  const spec = value as TransitionSpec | undefined;
+  return Boolean(spec && typeof spec.program === 'string' && /^[A-Za-z0-9_.-]{1,32}$/.test(spec.program) && Number.isInteger(spec.crc32) && spec.crc32 >= 0 && spec.crc32 <= 0xffffffff &&
+    typeof spec.duration_ms === 'number' && Number.isFinite(spec.duration_ms * 1000) && spec.duration_ms >= 0 &&
+    (spec.seed === undefined || (Number.isInteger(spec.seed) && spec.seed >= 0 && spec.seed <= 0xffffffff)) &&
+    (spec.settings === undefined || checkSettings(spec.settings)));
+}
 export function parseLibrary(text: string): Library {
   if (text.length > 5 * 1024 * 1024) throw new Error('Choose a library smaller than 5 MiB.');
   const library = JSON.parse(text) as Library;
@@ -106,6 +113,7 @@ export function parseLibrary(text: string): Library {
   const presetIds = new Set<string>();
   for (const preset of library.presets) {
     if (!preset || typeof preset.id !== 'string' || !preset.id || presetIds.has(preset.id) || typeof preset.name !== 'string' || !/^[A-Za-z0-9_.-]{1,32}$/.test(preset.name) || !Array.isArray(preset.layers) || !preset.layers.length || preset.layers.length > 8) throw new Error('Invalid preset.');
+    if (preset.entry_transition !== undefined && !validTransitionSpec(preset.entry_transition)) throw new Error('Invalid preset entry transition.');
     presetIds.add(preset.id); const layerIds = new Set<string>();
     for (const layer of preset.layers) {
       if (!layer || typeof layer.id !== 'string' || !/^[A-Za-z0-9_.-]{1,32}$/.test(layer.id) || layerIds.has(layer.id) || !ids.has(layer.animation) ||

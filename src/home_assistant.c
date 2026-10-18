@@ -3,14 +3,14 @@
 #include <string.h>
 
 static bool playing(const AppOutput *d) {
-    return d->transition?d->transition->playing:d->composition?d->composition->playing:d->vm.playing;
+    return app_output_power(d);
 }
 static bool exposed(const HardwareOutput *d,const char *name) {
     for(unsigned i=0;i<d->ha_preset_count;i++)if(!strcmp(d->ha_presets[i],name))return true;
     return false;
 }
 static const char *selected(const HomeAssistant *h,const AppOutput *d) {
-    const char *name=app_output_preset(h->app,d);
+    const char *name=app_output_selected_preset(h->app,d);
     return name&&exposed(&d->hardware,name)?name:"";
 }
 static void refresh(HomeAssistant *h) {
@@ -57,8 +57,8 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
         snprintf(preset,sizeof(preset),"%s",current[0]?current:d->hardware.ha_default_preset);
     }
     char command[256];
-    int n=off?snprintf(command,sizeof(command),"{\"op\":\"output_command\",\"output\":\"%s\",\"command\":%u}",output,CMD_STOP)
-        :snprintf(command,sizeof(command),"{\"op\":\"preset_activate\",\"output\":\"%s\",\"name\":\"%s\",\"expected_revision\":%lu}",output,preset,(unsigned long)d->composition_revision);
+    int n=preset_command?snprintf(command,sizeof(command),"{\"op\":\"preset_recall\",\"output\":\"%s\",\"name\":\"%s\",\"expected_revision\":%lu}",output,preset,(unsigned long)d->composition_revision)
+        :snprintf(command,sizeof(command),"{\"op\":\"output_power\",\"output\":\"%s\",\"name\":\"%s\",\"action\":\"%s\",\"expected_revision\":%lu}",output,preset,off?"off":"on",(unsigned long)d->composition_revision);
     app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)command,(size_t)n);
     for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++)if(!strcmp(h->outputs[i].id,output)){h->outputs[i].known=false;h->outputs[i].preset_known=false;}
 }

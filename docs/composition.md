@@ -198,7 +198,9 @@ does not change playback; activation prepares the whole candidate before swappin
 Saved hardware configuration still uses single-program startup; reboot restores
 that startup, and saved presets can then be activated explicitly.
 
-Controller presets use `lightvm.preset` with a `layers` array, using the same fields
+Controller presets use `lightvm.preset` with a `layers` array and optional
+`entry_transition` invocation (program, CRC32, settings, duration and optional seed;
+see [recall transitions](transitions.md#preset-recalls-and-power)), using the same layer fields
 as a composition. Each layer additionally requires `crc32`, matching the stored program.
 Composition documents may also supply `crc32` to check the expected version. The editor
 derives immutable program names from the compiled SHA-256 digest and keeps full
@@ -216,7 +218,8 @@ appear in `program_list`. See [internal storage](storage.md).
 | `preset_list` | Returns `{name,size,crc32}` entries. |
 | `preset_get` | `name`; returns the recipe JSON. |
 | `preset_save` | Stage object kind `preset` with `name`, then supply `name`, `output`, `expected_revision` (catalog). Prepares against that output, then saves atomically. |
-| `preset_activate` | `name`, `output`, `expected_revision` (composition); admits a fresh composition before replacing playback. Omitted `slot` replaces the whole output; explicit A/B updates that slot. |
+| `preset_activate` | `name`, `output`, optional `slot` (A by default), `expected_revision` (composition); prepare only that slot, retaining progress and driver. |
+| `preset_recall` | `name`, `output`, `expected_revision` (composition); complete the previous recall and transition A to B using the destination entry transition. |
 | `preset_delete` | `name`, `expected_revision` (catalog); running instances continue. |
 
 Saved references prevent deleting or replacing the referenced program version.
@@ -224,8 +227,8 @@ Delete the recipes that use it before removing unused code. An identical program
 can be saved again under the same name. Invalid recipes, stale revisions, full
 storage and failed memory admission preserve existing saved recipes and playback.
 There is no per-preset frame or VM allocation while a recipe is idle in flash.
-The Python client exposes `presets`, `preset`, `save_preset`, `activate_preset`
-and `delete_preset` helpers.
+The Python client exposes `presets`, `preset`, `save_preset` (optional `entry_transition`), `activate_preset`,
+`recall_preset`, `set_power`, and `delete_preset` helpers.
 
 Compositions can also supply independent A/B slots to the [transition owner](transitions.md).
 Linear-light blending and two-dimensional rotation remain follow-on work.

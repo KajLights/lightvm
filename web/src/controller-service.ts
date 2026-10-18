@@ -192,7 +192,9 @@ export class ControllerService {
     const output = this.snapshot.controller.selectedOutput;
     const current = () => client === this.client && output === this.snapshot.controller.selectedOutput && (!background || !this.store.getState().activity.operation);
     try {
-      const programState = await client.json('program_state', ...(output ? [{ output: output }] : []));
+      const transition = this.snapshot.controller.description?.ab_transitions ? await client.transition(output ?? undefined) : null;
+      const fields = { ...(output ? { output } : {}), ...(transition?.recall?.power ? { slot: 'B' } : {}) };
+      const programState = await client.json('program_state', ...(Object.keys(fields).length ? [fields] : []));
       if (current()) this.store.dispatch(controllerActions.programState(serializable(programState)));
     } catch (error) {
       if (client.closed || !('code' in (error as object)) || (error as { code: number }).code !== 4) throw error;

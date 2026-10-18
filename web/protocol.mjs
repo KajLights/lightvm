@@ -254,10 +254,10 @@ export class LightVMClient {
     return this.json('transition_select', { output, effect, expected_revision: state.revision, ...options });
   }
 
-  async savePreset(name, layers, output) {
-    const state = await this.describe();
+  async savePreset(name, layers, output, entry_transition, expectedRevision) {
+    const state = expectedRevision === undefined ? await this.describe() : { catalog_revision: expectedRevision };
     try {
-      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset', layers })), name);
+      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset', layers, entry_transition })), name);
       return await this.manage('preset_save', { name, output, expected_revision: state.catalog_revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
@@ -265,6 +265,21 @@ export class LightVMClient {
   async activatePreset(name, output, slot) {
     const state = await this.json('composition_get', { output, slot });
     return this.manage('preset_activate', { name, output, slot, expected_revision: state.revision });
+  }
+
+  async recallPreset(name, output) {
+    const state = await this.transition(output);
+    return this.manage('preset_recall', { name, output, expected_revision: state.revision });
+  }
+
+  async setPower(on, output, name) {
+    const state = await this.transition(output);
+    return this.manage('output_power', { output, name, action: on ? 'on' : 'off', expected_revision: state.revision });
+  }
+
+  async swapTransition(output) {
+    const state = await this.transition(output);
+    return this.json('transition_swap', { output, expected_revision: state.revision });
   }
 
   async deletePreset(name) {

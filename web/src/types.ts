@@ -11,16 +11,20 @@ export interface Description {
   animation_error?: string;
   ab_transitions?: boolean; transition_sources?: boolean; transition_effects?: string[]; transition_programs?: boolean;
   compositions?: boolean; composition_layer_limit?: number; composition_blend_modes?: string[];
-  presets?: boolean; transient_settings?: boolean; typed_storage?: boolean;
+  presets?: boolean; preset_transitions?: boolean; power_transitions?: boolean; transient_settings?: boolean; typed_storage?: boolean;
   storage_backend?: string; storage_writable?: boolean; storage_bytes?: number; free_bytes?: number;
   largest_free_bytes?: number; storage_allocation_unit?: number;
   boot_sequence_supported?: boolean;
   recovery_supported?: boolean;
   boot_sequence?: { count: number; triggered: boolean; error: string };
 }
+export interface TransitionSpec {
+  program: string; crc32: number; duration_ms: number;
+  settings?: Record<string, number | boolean>; seed?: number;
+}
 export interface HardwareConfig {
   schema: 'lightvm.config';
-  outputs: { id: string; type: 'ws2812b'; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { program: string; settings?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
+  outputs: { id: string; type: 'ws2812b'; on_transition?: TransitionSpec; off_transition?: TransitionSpec; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { program: string; settings?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {
   schema: 'lightvm.network';
@@ -52,6 +56,7 @@ export interface CompositionState {
 export interface TransitionState {
   revision: number; active: boolean; progress: number; effect: string; seed: number;
   program?: string; program_crc32?: number;
+  recall?: { power: boolean; preset: string | null } | null;
   driver: { kind: 'manual' | 'timed' | 'source'; assignment: number; source?: string; target?: number; duration_ms?: number; interval_ms?: number };
   A: CompositionState;
   B: CompositionState;

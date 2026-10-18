@@ -206,10 +206,10 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .setting-toggle input { width: auto; margin: 0; }
 .setting-row input, .setting-row select { margin: 0; min-width: 0; }
 .transition-program fieldset { border: 0; padding: 0; margin: 12px 0; min-width: 0; }
-.transition-program input:not([type=checkbox]) { width: 100%; padding: 9px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
-.transition-program input[type=color] { height: 38px; padding: 4px; }
+.transition-program input:not([type=checkbox]), .recall-transition input:not([type=checkbox]) { width: 100%; padding: 9px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+.transition-program input[type=color], .recall-transition input[type=color] { height: 38px; padding: 4px; }
 .transition-program > button { margin-top: 12px; }
-.transition-program input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.transition-program input:focus-visible, .recall-transition input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .layer-card { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 12px 0; }
 .layer-actions { display: flex; gap: 4px; }
 .layer-card .card-heading { justify-content: space-between; }
@@ -264,7 +264,7 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .fader-range:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 6px; }
 .fader-range:disabled { opacity: .4; cursor: not-allowed; }
 .fader-endpoints { color: var(--muted); font-size: 12px; }
-.fader-actions { display: flex; gap: 10px; margin: 30px 0 16px; }
+.fader-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 16px; }
 .fader-timed .button-pair { grid-template-columns: 1fr 1fr; }
 .fader-timed input { width: 100%; min-width: 0; padding: 10px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
 .fader-timed input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -1,3 +1,5 @@
+import { PresetTransition } from './PresetTransition';
+import { RecallTransition } from './RecallTransition';
 import { SettingFields } from './SettingFields';
 import { TransitionControls } from './Transitions';
 import { VERSION } from './release';
@@ -8,9 +10,9 @@ import { supportsProgram, programCompatibility } from './compiler';
 import { download } from './controller-service';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
-import type { Manifest } from './types';
+import type { Manifest, TransitionSpec } from './types';
 import { prepareLibraryComposition } from './library-controller';
-import { BLENDS, compositionLayers, importLibrary, readLibrary, saveAnimation, settingsFor, writeLibrary,
+import { BLENDS, programName, validTransitionSpec, compositionLayers, importLibrary, readLibrary, saveAnimation, settingsFor, writeLibrary,
   type Blend, type Library, type PresetLayer, type SavedAnimation, type SettingsValues } from './library';
 
 
@@ -23,6 +25,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
   const [selectedAnimation, setSelectedAnimation] = useState(''), [layers, setLayers] = useState<PresetLayer[]>([]);
   const [presetName, setPresetName] = useState(''), [selectedPreset, setSelectedPreset] = useState(''), [storedPreset, setStoredPreset] = useState('');
   const [storedProgram, setStoredProgram] = useState('');
+  const [entryTransition, setEntryTransition] = useState<TransitionSpec>();
   const storedSelection = controller.programs.find(item => (item.type ?? item.profile ?? 'animation') + ':' + item.name === storedProgram);
   const [compositionSlot, setCompositionSlot] = useState('A');
   const [transitionName, setTransitionName] = useState('crossfade');
@@ -108,7 +111,8 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
   function checkedPreset() {
     if (!/^[A-Za-z0-9_.-]{1,32}$/.test(presetName)) throw new Error('Use 1–32 letters, digits, dots, underscores or hyphens for the preset name.');
     compositionLayers(library, layers);
-    return { id: library.presets.find(item => item.name === presetName)?.id ?? crypto.randomUUID(), name: presetName, layers: structuredClone(layers) };
+    if (entryTransition && !validTransitionSpec(entryTransition)) throw new Error('Choose a valid entry transition and duration.');
+    return { ...(entryTransition ? { entry_transition: structuredClone(entryTransition) } : {}), id: library.presets.find(item => item.name === presetName)?.id ?? crypto.randomUUID(), name: presetName, layers: structuredClone(layers) };
   }
   async function savePreset() {
     await controllers.run('Saving preset', async () => {
@@ -122,7 +126,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
       checkedPreset(); const connection = controllers.require(client), outputId = controller.selectedOutput;
       if (!outputId) throw new Error('Select an output first.');
       const recipe = await ensurePrograms(connection);
-      await connection.savePreset(presetName, recipe, outputId);
+      await connection.savePreset(presetName, recipe, outputId, entryTransition);
       await controllers.readPrograms(connection); await controllers.readPresets(connection);
       setStoredPreset(presetName); controllers.log('Preset saved to controller flash. Startup is configured separately.', 'success');
     });
@@ -169,7 +173,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
         <div className="button-pair"><button className="secondary" disabled={busy || !selected} onClick={() => void openAnimation()}>{selected?.manifest.profile === 'transition' ? 'Edit transition' : 'Edit animation'}</button><button className="quiet" disabled={busy || !selected || selected.manifest.profile === 'transition'} onClick={() => { if (selected) single(selected); }}>Use alone</button></div>
         <button className="secondary full" disabled={busy || !selected || selected.manifest.profile === 'transition' || layers.length >= 8} onClick={addLayer}>Add as layer</button>
         <button className="quiet full" disabled={busy || !selected || Boolean(storageError)} onClick={() => void controllers.run('Deleting animation version', async () => {
-          if (library.presets.some(preset => preset.layers.some(layer => layer.animation === selectedAnimation))) throw new Error('A saved browser preset uses this version. Delete or update that preset first.');
+          if (library.presets.some(preset => preset.layers.some(layer => layer.animation === selectedAnimation) || preset.entry_transition?.program === programName(selected!))) throw new Error('A saved browser preset uses this version. Delete or update that preset first.');
           commit({ ...library, animations: library.animations.filter(item => item.id !== selectedAnimation) });
           setLayers(layers.filter(layer => layer.animation !== selectedAnimation)); setSelectedAnimation('');
         })}>Delete animation version</button>
@@ -193,22 +197,26 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
         {controller.description?.ab_transitions && <><label htmlFor="preset-composition-slot">Preview composition slot</label><select id="preset-composition-slot" value={compositionSlot} onChange={event => setCompositionSlot(event.target.value)}><option>A</option><option>B</option></select></>}
         <button className="primary full" disabled={busy || !connected || !layers.length || !controller.description?.compositions} onClick={() => void previewLayers()}>Preview preset →</button>
         <label htmlFor="preset-name">Preset name</label><input id="preset-name" value={presetName} maxLength={32} onChange={event => setPresetName(event.target.value)} placeholder="blue-scanner" />
+        <RecallTransition id="preset-entry-transition" label="Preset entry transition" value={entryTransition} onChange={setEntryTransition} disabled={busy} />
         <div className="button-pair"><button className="secondary" disabled={busy || !layers.length || !presetName || Boolean(storageError)} onClick={() => void savePreset()}>Save preset</button><button className="secondary" disabled={busy || !writable || !connected || !layers.length || !presetName || !controller.description?.presets} onClick={() => void saveToController()}>Save preset to controller</button></div>
         <p className="helper">Save preset keeps an editable recipe in this browser. Save to controller stores its compiled programs and recipe in flash. Saving an existing name replaces that preset. Presets run on request; startup currently uses a single stored program.</p>
         {connected && !controller.description?.presets && <p className="helper">Install firmware with preset storage support to save recipes on this controller.</p>}
       </section>
       <section className="card"><div className="card-heading"><h2>Presets</h2></div>
         <label htmlFor="saved-preset">Browser preset</label><select id="saved-preset" value={selectedPreset} onChange={event => setSelectedPreset(event.target.value)}><option value="">Choose a preset</option>{library.presets.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
-        <button className="secondary full" disabled={busy || !selectedPreset} onClick={() => { const preset = library.presets.find(item => item.id === selectedPreset); if (preset) { setLayers(structuredClone(preset.layers)); setPresetName(preset.name); } }}>Open preset</button>
+        <button className="secondary full" disabled={busy || !selectedPreset} onClick={() => { const preset = library.presets.find(item => item.id === selectedPreset); if (preset) { setLayers(structuredClone(preset.layers)); setPresetName(preset.name); setEntryTransition(preset.entry_transition ? structuredClone(preset.entry_transition) : undefined); } }}>Open preset</button>
         <button className="quiet full" disabled={busy || !selectedPreset || Boolean(storageError)} onClick={() => void controllers.run('Deleting browser preset', async () => {
           commit({ ...library, presets: library.presets.filter(item => item.id !== selectedPreset) }); setSelectedPreset('');
         })}>Delete browser preset</button>
         <hr /><label htmlFor="controller-preset">Controller preset</label><select id="controller-preset" value={storedPreset} onChange={event => setStoredPreset(event.target.value)}><option value="">Choose a controller preset</option>{controller.presets.map(item => <option key={item.name}>{item.name}</option>)}</select>
+        {storedPreset && connected && output && <PresetTransition key={[controller.description?.controller_id, controller.description?.boot_id, storedPreset].join(':')} name={storedPreset} output={output.id} busy={busy || !writable} />}
         <div className="button-pair"><button className="secondary" disabled={busy || !connected || !storedPreset} onClick={() => void controllers.run('Running controller preset', async client => {
-          const connection = controllers.require(client); await connection.activatePreset(storedPreset, controller.selectedOutput); await controllers.readProgramState(connection); controllers.log('Preset running on ' + controller.selectedOutput + '.', 'success');
+          const connection = controllers.require(client); await connection.recallPreset(storedPreset, controller.selectedOutput); await controllers.readProgramState(connection); controllers.log('Preset running on ' + controller.selectedOutput + '.', 'success');
         })}>Run on output</button><button className="quiet" disabled={busy || !writable || !controller.selectedPath || !storedPreset} onClick={() => void controllers.run('Deleting controller preset', async client => {
           const connection = controllers.require(client); await connection.deletePreset(storedPreset); await controllers.readPresets(connection); setStoredPreset('');
         })}>Delete controller preset</button></div>
+        <div className="button-pair"><button className="secondary" disabled={busy || !connected} onClick={() => void controllers.run('Turning output on', async client => { const connection = controllers.require(client); await connection.setPower(true, controller.selectedOutput, storedPreset || undefined); await controllers.readProgramState(connection); })}>Turn on</button>
+          <button className="secondary" disabled={busy || !connected} onClick={() => void controllers.run('Turning output off', async client => { const connection = controllers.require(client); await connection.setPower(false, controller.selectedOutput); await controllers.readProgramState(connection); })}>Turn off</button></div>
         <details><summary>Controller program storage</summary><p className="helper">Remove unused programs to free storage space. Programs referenced by presets, startup or running animations are protected.</p>
           {!writable && <p className="helper">This controller’s storage is read-only.</p>}
           {controller.description?.storage_bytes !== undefined && <p className="helper">{Math.floor((controller.description.free_bytes ?? 0) / 1024)} KiB free of {Math.floor(controller.description.storage_bytes / 1024)} KiB</p>}

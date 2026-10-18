@@ -202,12 +202,19 @@ program versions on the controller, then admits and activates the entire composi
 The controller checks available storage for each upload. The displayed frame
 buffer estimate excludes VM state; controller admission remains authoritative.
 
-**Save preset** stores the recipe in the browser. **Save preset to controller** stores
+**Preset entry transition** chooses a deployed transition, initialization settings
+and duration, and pins its program version. **Save preset** stores the recipe in the browser. **Save preset to controller** stores
 the shared compiled programs and compact recipe in flash; it does not change
 playback. Either save replaces a preset of the same name. **Run on output**
-activates a controller preset on the selected output, even after reconnecting or
-rebooting. Startup remains a single stored program configured separately; saved
+recalls a controller preset using its entry transition on the selected output,
+even after reconnecting or rebooting. A new recall completes the previous one and
+starts a fresh A-to-B movement. **Turn on** and **Turn off** use the output power
+transitions configured under **Configure → Output & startup**. Manual A/B controls
+retain fixed slots; **Swap A and B** is explicit and available only at endpoints. Startup remains a single stored program configured separately; saved
 presets do not automatically run at boot. Controller presets require `presets: true`.
+**Controller preset entry transition** also edits an existing controller recipe
+without requiring its original browser library. **Save preset transition** preserves
+its layers and playback; stale catalogue revisions require **Reload preset**.
 Controller presets and compiled programs share available storage without fixed count
 quotas. The storage panel shows free and total capacity and distinguishes animations
 and transitions with the same name.

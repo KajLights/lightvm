@@ -13,6 +13,18 @@ const manifest = JSON.parse(new TextDecoder().decode(bytecode.subarray(bytecode.
 const compiled: Compilation = { id: 1, source: '# editable source', bytecode, diagnostics: [], manifest };
 
 describe('editable library and pinned presets', () => {
+  it('round trips entry transition versions and rejects invalid invocation data', async () => {
+    const { library, animation } = await saveAnimation(emptyLibrary(), compiled, 'sweep.py', 'Sweep', {});
+    const preset = { id: 'blue', name: 'blue', layers: [{ id: 'base', animation: animation.id, settings: {}, opacity: 255, blend: 'over' as const }],
+      entry_transition: { program: 'wipe', crc32: 123, duration_ms: 750, settings: { reverse: true } } };
+    library.presets.push(preset);
+    expect(await importLibrary(emptyLibrary(), JSON.stringify(library))).toEqual(library);
+    for (const patch of [{ crc32: -1 }, { duration_ms: -1 }, { program: null }, { settings: { reverse: 'true' } }]) {
+      const changed = { ...library, presets: [{ ...preset, entry_transition: { ...preset.entry_transition, ...patch } }] };
+      expect(() => parseLibrary(JSON.stringify(changed))).toThrow(/entry transition/);
+    }
+  });
+
   it('keeps transition source and bytecode in the library without accepting it as a composition layer', async () => {
     const raw = fixtures.split('transition_lbc[] = {')[1].split('};')[0];
     const bytes = Uint8Array.from(raw.match(/0x[0-9a-f]{2}/g)!.map(value => parseInt(value, 16)));

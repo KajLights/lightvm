@@ -293,3 +293,28 @@ test("stored-program clients carry type through lookup, filtering and deletion",
     { op: 'program_delete', name: 'wipe', type: 'transition', expected_revision: 12 },
   ]);
 });
+
+
+test('recall clients keep preset/power recalls separate from fixed-slot loading', async () => {
+  const client = new LightVMClient({ close: async () => {} }), calls = [];
+  client.transition = async () => ({ revision: 9 });
+  client.json = async (...args) => { calls.push(args); return { revision: 9 }; };
+  client.manage = async (...args) => { calls.push(args); };
+  await client.recallPreset('blue', 'desk');
+  await client.setPower(false, 'desk');
+  await client.activatePreset('blue', 'desk', 'B');
+  await client.swapTransition('desk');
+  assert.deepEqual(calls, [
+    ['preset_recall', { name: 'blue', output: 'desk', expected_revision: 9 }],
+    ['output_power', { output: 'desk', name: undefined, action: 'off', expected_revision: 9 }],
+    ['composition_get', { output: 'desk', slot: 'B' }],
+    ['preset_activate', { name: 'blue', output: 'desk', slot: 'B', expected_revision: 9 }],
+    ['transition_swap', { output: 'desk', expected_revision: 9 }],
+  ]);
+  const spec = { program: 'wipe', crc32: 123, duration_ms: 750, settings: { reverse: true } };
+  let document;
+  client.describe = async () => ({ catalog_revision: 4 });
+  client.uploadObject = async (_kind, bytes) => { document = JSON.parse(new TextDecoder().decode(bytes)); };
+  await client.savePreset('blue', [], 'desk', spec);
+  assert.deepEqual(document, { schema: 'lightvm.preset', layers: [], entry_transition: spec });
+});
