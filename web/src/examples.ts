@@ -9,7 +9,7 @@ import wipe from '../../examples/transitions/wipe.py?raw';
 
 export const EXAMPLES = [
   { id: 'transition_crossfade', filename: 'crossfade.py', label: 'crossfade.py · transition', source: crossfade,
-    description: 'A Python transition that blends the prepared A and B scenes at the supplied progress.' },
+    description: 'A Python transition that blends the prepared A and B compositions at the supplied progress.' },
   { id: 'transition_wipe', filename: 'wipe.py', label: 'wipe.py · transition', source: wipe,
     description: 'Reveal B across A. Set reverse for the opposite end, or separator for a three-pixel peak with a configurable colour at the boundary.' },
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
@@ -23,7 +23,7 @@ export const EXAMPLES = [
   { id: 'rainbow_sprite', filename: 'rainbow_sprite.py', label: 'rainbow_sprite.py', source: rainbowSprite,
     description: 'A 15-pixel rainbow moves between the strip ends with smooth turns and transparent edges. Requires at least 15 pixels.' },
   { id: 'sweep', filename: 'sweep.py', label: 'sweep.py', source: sweep,
-    description: 'Configurable eyes: loop, bounce, chase or inward wipe. Retain swept paint, or add timed trails with trail_seconds and samples. One eye can also run in its own scene layer.' },
+    description: 'Configurable eyes: loop, bounce, chase or inward wipe. Retain swept paint, or add timed trails with trail_seconds and samples. One eye can also run in its own composition layer.' },
 ];
 
 export const DEFAULT_EXAMPLE = EXAMPLES.find(example => example.id === 'rainbow')!;

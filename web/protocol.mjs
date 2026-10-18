@@ -64,11 +64,11 @@ export class FrameDecoder {
       if (this.buffer.length < 16) return;
       const view = new DataView(this.buffer.buffer, this.buffer.byteOffset, this.buffer.byteLength);
       const size = view.getUint32(8, true);
-      if (view.getUint8(4) !== 1 || size > FRAME_LIMIT) throw new Error("Invalid device response header.");
+      if (view.getUint8(4) !== 1 || size > FRAME_LIMIT) throw new Error("Invalid output response header.");
       if (this.buffer.length < 16 + size) return;
       const payload = this.buffer.slice(16, 16 + size);
       if (view.getUint32(12, true) !== crc32(payload, crc32(this.buffer.subarray(4, 12)))) {
-        throw new Error("Device response checksum mismatch.");
+        throw new Error("Controller response checksum mismatch.");
       }
       const kind = view.getUint8(5), id = view.getUint16(6, true);
       this.buffer = this.buffer.slice(16 + size);
@@ -88,7 +88,7 @@ export class LightVMClient {
     transport.onData = bytes => {
       try { this.decoder.feed(bytes); } catch (error) { this.fail(error); }
     };
-    transport.onDisconnect = error => this.fail(error || new Error("Device disconnected."));
+    transport.onDisconnect = error => this.fail(error || new Error("Controller disconnected."));
   }
 
   fail(error) {
@@ -107,13 +107,13 @@ export class LightVMClient {
     if (!pending || id !== pending.id) return;
     if (kind === DATA) { pending.data.push(payload); return; }
     if (kind === PIXELS) { pending.pixels.push(payload); return; }
-    if (kind !== RESULT || payload.length < 8) throw new Error("Invalid device response type.");
+    if (kind !== RESULT || payload.length < 8) throw new Error("Invalid output response type.");
     const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
     const code = view.getUint32(0, true), value = view.getInt32(4, true);
     const message = decoder.decode(payload.subarray(8));
     clearTimeout(pending.timer); this.pending = null;
     if (code) {
-      const error = new Error(`Device error ${code}: ${message}`);
+      const error = new Error(`Controller error ${code}: ${message}`);
       error.code = code;
       let details;
       try { details = JSON.parse(decoder.decode(join(pending.data))); } catch {}
@@ -125,12 +125,12 @@ export class LightVMClient {
 
   command(kind, payload = new Uint8Array()) {
     const operation = this.queue.then(() => {
-      if (this.closed) throw new Error("Reconnect the device before sending another command.");
+      if (this.closed) throw new Error("Reconnect the output before sending another command.");
       this.requestId = this.requestId % 65535 + 1;
       const id = this.requestId;
       const bytes = frame(kind, id, payload);
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => this.fail(new Error("Device response timed out. Reconnect and try again.")), this.timeout);
+        const timer = setTimeout(() => this.fail(new Error("Controller response timed out. Reconnect and try again.")), this.timeout);
         this.pending = { id, resolve, reject, timer, data: [], pixels: [] };
         Promise.resolve().then(() => this.transport.write(bytes)).catch(error => this.fail(error));
       });
@@ -152,18 +152,18 @@ export class LightVMClient {
 
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionsSupported = description.connections; return description; }
 
-  /** @param {Uint8Array} bytecode @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [device] @param {Record<string, number | boolean>} [settings] */
-  async upload(bytecode, limit, onProgress = () => {}, device = '', settings = {}) {
+  /** @param {Uint8Array} bytecode @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [output] @param {Record<string, number | boolean>} [settings] */
+  async upload(bytecode, limit, onProgress = () => {}, output = '', settings = {}) {
     if (!Number.isInteger(limit) || limit < 8 || bytecode.length < 8 || bytecode.length > limit) {
-      throw new Error(`Program must fit the device's ${limit}-byte module limit.`);
+      throw new Error(`Program must fit the output's ${limit}-byte module limit.`);
     }
-    if (device && !/^[A-Za-z0-9_.-]{1,32}$/.test(device)) throw new Error('Invalid output id.');
+    if (output && !/^[A-Za-z0-9_.-]{1,32}$/.test(output)) throw new Error('Invalid output id.');
     const argumentsBytes = Object.keys(settings).length ? encoder.encode(encodeJSON({ settings })) : new Uint8Array();
     if (argumentsBytes.length > FRAME_LIMIT) throw new Error('Preview settings exceed the command size limit.');
-    const output = encoder.encode(device);
-    const metadata = new Uint8Array(8 + output.length), view = new DataView(metadata.buffer);
+    const outputBytes = encoder.encode(output);
+    const metadata = new Uint8Array(8 + outputBytes.length), view = new DataView(metadata.buffer);
     view.setUint32(0, bytecode.length, true); view.setUint32(4, crc32(bytecode), true);
-    metadata.set(output, 8);
+    metadata.set(outputBytes, 8);
     let started = false;
     try {
       await this.command(COMMAND.BEGIN, metadata);
@@ -173,7 +173,7 @@ export class LightVMClient {
         new DataView(payload.buffer).setUint32(0, offset, true); payload.set(part, 4);
         const reply = await this.command(COMMAND.CHUNK, payload);
         if (reply.value !== offset + part.length) {
-          const error = new Error("Device acknowledged an unexpected upload offset.");
+          const error = new Error("Controller acknowledged an unexpected upload offset.");
           this.fail(error); throw error;
         }
         onProgress((offset + part.length) / bytecode.length);
@@ -188,8 +188,8 @@ export class LightVMClient {
   async json(op, fields = {}) { return parseJSON(decoder.decode((await this.manage(op, fields)).data)); }
 
   async uploadObject(kind, data, name) {
-    const limits = await this.describe(), limit = kind === "procedure" ? limits.module_limit : limits.config_limit;
-    if (data.length < (kind === "procedure" ? 8 : 1) || data.length > limit) throw new Error(`Object exceeds the ${limit}-byte limit.`);
+    const limits = await this.describe(), limit = kind === "program" ? limits.module_limit : limits.config_limit;
+    if (data.length < (kind === "program" ? 8 : 1) || data.length > limit) throw new Error(`Object exceeds the ${limit}-byte limit.`);
     await this.command(COMMAND.OBJECT_BEGIN, encoder.encode(JSON.stringify({ kind, size: data.length, crc32: crc32(data), ...(name ? { name } : {}) })));
     for (let offset = 0; offset < data.length; offset += FRAME_LIMIT - 4) {
       const part = data.subarray(offset, offset + FRAME_LIMIT - 4), payload = new Uint8Array(part.length + 4);
@@ -221,50 +221,50 @@ export class LightVMClient {
     return this.manage("network_commit", { expected_revision: state.network_revision });
   }
 
-  async saveProcedure(name, bytecode) {
+  async saveProgram(name, bytecode) {
     const state = await this.describe();
     try {
-      await this.uploadObject("procedure", bytecode, name);
-      return await this.manage("procedure_save", { name, expected_revision: state.catalog_revision });
+      await this.uploadObject("program", bytecode, name);
+      return await this.manage("program_save", { name, expected_revision: state.catalog_revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
-  async configureScene(layers, device, slot = 'A') {
-    const state = await this.json('scene_get', { device, slot });
+  async configureComposition(layers, output, slot = 'A') {
+    const state = await this.json('composition_get', { output, slot });
     try {
-      await this.uploadObject('scene', encoder.encode(JSON.stringify({ schema: 'lightvm.scene', layers })));
-      return await this.manage('scene_apply', { device, slot, expected_revision: state.revision });
+      await this.uploadObject('composition', encoder.encode(JSON.stringify({ schema: 'lightvm.composition', layers })));
+      return await this.manage('composition_apply', { output, slot, expected_revision: state.revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
-  async transition(device) { return this.json('transition_get', { device }); }
-  async setProgress(progress, device) { return this.json('transition_set', { device, progress }); }
-  async runTransition(target, duration_ms, device, interval_ms = 0) { return this.json('transition_run', { device, target, duration_ms, interval_ms }); }
-  async holdTransition(device) { return this.json('transition_hold', { device }); }
-  async assignTransitionSource(source, device) { return this.json('transition_assign', { device, source }); }
-  async updateTransitionSource(source, assignment, progress, device) {
-    return Boolean((await this.manage('transition_update', { device, source, assignment, progress })).value);
+  async transition(output) { return this.json('transition_get', { output }); }
+  async setProgress(progress, output) { return this.json('transition_set', { output, progress }); }
+  async runTransition(target, duration_ms, output, interval_ms = 0) { return this.json('transition_run', { output, target, duration_ms, interval_ms }); }
+  async holdTransition(output) { return this.json('transition_hold', { output }); }
+  async assignTransitionSource(source, output) { return this.json('transition_assign', { output, source }); }
+  async updateTransitionSource(source, assignment, progress, output) {
+    return Boolean((await this.manage('transition_update', { output, source, assignment, progress })).value);
   }
-  async selectTransition(procedure, device, options = {}) {
-    const state = await this.transition(device);
-    return this.json('transition_select', { device, procedure, expected_revision: state.revision, ...options });
+  async selectTransition(program, output, options = {}) {
+    const state = await this.transition(output);
+    return this.json('transition_select', { output, program, expected_revision: state.revision, ...options });
   }
-  async selectTransitionEffect(effect, device, options = {}) {
-    const state = await this.transition(device);
-    return this.json('transition_select', { device, effect, expected_revision: state.revision, ...options });
+  async selectTransitionEffect(effect, output, options = {}) {
+    const state = await this.transition(output);
+    return this.json('transition_select', { output, effect, expected_revision: state.revision, ...options });
   }
 
-  async savePreset(name, layers, device) {
+  async savePreset(name, layers, output) {
     const state = await this.describe();
     try {
       await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset', layers })), name);
-      return await this.manage('preset_save', { name, device, expected_revision: state.catalog_revision });
+      return await this.manage('preset_save', { name, output, expected_revision: state.catalog_revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
-  async activatePreset(name, device, slot = 'A') {
-    const state = await this.json('scene_get', { device, slot });
-    return this.manage('preset_activate', { name, device, slot, expected_revision: state.revision });
+  async activatePreset(name, output, slot) {
+    const state = await this.json('composition_get', { output, slot });
+    return this.manage('preset_activate', { name, output, slot, expected_revision: state.revision });
   }
 
   async deletePreset(name) {
@@ -272,11 +272,11 @@ export class LightVMClient {
     return this.manage('preset_delete', { name, expected_revision: state.catalog_revision });
   }
 
-  async procedures(type) { return this.json('procedure_list', type ? { type } : {}); }
-  async getProcedure(name, type) { return (await this.manage('procedure_get', { name, ...(type ? { type } : {}) })).data; }
+  async programs(type) { return this.json('program_list', type ? { type } : {}); }
+  async getProgram(name, type) { return (await this.manage('program_get', { name, ...(type ? { type } : {}) })).data; }
 
-  async deleteProcedure(name, type) {
-    const state = await this.describe(); return this.manage("procedure_delete", { name, ...(type ? { type } : {}), expected_revision: state.catalog_revision });
+  async deleteProgram(name, type) {
+    const state = await this.describe(); return this.manage("program_delete", { name, ...(type ? { type } : {}), expected_revision: state.catalog_revision });
   }
 
 

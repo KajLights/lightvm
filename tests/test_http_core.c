@@ -10,16 +10,16 @@ static bool close_sink(void *context) { Sink *s=context; if (s->close_stalled) r
 static void drain(Http *http,uint64_t now,Sink *sink) { for (unsigned i=0;i<200 && !sink->closed;i++) http_tick(http,now+i); CHECK(sink->closed); sink->bytes[sink->used]=0; }
 static void service_ingress(void *context) { Http *h=context;CHECK(h->app->command_active);http_tick(h,0); }
 int main(void) {
-    static App app; static Http http; app_init(&app,NULL,NULL); strcpy(app.device_id,"test"); strcpy(app.boot_id,"boot"); http_init(&http,&app);
-    Sink list={0}; HttpRequest get={.method="GET",.path="/api/v1/devices",.io={&list,output,close_sink}};
+    static App app; static Http http; app_init(&app,NULL,NULL); strcpy(app.controller_id,"test"); strcpy(app.boot_id,"boot"); http_init(&http,&app);
+    Sink list={0}; HttpRequest get={.method="GET",.path="/api/v1/controllers",.io={&list,output,close_sink}};
     CHECK(http_submit(&http,&get));app.command_active=true;http_tick(&http,0);
     CHECK(http.count==1&&!list.used&&!http.sending);app.command_active=false;
     app.service_io=service_ingress;app.service_context=&http;runtime_checkpoint();app.service_io=NULL;
     CHECK(!app.command_active&&http.count==1&&!list.used&&!http.sending);drain(&http,0,&list);
-    CHECK(strstr((char *)list.bytes,"200 OK") && strstr((char *)list.bytes,"Content-Type: application/json") && strstr((char *)list.bytes,"\"devices\":[]"));
+    CHECK(strstr((char *)list.bytes,"200 OK") && strstr((char *)list.bytes,"Content-Type: application/json") && strstr((char *)list.bytes,"\"controllers\":[]"));
     CHECK(!http.sessions[0].source);
     memset(&list,0,sizeof(list)); get.discovery_only=true; strcpy(get.method,"POST"); strcpy(get.path,"/api/v1/sessions"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"404 Not Found") && !http.sessions[0].source);
-    get.discovery_only=false; strcpy(get.path,"/api/v1/devices");
+    get.discovery_only=false; strcpy(get.path,"/api/v1/controllers");
     memset(&list,0,sizeof(list)); strcpy(get.method,"POST"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"405 Method Not Allowed"));
     Sink sink={0}; HttpRequest request={.method="POST",.path="/api/v1/sessions",.io={&sink,output,close_sink}};
     CHECK(http_submit(&http,&request)); drain(&http,0,&sink); CHECK(strstr((char *)sink.bytes,"201 Created"));

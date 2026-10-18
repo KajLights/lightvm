@@ -49,7 +49,7 @@ export class SerialTransport {
 export class HttpTransport {
   constructor(url, { timeout = 5000, fetch: request = globalThis.fetch } = {}) {
     const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") throw new Error("Enter a device HTTP origin, e.g. http://192.168.1.20");
+    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") throw new Error("Enter a controller HTTP origin, e.g. http://192.168.1.20");
     this.addressSpace = parsed.hostname === "localhost" || parsed.hostname.startsWith("127.") || parsed.hostname === "[::1]" ? "loopback" : "local";
     this.url = parsed.origin; this.timeout = timeout; this.request = request.bind(globalThis);
     this.onData = () => {}; this.onDisconnect = () => {}; this.closing = false;
@@ -62,10 +62,10 @@ export class HttpTransport {
       const response = await this.request(this.url + path, { method, body, signal: controller.signal,
         headers: { "Content-Type": "application/octet-stream", ...(this.session ? { "X-LightVM-Session": this.session } : {}) },
         credentials: "omit", redirect: "error", cache: "no-store", targetAddressSpace: this.addressSpace });
-      if (!response.ok) throw new Error(`Device HTTP error ${response.status}. Reconnect and refresh state before retrying.`);
+      if (!response.ok) throw new Error(`Controller HTTP error ${response.status}. Reconnect and refresh state before retrying.`);
       return await response.arrayBuffer();
     } catch (error) {
-      if (error.name === "TypeError") throw new Error("Cannot reach the device. Check its address, Wi-Fi and browser local-network permission.");
+      if (error.name === "TypeError") throw new Error("Cannot reach the controller. Check its address, Wi-Fi and browser local-network permission.");
       throw error;
     } finally { clearTimeout(timer); this.controllers.delete(controller); }
   }
@@ -92,7 +92,7 @@ export class HttpTransport {
 export class WebSocketTransport {
   constructor(url, { timeout = 5000, WebSocket: Socket = globalThis.WebSocket } = {}) {
     const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") throw new Error("Enter a device HTTP origin, e.g. http://192.168.1.20");
+    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") throw new Error("Enter a controller HTTP origin, e.g. http://192.168.1.20");
     this.url = parsed.origin;
     this.socketUrl = this.url.replace(/^http/, "ws") + "/api/v1/ws";
     this.label = `${parsed.host} · WebSocket`; this.protocol = "WebSocket";
@@ -128,12 +128,12 @@ export class WebSocketTransport {
           if (!(event.data instanceof ArrayBuffer)) { fail(new Error("Invalid WebSocket response: expected binary LightVM frames.")); return; }
           this.onData(new Uint8Array(event.data));
         });
-        this.socket.addEventListener("error", () => fail(new Error("Cannot reach the device WebSocket. Check Wi-Fi and browser local-network permission, then reconnect.")));
+        this.socket.addEventListener("error", () => fail(new Error("Cannot reach the controller WebSocket. Check Wi-Fi and browser local-network permission, then reconnect.")));
         this.socket.addEventListener("close", () => {
-          if (!this.closing) fail(new Error("WebSocket connection ended. Reconnect and review device state before retrying."));
+          if (!this.closing) fail(new Error("WebSocket connection ended. Reconnect and review controller state before retrying."));
           this.finishClose?.();
         });
-        this.openTimer = setTimeout(() => fail(new Error("Device WebSocket connection timed out. Reconnect and check browser local-network permission.")), this.timeout);
+        this.openTimer = setTimeout(() => fail(new Error("Controller WebSocket connection timed out. Reconnect and check browser local-network permission.")), this.timeout);
       } catch (error) { fail(error); }
     });
   }
@@ -141,7 +141,7 @@ export class WebSocketTransport {
   async write(bytes) {
     if (this.closing || !this.opened || this.socket.readyState !== 1) throw new Error("WebSocket connection closed. Reconnect before sending commands.");
     try {
-      if (this.socket.bufferedAmount + bytes.byteLength > 65536) throw new Error("WebSocket send buffer is full. Reconnect and review device state before retrying.");
+      if (this.socket.bufferedAmount + bytes.byteLength > 65536) throw new Error("WebSocket send buffer is full. Reconnect and review controller state before retrying.");
       this.socket.send(bytes);
     } catch (error) { this.fail(error); throw error; }
   }

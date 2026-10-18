@@ -114,29 +114,29 @@ class PowerRecoveryTests(unittest.TestCase):
             self.assertNotEqual(status['state'], 'reconfiguring')
             self.assertEqual(client.describe()['network_revision'], 2)
         # The same HTTP session still provides library management and discovery.
-        self.http.save_procedure('empty', color())
-        self.assertEqual(self.pipe.get_procedure('empty'), color())
-        with self.http_transport.opener.open(self.url + '/api/v1/devices') as response:
+        self.http.save_program('empty', color())
+        self.assertEqual(self.pipe.get_program('empty'), color())
+        with self.http_transport.opener.open(self.url + '/api/v1/controllers') as response:
             self.assertEqual(json.load(response)['schema'], 'lightvm.discovery')
 
     def test_saved_startup_is_idle_in_recovery_and_can_be_activated_manually(self):
         module = color()
-        self.http.save_procedure('startup', module)
-        config = {'schema': 'lightvm.config', 'devices': [
-            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'procedure': 'startup'}},
+        self.http.save_program('startup', module)
+        config = {'schema': 'lightvm.config', 'outputs': [
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'program': 'startup'}},
         ]}
         self.http.configure(config, save=True)
         snapshot = self.storage.read_bytes()
         self.restart()
-        self.assertEqual(self.http.describe()['active_procedure'], 'startup')
+        self.assertEqual(self.http.describe()['active_program'], 'startup')
         self.restart()
         self.assertTrue(self.http.network_status()['recovery'])
-        self.assertEqual(self.http.describe()['active_procedure'], '')
+        self.assertEqual(self.http.describe()['active_program'], '')
         self.assertEqual(self.pipe.status_fields()['mode'], 'idle')
         self.assertEqual(self.http.get_config(saved=True), config)
         self.assertEqual(self.storage.read_bytes(), snapshot)
         self.http.activate('startup')
-        self.assertEqual(self.pipe.describe()['active_procedure'], 'startup')
+        self.assertEqual(self.pipe.describe()['active_program'], 'startup')
         self.assertTrue(self.http.network_status()['recovery'])
 
     def test_counter_clear_retains_recovery_until_next_restart(self):

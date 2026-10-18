@@ -8,7 +8,7 @@ Pico W, XIAO ESP32-C3, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTT
 working when networking is disabled, unavailable or reconnecting. All paths share
 one runtime, library and configuration; commands execute between engine steps.
 
-Wi-Fi devices advertise a DHCP hostname of `lightvm-xxxxxx`, using the last three
+Wi-Fi controllers advertise a DHCP hostname of `lightvm-xxxxxx`, using the last three
 bytes of the station MAC address as six lowercase hexadecimal digits, as in
 picolights (for example, `lightvm-0421e0`). The name is stable across reboots and
 network changes. Routers that register DHCP names in local DNS can resolve it;
@@ -60,7 +60,7 @@ measurement. USB-only profiles retain their original ceilings.
 ## Initial setup and standalone AP mode
 
 On Pico W and the XIAO ESP32-C3/S3/C6 builds with both `LIGHTVM_WIFI=ON`
-and `LIGHTVM_HTTP=ON`, a device without a valid saved network configuration
+and `LIGHTVM_HTTP=ON`, a controller without a valid saved network configuration
 starts an **open** access point named `lightvm-xxxxxx`, using the same stable
 station-MAC suffix as its hostname. Join it and connect the editor or CLI to
 `http://192.168.4.1`. The radio uses channel 1 and DHCP assigns up to four addresses
@@ -113,7 +113,7 @@ Discovery advertises on the AP interface, including `lightvm.local`; use the
 fixed IP when `.local` resolution is unavailable. A custom HTTP port retains
 the discovery-only listener on port 80, as in station mode.
 
-AP mode provides local device access without internet routing or a captive
+AP mode provides local controller access without internet routing or a captive
 portal. Open the hosted editor before joining the AP, or build and serve it on
 localhost following [the editor instructions](web-editor.md#run-locally).
 Visit Develop while online if source compilation will be needed: its external
@@ -149,7 +149,7 @@ python tools/client.py --port PORT --no-reset --network network.json
 python tools/client.py --port PORT --no-reset --network-status
 python tools/client.py --url http://DEVICE_IP --describe
 python tools/client.py --url http://DEVICE_IP --get-config
-python tools/client.py --url http://DEVICE_IP --store-procedure rainbow rainbow.lbc
+python tools/client.py --url http://DEVICE_IP --store-program rainbow rainbow.lbc
 python tools/client.py --url http://DEVICE_IP --activate rainbow
 python tools/client.py --url http://DEVICE_IP --program-state
 ```
@@ -159,23 +159,23 @@ Omit `--no-reset` for Pico/Pico W. `--get-network` omits passwords;
 network settings may be changed through either path. Network changes preserve the
 program and output configuration, but can terminate HTTP access. Read the new IP
 through USB or your router, then reconnect; the editor can fill the address from
-USB status. The editor also finds devices through the discovery endpoint below;
+USB status. The editor also finds controllers through the discovery endpoint below;
 direct addresses remain available when multicast is blocked.
 
-## Local device discovery
+## Local controller discovery
 
 Wi-Fi/HTTP firmware on Pico W and all XIAO ESP32 profiles advertises
-`_lightvm._tcp.local` with its command port, stable device ID, board and application release.
+`_lightvm._tcp.local` with its command port, stable controller ID, board and application release.
 Each board also answers the shared `lightvm.local` IPv4 name. This bootstrap name
 may reach any LightVM board; each board retains its unique `lightvm-xxxxxx.local`
 name, probes for collisions and chooses another suffix if necessary.
 
-The editor fetches `http://lightvm.local/api/v1/devices` automatically and displays
-a **Nearby devices** picker. The board performs DNS-SD queries; the browser only
-uses HTTP for discovery. Select a device and click **Connect device**. Commands
+The editor fetches `http://lightvm.local/api/v1/controllers` automatically and displays
+a **Nearby controllers** picker. The board performs DNS-SD queries; the browser only
+uses HTTP for discovery. Select a controller and click **Connect controller**. Commands
 use WebSocket when the firmware advertises support, otherwise HTTP. Both use the
 selected IP and port, so the shared name cannot switch boards during a session;
-the WebSocket handoff also verifies the same device ID and boot ID.
+the WebSocket handoff also verifies the same controller ID and boot ID.
 USB and known HTTP addresses can seed discovery when `.local` resolution is
 unavailable. **Refresh** retries discovery, and background refresh runs every ten
 seconds while the editor is visible. Discovery never creates command sessions,
@@ -184,28 +184,28 @@ changes the selected command path, or replays a command.
 The unauthenticated, read-only endpoint is also available to other tools:
 
 ```sh
-curl http://lightvm.local/api/v1/devices
+curl http://lightvm.local/api/v1/controllers
 ```
 
 It returns `schema:"lightvm.discovery"`, `available`, `capacity:8`, `truncated`
-and `devices`. The first entry is the responding board; entries contain
-`hostname`, `device_id`, `board`, `ip`, `port` and `url`. The cache holds this board
+and `controllers`. The first entry is the responding board; entries contain
+`hostname`, `controller_id`, `board`, `ip`, `port` and `url`. The cache holds this board
 and up to seven peers. Incomplete records are hidden, graceful shutdown removes
 peers immediately, and silent departures expire within 30 seconds. A full cache
-sets `truncated:true` instead of allocating or evicting live devices.
+sets `truncated:true` instead of allocating or evicting live controllers.
 
 Discovery starts when the station is connected or the AP is active and the
 command listener is ready.
 Radio loss, disablement and reconfiguration clear the cache; IP/port changes
 restart announcements. If commands use another port, a discovery-only listener
-remains on port 80. It exposes `/api/v1/devices`, not command sessions. Both
+remains on port 80. It exposes `/api/v1/controllers`, not command sessions. Both
 listeners share existing bounded ingress and response buffers. ESP32 HTTP builds
 reserve sixteen lwIP sockets for the two servers, clients and multicast socket;
 existing build-local SDK configurations must adopt `CONFIG_LWIP_MAX_SOCKETS=16`.
 
 The shared implementation is IPv4-only and scoped to LightVM's DNS-SD records,
 with 1024-byte packets, bounded DNS compression traversal, delayed multicast
-answers, known-answer suppression and no heap-owned device list. Multicast is
+answers, known-answer suppression and no heap-owned controller list. Multicast is
 local to the LAN; isolated guest networks and VLANs need an existing multicast
 forwarder or a direct address. Browser local-network permission still applies.
 The host simulator returns itself for HTTP/UI testing and does not advertise on
@@ -226,7 +226,7 @@ that exact SSID; a new SSID needs an explicit password, including `""` for open.
 `hidden` defaults false, country defaults `XX` (worldwide), and HTTP port defaults
 80. Country values use two uppercase letters; native radio errors remain visible
 in status. Enterprise authentication and WPA3-only networks are outside this
-shared radio profile. Credentials remain in the device's snapshot storage and RAM;
+shared radio profile. Credentials remain in the controller's snapshot storage and RAM;
 network readbacks omit them and the editor never saves them in browser storage.
 
 ## Reconnection policy
@@ -252,15 +252,15 @@ configured service availability.
 
 | Request | Reply |
 |---|---|
-| `GET /api/v1/devices` | 200 JSON: bounded DNS-SD device list; no session required |
-| `POST /api/v1/sessions`, empty body | 201 JSON: `session_id`, `device_id`, `boot_id`, `expires_in_ms` |
+| `GET /api/v1/controllers` | 200 JSON: bounded DNS-SD controller list; no session required |
+| `POST /api/v1/sessions`, empty body | 201 JSON: `session_id`, `controller_id`, `boot_id`, `expires_in_ms` |
 | `POST /api/v1/command`, `X-LightVM-Session` header | 200 binary response frames ending in STATUS |
 | `DELETE /api/v1/sessions/{session_id}` | 204; release that session's candidate |
 | `OPTIONS` | CORS preflight for GET/POST/DELETE, Content-Type and X-LightVM-Session |
 
 Command bodies use `application/octet-stream` and exactly one protocol-v1 frame,
 including its existing 16-byte header and CRC. Responses concatenate OUTPUT,
-DATA or PIXELS frames and terminal STATUS. Device command errors still return
+DATA or PIXELS frames and terminal STATUS. Controller command errors still return
 200 with their existing nonzero STATUS. HTTP-level errors include 400 for an
 invalid frame/request, 404 for an unknown/expired session or path, 405 for a wrong
 method, 413 for an oversized body, 415 for a wrong command media type and 503 for
@@ -280,12 +280,12 @@ seconds of inactivity. Other connections cannot append, finish, consume or cance
 that candidate. Closing an HTTP session, a detected USB cable loss, or the
 `session_close` management operation releases it. New clients send `session_close`
 on orderly serial close; old clients and undetectable serial application closures
-use the inactivity timeout. RESET remains an explicit device-wide runtime reset.
+use the inactivity timeout. RESET remains an explicit controller-wide runtime reset.
 
 New management operations are `network_get`, `network_status`,
 `network_validate`, `network_commit` and `session_close`. Network uploads use
 OBJECT_BEGIN with `kind:"network"`. Commit uses `expected_revision` from discovery's
-`network_revision`. Discovery adds `connections:true`, stable `device_id`,
+`network_revision`. Discovery adds `connections:true`, stable `controller_id`,
 per-boot `boot_id`, feature support, network revision and the effective VM heap limit.
 The descriptor reports the application `version`; compatibility follows the
 [release contract](versioning.md).

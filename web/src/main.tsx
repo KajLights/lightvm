@@ -6,6 +6,6 @@ import { store } from './store';
 import { runtime } from './runtime';
 import '../style.css';
 
-runtime.devices.start();
-window.addEventListener('beforeunload', () => { runtime.compiler.stop(); void runtime.devices.stop(); });
+runtime.controllers.start();
+window.addEventListener('beforeunload', () => { runtime.compiler.stop(); void runtime.controllers.stop(); });
 createRoot(document.getElementById('root')!).render(<Provider store={store}><HashRouter><App /></HashRouter></Provider>);

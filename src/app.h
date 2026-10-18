@@ -4,23 +4,23 @@
 #include "vm.h"
 #include "store.h"
 #include "network.h"
-#include "scene.h"
+#include "composition.h"
 #include "transition.h"
 #if LIGHTVM_BOOT_SEQUENCE
 #include "boot_sequence.h"
 #endif
 
 typedef struct {
-    HardwareDevice hardware;
+    HardwareOutput hardware;
     VmInstance vm;
     PixelBuffer pixels;
-    Scene *scene;
+    Composition *composition;
     Transition *transition;
-    uint32_t scene_revision;
+    uint32_t composition_revision;
     uint32_t layer_generation;
-    char active_procedure[OBJECT_NAME_LIMIT + 1];
+    char active_program[OBJECT_NAME_LIMIT + 1];
     uint32_t active_crc;
-} AppDevice;
+} AppOutput;
 typedef struct {
 #if LIGHTVM_BOOT_SEQUENCE
     BootSequence boot_sequence;
@@ -31,13 +31,13 @@ typedef struct {
     NetworkConfig pending_network;
     bool network_pending;
     uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
-    char device_id[65], boot_id[33], network_error[160];
+    char controller_id[65], boot_id[33], network_error[160];
     char mqtt_error[160];
     bool mqtt_connected;
-    AppDevice fallback;
-    AppDevice **devices;
-    unsigned device_count;
-    AppDevice *upload_device;
+    AppOutput fallback;
+    AppOutput **outputs;
+    unsigned output_count;
+    AppOutput *upload_output;
     Store store;
     HardwareConfig hardware;
     char config_json[CONFIG_LIMIT];
@@ -56,7 +56,9 @@ typedef struct {
     SendMessage send;
     void *transport;
 } App;
-AppDevice *app_device(App *, const char *id);
+AppOutput *app_output(App *, const char *id);
+/* Saved identity of the visible, unmodified composition, or NULL. */
+const char *app_output_preset(const App *, const AppOutput *);
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);
 void app_tick(App *app);

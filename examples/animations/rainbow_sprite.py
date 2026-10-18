@@ -4,7 +4,7 @@ On a 200-pixel strip its translation runs from 0 to 185 and back in 40s.
 Modes (initialization settings):
   color_duration=10.0: seconds per hue rotation; increase for slower colour changes.
   travel_duration=20.0: seconds per eased traversal; a round trip takes twice this.
-Run directly over black, or as a transparent foreground in a scene. The strip
+Run directly over black, or as a transparent foreground in a composition. The strip
 must have at least 15 pixels. Unlike Sweep's flat brush, this example creates
 a multicolour local image and applies hue rotation to the completed sprite.
 """

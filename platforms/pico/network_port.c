@@ -140,7 +140,7 @@ static bool start_discovery(uint16_t port) {
     udp_bind_netif(discovery_pcb,netif);
     udp_recv(discovery_pcb,discovery_received,NULL);
     const ip4_addr_t *a=netif_ip4_addr(netif); uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
-    discovery_start(&discovery,hostname,engine->device_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
+    discovery_start(&discovery,hostname,engine->controller_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
     if (!discovery.active) { stop_discovery(); return false; }
     return true;
 }
@@ -279,7 +279,7 @@ void pico_network_poll(void) {
     if (listener && enabled) {
         const ip4_addr_t *a=netif_ip4_addr(active_netif());
         uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
-        if (discovery.active && memcmp(ip,discovery.devices[0].ip,4)) stop_discovery();
+        if (discovery.active && memcmp(ip,discovery.controllers[0].ip,4)) stop_discovery();
         if (!discovery.active && now>=discovery_retry) { start_discovery(port); discovery_retry=now+5000000u; }
         discovery_tick(&discovery,now);
     }

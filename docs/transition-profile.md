@@ -3,7 +3,7 @@
 Transitions are named Python programs compiled and stored exactly like animations.
 Their manifest uses `schema: "lightvm.program"`, `profile: "transition"`, the
 existing `requires` release declaration and `pixels.format: "rgba8-premul"`.
-There is one shared interpreter and flash procedure catalogue. Transition names
+There is one shared interpreter and flash program catalogue. Transition names
 come from that catalogue, rather than a native list of recognized effect names.
 
 ```python
@@ -45,13 +45,13 @@ and runs one callback. Backwards movement and seeking do not replay earlier
 percentages. Identical inputs, settings and seed give identical results.
 
 At exactly 0% and 100%, the owner copies A or B directly and bypasses the callback.
-An empty scene supplies black. Transition RGB is displayed over black using the
+An empty composition supplies black. Transition RGB is displayed over black using the
 same premultiplied representation as ordinary animation output. A fault retains
 the last completed physical frame; selecting a fresh program recovers.
 
-The program cannot mutate its input scene frames or drive a physical output.
-Animations cannot use transition scene operations, and transition packages cannot
-be activated as animations, scene layers or startup animation procedures.
+The program cannot mutate its input composition frames or drive a physical output.
+Animations cannot use transition composition operations, and transition packages cannot
+be activated as animations, composition layers or startup animation programs.
 
 ## Library and optimized compilation
 
@@ -66,7 +66,7 @@ Their underlying operations are also available inside a transition render:
 
 - `pixels.mix(progress, start=0, stop=pixels.count)` replaces a range with a blend
   of A and B. Progress must be finite and in 0..1.
-- `pixels.copy_scene("A" or "B", start=0, stop=pixels.count)` copies a source range.
+- `pixels.copy_composition("A" or "B", start=0, stop=pixels.count)` copies a source range.
 
 Ranges are checked, half-open and use the same indices in source and destination.
 Both operations lower directly to bounded native calls; no per-pixel guest loop
@@ -80,7 +80,7 @@ direction and boundary calculation remain Python code, with native range copies.
 
 The shared LBC1/4 container binds this profile with ID 4 and two typed runtime
 arguments (pixel count and progress); animation profile ID 3 remains unchanged.
-Native bindings 53 and 54 provide scene blending and scene range copies. Each
+Native bindings 53 and 54 provide composition blending and composition range copies. Each
 dispatch processes at most 32 pixels and resumes through the existing VM budget.
 All buffers and initialized-state snapshots are admitted before activation;
 rendering allocates no memory.
@@ -89,34 +89,34 @@ rendering allocates no memory.
 
 ```sh
 python -m lightvm.compiler examples/transitions/crossfade.py -o build/examples/crossfade.lbc
-python tools/client.py --port PORT --store-procedure crossfade build/examples/crossfade.lbc
-python tools/client.py --port PORT --transition crossfade --device lights
+python tools/client.py --port PORT --store-program crossfade build/examples/crossfade.lbc
+python tools/client.py --port PORT --transition crossfade --output lights
 
 python -m lightvm.compiler examples/transitions/wipe.py -o build/examples/wipe.lbc
-python tools/client.py --port PORT --store-procedure wipe build/examples/wipe.lbc
-python tools/client.py --port PORT --transition wipe --settings '{"reverse": true}' --device lights
+python tools/client.py --port PORT --store-program wipe build/examples/wipe.lbc
+python tools/client.py --port PORT --transition wipe --settings '{"reverse": true}' --output lights
 # Add the white separator; reverse remains optional.
-python tools/client.py --port PORT --transition wipe --settings '{"separator": true}' --device lights
+python tools/client.py --port PORT --transition wipe --settings '{"separator": true}' --output lights
 # Choose an orange separator (packed RGB8 0xff6600).
-python tools/client.py --port PORT --transition wipe --settings '{"separator": true, "color": 16737792}' --device lights
+python tools/client.py --port PORT --transition wipe --settings '{"separator": true, "color": 16737792}' --output lights
 ```
 
-Or call `client.save_procedure(name, compiled.bytecode)` then
-`client.select_transition(name, settings={...}, device="lights")`.
-The wire request is `transition_select` with `procedure`, `expected_revision`,
+Or call `client.save_program(name, compiled.bytecode)` then
+`client.select_transition(name, settings={...}, output="lights")`.
+The wire request is `transition_select` with `program`, `expected_revision`,
 optional `settings` and `seed`. Preparation is transactional and preserves the
-selected program and progress driver on failure. State reports `procedure` and
+selected program and progress driver on failure. State reports `program` and
 `program_crc32`; replacing a flash name leaves its currently running immutable
 version pinned until selected again. Referenced programs cannot be deleted.
 
-`procedure_list` includes `profile: "animation"` or `"transition"` for supported
+`program_list` includes `profile: "animation"` or `"transition"` for supported
 packages. Firmware advertises `transition_programs: true`. The browser compiles
 these same examples, saves editable versions in its library, saves and selects
-named device programs, and lists stored transitions with their settings in the
+named output programs, and lists stored transitions with their settings in the
 Fader and A/B selectors. Program
 storage is limited by available capacity. Animations and transitions have separate
 name namespaces; `animation/wipe` and `transition/wipe` can coexist.
-`procedure_list` accepts a `type` filter; get/delete use the type to disambiguate names.
+`program_list` accepts a `type` filter; get/delete use the type to disambiguate names.
 
-Stored packages survive reboot. Live A/B scenes, transition selection and progress
+Stored packages survive reboot. Live A/B compositions, transition selection and progress
 drivers remain RAM state, as described in [A/B transitions](transitions.md).

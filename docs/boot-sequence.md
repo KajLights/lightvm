@@ -7,7 +7,7 @@ With Wi-Fi and HTTP also enabled, its trigger activates the recovery policy belo
 
 ## Gesture and timing
 
-Count power-ons **1, 2, 3**. Turn the device off again before five seconds on the
+Count power-ons **1, 2, 3**. Turn the controller off again before five seconds on the
 first two boots; on the third, the detector's flag becomes true. Each power-on
 must reach the durable counter write to register. There is no five-second delay
 in startup. Saved configuration and programs start normally, including during AP recovery.
@@ -19,7 +19,7 @@ true for the rest of that boot, even when the counter returns to zero. A subsequ
 boot starts a new sequence once the clear has succeeded.
 
 Time spent powered off does not clear the sequence. A short boot followed by an
-overnight power-off still counts on the next power-on. Software device resets,
+overnight power-off still counts on the next power-on. Software controller resets,
 watchdog resets and brownouts also count; protocol `RESET`, which resets the
 guest program, does not. The timer relies on the application loop making progress.
 
@@ -50,7 +50,7 @@ and offers **Save network for next boot**.
 Keep the recovery boot powered for at least five seconds before restarting to
 resume the saved network settings. Restarting sooner, or a failed
 counter clear, can trigger recovery again. Time while powered off does not clear
-the counter. No network, hardware configuration or procedure is erased on entry.
+the counter. No network, hardware configuration or program is erased on entry.
 There is no new build switch or guest reset command: the policy is enabled by the
 three existing build options together. With either Wi-Fi or HTTP excluded, the
 detector remains diagnostic and saved startup behavior is unchanged. Firmware
@@ -99,7 +99,7 @@ an error rather than wrapping.
 Updates append without erasing. At sector rollover, the other sector is erased
 and verified, then the new record is programmed, verified and synchronized. The
 sector holding the latest valid record remains intact throughout rollover. A
-normally running device writes twice per boot: increment, then clear. Configuration
+normally running controller writes twice per boot: increment, then clear. Configuration
 snapshot saves never write or erase this journal.
 
 | Port | Enabled journal location |

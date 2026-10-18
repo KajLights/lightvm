@@ -2,12 +2,22 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool playing(const AppDevice *d) {
-    return d->transition?d->transition->playing:d->scene?d->scene->playing:d->vm.playing;
+static bool playing(const AppOutput *d) {
+    return d->transition?d->transition->playing:d->composition?d->composition->playing:d->vm.playing;
+}
+static bool exposed(const HardwareOutput *d,const char *name) {
+    for(unsigned i=0;i<d->ha_preset_count;i++)if(!strcmp(d->ha_presets[i],name))return true;
+    return false;
+}
+static const char *selected(const HomeAssistant *h,const AppOutput *d) {
+    const char *name=app_output_preset(h->app,d);
+    return name&&exposed(&d->hardware,name)?name:"";
 }
 static void refresh(HomeAssistant *h) {
     h->available=false;
-    for(unsigned i=0;i<HA_LIGHT_LIMIT;i++){h->lights[i].discovered=false;h->lights[i].known=false;h->lights[i].config_removed=false;}
+    for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
+        HaOutput *l=&h->outputs[i];l->discovered=false;l->selector_discovered=false;l->known=false;l->preset_known=false;l->remove_phase=0;
+    }
 }
 static void response(void *context,uint8_t type,uint16_t id,const uint8_t *payload,size_t size) {
     HomeAssistant *h=context;(void)id;
@@ -27,30 +37,39 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
     size_t prefix=strlen(h->root);
     if(strncmp(topic,h->root,prefix) || topic[prefix]!='/')return;
     const char *id=topic+prefix+1,*slash=strchr(id,'/');
-    if(!slash || strcmp(slash,"/set") || (size_t)(slash-id)>OBJECT_NAME_LIMIT)return;
-    char device[OBJECT_NAME_LIMIT+1];memcpy(device,id,(size_t)(slash-id));device[slash-id]=0;
-    AppDevice *d=app_device(h->app,device);
-    if(!device[0] || !d || !d->hardware.ha_preset[0])return;
-    bool on=size==2 && !memcmp(payload,"ON",2),off=size==3 && !memcmp(payload,"OFF",3);
-    if(!on && !off)return;
-    /* QoS1 retransmissions and repeated ON do not restart a running effect. */
-    if(on && playing(d))return;
+    if(!slash || (size_t)(slash-id)>OBJECT_NAME_LIMIT)return;
+    char output[OBJECT_NAME_LIMIT+1];memcpy(output,id,(size_t)(slash-id));output[slash-id]=0;
+    AppOutput *d=app_output(h->app,output);
+    if(!output[0] || !d || !d->hardware.ha_default_preset[0])return;
+    bool preset_command=!strcmp(slash,"/preset/set"),on=false,off=false;
+    char preset[OBJECT_NAME_LIMIT+1];
+    if(preset_command){
+        if(!size||size>OBJECT_NAME_LIMIT)return;
+        memcpy(preset,payload,size);preset[size]=0;
+        if(memchr(payload,0,size)||!object_name_valid(preset)||!exposed(&d->hardware,preset))return;
+        if(playing(d)&&!strcmp(selected(h,d),preset))return;
+    }else{
+        if(strcmp(slash,"/set"))return;
+        on=size==2 && !memcmp(payload,"ON",2);off=size==3 && !memcmp(payload,"OFF",3);
+        if(!on && !off)return;
+        if(on && playing(d))return;
+        const char *current=selected(h,d);
+        snprintf(preset,sizeof(preset),"%s",current[0]?current:d->hardware.ha_default_preset);
+    }
     char command[256];
-    int n=on?snprintf(command,sizeof(command),"{\"op\":\"preset_activate\",\"device\":\"%s\",\"name\":\"%s\",\"expected_revision\":%lu}",device,d->hardware.ha_preset,(unsigned long)d->scene_revision)
-        :snprintf(command,sizeof(command),"{\"op\":\"device_command\",\"device\":\"%s\",\"command\":%u}",device,CMD_STOP);
+    int n=off?snprintf(command,sizeof(command),"{\"op\":\"output_command\",\"output\":\"%s\",\"command\":%u}",output,CMD_STOP)
+        :snprintf(command,sizeof(command),"{\"op\":\"preset_activate\",\"output\":\"%s\",\"name\":\"%s\",\"expected_revision\":%lu}",output,preset,(unsigned long)d->composition_revision);
     app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)command,(size_t)n);
-    for(unsigned i=0;i<HA_LIGHT_LIMIT;i++)if(!strcmp(h->lights[i].id,device))h->lights[i].known=false;
+    for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++)if(!strcmp(h->outputs[i].id,output)){h->outputs[i].known=false;h->outputs[i].preset_known=false;}
 }
 void ha_init(HomeAssistant *h,App *app,MqttStream stream) {
     memset(h,0,sizeof(*h));h->app=app;h->source=++app->connection_sequence;
-    snprintf(h->root,sizeof(h->root),"homeassistant/lightvm/%s",app->device_id);
-    char id[96],will[MQTT_TOPIC_SIZE];snprintf(id,sizeof(id),"lightvm-%s",app->device_id);
+    snprintf(h->root,sizeof(h->root),"homeassistant/lightvm/%s",app->controller_id);
+    char id[96],will[MQTT_TOPIC_SIZE];snprintf(id,sizeof(id),"lightvm-%s",app->controller_id);
     snprintf(will,sizeof(will),"%s/availability",h->root);
     mqtt_init(&h->mqtt,stream,id,will,message,h);
 }
 void ha_close(HomeAssistant *h) {mqtt_close(&h->mqtt);h->app->mqtt_connected=false;}
-/* Names are the only arbitrary text in discovery. A bounded JSON string escape
- * keeps names with quotes, backslashes, Unicode or control characters valid. */
 static void quote_name(char *out,const char *name) {
     char *p=out;*p++='"';
     while(*name){unsigned char c=(unsigned char)*name++;
@@ -60,46 +79,67 @@ static void quote_name(char *out,const char *name) {
     }
     *p++='"';*p=0;
 }
-static void config_topic(const HomeAssistant *h,const HaLight *l,char *topic,size_t size) {
-    /* Hardware IDs also allow dots, which HA discovery object IDs forbid.
-     * Hex encoding is collision free for every valid hardware identifier. */
+static void config_topic(const HomeAssistant *h,const HaOutput *l,bool selector,char *topic,size_t size) {
     static const char hex[]="0123456789abcdef";
     char object[2*OBJECT_NAME_LIMIT+1];size_t n=0;
     for(const unsigned char *p=(const unsigned char *)l->id;*p;p++){object[n++]=hex[*p>>4];object[n++]=hex[*p&15];}
     object[n]=0;
-    snprintf(topic,size,"homeassistant/light/%s/%s/config",h->app->device_id,object);
+    snprintf(topic,size,"homeassistant/%s/%s/%s%s/config",selector?"select":"light",h->app->controller_id,object,selector?"_preset":"");
 }
-static bool discovery(HomeAssistant *h,HaLight *l) {
-    char topic[MQTT_TOPIC_SIZE],payload[1400],name[6*64+3];quote_name(name,l->name);
-    config_topic(h,l,topic,sizeof(topic));
+static bool discovery(HomeAssistant *h,HaOutput *l,const AppOutput *d,bool selector) {
+    char topic[MQTT_TOPIC_SIZE],payload[1900],name[6*71+3],label[72];
+    snprintf(label,sizeof(label),"%s%s",l->name,selector?" Preset":"");quote_name(name,label);
+    config_topic(h,l,selector,topic,sizeof(topic));
     int n=snprintf(payload,sizeof(payload),
-        "{\"name\":%s,\"unique_id\":\"%s_%s\",\"command_topic\":\"%s/%s/set\","
-        "\"state_topic\":\"%s/%s/state\",\"availability_topic\":\"%s/availability\","
-        "\"payload_on\":\"ON\",\"payload_off\":\"OFF\",\"qos\":0,\"retain\":false,"
-        "\"device\":{\"identifiers\":[\"%s\"],\"name\":\"LightVM %s\",\"manufacturer\":\"Kajlights\",\"model\":\"LightVM\"}}",
-        name,h->app->device_id,l->id,h->root,l->id,h->root,l->id,h->root,h->app->device_id,h->app->device_id);
-    return n>0 && (size_t)n<sizeof(payload) && mqtt_publish(&h->mqtt,topic,payload,(size_t)n,true);
+        "{\"name\":%s,\"unique_id\":\"%s_%s%s\",\"command_topic\":\"%s/%s/%sset\","
+        "\"state_topic\":\"%s/%s/%sstate\",\"availability_topic\":\"%s/availability\","
+        "\"qos\":0,\"retain\":false,"
+        "\"device\":{\"identifiers\":[\"%s\"],\"name\":\"LightVM %s\",\"manufacturer\":\"Kajlights\",\"model\":\"LightVM\"}",
+        name,h->app->controller_id,l->id,selector?"_preset":"",h->root,l->id,selector?"preset/":"",
+        h->root,l->id,selector?"preset/":"",h->root,h->app->controller_id,h->app->controller_id);
+    if(n<0 || (size_t)n>=sizeof(payload))return false;
+    size_t used=(size_t)n;
+    if(selector){
+        n=snprintf(payload+used,sizeof(payload)-used,",\"options\":[");
+        /* Keep the output name in the selector label; all outputs share a controller. */
+        if(n<0 || (size_t)n>=sizeof(payload)-used)return false;
+        used+=(size_t)n;bool first=true;
+        for(unsigned i=0;i<d->hardware.ha_preset_count;i++){
+            const char *preset=d->hardware.ha_presets[i];
+            if(!store_find(&h->app->store,STORE_PRESET,preset))continue;
+            n=snprintf(payload+used,sizeof(payload)-used,"%s\"%s\"",first?"":",",preset);
+            if(n<0 || (size_t)n>=sizeof(payload)-used)return false;
+            used+=(size_t)n;first=false;
+        }
+        n=snprintf(payload+used,sizeof(payload)-used,"]}");
+    }else n=snprintf(payload+used,sizeof(payload)-used,",\"payload_on\":\"ON\",\"payload_off\":\"OFF\"}");
+    if(n<0 || (size_t)n>=sizeof(payload)-used)return false;
+    used+=(size_t)n;
+    return mqtt_publish(&h->mqtt,topic,payload,used,true);
 }
 static void reconcile(HomeAssistant *h) {
-    for(unsigned i=0;i<HA_LIGHT_LIMIT;i++){
-        HaLight *l=&h->lights[i];if(!l->id[0])continue;
-        AppDevice *d=app_device(h->app,l->id);
-        if(!d || !d->hardware.ha_preset[0]){l->removing=true;continue;}
-        if(l->removing){l->removing=false;l->discovered=false;l->known=false;l->config_removed=false;}
+    bool catalog_changed=h->catalog_generation!=h->app->store.generation;
+    h->catalog_generation=h->app->store.generation;
+    for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
+        HaOutput *l=&h->outputs[i];if(!l->id[0])continue;
+        AppOutput *d=app_output(h->app,l->id);
+        if(!d || !d->hardware.ha_default_preset[0]){l->removing=true;continue;}
+        if(l->removing){l->removing=false;l->discovered=false;l->known=false;l->selector_discovered=false;l->preset_known=false;l->remove_phase=0;}
         const char *name=d->hardware.ha_name[0]?d->hardware.ha_name:d->hardware.id;
-        if(strcmp(l->name,name)){snprintf(l->name,sizeof(l->name),"%s",name);l->discovered=false;}
+        if(strcmp(l->name,name)){snprintf(l->name,sizeof(l->name),"%s",name);l->discovered=false;l->selector_discovered=false;}
+        uint32_t binding=crc32_bytes((const uint8_t *)d->hardware.ha_presets,sizeof(d->hardware.ha_presets));
+        if(catalog_changed||binding!=l->binding_crc){l->binding_crc=binding;l->selector_discovered=false;l->preset_known=false;}
     }
-    for(unsigned n=0;n<h->app->device_count;n++){
-        AppDevice *d=h->app->devices[n];if(!d->hardware.ha_preset[0])continue;
-        unsigned free_slot=HA_LIGHT_LIMIT;bool found=false;
-        for(unsigned i=0;i<HA_LIGHT_LIMIT;i++){
-            if(!strcmp(h->lights[i].id,d->hardware.id)){found=true;break;}
-            if(!h->lights[i].id[0])free_slot=i;
+    for(unsigned n=0;n<h->app->output_count;n++){
+        AppOutput *d=h->app->outputs[n];if(!d->hardware.ha_default_preset[0])continue;
+        unsigned free_slot=HA_OUTPUT_LIMIT;bool found=false;
+        for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
+            if(!strcmp(h->outputs[i].id,d->hardware.id)){found=true;break;}
+            if(!h->outputs[i].id[0])free_slot=i;
         }
-        if(found || free_slot==HA_LIGHT_LIMIT)continue;
-        HaLight *l=&h->lights[free_slot];snprintf(l->id,sizeof(l->id),"%s",d->hardware.id);
+        if(found || free_slot==HA_OUTPUT_LIMIT)continue;
+        HaOutput *l=&h->outputs[free_slot];snprintf(l->id,sizeof(l->id),"%s",d->hardware.id);
         snprintf(l->name,sizeof(l->name),"%s",d->hardware.ha_name[0]?d->hardware.ha_name:d->hardware.id);
-        l->discovered=false;l->known=false;
     }
 }
 void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
@@ -110,24 +150,39 @@ void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
     if(h->mqtt.error[0])snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"%s",h->mqtt.error);
     if(!h->app->mqtt_connected)return;
     if(h->generation!=h->mqtt.generation){h->generation=h->mqtt.generation;h->phase=0;refresh(h);h->app->mqtt_error[0]=0;}
-    if(h->phase==0){char filter[MQTT_TOPIC_SIZE];snprintf(filter,sizeof(filter),"%s/+/set",h->root);if(mqtt_subscribe(&h->mqtt,filter))h->phase++;return;}
+    if(h->phase<3){
+        if(h->mqtt.subscription)return;
+        char filter[MQTT_TOPIC_SIZE];
+        if(h->phase<2)snprintf(filter,sizeof(filter),"%s/+/%sset",h->root,h->phase?"preset/":"");
+        else snprintf(filter,sizeof(filter),"homeassistant/status");
+        if(mqtt_subscribe(&h->mqtt,filter))h->phase++;
+        return;
+    }
     if(h->mqtt.subscription)return;
-    if(h->phase==1){if(mqtt_subscribe(&h->mqtt,"homeassistant/status"))h->phase++;return;}
-    /* One publication per tick bounds engine work and handles backpressure. */
-    for(unsigned i=0;i<HA_LIGHT_LIMIT;i++){
-        HaLight *l=&h->lights[i];if(!l->id[0])continue;
+    /* One publication per tick bounds work and handles backpressure. */
+    for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
+        HaOutput *l=&h->outputs[i];if(!l->id[0])continue;
         char topic[MQTT_TOPIC_SIZE];
         if(l->removing){
-            if(!l->config_removed){config_topic(h,l,topic,sizeof(topic));if(mqtt_publish(&h->mqtt,topic,NULL,0,true))l->config_removed=true;return;}
-            snprintf(topic,sizeof(topic),"%s/%s/state",h->root,l->id);
-            if(mqtt_publish(&h->mqtt,topic,NULL,0,true))memset(l,0,sizeof(*l));
+            if(l->remove_phase<2)config_topic(h,l,l->remove_phase==1,topic,sizeof(topic));
+            else snprintf(topic,sizeof(topic),"%s/%s/%sstate",h->root,l->id,l->remove_phase==3?"preset/":"");
+            if(mqtt_publish(&h->mqtt,topic,NULL,0,true)&&++l->remove_phase==4)memset(l,0,sizeof(*l));
             return;
         }
-        if(!l->discovered){if(discovery(h,l))l->discovered=true;return;}
-        AppDevice *d=app_device(h->app,l->id);bool on=d && playing(d);
+        AppOutput *d=app_output(h->app,l->id);
+        if(!l->discovered){if(discovery(h,l,d,false))l->discovered=true;return;}
+        if(!l->selector_discovered){if(discovery(h,l,d,true))l->selector_discovered=true;return;}
+        bool on=playing(d);
         if(!l->known || l->playing!=on){
             snprintf(topic,sizeof(topic),"%s/%s/state",h->root,l->id);
             if(mqtt_publish(&h->mqtt,topic,on?"ON":"OFF",on?2:3,true)){l->known=true;l->playing=on;}
+            return;
+        }
+        const char *preset=selected(h,d);
+        if(!l->preset_known||strcmp(l->preset,preset)){
+            snprintf(topic,sizeof(topic),"%s/%s/preset/state",h->root,l->id);
+            const char *value=preset[0]?preset:"None";
+            if(mqtt_publish(&h->mqtt,topic,value,strlen(value),true)){l->preset_known=true;snprintf(l->preset,sizeof(l->preset),"%s",preset);}
             return;
         }
     }

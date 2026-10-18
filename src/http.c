@@ -41,7 +41,7 @@ static unsigned command(Http *h,HttpRequest *r,uint64_t source) {
 }
 static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     if (r->error) return r->error;
-    if (r->discovery_only && strcmp(r->path,"/api/v1/devices")) return 404;
+    if (r->discovery_only && strcmp(r->path,"/api/v1/controllers")) return 404;
 #if LIGHTVM_WEBSOCKET
     if (r->websocket_action) {
         WebSocket *w=r->websocket;
@@ -56,7 +56,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     }
 #endif
     if (!strcmp(r->method,"OPTIONS")) return 204;
-    if (!strcmp(r->path,"/api/v1/devices")) {
+    if (!strcmp(r->path,"/api/v1/controllers")) {
         if (strcmp(r->method,"GET")) return 405;
         if (r->size) return 400;
         h->used=discovery_json(h->discovery,(char *)h->response,sizeof(h->response),now);
@@ -69,7 +69,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
         if (!s || h->app->connection_sequence==UINT64_MAX) return 503;
         s->source=++h->app->connection_sequence; s->expires=now+300000000u;
         snprintf(s->token,sizeof(s->token),"%016llx%016llx",(unsigned long long)crc32_bytes((const uint8_t *)h->app->boot_id,strlen(h->app->boot_id)),(unsigned long long)s->source);
-        int n=snprintf((char *)h->response,sizeof(h->response),"{\"session_id\":\"%s\",\"device_id\":\"%s\",\"boot_id\":\"%s\",\"expires_in_ms\":300000}",s->token,h->app->device_id,h->app->boot_id);
+        int n=snprintf((char *)h->response,sizeof(h->response),"{\"session_id\":\"%s\",\"controller_id\":\"%s\",\"boot_id\":\"%s\",\"expires_in_ms\":300000}",s->token,h->app->controller_id,h->app->boot_id);
         h->used=(size_t)n; return 201;
     }
     if (!strcmp(r->method,"DELETE") && !strncmp(r->path,"/api/v1/sessions/",17)) {

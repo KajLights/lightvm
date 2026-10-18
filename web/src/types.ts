@@ -1,16 +1,16 @@
 import { DEFAULT_EXAMPLE } from './examples';
 export type Path = 'usb' | 'http';
 export interface Description {
-  device_id: string; boot_id: string; board: string;
+  controller_id: string; boot_id: string; board: string;
   version: string; animation_reset?: boolean; activation_settings?: boolean;
   module_limit: number; config_limit: number;
   pixel_capacity: number; pins: string[]; slots: string[];
   storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean; websocket_supported?: boolean; mqtt_supported?: boolean;
   active_revision: number; saved_revision: number; catalog_revision: number;
-  network_revision: number; active_procedure: string; boot_error?: string;
+  network_revision: number; active_program: string; boot_error?: string;
   animation_error?: string;
   ab_transitions?: boolean; transition_sources?: boolean; transition_effects?: string[]; transition_programs?: boolean;
-  scenes?: boolean; scene_layer_limit?: number; scene_blend_modes?: string[];
+  compositions?: boolean; composition_layer_limit?: number; composition_blend_modes?: string[];
   presets?: boolean; transient_settings?: boolean; typed_storage?: boolean;
   storage_backend?: string; storage_writable?: boolean; storage_bytes?: number; free_bytes?: number;
   largest_free_bytes?: number; storage_allocation_unit?: number;
@@ -20,7 +20,7 @@ export interface Description {
 }
 export interface HardwareConfig {
   schema: 'lightvm.config';
-  devices: { id: string; type: 'ws2812b'; home_assistant?: { on_preset: string; name?: string }; startup?: { procedure: string; args?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
+  outputs: { id: string; type: 'ws2812b'; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { program: string; settings?: Record<string, number | boolean> }; config: { pin: string; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {
   schema: 'lightvm.network';
@@ -29,26 +29,31 @@ export interface NetworkConfig {
   mqtt?: { enabled: boolean; host: string; port: number; username: string; password?: string };
 }
 export interface NetworkStatus { mqtt_connected?: boolean; mqtt_error?: string; state: string; mode?: 'station' | 'ap'; initial_setup?: boolean; recovery?: boolean; ssid?: string; ip?: string; error?: string; retry_ms?: number; revision: number; http_port: number }
-export interface Procedure { name: string; size: number; crc32: number; type?: 'animation' | 'transition'; profile?: 'animation' | 'transition' }
+export interface Program { name: string; size: number; crc32: number; type?: 'animation' | 'transition'; profile?: 'animation' | 'transition' }
 export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[] }
 export interface ProgramState {
-  device?: string; layer?: string;
+  output?: string; layer?: string;
   manifest: Manifest;
   generation: number; slot: string; paused: boolean; faulted: boolean;
   render_count?: number; settings_values?: Record<string, number | boolean>;
 }
-export interface NearbyDevice { device_id: string; board: string; hostname: string; ip: string; port: number; url: string }
+export interface NearbyController { controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { message: string; line: number; column: number; end_line?: number; end_column?: number }
 export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[] }
-export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', devices: [] };
+export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', outputs: [] };
 export const DEFAULT_SOURCE = DEFAULT_EXAMPLE.source;
+
+export interface CompositionState {
+  active: boolean; preset?: string | null; revision?: number; playing?: boolean;
+  layers?: { id: string; program: string; generation?: number }[];
+}
 
 export interface TransitionState {
   revision: number; active: boolean; progress: number; effect: string; seed: number;
-  procedure?: string; program_crc32?: number;
+  program?: string; program_crc32?: number;
   driver: { kind: 'manual' | 'timed' | 'source'; assignment: number; source?: string; target?: number; duration_ms?: number; interval_ms?: number };
-  A: { active: boolean; layers?: { id: string; procedure: string; generation?: number }[] };
-  B: { active: boolean; layers?: { id: string; procedure: string; generation?: number }[] };
+  A: CompositionState;
+  B: CompositionState;
   error: string;
 }

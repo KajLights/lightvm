@@ -1,8 +1,8 @@
-# Future device support
+# Future output support
 
 Status: Proposed beyond configured WS2812B RGB outputs. Host, Pico/Pico W and
 ESP32 C3/S3/C6 use the current typed bytecode runtime, native JSON configuration,
-named program storage, independent instances and native scene composition.
+named program storage, independent instances and native composition.
 See [configuration](../configuration.md) and [control/input requirements](feature-proposal-control-api.md).
 
 ## Starter capabilities
@@ -26,10 +26,10 @@ General motor control, arbitrary bus access and cameras are outside the starter 
 
 ## Implementation requirements
 
-Use one declarative device definition to generate configuration validation,
+Use one declarative controller definition to generate configuration validation,
 typed bindings and editor metadata. Native drivers own hardware resources;
 programs bind logical names to checked opaque resources, never pin numbers or
-native pointers. Keep physical drivers, logical frames, scene layers and A/B
+native pointers. Keep physical drivers, logical frames, composition layers and A/B
 slots distinct. Explicit RGBW output needs its own physical driver and budget;
 PixelArray white channels do not imply such a driver is installed.
 
@@ -41,7 +41,7 @@ pulses should depend on guest sleeps or animation frame cadence.
 
 Report compiled capabilities separately from configured instances and live
 availability. Board pin aliases and sensible current defaults remain useful.
-Unknown fields/unsupported devices fail clearly. Saved configuration from a
+Unknown fields/unsupported controllers fail clearly. Saved configuration from a
 superseded contract requires explicit reprovisioning, not an adapter.
 
 ## Delivery and verification

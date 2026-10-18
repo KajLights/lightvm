@@ -37,8 +37,8 @@ typedef struct Portable {
     bool deterministic_random;
     uint64_t default_seed;
     /* Native, read-only RGB views. Never exposed as guest pointers. The owner
-       pins these completed scene frames until this evaluation finishes. */
-    const uint8_t *scene_frames[2];
+       pins these completed composition frames until this evaluation finishes. */
+    const uint8_t *composition_frames[2];
     float progress;
     bool initialized;
     _Alignas(4) uint8_t cache[256]; uint32_t cache_offset,cache_size;

@@ -1,9 +1,9 @@
 {
-  "schema": "lightvm.scene",
+  "schema": "lightvm.composition",
   "layers": [
     {
       "id": "background",
-      "procedure": "color",
+      "program": "color",
       "settings": {
         "color": 1056816,
         "random_color": false
@@ -11,7 +11,7 @@
     },
     {
       "id": "red_eye",
-      "procedure": "sweep",
+      "program": "sweep",
       "blend": "screen",
       "settings": {
         "eye_count": 1,
@@ -25,7 +25,7 @@
     },
     {
       "id": "blue_eye",
-      "procedure": "sweep",
+      "program": "sweep",
       "blend": "add",
       "settings": {
         "eye_count": 1,

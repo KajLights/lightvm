@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppSelector } from './store';
 import { useRuntime } from './runtime';
 import { EXAMPLES, exampleForSource } from './examples';
-import { download } from './device-service';
+import { download } from './controller-service';
 import { DevelopmentWorkflow } from './Workflow';
 import type { Diagnostic } from './types';
 
 function Editor() {
-  const { compiler, devices } = useRuntime(), editor = useAppSelector(state => state.editor);
+  const { compiler, controllers } = useRuntime(), editor = useAppSelector(state => state.editor);
   const textarea = useRef<HTMLTextAreaElement>(null), cm = useRef<any>(null), marks = useRef<any[]>([]);
   const [cursor, setCursor] = useState('Ln 1, Col 1');
   const example = exampleForSource(editor.source);
@@ -48,10 +48,10 @@ function Editor() {
     if (!file) return;
     try {
       if (file.size > 65536) throw new Error('Choose a Python file smaller than 64 KiB.');
-      const revision = devices.snapshot.editor.revision;
+      const revision = controllers.snapshot.editor.revision;
       const source = await file.text();
-      if (revision === devices.snapshot.editor.revision) compiler.edit(source, file.name);
-    } catch (error) { void devices.run('Opening source', async () => { throw error; }); }
+      if (revision === controllers.snapshot.editor.revision) compiler.edit(source, file.name);
+    } catch (error) { void controllers.run('Opening source', async () => { throw error; }); }
     if (picker.current) picker.current.value = '';
   }
   function loadExample(name: string) {
@@ -74,28 +74,28 @@ function Editor() {
 }
 
 function Playback() {
-  const { devices } = useRuntime();
-  const { programState: state, selectedPath } = useAppSelector(state => state.device);
+  const { controllers } = useRuntime();
+  const { programState: state, selectedPath } = useAppSelector(state => state.controller);
   const busy = useAppSelector(state => state.activity.operation !== null);
   async function playback(verb: 'pause' | 'resume') {
     if (!state) return;
-    await devices.run(verb === 'pause' ? 'Pausing program' : 'Resuming program', async client => {
-      const connection = devices.require(client);
-      await connection.manage('program_' + verb, { device: state.device, layer: state.layer, expected_generation: state.generation });
-      await devices.readProgramState(connection);
+    await controllers.run(verb === 'pause' ? 'Pausing program' : 'Resuming program', async client => {
+      const connection = controllers.require(client);
+      await connection.manage('program_' + verb, { output: state.output, slot: state.slot, layer: state.layer, expected_generation: state.generation });
+      await controllers.readProgramState(connection);
     });
   }
-  return <section className="card"><div className="card-heading"><h2>Playback</h2><button className="quiet small" disabled={!selectedPath || busy} onClick={() => void devices.run('Refreshing playback', async client => devices.readProgramState(devices.require(client)))}>Refresh</button></div>
+  return <section className="card"><div className="card-heading"><h2>Playback</h2><button className="quiet small" disabled={!selectedPath || busy} onClick={() => void controllers.run('Refreshing playback', async client => controllers.readProgramState(controllers.require(client)))}>Refresh</button></div>
     <p id="playback-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') : 'Load an animation to control playback.'}</p>
     <fieldset disabled={!state || !selectedPath || busy}><div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div></fieldset>
   </section>;
 }
 export function Develop({ active }: { active: boolean }) {
-  const description = useAppSelector(state => state.device.description), connected = useAppSelector(state => Boolean(state.device.selectedPath));
+  const description = useAppSelector(state => state.controller.description), connected = useAppSelector(state => Boolean(state.controller.selectedPath));
   const { compiler } = useRuntime();
   useEffect(() => { if (active) compiler.start(); }, [active, compiler]);
   return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Edit, preview on your lights, save an animation, then compose and save a preset.</p></div><div className="pipeline" aria-label="Development workflow"><span>Edit</span><span>→</span><span>Preview</span><span>→</span><span>Save</span><span>→</span><span>Compose</span><span>→</span><span>Preset</span></div></div>
-    {description && !connected && <p className="connection-banner">Connect the device to upload. The editor and downloads remain available.</p>}
+    {description && !connected && <p className="connection-banner">Connect the controller to upload. The editor and downloads remain available.</p>}
     <DevelopmentWorkflow editorPanel={<Editor />} playback={<Playback />} active={active} />
   </>;
 }

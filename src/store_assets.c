@@ -1,6 +1,6 @@
 #include "store_backend.h"
 #include "protocol.h"
-#include "devices.h"
+#include "outputs.h"
 #include <string.h>
 typedef struct { StoreAssets assets; StoreEntry entries[]; } AssetStore;
 static bool mount(Store *s,const void *configuration){

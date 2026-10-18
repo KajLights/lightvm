@@ -1,6 +1,6 @@
 import fixtures from './portable_fixtures.h?raw';
 import { crc32 } from '../web/protocol.mjs';
-import type { Manifest, Procedure, Setting } from '../web/src/types';
+import type { Manifest, Program, Setting } from '../web/src/types';
 
 // Use a compiler-generated transition package and replace only its manifest to
 // exercise catalogue checks and setting controls without a browser compiler.
@@ -14,8 +14,8 @@ export function deployedTransition(name: string, settings: Setting[] = []) {
   const bytes = new Uint8Array(original.length - size + metadata.length);
   bytes.set(original.subarray(0, original.length - size)); bytes.set(metadata, original.length - size);
   new DataView(bytes.buffer).setUint32(76, metadata.length, true);
-  const procedure: Procedure = { name, size: bytes.length, crc32: crc32(bytes), type: 'transition', profile: 'transition' };
-  return { bytes, procedure };
+  const program: Program = { name, size: bytes.length, crc32: crc32(bytes), type: 'transition', profile: 'transition' };
+  return { bytes, program };
 }
 
 export const WIPE_SETTINGS: Setting[] = [{ name: 'reverse', type: 'bool' }, { name: 'separator', type: 'bool' }, { name: 'color', type: 'rgb8' }];

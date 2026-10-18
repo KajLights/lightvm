@@ -34,9 +34,9 @@ static int storage_fd=-1;
 static int boot_storage_fd=-1;
 #endif
 static uint32_t storage_identity;
-void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) {
+void platform_identity(char *controller,size_t capacity,char *boot,size_t boot_capacity) {
     char hostname[128]="localhost"; gethostname(hostname,sizeof(hostname)-1);
-    snprintf(device,capacity,"host-%08lx-%08lx",(unsigned long)crc32_bytes((const uint8_t *)hostname,strlen(hostname)),(unsigned long)(storage_fd>=0?storage_identity:(uint32_t)getpid()));
+    snprintf(controller,capacity,"host-%08lx-%08lx",(unsigned long)crc32_bytes((const uint8_t *)hostname,strlen(hostname)),(unsigned long)(storage_fd>=0?storage_identity:(uint32_t)getpid()));
     snprintf(boot,boot_capacity,"%lx-%llx",(unsigned long)getpid(),(unsigned long long)platform_time_us());
 }
 static bool file_bytes(int fd,uint32_t capacity,bool write,uint32_t offset,void *bytes,size_t size) {

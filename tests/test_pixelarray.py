@@ -18,7 +18,7 @@ profile("animation")
 class PixelArrayTests(unittest.TestCase):
     def setUp(self):
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', str(ROOT/'build/composition-host/lightvm'))))
-        self.client.configure({'schema':'lightvm.config', 'devices':[
+        self.client.configure({'schema':'lightvm.config', 'outputs':[
             {'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':67}}]})
 
     def tearDown(self):
@@ -27,14 +27,14 @@ class PixelArrayTests(unittest.TestCase):
     def load(self, source):
         result = compile_source(PREFIX + source)
         self.assertTrue(result.success, result.diagnostics)
-        self.client.save_procedure('test', result.bytecode)
-        self.client.configure_scene([{'id':'fg','procedure':'test'}], device='lights')
-        self.client.require_ok(self.client.command(STOP, device='lights'))
+        self.client.save_program('test', result.bytecode)
+        self.client.configure_composition([{'id':'fg','program':'test'}], output='lights')
+        self.client.require_ok(self.client.command(STOP, output='lights'))
         return result
 
     def frame(self, delta=0):
-        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', delta), device='lights'))
-        return self.client.snapshot(device='lights', layer='fg')[1]
+        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', delta), output='lights'))
+        return self.client.snapshot(output='lights', layer='fg')[1]
 
     def test_absolute_alpha_ranges_zero_restoration_and_scaling(self):
         self.load('''@init
@@ -98,9 +98,9 @@ def draw(ctx,runtime,pixels):
  '''+operation+'\n'
             result=compile_source(source)
             self.assertTrue(result.success,result.diagnostics)
-            self.client.save_procedure('invalid',result.bytecode)
+            self.client.save_program('invalid',result.bytecode)
             with self.assertRaises(ProtocolError):
-                self.client.configure_scene([{'id':'fg','procedure':'invalid'}],device='lights')
+                self.client.configure_composition([{'id':'fg','program':'invalid'}],output='lights')
         for method in ('set_alpha(0.5)','set_channel("r",1)','fill(rgb(0,0,0))','clear()'):
             result=compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n ART.'+method+'\n')
             self.assertFalse(result.success)
@@ -135,9 +135,9 @@ def draw(ctx,runtime,pixels):
         for args in ('start=-1','start=2,stop=1','stop=68'):
             result=compile_source(PREFIX+'@render\ndef draw(ctx,runtime,pixels):\n pixels.clear('+args+')\n')
             self.assertTrue(result.success,result.diagnostics)
-            self.client.save_procedure('invalid_clear',result.bytecode)
+            self.client.save_program('invalid_clear',result.bytecode)
             with self.assertRaises(ProtocolError):
-                self.client.configure_scene([{'id':'fg','procedure':'invalid_clear'}],device='lights')
+                self.client.configure_composition([{'id':'fg','program':'invalid_clear'}],output='lights')
 
     def test_draw_clipping_fractional_sampling_scale_origin_and_tint(self):
         self.load('''ART=PixelArray([255,255,255,255],readonly=True)
@@ -199,9 +199,9 @@ def draw(ctx,runtime,pixels):
         for optimized in (False, True):
             result=compile_source(source,optimize=optimized)
             self.assertTrue(result.success,result.diagnostics)
-            self.client.save_procedure('test',result.bytecode)
-            self.client.configure_scene([{'id':'fg','procedure':'test'}],device='lights')
-            self.client.require_ok(self.client.command(STOP,device='lights'))
+            self.client.save_program('test',result.bytecode)
+            self.client.configure_composition([{'id':'fg','program':'test'}],output='lights')
+            self.client.require_ok(self.client.command(STOP,output='lights'))
             variants.append([self.frame(delta) for delta in (0,100,200,300)])
         self.assertEqual(variants[0],variants[1])
         self.assertEqual(variants[1][0][8:12],bytes([100,25,30,128]))
@@ -337,7 +337,7 @@ def draw(ctx,runtime,pixels):
             at=calls+i*16
             if struct.unpack_from('<I',raw,at)[0]==31:
                 raw[at+8]=raw[at+9]
-        with self.assertRaises(ProtocolError):self.client.save_procedure('forged',bytes(raw))
+        with self.assertRaises(ProtocolError):self.client.save_program('forged',bytes(raw))
 
     def test_spawn_initializes_state_even_without_a_render_call(self):
         self.load('''def birth(s,runtime):

@@ -1,4 +1,4 @@
-"""Independent devices share one upload workspace and cooperative scheduler."""
+"""Independent outputs share one upload workspace and cooperative scheduler."""
 import copy
 import json
 import os
@@ -16,12 +16,12 @@ from client import Client, ProcessTransport, ProtocolError, BEGIN, CHUNK, FINISH
 
 
 def configuration(number=6, count=17):
-    return {'schema': 'lightvm.config', 'devices': [
+    return {'schema': 'lightvm.config', 'outputs': [
         {'id': f'lights{i}', 'type': 'ws2812b', 'config': {'pin': f'GP{i}', 'count': count}}
         for i in range(number)]}
 
 
-class MultiDeviceTests(unittest.TestCase):
+class MultiOutputTests(unittest.TestCase):
     def setUp(self):
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', ROOT / 'build/host/lightvm')))
         self.client.configure(configuration())
@@ -35,44 +35,44 @@ class MultiDeviceTests(unittest.TestCase):
         self.client.close()
 
     def load(self, name, slot, play=True):
-        self.client.upload(self.effects[name], device=slot)
-        self.client.require_ok(self.client.command(PLAY if play else FRAME, b'' if play else bytes(4), device=slot))
+        self.client.upload(self.effects[name], output=slot)
+        self.client.require_ok(self.client.command(PLAY if play else FRAME, b'' if play else bytes(4), output=slot))
 
     def test_six_instances_and_independent_controls(self):
         for slot, name in zip([f'lights{i}' for i in range(6)], self.effects):
             self.load(name, slot, play=False)
-            state = self.client.program_state(device=slot)
+            state = self.client.program_state(output=slot)
             self.assertEqual(state['slot'], 'A')
-            self.assertEqual(state['device'], slot)
-            self.assertEqual(len(self.client.snapshot(device=slot)[1]), 51)
-            self.assertEqual(self.client.status_fields(device=slot)['code_storage'], 'flash')
-        self.client.reset_program(settings={'duration': 17.0}, device='lights4')
+            self.assertEqual(state['output'], slot)
+            self.assertEqual(len(self.client.snapshot(output=slot)[1]), 51)
+            self.assertEqual(self.client.status_fields(output=slot)['code_storage'], 'flash')
+        self.client.reset_program(settings={'duration': 17.0}, output='lights4')
         for slot in [f'lights{i}' for i in range(6)]:
-            self.client.require_ok(self.client.command(PLAY, device=slot))
-        start = {slot: self.client.program_state(device=slot) for slot in [f'lights{i}' for i in range(6)]}
+            self.client.require_ok(self.client.command(PLAY, output=slot))
+        start = {slot: self.client.program_state(output=slot) for slot in [f'lights{i}' for i in range(6)]}
         heap = self.client.status_fields()['heap']
         time.sleep(.12)
         for slot in [f'lights{i}' for i in range(6)]:
-            state = self.client.program_state(device=slot)
+            state = self.client.program_state(output=slot)
             self.assertGreater(state['output_frame'], start[slot]['output_frame'])
             self.assertFalse(state['faulted'])
         self.assertEqual(self.client.status_fields()['heap'], heap)
-        self.client.pause_program(device='lights1')
-        paused = self.client.program_state(device='lights1')['program_us']
-        running = self.client.program_state(device='lights0')['program_us']
+        self.client.pause_program(output='lights1')
+        paused = self.client.program_state(output='lights1')['program_us']
+        running = self.client.program_state(output='lights0')['program_us']
         time.sleep(.06)
-        self.assertEqual(self.client.program_state(device='lights1')['program_us'], paused)
-        self.assertGreater(self.client.program_state(device='lights0')['program_us'], running)
-        self.client.resume_program(device='lights1')
+        self.assertEqual(self.client.program_state(output='lights1')['program_us'], paused)
+        self.assertGreater(self.client.program_state(output='lights0')['program_us'], running)
+        self.client.resume_program(output='lights1')
         time.sleep(.04)
-        self.assertGreater(self.client.program_state(device='lights1')['program_us'], paused)
+        self.assertGreater(self.client.program_state(output='lights1')['program_us'], paused)
         a_generation = self.client.program_state()['generation']
-        self.client.reset_program(settings={'random_color': False, 'color': 0x123456}, device='lights1')
-        self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights1'))
+        self.client.reset_program(settings={'random_color': False, 'color': 0x123456}, output='lights1')
+        self.client.require_ok(self.client.command(FRAME, bytes(4), output='lights1'))
         self.assertEqual(bytes(self.client.pixel_snapshot), bytes.fromhex('123456') * 17)
         self.assertEqual(self.client.program_state()['generation'], a_generation)
         for slot in [f'lights{i}' for i in range(6)]:
-            self.client.require_ok(self.client.command(RESET, device=slot))
+            self.client.require_ok(self.client.command(RESET, output=slot))
         self.assertEqual(self.client.status_fields()['heap'], '0')
 
     def test_adding_and_removing_devices_preserves_existing_playback(self):
@@ -91,7 +91,7 @@ class MultiDeviceTests(unittest.TestCase):
         self.assertGreater(after['program_us'], before['program_us'])
         self.assertEqual(self.client.status_fields()['heap'], heap)
         with self.assertRaises(ProtocolError):
-            self.client.status_fields(device='lights5')
+            self.client.status_fields(output='lights5')
 
     def test_shared_upload_keeps_destination_and_running_instances(self):
         self.load('rainbow', 'lights0')
@@ -99,19 +99,19 @@ class MultiDeviceTests(unittest.TestCase):
         before = self.client.program_state()
         data = self.effects['stars']
         self.client.require_ok(self.client.command(BEGIN, struct.pack('<II', len(data), zlib.crc32(data)) + b'lights2'))
-        self.client.reset_program(settings={'random_color': False}, device='lights1')
+        self.client.reset_program(settings={'random_color': False}, output='lights1')
         for offset in range(0, len(data), 508):
             self.client.require_ok(self.client.command(CHUNK, struct.pack('<I', offset) + data[offset:offset+508]))
             time.sleep(.004)
         self.client.require_ok(self.client.command(FINISH))
-        self.client.require_ok(self.client.command(PLAY, device='lights2'))
-        self.assertEqual(self.client.program_state(device='lights2')['slot'], 'A')
+        self.client.require_ok(self.client.command(PLAY, output='lights2'))
+        self.assertEqual(self.client.program_state(output='lights2')['slot'], 'A')
         self.assertEqual(self.client.program_state()['generation'], before['generation'])
         self.assertGreater(self.client.program_state()['output_frame'], before['output_frame'])
-        generation = self.client.program_state(device='lights2')['generation']
+        generation = self.client.program_state(output='lights2')['generation']
         with self.assertRaises(ProtocolError):
-            self.client.upload(b'LBC1' + bytes(20), device='lights2')
-        self.assertEqual(self.client.program_state(device='lights2')['generation'], generation)
+            self.client.upload(b'LBC1' + bytes(20), output='lights2')
+        self.assertEqual(self.client.program_state(output='lights2')['generation'], generation)
         self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
 
     def test_more_than_eight_devices_and_no_aggregate_pixel_ceiling(self):
@@ -121,37 +121,37 @@ class MultiDeviceTests(unittest.TestCase):
         self.assertGreater(9 * count, capacity)
         config = configuration(9, count)
         self.client.configure(config)
-        self.assertEqual(len(self.client.describe()['devices']), 9)
+        self.assertEqual(len(self.client.describe()['outputs']), 9)
         self.load('color', 'lights8')
-        self.assertEqual(len(self.client.snapshot(device='lights8')[1]), count * 3)
-        # Reordering device declarations must preserve identity and generation.
-        before = self.client.program_state(device='lights8')
-        config['devices'].reverse()
+        self.assertEqual(len(self.client.snapshot(output='lights8')[1]), count * 3)
+        # Reordering output declarations must preserve identity and generation.
+        before = self.client.program_state(output='lights8')
+        config['outputs'].reverse()
         self.client.configure(config)
-        self.assertEqual(self.client.program_state(device='lights8')['generation'], before['generation'])
-        self.assertEqual(self.client.status_fields(device='lights8')['mode'], 'bytecode')
+        self.assertEqual(self.client.program_state(output='lights8')['generation'], before['generation'])
+        self.assertEqual(self.client.status_fields(output='lights8')['mode'], 'bytecode')
 
     def test_configuration_rejects_collisions_and_global_slots(self):
         valid = configuration()
         candidates = []
         duplicate_id = copy.deepcopy(valid)
-        duplicate_id['devices'][1]['id'] = 'lights0'
+        duplicate_id['outputs'][1]['id'] = 'lights0'
         candidates.append(duplicate_id)
         wrong_slot = copy.deepcopy(valid)
-        wrong_slot['targets'] = {'B': {'device': 'lights1'}}
+        wrong_slot['targets'] = {'B': {'output': 'lights1'}}
         candidates.append(wrong_slot)
         pins = configuration(2)
-        pins['devices'][1]['config']['pin'] = 'GP0'
+        pins['outputs'][1]['config']['pin'] = 'GP0'
         candidates.append(pins)
         virtual = configuration(1)
-        virtual['devices'][0].update(type='virtual_rgb', config={'count': 8})
+        virtual['outputs'][0].update(type='virtual_rgb', config={'count': 8})
         candidates.append(virtual)
         for candidate in candidates:
             with self.assertRaises(ProtocolError):
                 self.client.configure(candidate)
             self.assertEqual(self.client.get_config(), valid)
         with self.assertRaises(ProtocolError):
-            self.client.manage('program_state', device='lights0', slot='B')
+            self.client.manage('program_state', output='lights0', slot='B')
 
 
 if __name__ == '__main__':

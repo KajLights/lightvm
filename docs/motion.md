@@ -107,8 +107,8 @@ Compile, store, and activate it on an already configured output:
 
 ```sh
 python -m lightvm.compiler examples/animations/rainbow_sprite.py -o build/examples/rainbow_sprite.lbc
-python tools/client.py --port PORT --store-procedure rainbow_sprite build/examples/rainbow_sprite.lbc
-python tools/client.py --port PORT --device lights --activate rainbow_sprite
+python tools/client.py --port PORT --store-program rainbow_sprite build/examples/rainbow_sprite.lbc
+python tools/client.py --port PORT --output lights --activate rainbow_sprite
 ```
 
 The animation's `color_duration` and `travel_duration` settings default to 10.0 and
@@ -117,7 +117,7 @@ The animation's `color_duration` and `travel_duration` settings default to 10.0 
 ## Shared Sweep animation
 
 [`sweep.py`](../examples/animations/sweep.py) uses one flat brush sprite for
-moving eyes, chase, wipe and trails. It runs directly or as a scene layer. Frozen
+moving eyes, chase, wipe and trails. It runs directly or as a composition layer. Frozen
 settings determine the path and reserve all sprite storage at initialization:
 
 | Setting | Meaning |
@@ -172,9 +172,9 @@ on host and Pico, plus one shared batch header/canvas, shared registers and
 drawing state. Four clean eyes add only 312 record bytes over one eye; they share
 the same full-strip working/committed frames. Four eyes with 24 samples reserve
 9,984 record bytes. Oversized settings fail admission while retaining the
-running scene. Rendering allocates no memory.
+running composition. Rendering allocates no memory.
 
-Measured with this Sweep on the 64-bit host, 200 LEDs, fresh scene per case:
+Measured with this Sweep on the 64-bit host, 200 LEDs, fresh composition per case:
 
 | Eyes | Samples per eye | One batch, tracked heap | Separate layers, tracked heap |
 | --- | --- | ---: | ---: |
@@ -183,15 +183,15 @@ Measured with this Sweep on the 64-bit host, 200 LEDs, fresh scene per case:
 | 4 | 24 | 16,706 | 30,800 |
 | 8 | 1 | 7,554 | 40,440 |
 
-These bytes include scene frames and animation contexts; native driver/SDK memory
-is separate. Pico context sizes differ; these are host measurements, not device
+These bytes include composition frames and animation contexts; native driver/SDK memory
+is separate. Pico context sizes differ; these are host measurements, not controller
 measurements. The 104-byte sample records have the same size on Cortex-M0+.
 
-For different blend modes, use the same procedure with `eye_count=1` in separate
-layers; [`sweep-layers.json`](../examples/scenes/sweep-layers.json) demonstrates
+For different blend modes, use the same program with `eye_count=1` in separate
+layers; [`sweep-layers.json`](../examples/compositions/sweep-layers.json) demonstrates
 screen and additive eyes over a fixed background. See [composition](composition.md)
 for the additional full-strip frames and independent context costs.
-That scene uses 24-pixel eyes and therefore requires at least 24 output pixels.
+That composition uses 24-pixel eyes and therefore requires at least 24 output pixels.
 
 ## Compatibility
 

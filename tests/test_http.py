@@ -66,7 +66,7 @@ class HttpTests(unittest.TestCase):
         self.directory.cleanup()
 
     def config(self):
-        return {'schema': 'lightvm.config', 'devices': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
+        return {'schema': 'lightvm.config', 'outputs': [{'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
 
     def network(self):
         return {'schema': 'lightvm.network', 'wifi': {'enabled': False, 'country': 'XX', 'networks': [{'ssid': 'café🌈', 'password': 'secret123'}, {'ssid': 'open', 'password': '', 'hidden': True}]}, 'http': {'enabled': True, 'port': 8080}}
@@ -80,24 +80,24 @@ class HttpTests(unittest.TestCase):
     def test_ab_timed_routine_survives_browser_disconnect_and_source_reassignment(self):
         from lightvm.compiler import compile_source
         self.http.configure(self.config())
-        for name, rgb in (('red',(200,0,0)),('blue',(0,0,200))):self.http.save_procedure(name,color(*rgb))
-        self.http.configure_scene([{'id':'base','procedure':'red'}],device='lights')
-        self.http.configure_scene([{'id':'base','procedure':'blue'}],device='lights',slot='B')
+        for name, rgb in (('red',(200,0,0)),('blue',(0,0,200))):self.http.save_program(name,color(*rgb))
+        self.http.configure_composition([{'id':'base','program':'red'}],output='lights')
+        self.http.configure_composition([{'id':'base','program':'blue'}],output='lights',slot='B')
         compiled=compile_source((ROOT/'examples/transitions/crossfade.py').read_text())
         self.assertTrue(compiled.success,compiled.diagnostics)
-        self.pipe.save_procedure('crossfade',compiled.bytecode)
-        self.http.select_transition('crossfade',device='lights')
-        self.assertEqual(self.pipe.transition(device='lights')['procedure'],'crossfade')
-        self.http.set_progress(35,device='lights')
-        self.http.run_transition(100,100,device='lights')
+        self.pipe.save_program('crossfade',compiled.bytecode)
+        self.http.select_transition('crossfade',output='lights')
+        self.assertEqual(self.pipe.transition(output='lights')['program'],'crossfade')
+        self.http.set_progress(35,output='lights')
+        self.http.run_transition(100,100,output='lights')
         self.http.transport.close()
         time.sleep(.15)
-        self.assertEqual(self.pipe.transition(device='lights')['progress'],100)
+        self.assertEqual(self.pipe.transition(output='lights')['progress'],100)
         current=self.connect()
-        old=current.assign_transition_source('sensor',device='lights')['driver']['assignment']
-        self.pipe.assign_transition_source('sensor',device='lights')
-        self.assertFalse(current.update_transition_source('sensor',old,10,device='lights'))
-        self.assertEqual(self.pipe.transition(device='lights')['progress'],100)
+        old=current.assign_transition_source('sensor',output='lights')['driver']['assignment']
+        self.pipe.assign_transition_source('sensor',output='lights')
+        self.assertFalse(current.update_transition_source('sensor',old,10,output='lights'))
+        self.assertEqual(self.pipe.transition(output='lights')['progress'],100)
 
     def test_browser_preflight_has_no_command_body_or_session(self):
         from urllib.request import Request, urlopen
@@ -110,16 +110,16 @@ class HttpTests(unittest.TestCase):
 
     def test_discovery_is_json_read_only_and_includes_bridge(self):
         from urllib.request import urlopen
-        with urlopen(self.url + '/api/v1/devices') as response:
+        with urlopen(self.url + '/api/v1/controllers') as response:
             self.assertEqual(response.headers['Content-Type'], 'application/json')
             self.assertEqual(response.headers['Access-Control-Allow-Origin'], '*')
             self.assertEqual(response.headers['Cache-Control'], 'no-store')
             result = json.load(response)
         self.assertEqual(result['schema'], 'lightvm.discovery')
         self.assertEqual(result['capacity'], 8)
-        self.assertEqual(len(result['devices']), 1)
-        bridge = result['devices'][0]
-        self.assertEqual(bridge['device_id'], self.pipe.describe()['device_id'])
+        self.assertEqual(len(result['controllers']), 1)
+        bridge = result['controllers'][0]
+        self.assertEqual(bridge['controller_id'], self.pipe.describe()['controller_id'])
         self.assertEqual(bridge['url'], self.url)
         self.assertEqual(self.pipe.status_fields()['uploading'], '0')
 
@@ -127,7 +127,7 @@ class HttpTests(unittest.TestCase):
         other = self.connect()
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
             results = list(pool.map(lambda c: c.describe(), [self.http, other, self.pipe]))
-        self.assertEqual(len({r['device_id'] for r in results}), 1)
+        self.assertEqual(len({r['controller_id'] for r in results}), 1)
         self.assertEqual(len({r['boot_id'] for r in results}), 1)
         self.http.configure(self.config(), save=True)
         self.assertEqual(self.pipe.get_config(), self.config())
@@ -137,9 +137,9 @@ class HttpTests(unittest.TestCase):
         original = self.config()
         self.http.configure(original, save=True)
         candidate = self.config()
-        candidate['devices'][0]['config']['count'] = 6
+        candidate['outputs'][0]['config']['count'] = 6
         winner = self.config()
-        winner['devices'][0]['config']['count'] = 7
+        winner['outputs'][0]['config']['count'] = 7
         manage = self.http.manage
 
         def interleave(operation, **fields):
@@ -167,11 +167,11 @@ class HttpTests(unittest.TestCase):
         other.configure(self.config())
         self.assertEqual(other.get_config(), self.config())
 
-    def test_network_password_retention_reboot_and_eight_procedures(self):
+    def test_network_password_retention_reboot_and_eight_programs(self):
         self.http.configure(self.config(), save=True)
         bytecode = color()
         for index in range(8):
-            self.http.save_procedure('effect' + str(index), bytecode)
+            self.http.save_program('effect' + str(index), bytecode)
         self.http.configure_network(self.network())
         self.wait_network()
         visible = self.http.network_config()
@@ -179,13 +179,13 @@ class HttpTests(unittest.TestCase):
         self.assertNotIn('secret123', json.dumps(visible))
         self.http.configure_network(visible)
         self.wait_network()
-        self.assertEqual(len(self.pipe.procedures()), 8)
-        before = self.http.describe()['device_id']
+        self.assertEqual(len(self.pipe.programs()), 8)
+        before = self.http.describe()['controller_id']
         self.stop()
         self.start()
-        self.assertEqual(self.http.describe()['device_id'], before)
+        self.assertEqual(self.http.describe()['controller_id'], before)
         self.assertEqual(self.http.network_config(), visible)
-        self.assertEqual(len(self.http.procedures()), 8)
+        self.assertEqual(len(self.http.programs()), 8)
         self.assertEqual(self.http.describe()['network_revision'], 2)
 
     def test_ap_settings_are_redacted_retained_and_durable(self):
@@ -212,7 +212,7 @@ class HttpTests(unittest.TestCase):
         self.assertFalse(self.http.network_status()['initial_setup'])
 
     def test_unsupported_directory_is_rejected_without_erasure(self):
-        self.http.save_procedure('old', color())
+        self.http.save_program('old', color())
         self.stop()
         data = bytearray(self.storage.read_bytes())
         for base in (0, 256 * 1024):
@@ -225,7 +225,7 @@ class HttpTests(unittest.TestCase):
             struct.pack_into('<I', data, base + 1036, zlib.crc32(data[base + 1024:base + 1036]))
         self.storage.write_bytes(data)
         self.start()
-        self.assertEqual(self.http.procedures(), [])
+        self.assertEqual(self.http.programs(), [])
         self.assertIn('storage', self.http.describe()['boot_error'])
         self.assertEqual(self.storage.read_bytes(), data)
         self.assertEqual(self.http.command(1).code, 0)
@@ -237,21 +237,21 @@ class HttpTests(unittest.TestCase):
 
     def test_large_download_preserves_all_frames(self):
         bytecode = padded_program(min(27000, self.http.describe()['module_limit']))
-        self.http.save_procedure('large', bytecode)
-        self.assertEqual(self.http.get_procedure('large'), bytecode)
-        self.assertEqual(self.pipe.get_procedure('large'), bytecode)
+        self.http.save_program('large', bytecode)
+        self.assertEqual(self.http.get_program('large'), bytecode)
+        self.assertEqual(self.pipe.get_program('large'), bytecode)
 
     def test_stalled_download_keeps_pipe_and_animation_responsive(self):
         from bytecode_fixtures import color, sample, padded_program
         self.http.configure(self.config())
-        self.http.save_procedure('large', padded_program(min(27000, self.http.describe()['module_limit'])))
+        self.http.save_program('large', padded_program(min(27000, self.http.describe()['module_limit'])))
         self.http.activate('large')
         other = self.connect()
         port = int(self.url.rsplit(':', 1)[1])
         stalled = socket.socket()
         stalled.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
         stalled.connect(('127.0.0.1', port))
-        request = frame(11, 333, b'{"op":"procedure_get","name":"large"}')
+        request = frame(11, 333, b'{"op":"program_get","name":"large"}')
         header = ('POST /api/v1/command HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/octet-stream\r\nX-LightVM-Session: ' + self.http.transport.session + '\r\nContent-Length: ' + str(len(request)) + '\r\n\r\n').encode()
         try:
             stalled.sendall(header + request)

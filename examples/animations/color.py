@@ -1,4 +1,4 @@
-"""Fill the strip with one colour, directly or as a scene background.
+"""Fill the strip with one colour, directly or as a composition background.
 
 Modes (initialization settings):
   random_color=True: choose a random hue once at initialization (default).

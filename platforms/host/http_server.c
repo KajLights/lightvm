@@ -53,7 +53,7 @@ bool host_http_start(App *app,const char *address,unsigned port) {
     // The simulator returns itself for browser/integration testing. It never
     // joins multicast or advertises the default loopback-only HTTP listener.
     uint8_t ip[4]; memcpy(ip,&addr.sin_addr.s_addr,4);
-    discovery_start(&discovery,"lightvm-host",app->device_id,platform_info()->board,ip,ntohs(addr.sin_port),NULL,NULL,platform_time_us());
+    discovery_start(&discovery,"lightvm-host",app->controller_id,platform_info()->board,ip,ntohs(addr.sin_port),NULL,NULL,platform_time_us());
     server.discovery=&discovery;
     fprintf(stderr,"HTTP listening on http://%s:%u\n",address,ntohs(addr.sin_port)); fflush(stderr); return true;
 }

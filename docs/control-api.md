@@ -3,7 +3,7 @@
 Python programs use the [init/render animation API](animation-profile.md) and
 compile to portable bytecode with an unversioned `lightvm.program` document kind.
 Named [Python transitions](transition-profile.md) use that same document kind with
-`profile: "transition"` and are selected between A/B scenes by stored procedure name.
+`profile: "transition"` and are selected between A/B compositions by stored program name.
 The manifest records `compiler_version` for provenance and `requires` for its
 minimum application release. Firmware accepts the same major at or above that
 minimum, independently of the compiler's release. Settings are frozen at
@@ -12,14 +12,14 @@ See [the release contract](versioning.md). Retired experimental runtimes remain 
 
 ```sh
 python -m lightvm.compiler examples/animations/rainbow.py -o build/examples/rainbow.lbc
-python tools/client.py --port PORT --store-procedure rainbow build/examples/rainbow.lbc
+python tools/client.py --port PORT --store-program rainbow build/examples/rainbow.lbc
 python tools/client.py --port PORT --activate rainbow
 ```
 
 `compile_source(source, filename, target)` returns bytecode, manifest, diagnostics
 and success. The CLI writes `.lbc` plus a JSON manifest. The browser uses the same
-compiler. Target checks use the device’s `version`, the program’s `requires`,
-and the device’s module limit.
+compiler. Target checks use the controller’s `version`, the program’s `requires`,
+and the controller’s module limit.
 Compilation never executes source.
 
 ## Execution, storage and ownership
@@ -43,8 +43,8 @@ replacing a catalogue name cannot overwrite their code.
 FINISH prepares a transient candidate when a target is configured. Named save
 validates without executing; activation prepares and presents a candidate before
 replacing the old instance. Failed upload, validation or preparation retains the
-old instance and generation. Each device’s `startup` names its boot procedure and
-optional initialization `args`. Boot resolves the current catalogue entry for each
+old instance and generation. Each output’s `startup` names its boot program and
+optional initialization `settings`. Boot resolves the current catalogue entry for each
 name; activation does not update configuration or select a separate boot revision.
 
 Firmware advertising `transient_settings: true` also accepts a FINISH payload
@@ -69,14 +69,14 @@ last published output; scalar state is not rolled back.
 
 New direct instances use `14N` frame bytes: two RGBA frames, one RGB presentation frame,
 and the last physical RGB output. Offscreen instances use `8N` bytes.
-Scenes add `9N` bytes for shared RGB output buffers; see [composition](composition.md).
+Compositions add `9N` bytes for shared RGB output buffers; see [composition](composition.md).
 Native driver conversion storage adds `4N` bytes on Pico and `3N` on ESP32, plus SDK state.
-Rendering does not allocate. Each configured device runs independently and can retain [A/B scenes and a transition](transitions.md).
-Virtual RGB devices use the same frame storage without physical driver conversion buffers.
+Rendering does not allocate. Each configured output runs independently and can retain [A/B compositions and a transition](transitions.md).
+Virtual RGB outputs use the same frame storage without physical driver conversion buffers.
 
 ## Management
 
-Operations accept an optional `device` and scene `slot` A or B. Each device owns its
+Operations accept an optional `output` and composition `slot` A or B. Each output owns its
 generation, settings and playback state.
 
 - `program_state`: manifest, generation, settings_values, playback state,

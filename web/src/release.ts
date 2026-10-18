@@ -22,9 +22,9 @@ function compareIdentifiers(a: string, b: string) {
 }
 export function releaseError(version: unknown, required: unknown): string | null {
   const current = parseRelease(version, false), minimum = parseRelease(required);
-  if (!current) return 'The device does not report a valid LightVM release.';
+  if (!current) return 'The controller does not report a valid LightVM release.';
   if (!minimum) return 'This animation has no valid minimum LightVM release. Recompile its source.';
-  const message = `Requires LightVM ${required} within major ${minimum.core[0]}; device runs ${version}.`;
+  const message = `Requires LightVM ${required} within major ${minimum.core[0]}; controller runs ${version}.`;
   if (current.core[0] !== minimum.core[0]) return message;
   for (let i = 1; i < 3; i++) if (current.core[i] !== minimum.core[i]) return current.core[i] < minimum.core[i] ? message : null;
   const a = current.prerelease, b = minimum.prerelease;

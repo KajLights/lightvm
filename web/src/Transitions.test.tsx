@@ -2,9 +2,9 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { Provider } from 'react-redux';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Compiler } from './compiler';
-import { DeviceService } from './device-service';
+import { ControllerService } from './controller-service';
 import { RuntimeContext } from './runtime';
-import { createAppStore, deviceActions } from './store';
+import { createAppStore, controllerActions } from './store';
 import { TransitionControls } from './Transitions';
 import type { LightVMClient } from '../protocol.mjs';
 import type { Description, TransitionState } from './types';
@@ -14,35 +14,35 @@ afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function setup() {
   const programs = [deployedTransition('crossfade'), deployedTransition('wipe', WIPE_SETTINGS)];
-  const store = createAppStore(), devices = new DeviceService(store), compiler = new Compiler(store);
-  const description = { device_id: 'controller', boot_id: 'boot', board: 'simulator', ab_transitions: true,
+  const store = createAppStore(), controllers = new ControllerService(store), compiler = new Compiler(store);
+  const description = { controller_id: 'controller', boot_id: 'boot', board: 'simulator', ab_transitions: true,
     transition_programs: true } as Description;
-  let state = { revision: 1, active: true, progress: 35, effect: 'program', procedure: 'crossfade', seed: 0,
-    driver: { kind: 'manual', assignment: 1 }, A: { active: true, layers: [{ id: 'base', procedure: 'rainbow' }] }, B: { active: false }, error: '' } as TransitionState;
+  let state = { revision: 1, active: true, progress: 35, effect: 'program', program: 'crossfade', seed: 0,
+    driver: { kind: 'manual', assignment: 1 }, A: { active: true, layers: [{ id: 'base', program: 'rainbow' }] }, B: { active: false }, error: '' } as TransitionState;
   const client = {
     closed: false, transport: { label: 'HTTP' }, transition: vi.fn(async () => state),
     setProgress: vi.fn(async (progress: number) => { state = { ...state, progress, driver: { kind: 'manual', assignment: 3 } }; }),
     runTransition: vi.fn(async () => {}), holdTransition: vi.fn(async () => {}),
     activatePreset: vi.fn(async () => {}), selectTransition: vi.fn(async () => {}),
-    getProcedure: vi.fn(async (name: string, _type: string) => programs.find(program => program.procedure.name === name)!.bytes),
+    getProgram: vi.fn(async (name: string, _type: string) => programs.find(program => program.program.name === name)!.bytes),
   };
-  devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
-  store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
+  controllers.paths.attach('http', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+  store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [
     { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 67 } },
   ] }, revision: 1, savedRevision: 0 }));
-  store.dispatch(deviceActions.presets([{ name: 'stars', size: 100, crc32: 1 }]));
-  store.dispatch(deviceActions.procedures([
-    ...programs.map(program => program.procedure),
+  store.dispatch(controllerActions.presets([{ name: 'stars', size: 100, crc32: 1 }]));
+  store.dispatch(controllerActions.programs([
+    ...programs.map(program => program.program),
     { name: 'rainbow', size: 1000, crc32: 3, profile: 'animation' },
   ]));
-  render(<Provider store={store}><RuntimeContext.Provider value={{ compiler, devices }}><TransitionControls /></RuntimeContext.Provider></Provider>);
+  render(<Provider store={store}><RuntimeContext.Provider value={{ compiler, controllers }}><TransitionControls /></RuntimeContext.Provider></Provider>);
   return { client, store };
 }
 
 it('prepares B and sends cuts, timed runs and Hold to the selected output', async () => {
   const { client } = setup();
   await screen.findByText('1 layer ready');
-  fireEvent.change(screen.getByLabelText('Scene B'), { target: { value: 'stars' } });
+  fireEvent.change(screen.getByLabelText('Composition B'), { target: { value: 'stars' } });
   fireEvent.click(screen.getByRole('button', { name: 'Load B' }));
   await waitFor(() => expect(client.activatePreset).toHaveBeenCalledWith('stars', 'lights', 'B'));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cut to A' })).toBeEnabled());

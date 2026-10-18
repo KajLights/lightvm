@@ -53,8 +53,8 @@ void transition_destroy(Transition *t){
 }
 /* Progress updates affect the next evaluation. A pinned, unfinished evaluation
  * remains coherent and can finish even under a continuous stream of updates. */
-static void unpin_scenes(Transition *t){for(unsigned n=0;n<2;n++)if(t->scenes[n])t->scenes[n]->front_pinned=false;}
-void transition_invalidate(Transition *t){if(t){unpin_scenes(t);t->composing=false;t->prepared=false;t->dirty=true;}}
+static void unpin_compositions(Transition *t){for(unsigned n=0;n<2;n++)if(t->compositions[n])t->compositions[n]->front_pinned=false;}
+void transition_invalidate(Transition *t){if(t){unpin_compositions(t);t->composing=false;t->prepared=false;t->dirty=true;}}
 void transition_update(Transition *t,uint64_t now){
     if(t->driver!=TRANSITION_TIMED)return;
     double elapsed=now>=t->started?(double)(now-t->started):0;
@@ -97,12 +97,12 @@ bool transition_source(Transition *t,const char *source,uint32_t assignment,doub
 static void start(Transition *t){
     t->sampled_progress=t->progress;t->pixel=0;t->phase=0;t->restore_offset=0;t->dirty=false;t->composing=true;
     for(unsigned n=0;n<2;n++){
-        t->sampled_frames[n]=t->scenes[n]?t->scenes[n]->frames:0;
-        if(t->scenes[n])t->scenes[n]->front_pinned=true;
+        t->sampled_frames[n]=t->compositions[n]?t->compositions[n]->frames:0;
+        if(t->compositions[n])t->compositions[n]->front_pinned=true;
     }
     if(t->effect==TRANSITION_PROGRAM&&t->programs[0]){
         Portable *p=t->programs[0]->vm.portable;p->progress=(float)(t->sampled_progress/100);
-        for(unsigned n=0;n<2;n++)p->scene_frames[n]=t->scenes[n]?t->scenes[n]->front:NULL;
+        for(unsigned n=0;n<2;n++)p->composition_frames[n]=t->compositions[n]?t->compositions[n]->front:NULL;
     }
 }
 static uint32_t threshold(uint32_t pixel,uint32_t seed){
@@ -114,7 +114,7 @@ static void compose(Transition *t){
     for(unsigned pixel=t->pixel;pixel<end;pixel++){
         if(p==0||p==1||t->effect==TRANSITION_PROGRAM){
             const uint8_t *src=NULL;
-            if(p==0||p==1){Scene *s=t->scenes[p==1];if(s)src=s->front+(size_t)pixel*3;}
+            if(p==0||p==1){Composition *s=t->compositions[p==1];if(s)src=s->front+(size_t)pixel*3;}
             else if(t->programs[0])src=control_frame(&t->programs[0]->vm)+(size_t)pixel*4;
             if(src)memcpy(t->working+(size_t)pixel*3,src,3);else memset(t->working+(size_t)pixel*3,0,3);
             continue;
@@ -131,8 +131,8 @@ static void compose(Transition *t){
             default:break;
         }
         uint8_t result[4];
-        const uint8_t *a=t->scenes[0]?t->scenes[0]->front+(size_t)pixel*3:NULL;
-        const uint8_t *b=t->scenes[1]?t->scenes[1]->front+(size_t)pixel*3:NULL;
+        const uint8_t *a=t->compositions[0]?t->compositions[0]->front+(size_t)pixel*3:NULL;
+        const uint8_t *b=t->compositions[1]?t->compositions[1]->front+(size_t)pixel*3:NULL;
         draw_composite_rgb(result,4,a,b,1,draw_opacity_float((float)reveal));
         if(black<1){
             const uint8_t dark[3]={0};
@@ -146,7 +146,7 @@ static void compose(Transition *t){
         memcpy(t->working+(size_t)pixel*3,result,3);
     }
     t->pixel=end;
-    if(end==t->target.count){unpin_scenes(t);t->composing=false;t->prepared=true;t->composite_frames++;}
+    if(end==t->target.count){unpin_compositions(t);t->composing=false;t->prepared=true;t->composite_frames++;}
 }
 static void slice(Transition *t,unsigned budget){
     uint64_t begun=platform_time_us();
@@ -167,12 +167,12 @@ static void slice(Transition *t,unsigned budget){
             if(ran)break;
             ran=true;
             bool ready=false;const char *error=animation_poll_budget(vm,p->profile==4?0:(uint64_t)(t->sampled_progress*10000),&ready,budget);
-            if(error){snprintf(t->error,sizeof(t->error),"transition program: %.70s",error);unpin_scenes(t);t->composing=false;return;}
+            if(error){snprintf(t->error,sizeof(t->error),"transition program: %.70s",error);unpin_compositions(t);t->composing=false;return;}
             if(ready){
                 t->phase++;
-                /* A Python program has finished reading both scenes. Its
+                /* A Python program has finished reading both compositions. Its
                    committed RGBA now owns the result during RGB conversion. */
-                if(t->effect==TRANSITION_PROGRAM)unpin_scenes(t);
+                if(t->effect==TRANSITION_PROGRAM)unpin_compositions(t);
             }
         }
     }
@@ -192,10 +192,10 @@ void transition_tick(Transition *t,unsigned budget){
     t->ticking=true;complete(t);transition_update(t,platform_time_us());
     if(t->command_active||!t->playing){t->ticking=false;return;}
     if(t->composing){
-        for(unsigned n=0;n<2;n++)if(t->scenes[n])scene_tick(t->scenes[n],budget);
+        for(unsigned n=0;n<2;n++)if(t->compositions[n])composition_tick(t->compositions[n],budget);
         slice(t,budget);t->ticking=false;return;
     }
-    for(unsigned n=0;n<2;n++)if(t->scenes[n]){scene_tick(t->scenes[n],budget);if(t->scenes[n]->frames!=t->sampled_frames[n])t->dirty=true;}
+    for(unsigned n=0;n<2;n++)if(t->compositions[n]){composition_tick(t->compositions[n],budget);if(t->compositions[n]->frames!=t->sampled_frames[n])t->dirty=true;}
     if(t->prepared&&!t->pending){
         uint8_t *previous=t->front;t->front=t->working;t->working=previous;t->prepared=false;t->output_started=platform_time_us();
         if(t->output->type->submit(t->output->driver,t->front,t->target.count)){t->pending=true;complete(t);}
@@ -209,12 +209,12 @@ void transition_tick(Transition *t,unsigned budget){
 }
 void transition_play(Transition *t,bool playing){
     t->playing=playing;
-    if(playing)for(unsigned n=0;n<2;n++)if(t->scenes[n])scene_play(t->scenes[n],t->scenes[n]->playing);
+    if(playing)for(unsigned n=0;n<2;n++)if(t->compositions[n])composition_play(t->compositions[n],t->compositions[n]->playing);
     if(playing)t->dirty=true;
 }
 const char *transition_frame(Transition *t,uint32_t delta_ms){
     t->command_active=true;transition_invalidate(t);const char *error=NULL;
-    for(unsigned n=0;n<2&&!error;n++)if(t->scenes[n])error=scene_frame(t->scenes[n],delta_ms);
+    for(unsigned n=0;n<2&&!error;n++)if(t->compositions[n])error=composition_frame(t->compositions[n],delta_ms);
     if(!error){
         transition_update(t,platform_time_us());start(t);
         while(t->composing){slice(t,64);runtime_checkpoint();}

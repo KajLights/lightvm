@@ -24,19 +24,19 @@ int main(void) {
     static Discovery a,b,c; Wire wa={0},wb={0},wc={0}; char json[4096];
     start(&a,&wa,1,8080); start(&b,&wb,2,80); announce(&a); announce(&b);
     CHECK(wa.bytes[2]==0x84 && wa.bytes[7]==4);
-    discovery_receive(&b,wa.bytes,wa.size,a.devices[0].ip,5353,1000000);
+    discovery_receive(&b,wa.bytes,wa.size,a.controllers[0].ip,5353,1000000);
     CHECK(discovery_json(&b,json,sizeof(json),1000000));
     CHECK(strstr(json,"test-1") && strstr(json,"test-2") && strstr(json,"http://192.168.1.1:8080"));
-    discovery_receive(&b,wa.bytes,wa.size,a.devices[0].ip,5353,2000000);
-    CHECK(b.devices[1].hostname[0] && !b.devices[2].hostname[0]);
+    discovery_receive(&b,wa.bytes,wa.size,a.controllers[0].ip,5353,2000000);
+    CHECK(b.controllers[1].hostname[0] && !b.controllers[2].hostname[0]);
     CHECK(discovery_json(&b,json,sizeof(json),32000001) && !strstr(json,"test-1"));
-    discovery_receive(&b,wa.bytes,wa.size,a.devices[0].ip,5353,33000000);
+    discovery_receive(&b,wa.bytes,wa.size,a.controllers[0].ip,5353,33000000);
     discovery_stop(&a,34000000); CHECK(!a.active);
     discovery_receive(&b,wa.bytes,wa.size,(uint8_t[]){192,168,1,1},5353,34000000);
     CHECK(discovery_json(&b,json,sizeof(json),34000000) && !strstr(json,"test-1") && strstr(json,"test-2"));
     start(&a,&wa,1,8080); announce(&a);
     for (size_t n=0;n<wa.size;n++) {
-        start(&c,&wc,3,80); discovery_receive(&c,wa.bytes,n,a.devices[0].ip,5353,1000000); CHECK(!c.devices[1].hostname[0]);
+        start(&c,&wc,3,80); discovery_receive(&c,wa.bytes,n,a.controllers[0].ip,5353,1000000); CHECK(!c.controllers[1].hostname[0]);
     }
     // Compress the final A owner to the previous SRV target. Real mDNS packets
     // use compression across records; PTR/SRV/TXT/address order is independent.
@@ -50,7 +50,7 @@ int main(void) {
     memmove(compressed.bytes+owner+2,compressed.bytes+owner_end,compressed.size-owner_end);
     compressed.bytes[owner]=(uint8_t)(0xc0|(target>>8)); compressed.bytes[owner+1]=(uint8_t)target;
     compressed.size-=owner_end-owner-2;
-    start(&c,&wc,3,80); discovery_receive(&c,compressed.bytes,compressed.size,a.devices[0].ip,5353,1000000);
+    start(&c,&wc,3,80); discovery_receive(&c,compressed.bytes,compressed.size,a.controllers[0].ip,5353,1000000);
     CHECK(discovery_json(&c,json,sizeof(json),1000000) && strstr(json,"test-1"));
     uint8_t q[1024]; size_t n=question(q,"lightvm.local",1,1,123);
     unsigned before=wb.count; discovery_receive(&b,q,n,(uint8_t[]){192,168,1,99},12345,35000000);
@@ -68,13 +68,13 @@ int main(void) {
     memset(q,0,sizeof(q)); q[5]=1; q[12]=0xc0; q[13]=12;
     before=wb.count; discovery_receive(&b,q,18,(uint8_t[]){192,168,1,99},12345,37000000); CHECK(wb.count==before);
     start(&b,&wb,2,80);
-    for (unsigned i=10;i<20;i++) { start(&a,&wa,i,80); announce(&a); discovery_receive(&b,wa.bytes,wa.size,a.devices[0].ip,5353,1000000); }
+    for (unsigned i=10;i<20;i++) { start(&a,&wa,i,80); announce(&a); discovery_receive(&b,wa.bytes,wa.size,a.controllers[0].ip,5353,1000000); }
     CHECK(b.truncated); CHECK(discovery_json(&b,json,sizeof(json),1000000) && strstr(json,"\"truncated\":true"));
     CHECK(discovery_json(&b,json,sizeof(json),31000001) && !strstr(json,"test-10"));
     CHECK(!discovery_json(&b,json,10,31000001));
-    start(&a,&wa,1,80); announce(&a); start(&c,&wc,1,80); c.devices[0].ip[3]=99;
-    discovery_receive(&c,wa.bytes,wa.size,a.devices[0].ip,5353,1000000);
-    CHECK(c.collision==1 && strcmp(c.devices[0].hostname,a.devices[0].hostname) && !c.announced);
+    start(&a,&wa,1,80); announce(&a); start(&c,&wc,1,80); c.controllers[0].ip[3]=99;
+    discovery_receive(&c,wa.bytes,wa.size,a.controllers[0].ip,5353,1000000);
+    CHECK(c.collision==1 && strcmp(c.controllers[0].hostname,a.controllers[0].hostname) && !c.announced);
     // Known answers suppress redundant multicast replies. The A record in the
     // answer section of a query is a cache entry, never a competing name probe.
     start(&b,&wb,2,80); announce(&b); Wire saved=wb;

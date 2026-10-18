@@ -109,7 +109,7 @@ static bool benchmark(unsigned devices,unsigned brightness) {
     for(unsigned d=0;d<devices;d++){
         platform_pixels_close(outputs[d]);
     }
-    if(ok)printf("{\"benchmark\":\"%s\",\"devices\":%u,\"brightness\":%u,\"pixels_each\":%u,\"samples\":%u,\"submit_us_median\":%lu,\"wall_us_median\":%lu,\"background_iterations_median\":%lu}\n",
+    if(ok)printf("{\"benchmark\":\"%s\",\"outputs\":%u,\"brightness\":%u,\"pixels_each\":%u,\"samples\":%u,\"submit_us_median\":%lu,\"wall_us_median\":%lu,\"background_iterations_median\":%lu}\n",
         "dma",devices,brightness,COUNT,SAMPLES,
         (unsigned long)median(submission),(unsigned long)median(wall),(unsigned long)median(work));
     return ok;

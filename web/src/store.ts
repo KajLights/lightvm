@@ -1,6 +1,6 @@
 import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
-import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyDevice, NetworkConfig, NetworkStatus, ProgramState, Path, Procedure } from './types';
+import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyController, NetworkConfig, NetworkStatus, ProgramState, Path, Program } from './types';
 import { DEFAULT_SOURCE } from './types';
 import { DEFAULT_EXAMPLE, exampleForSource } from './examples';
 
@@ -15,28 +15,28 @@ function readDraft() {
   } catch { /* Browser storage is optional. */ }
   return { source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename };
 }
-interface DeviceState {
+interface ControllerState {
   description: Description | null;
   paths: { key: Path; label: string; protocol?: string }[]; selectedPath: Path | null;
   config: HardwareConfig | null; configRevision: number; savedRevision: number;
   networkConfig: NetworkConfig | null; networkRevision: number; networkStatus: NetworkStatus | null;
-  procedures: Procedure[]; presets: Procedure[]; programState: ProgramState | null;
+  programs: Program[]; presets: Program[]; programState: ProgramState | null;
   selectedOutput: string | null;
-  nearby: NearbyDevice[]; discovering: boolean; discoveryMessage: string;
+  nearby: NearbyController[]; discovering: boolean; discoveryMessage: string;
 }
-const initialDevice: DeviceState = {
+const initialController: ControllerState = {
   description: null, paths: [], selectedPath: null, config: null, configRevision: 0, savedRevision: 0,
-  networkConfig: null, networkRevision: 0, networkStatus: null, procedures: [], presets: [], programState: null, selectedOutput: null,
-  nearby: [], discovering: false, discoveryMessage: 'Finding devices on your local network.',
+  networkConfig: null, networkRevision: 0, networkStatus: null, programs: [], presets: [], programState: null, selectedOutput: null,
+  nearby: [], discovering: false, discoveryMessage: 'Finding controllers on your local network.',
 };
-const deviceSlice = createSlice({
-  name: 'device', initialState: initialDevice,
+const controllerSlice = createSlice({
+  name: 'controller', initialState: initialController,
   reducers: {
-    connections(state, action: PayloadAction<{ paths: DeviceState['paths']; selectedPath: Path | null; description?: Description }>) {
+    connections(state, action: PayloadAction<{ paths: ControllerState['paths']; selectedPath: Path | null; description?: Description }>) {
       const { description, ...connections } = action.payload;
-      if (description && state.description?.device_id !== description.device_id) Object.assign(state, {
+      if (description && state.description?.controller_id !== description.controller_id) Object.assign(state, {
         config: null, configRevision: 0, savedRevision: 0, networkConfig: null, networkRevision: 0,
-        networkStatus: null, programState: null, procedures: [], presets: [], selectedOutput: null,
+        networkStatus: null, programState: null, programs: [], presets: [], selectedOutput: null,
       });
       Object.assign(state, connections);
       if (description) state.description = description;
@@ -44,23 +44,23 @@ const deviceSlice = createSlice({
     description(state, action: PayloadAction<Description>) { state.description = action.payload; },
     configuration(state, action: PayloadAction<{ config: HardwareConfig; revision: number; savedRevision: number }>) {
       state.config = action.payload.config; state.configRevision = action.payload.revision; state.savedRevision = action.payload.savedRevision;
-      if (!state.config.devices.some(output => output.id === state.selectedOutput)) {
-        state.selectedOutput = state.config.devices[0]?.id ?? null; state.programState = null;
+      if (!state.config.outputs.some(output => output.id === state.selectedOutput)) {
+        state.selectedOutput = state.config.outputs[0]?.id ?? null; state.programState = null;
       }
     },
     network(state, action: PayloadAction<{ config: NetworkConfig; revision: number }>) {
       state.networkConfig = action.payload.config; state.networkRevision = action.payload.revision;
     },
     networkStatus(state, action: PayloadAction<NetworkStatus>) { state.networkStatus = action.payload; },
-    procedures(state, action: PayloadAction<Procedure[]>) { state.procedures = action.payload; },
-    presets(state, action: PayloadAction<Procedure[]>) { state.presets = action.payload; },
+    programs(state, action: PayloadAction<Program[]>) { state.programs = action.payload; },
+    presets(state, action: PayloadAction<Program[]>) { state.presets = action.payload; },
     programState(state, action: PayloadAction<ProgramState | null>) { state.programState = action.payload; },
     outputSelected(state, action: PayloadAction<string>) {
-      if (state.config?.devices.some(output => output.id === action.payload)) { state.selectedOutput = action.payload; state.programState = null; }
+      if (state.config?.outputs.some(output => output.id === action.payload)) { state.selectedOutput = action.payload; state.programState = null; }
     },
     discoveryStarted(state) { state.discovering = true; },
-    discoveryFinished(state, action: PayloadAction<{ devices: NearbyDevice[]; message: string }>) {
-      state.nearby = action.payload.devices; state.discoveryMessage = action.payload.message; state.discovering = false;
+    discoveryFinished(state, action: PayloadAction<{ controllers: NearbyController[]; message: string }>) {
+      state.nearby = action.payload.controllers; state.discoveryMessage = action.payload.message; state.discovering = false;
     },
   },
 });
@@ -110,11 +110,11 @@ const activitySlice = createSlice({
     clear(state) { state.entries = []; },
   },
 });
-export const deviceActions = deviceSlice.actions;
+export const controllerActions = controllerSlice.actions;
 export const editorActions = editorSlice.actions;
 export const activityActions = activitySlice.actions;
 export function createAppStore() {
-  return configureStore({ reducer: { device: deviceSlice.reducer, editor: editorSlice.reducer, activity: activitySlice.reducer } });
+  return configureStore({ reducer: { controller: controllerSlice.reducer, editor: editorSlice.reducer, activity: activitySlice.reducer } });
 }
 export const store = createAppStore();
 export type AppStore = ReturnType<typeof createAppStore>;
@@ -122,4 +122,4 @@ export type RootState = ReturnType<AppStore['getState']>;
 export type AppDispatch = AppStore['dispatch'];
 export const useAppSelector = useSelector.withTypes<RootState>();
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
-export function outputFor(config: HardwareConfig | null) { return config?.devices[0]; }
+export function outputFor(config: HardwareConfig | null) { return config?.outputs[0]; }

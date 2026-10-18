@@ -67,7 +67,7 @@ static void portable_contract(void){
     vm_destroy(&vm);CHECK(vm_heap_used()==0);
 
     PixelBuffer physical={0};PixelConfig config={16,3,255,"RGB"};
-    CHECK(pixels_init(&physical,&config,device_type("ws2812b")));
+    CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     portable_load(&vm,&physical,&reply,counter_lbc,sizeof(counter_lbc));
     // A passive device snapshot remains RGB before the first presentation.
     static const char physical_snapshot[]="{\"op\":\"program_snapshot\"}";
@@ -84,7 +84,7 @@ static void portable_contract(void){
 
     // Native output owns the exact frame until completion/cancellation. A
     // renderer must keep running after the driver releases the frame.
-    CHECK(pixels_init(&physical,&config,device_type("ws2812b")));
+    CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     portable_load(&vm,&physical,&reply,counter_lbc,sizeof(counter_lbc));
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(reply.code==STATUS_OK);
     delayed_output=true;output_ready=false;output_failed=false;clock_now+=20000;

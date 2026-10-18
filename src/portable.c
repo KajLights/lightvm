@@ -51,8 +51,8 @@ static const NativeSignature natives[]={
     {0,4,{P_REF,P_REF,T_FLOAT,T_FLOAT},0},
     {0,4,{P_REF,T_INT,T_COLOR,T_INT},0},
     {0,4,{P_REF,P_REF,P_REF,T_INT},0}, /* 52: periodic destination drawing */
-    {0,4,{P_REF,T_FLOAT,T_INT,T_INT},0}, /* 53: complementary scene blend */
-    {0,4,{P_REF,T_INT,T_INT,T_INT},0}, /* 54: scene range copy */
+    {0,4,{P_REF,T_FLOAT,T_INT,T_INT},0}, /* 53: complementary composition blend */
+    {0,4,{P_REF,T_INT,T_INT,T_INT},0}, /* 54: composition range copy */
 };
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}

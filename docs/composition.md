@@ -1,18 +1,18 @@
-# Native drawing and scene composition
+# Native drawing and composition
 
-A scene runs an ordered stack of independent animations on one configured
+A composition runs an ordered stack of independent animations on one configured
 physical output. Color + Stars provides a conventional twinkle; Rainbow + Stars
 uses exactly the same foreground. Replacing the background retains the stars'
 state, clock, random sequence and contribution. Up to eight layers are admitted
-per scene, subject to the shared VM memory budget.
+per composition, subject to the shared VM memory budget.
 
 All animations use `profile("animation")`. The single `examples/animations/`
-directory supplies examples for both direct playback and scene composition.
+directory supplies examples for both direct playback and composition.
 Programs use `lightvm.program`, a minimum LightVM release, and `rgba8-premul` output.
-Every animation can run directly on a device or inside a scene.
-Direct playback shows the animation over black. A scene combines it with lower layers.
+Every animation can run directly on a controller or inside a composition.
+Direct playback shows the animation over black. A composition combines it with lower layers.
 Programs receive a destination from the engine. They cannot choose GPIOs or other layers.
-Stored RGB programs retain their original behavior and can act as opaque scene layers.
+Stored RGB programs retain their original behavior and can act as opaque composition layers.
 
 ## Drawing and user-defined sprites
 
@@ -68,13 +68,13 @@ It retains pixel alpha's full `/255` precision through that final division.
 Opaque sources use complementary Q16 weights, exactly as Python crossfade does;
 an opaque layer at opacity `o` equals a crossfade at progress `o/255`. This can
 change a channel by one level compared with the former separately rounded terms.
-Transparent and fully opaque endpoints have fast paths. Scene composition uses
+Transparent and fully opaque endpoints have fast paths. Composition composition uses
 bounded spans of at most 32 pixels, as do transition drawing operations.
 
 Global layer opacity applies once to the completed layer, after overlapping
 points/sprites have blended within it. Alpha zero reveals the moving background;
 opaque black covers it. The compositor emits RGB8; physical brightness limiting
-and wire order run once, after composition. Each scene layer accepts optional
+and wire order run once, after composition. Each composition layer accepts optional
 `blend`: `over` (default), `add`, `screen`, or `multiply`. It applies to the
 completed layer, after its sprites have combined. Modes operate on the same
 encoded 8-bit values; there is no gamma/linear-light conversion.
@@ -90,7 +90,7 @@ rounding. For opaque destination channel `d`, premultiplied source channel
 | `screen` | `255 - mul(255-d, 255-p)` |
 | `multiply` | `mul(d, 255-a+p)` |
 
-Zero alpha or opacity leaves the lower scene unchanged in every mode. Multiply
+Zero alpha or opacity leaves the lower composition unchanged in every mode. Multiply
 is useful over an existing background; its result over black remains black.
 Group blending and individually blended eyes can produce different results.
 
@@ -103,20 +103,20 @@ and after changing a layer. A slow layer contributes its latest completed frame
 while other layers continue. A fault retains that contribution and stops only
 the faulting instance. Context mutations before a fault are not rolled back.
 
-One scene presenter owns the physical output. Its front RGB buffer remains
+One composition presenter owns the physical output. Its front RGB buffer remains
 immutable until the driver completes or cancels transfer. Composition can prepare
 a back buffer meanwhile. Snapshots report the last successfully presented RGB
 frame; transfer failures retain it and retry without faulting layer programs.
-Layer replacement and full scene replacement prepare candidates before swapping;
-failure retains the current scene. Peak memory admission includes the candidate.
+Layer replacement and full composition replacement prepare candidates before swapping;
+failure retains the current composition. Peak memory admission includes the candidate.
 
 Dense frame storage costs `8*N` bytes per RGBA layer (working + committed), plus
-`9*N` per scene (front, back, last presented). Two RGBA layers therefore use
+`9*N` per composition (front, back, last presented). Two RGBA layers therefore use
 `25*N` frame bytes: 5,000 at 200 LEDs. Add VM/context/code-cache metadata and
 native driver storage. A generic sprite batch adds an 8-byte header and aligned instance records
 containing native clocks, an active flag and four bytes per scalar field. Each
 batch reuses one local RGBA canvas; immutable artwork stays in its package. All VM allocations and the
-scene's physical snapshot storage count toward the shared VM heap ceiling.
+composition's physical snapshot storage count toward the shared VM heap ceiling.
 Candidate preparation temporarily retains both old and new allocations.
 Use a [Sweep](motion.md#shared-sweep-animation) batch for inexpensive eyes sharing
 one blend mode. Separate single-eye layers provide independent controls and
@@ -130,36 +130,36 @@ Compile and store Color, Rainbow, and Stars from the shared animation directory:
 python -m lightvm.compiler examples/animations/color.py -o build/color.lbc
 python -m lightvm.compiler examples/animations/rainbow.py -o build/rainbow.lbc
 python -m lightvm.compiler examples/animations/stars.py -o build/stars.lbc
-python tools/client.py --port PORT --store-procedure color build/color.lbc
-python tools/client.py --port PORT --store-procedure rainbow build/rainbow.lbc
-python tools/client.py --port PORT --store-procedure stars build/stars.lbc
-python tools/client.py --port PORT --device lights --scene examples/scenes/rainbow-stars.json
-python tools/client.py --port PORT --device lights --get-scene
-python tools/client.py --port PORT --device lights --layer stars --program-state
-python tools/client.py --port PORT --device lights --layer stars --pause
-python tools/client.py --port PORT --device lights --layer bg --activate color
-python tools/client.py --port PORT --device lights --layer stars --resume
-python tools/client.py --port PORT --device lights --layer stars --layer-opacity 128
-python tools/client.py --port PORT --device lights --layer stars --layer-blend screen
-python tools/client.py --port PORT --device lights --scene-snapshot
+python tools/client.py --port PORT --store-program color build/color.lbc
+python tools/client.py --port PORT --store-program rainbow build/rainbow.lbc
+python tools/client.py --port PORT --store-program stars build/stars.lbc
+python tools/client.py --port PORT --output lights --composition examples/compositions/rainbow-stars.json
+python tools/client.py --port PORT --output lights --get-composition
+python tools/client.py --port PORT --output lights --layer stars --program-state
+python tools/client.py --port PORT --output lights --layer stars --pause
+python tools/client.py --port PORT --output lights --layer bg --activate color
+python tools/client.py --port PORT --output lights --layer stars --resume
+python tools/client.py --port PORT --output lights --layer stars --layer-opacity 128
+python tools/client.py --port PORT --output lights --layer stars --layer-blend screen
+python tools/client.py --port PORT --output lights --composition-snapshot
 ```
 
-The Python `Client.configure_scene(layers, device=...)` stages a
-`lightvm.scene` document then applies it atomically. `activate(..., layer=...)`
+The Python `Client.configure_composition(layers, output=...)` stages a
+`lightvm.composition` document then applies it atomically. `activate(..., layer=...)`
 replaces one layer. `reset_program(settings=..., layer=...)` creates a new
 instance of that layer's program; frozen settings require this explicit restart.
 `pause_program` retains the contribution and excludes paused time; resume retains
 state. Layer `STOP` clears its contribution and suspends it; `RESET` unloads it.
-`Client.layer_blend(layer, mode, device=...)` changes the blend without restarting
-the animation or its peers. Procedure replacement retains layer opacity and blend.
-`remove_layer` releases its resources. Root PLAY/STOP controls the entire scene;
+`Client.layer_blend(layer, mode, output=...)` changes the blend without restarting
+the animation or its peers. Program replacement retains layer opacity and blend.
+`remove_layer` releases its resources. Root PLAY/STOP controls the entire composition;
 root STOP clears physical output while retaining layer state and desired play
 flags. Root FRAME advances all layers by its explicit delta and composites once.
-Root RESET or `clear_scene` releases the scene. Normal root procedure activation
-replaces a scene with the original single-program presentation path.
+Root RESET or `clear_composition` releases the composition. Normal root program activation
+replaces a composition with the original single-program presentation path.
 
 `snapshot()` returns final RGB; `snapshot(layer=...)` returns that layer's
-committed RGBA. `scene()` reports ordering,
+committed RGBA. `composition()` reports ordering,
 generations, opacity, physical frames, composite frames, cumulative compositor
 CPU time and output latency. Per-layer `program_state()` includes completed
 renders, cumulative render CPU, native draw CPU, dispatch and resume counts.
@@ -167,22 +167,22 @@ renders, cumulative render CPU, native draw CPU, dispatch and resume counts.
 instructions contribute to total render CPU only.
 Render CPU includes native kernels and excludes time spent servicing peers;
 output latency includes asynchronous transfer wait. These counters have distinct
-denominators: a scene may reuse a layer contribution for several outputs.
+denominators: a composition may reuse a layer contribution for several outputs.
 
 ## Management and compatibility
 
-Discovery reports the application `version`, `scenes=true`, `scene_layer_limit=8`,
+Discovery reports the application `version`, `compositions=true`, `composition_layer_limit=8`,
 `layer_pixel_format="rgba8-premul"`, `alpha=true`, and `composition=true`.
-`scene_blend_modes` lists `over`, `add`, `screen` and `multiply`; omitted `blend`
+`composition_blend_modes` lists `over`, `add`, `screen` and `multiply`; omitted `blend`
 means `over`. Compatibility uses the program's minimum application release and
 actual resource limits. See [versioning](versioning.md).
 
-The object upload protocol accepts kind `scene`. Operations are `scene_get`,
-`scene_snapshot`, `scene_apply`, `scene_clear`, `scene_layer_activate`,
-`scene_layer_opacity`, `scene_layer_blend` and `scene_layer_remove`. Writes require
+The object upload protocol accepts kind `composition`. Operations are `composition_get`,
+`composition_snapshot`, `composition_apply`, `composition_clear`, `composition_layer_activate`,
+`composition_layer_opacity`, `composition_layer_blend` and `composition_layer_remove`. Writes require
 `expected_revision`; activation additionally requires `expected_generation`.
-The `layer` selector extends existing program controls and `device_command`.
-Full-scene writes replace every instance; use layer activation to retain peers.
+The `layer` selector extends existing program controls and `output_command`.
+Full-composition writes replace every instance; use layer activation to retain peers.
 
 Resource kind 12 is premultiplied RGBA. SpriteBatch uses generic batch kind 18;
 PixelArray uses kinds 14–17. Source point/fill/gradient/colorwheel/palette methods
@@ -191,16 +191,16 @@ use generic PixelArray kernels. Removed resource kind 13 and native bindings
 Typed calls enforce stage permissions, resource kind, bounds and generation.
 There are no guest pointers or per-frame allocations.
 
-Running scenes remain in RAM. The browser editor can author scenes and save them
-as **presets** in its editable library and on the device. A preset has one or more
+Running compositions remain in RAM. The browser editor can author compositions and save them
+as **presets** in its editable library and on the controller. A preset has one or more
 layers, so standalone and composite effects use the same recipe format. Saving
 does not change playback; activation prepares the whole candidate before swapping.
-Saved hardware configuration still uses single-procedure startup; reboot restores
+Saved hardware configuration still uses single-program startup; reboot restores
 that startup, and saved presets can then be activated explicitly.
 
-Device presets use `lightvm.preset` with a `layers` array, using the same fields
-as a scene. Each layer additionally requires `crc32`, matching the stored program.
-Scene documents may also supply `crc32` to check the expected version. The editor
+Controller presets use `lightvm.preset` with a `layers` array, using the same fields
+as a composition. Each layer additionally requires `crc32`, matching the stored program.
+Composition documents may also supply `crc32` to check the expected version. The editor
 derives immutable program names from the compiled SHA-256 digest and keeps full
 digests and editable source in its browser library. Multiple presets/layers share
 one stored program; active instances retain independent settings and state.
@@ -209,14 +209,14 @@ Firmware advertises `presets: true`. Presets share available storage with compil
 programs; neither has a fixed count quota. Each document is limited to `config_limit`
 bytes and the JSON parser's token bound. Public preset names allow 1–32 letters,
 digits, dots, underscores or hyphens. They use their own typed namespace and do not
-appear in `procedure_list`. See [internal storage](storage.md).
+appear in `program_list`. See [internal storage](storage.md).
 
 | Operation | Fields / behavior |
 | --- | --- |
 | `preset_list` | Returns `{name,size,crc32}` entries. |
 | `preset_get` | `name`; returns the recipe JSON. |
-| `preset_save` | Stage object kind `preset` with `name`, then supply `name`, `device`, `expected_revision` (catalog). Prepares against that output, then saves atomically. |
-| `preset_activate` | `name`, `device`, `expected_revision` (scene); admits a fresh scene before replacing playback. Omitted `slot` replaces the whole output; explicit A/B updates that slot. |
+| `preset_save` | Stage object kind `preset` with `name`, then supply `name`, `output`, `expected_revision` (catalog). Prepares against that output, then saves atomically. |
+| `preset_activate` | `name`, `output`, `expected_revision` (composition); admits a fresh composition before replacing playback. Omitted `slot` replaces the whole output; explicit A/B updates that slot. |
 | `preset_delete` | `name`, `expected_revision` (catalog); running instances continue. |
 
 Saved references prevent deleting or replacing the referenced program version.
@@ -227,5 +227,5 @@ There is no per-preset frame or VM allocation while a recipe is idle in flash.
 The Python client exposes `presets`, `preset`, `save_preset`, `activate_preset`
 and `delete_preset` helpers.
 
-Scenes can also supply independent A/B slots to the [transition owner](transitions.md).
+Compositions can also supply independent A/B slots to the [transition owner](transitions.md).
 Linear-light blending and two-dimensional rotation remain follow-on work.

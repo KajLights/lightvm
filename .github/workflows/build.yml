@@ -61,7 +61,7 @@ jobs:
         run: |
           board=simulator
           if [[ '${{ matrix.profile }}' == host-175 ]]; then board=test_175; fi
-          python tools/smoke_device.py --process build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm --board "$board" --reference build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
+          python tools/smoke_controller.py --process build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm --board "$board" --reference build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm
       - uses: actions/upload-artifact@v4
         with:
           name: lightvm-${{ matrix.profile }}-${{ matrix.transport }}-boot-${{ matrix.boot_sequence }}

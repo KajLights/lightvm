@@ -1,5 +1,5 @@
 #include "store_backend.h"
-#include "devices.h"
+#include "outputs.h"
 #include "protocol.h"
 #include <string.h>
 #include <limits.h>

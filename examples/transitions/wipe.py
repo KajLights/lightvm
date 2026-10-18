@@ -1,7 +1,7 @@
 """Reveal B across A, with an optional three-pixel coloured separator sprite.
 
 reverse=True reveals from the opposite end. separator=True paints a coloured
-33% / 100% / 33% peak at the wipe boundary; endpoints remain the exact scenes.
+33% / 100% / 33% peak at the wipe boundary; endpoints remain the exact compositions.
 color defaults to white and sets the separator colour.
 """
 from lightvm import profile, init, render, setting, rgb, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform

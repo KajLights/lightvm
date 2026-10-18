@@ -5,18 +5,18 @@ Status: Proposed
 Date: 12 October 2026
 
 LightVM should let users choose the drivers and native features included in
-firmware for a particular board instance. HTTP, MQTT, OTA and individual device
+firmware for a particular board instance. HTTP, MQTT, OTA and individual controller
 drivers should be selectable at build time, according to the user's needs and
 the installation's flash and RAM capacity.
 
 Two instances of the same board model may need different firmware. One may run
-offline over USB with a few basic devices; another may use MQTT and OTA while
+offline over USB with a few basic controllers; another may use MQTT and OTA while
 omitting the HTTP management server and unused drivers. Support for a feature
 on a board establishes that it can be selected, rather than requiring every
 instance of that board to include it.
 
 This complements the [control API](feature-proposal-control-api.md),
-[device support](feature-proposal-device-support.md) and
+[controller support](feature-proposal-output-support.md) and
 [web editor](feature-proposal-web-editor.md) proposals. The profile format,
 feature catalogue and build options below are proposed, not implemented.
 
@@ -35,8 +35,8 @@ Keep the following layers distinct:
 A build profile is reusable, but its assignment is a choice for each physical
 board instance. Selecting a profile for one XIAO ESP32-S3 must not change the
 default for all XIAO ESP32-S3 boards. Deployment records should associate a
-device's stable identity with its selected profile and firmware artifact.
-Profiles need no credentials or hard-coded device serial numbers.
+controller's stable identity with its selected profile and firmware artifact.
+Profiles need no credentials or hard-coded controller serial numbers.
 
 Runtime configuration can instantiate an included driver or enable an included
 service. Adding an excluded driver or service requires rebuilding and installing
@@ -49,7 +49,7 @@ feature catalogue:
 
 | Selection | Examples |
 |---|---|
-| Device drivers | WS2812B/RGBW, digital input/output, analogue input/output where supported, PWM, tone, servo, individual I2C sensors and displays |
+| Controller drivers | WS2812B/RGBW, digital input/output, analogue input/output where supported, PWM, tone, servo, individual I2C sensors and displays |
 | Control capabilities | Addressable pixel buffers, bounded animation composition, A/B mixing, event capture, timers, bounded tasks/jobs and optional feedback/stream operations |
 | Management transports | USB, embedded HTTP API, optional BLE management |
 | Network services | MQTT, Matter, discovery and provisioning |
@@ -61,13 +61,13 @@ Select [animation composition](feature-proposal-animation-composition.md) and
 [A/B transitions](feature-proposal-ab-transitions.md) independently. A minimal
 build can run one animation; a composition build can run Rainbow plus Stars
 without a transition program; an A/B build can switch between single-animation
-sources without general layer management. Combining them permits layered scene
+sources without general layer management. Combining them permits layered composition
 sources only within the declared joint limits.
 
 Composition depends on indexed frame buffers and the shared scheduling,
 publication and ownership machinery. Alpha representation and blending are
-implemented for the current scene contract; profile options must match its aggregate limits.
-Resolve limits for layers per scene, total resident colour/transition instances,
+implemented for the current composition contract; profile options must match its aggregate limits.
+Resolve limits for layers per composition, total resident colour/transition instances,
 frame/alpha/staging bytes and the aggregate frame budget. Feature selection must
 not imply arbitrary layer capacity or additional output formats.
 
@@ -85,8 +85,8 @@ networked instance may deliberately omit OTA to retain more application space.
 
 The catalogue should record each feature's stable ID, supported ports/boards,
 dependencies, conflicts, build sources, SDK dependencies, registration hooks
-and resource requirements. Device definitions can supply driver metadata to
-this catalogue rather than maintaining a second list of device types.
+and resource requirements. Controller definitions can supply driver metadata to
+this catalogue rather than maintaining a second list of controller types.
 
 Validate the complete selection before compiling. Reject unknown IDs,
 unsupported features, conflicting choices and explicitly disabled required
@@ -132,9 +132,9 @@ selection fits a particular board. The OTA layout reserves its own update
 metadata even when persistent program storage is excluded. Pin choices, pixel
 count and network credentials belong to the appropriate hardware or provisioning
 configuration.
-Profiles enabling composition or A/B must also resolve their scene/layer,
-resident-instance and buffer limits. Validate any declared simultaneous scene
-capacity against those aggregate limits. A per-scene maximum does not promise
+Profiles enabling composition or A/B must also resolve their composition/layer,
+resident-instance and buffer limits. Validate any declared simultaneous composition
+capacity against those aggregate limits. A per-composition maximum does not promise
 that every A/B source can use that maximum together; individual projects still
 require runtime admission against their actual needs.
 
@@ -170,7 +170,7 @@ does not fit. Omitting OTA should allow a supported layout with more space for
 the application.
 
 RAM planning must include static data, engine and guest budgets, native task
-stacks, device/pixel buffers, event queues, subscriptions, guest tasks,
+stacks, controller/pixel buffers, event queues, subscriptions, guest tasks,
 timers/jobs, continuation storage, networking/TLS allocations and update buffers. The
 existing interpreter heap cap is only one part of the total. Report linker
 measurements separately from declared dynamic bounds and measured peaks under
@@ -187,7 +187,7 @@ drivers to meet their needs.
 Changing a profile may change the partition layout or bootloader requirements.
 An instance without OTA needs a supported local flashing path to install an
 OTA-enabled profile. A layout transition may also require local flashing or an
-explicit migration procedure even when the current firmware supports OTA.
+explicit migration program even when the current firmware supports OTA.
 
 ## Artifact identity and capability discovery
 
@@ -198,14 +198,14 @@ Use board and profile identity in artifact names so builds for two installations
 of the same board are distinguishable. Profile identity describes the build;
 firmware authenticity needs the update mechanism's own verification.
 
-The device should advertise the capabilities actually compiled into its
+The controller should advertise the capabilities actually compiled into its
 firmware, together with profile identity and effective resource limits. Keep
 compiled driver types separate from configured peripheral instances and service
 availability: an included network adapter may still need provisioning.
 
 The web editor should use this descriptor when offering transports, hardware
 forms, persistence and firmware updates. Explain an excluded feature as
-requiring another firmware profile. Required imports and device capabilities
+requiring another firmware profile. Required imports and controller capabilities
 must be checked against the connected instance, rather than assumed from its
 board model. Select one current guest and management contract; reject superseded PoC interfaces.
 
@@ -251,9 +251,9 @@ can follow the file-based workflow; neither is required initially.
 - Exercise single-animation, composition-only, A/B-only and combined profiles
   as those capabilities arrive. Omitted features reserve no dedicated buffers;
   advertised layer/mode/instance limits match runtime admission.
-- Account for all layer colour/alpha, staging, filter inputs and scene frames
+- Account for all layer colour/alpha, staging, filter inputs and composition frames
   in combined RAM and frame budgets; a minimal mix-buffer estimate must not
-  be reported as the cost of two layered scenes and their transition.
+  be reported as the cost of two layered compositions and their transition.
 - Rebuild from the same resolved profile and pinned inputs with identical feature
   selections, limits and layout; record any toolchain limits on binary identity.
 - Run identical current bytecode on different profiles with unchanged import

@@ -139,7 +139,7 @@ class WebSocketTests(unittest.TestCase):
         self.transports.append(http)
         clients = [first, second, Client(http), self.pipe]
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            results = list(executor.map(lambda c: [c.describe()["device_id"] for _ in range(15)], clients))
+            results = list(executor.map(lambda c: [c.describe()["controller_id"] for _ in range(15)], clients))
         self.assertEqual(len({identity for values in results for identity in values}), 1)
 
     def test_fragmentation_ping_and_partial_tcp_reads(self):
@@ -166,15 +166,15 @@ class WebSocketTests(unittest.TestCase):
     def test_large_response_and_upload(self):
         client = Client(self.connect())
         program = padded_program(min(20000, client.describe()["module_limit"]))
-        client.save_procedure("large", program)
-        self.assertEqual(client.get_procedure("large"), program)
-        self.assertEqual(self.pipe.get_procedure("large"), program)
+        client.save_program("large", program)
+        self.assertEqual(client.get_program("large"), program)
+        self.assertEqual(self.pipe.get_program("large"), program)
 
     def test_disconnect_releases_upload_ownership(self):
         wire = self.connect()
         client = Client(wire)
         program = color(20, 30, 40)
-        client.configure({"schema": "lightvm.config", "devices": [{"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}}]})
+        client.configure({"schema": "lightvm.config", "outputs": [{"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}}]})
         reply = client.command(BEGIN, struct.pack("<II", len(program), zlib.crc32(program)))
         self.assertEqual(reply.code, 0)
         self.assertEqual(self.pipe.status_fields()["uploading"], "1")

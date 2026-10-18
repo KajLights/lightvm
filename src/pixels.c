@@ -2,7 +2,7 @@
 #include "platform.h"
 #include <string.h>
 
-bool pixels_init(PixelBuffer *p, const PixelConfig *config, const DeviceType *type) {
+bool pixels_init(PixelBuffer *p, const PixelConfig *config, const OutputType *type) {
     memset(p, 0, sizeof(*p));
     p->rgb = platform_calloc(config->count, 3);
     if (!p->rgb) return false;

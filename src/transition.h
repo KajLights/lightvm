@@ -1,6 +1,6 @@
 #ifndef LIGHTVM_TRANSITION_H
 #define LIGHTVM_TRANSITION_H
-#include "scene.h"
+#include "composition.h"
 typedef enum { TRANSITION_CROSSFADE, TRANSITION_WIPE, TRANSITION_SOFT_WIPE,
     TRANSITION_DISSOLVE, TRANSITION_DIP, TRANSITION_FLASH, TRANSITION_CUSTOM,
     TRANSITION_PROGRAM, TRANSITION_EFFECT_COUNT } TransitionEffect;
@@ -13,7 +13,7 @@ typedef struct {
 } TransitionProgram;
 typedef struct {
     PixelBuffer *output, target;
-    Scene *scenes[2];
+    Composition *compositions[2];
     uint8_t *allocation, *working, *front;
     unsigned pixel, phase, restore_offset;
     uint32_t frames, composite_frames, sampled_frames[2], seed, assignment;

@@ -1,6 +1,6 @@
 # Composition extensions
 
-The implemented [scene contract](../composition.md) uses independent animation
+The implemented [composition contract](../composition.md) uses independent animation
 instances, premultiplied RGBA contributions and native over/add/screen/multiply
 composition. Stars over Color or Rainbow reuses the same foreground program.
 Black paint is opaque; unwritten pixels are transparent. Instances own settings,
@@ -11,9 +11,9 @@ lifetime, color format, rounding and fault/publication boundary. Effects that
 need history should own explicit simulation data. Do not infer transparency
 from black or add implicit retained paint.
 
-[A/B transitions](feature-proposal-ab-transitions.md) consume completed scenes.
+[A/B transitions](feature-proposal-ab-transitions.md) consume completed compositions.
 Their settable progress percentage differs from per-layer alpha. Admission
-must account for both scenes, layer state, working/committed contributions,
+must account for both compositions, layer state, working/committed contributions,
 filter inputs, transition resources and immutable physical output buffers.
 Neither a maximum layer count nor a minimal mix-buffer estimate proves fit.
 

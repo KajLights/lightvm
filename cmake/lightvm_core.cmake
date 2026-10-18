@@ -26,8 +26,8 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
         "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"
-        "${LIGHTVM_ROOT}/src/portable.c" "${LIGHTVM_ROOT}/src/portable_draw.c" "${LIGHTVM_ROOT}/src/portable_map.c" "${LIGHTVM_ROOT}/src/animation.c" "${LIGHTVM_ROOT}/src/draw.c" "${LIGHTVM_ROOT}/src/scene.c" "${LIGHTVM_ROOT}/src/transition.c"
-        "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/devices.c"
+        "${LIGHTVM_ROOT}/src/portable.c" "${LIGHTVM_ROOT}/src/portable_draw.c" "${LIGHTVM_ROOT}/src/portable_map.c" "${LIGHTVM_ROOT}/src/animation.c" "${LIGHTVM_ROOT}/src/draw.c" "${LIGHTVM_ROOT}/src/composition.c" "${LIGHTVM_ROOT}/src/transition.c"
+        "${LIGHTVM_ROOT}/src/json.c" "${LIGHTVM_ROOT}/src/outputs.c"
         "${LIGHTVM_ROOT}/src/store.c" "${LIGHTVM_ROOT}/src/store_extent.c" "${LIGHTVM_ROOT}/src/store_assets.c" "${LIGHTVM_ROOT}/src/network.c")
     if(LIGHTVM_STORAGE_BACKEND_SOURCES)
         target_sources(lightvm_core PRIVATE ${LIGHTVM_STORAGE_BACKEND_SOURCES})

@@ -1,6 +1,6 @@
 {
   "schema": "lightvm.config",
-  "devices": [
+  "outputs": [
     {
       "id": "lights",
       "type": "ws2812b",
@@ -11,8 +11,8 @@
         "brightness_limit": 32
       },
       "startup": {
-        "procedure": "rainbow",
-        "args": {
+        "program": "rainbow",
+        "settings": {
           "duration": 3.3
         }
       }

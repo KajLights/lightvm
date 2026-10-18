@@ -24,7 +24,7 @@ class PixelMapTests(unittest.TestCase):
     def setUp(self):
         self.client=Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER',str(ROOT/'build/composition-host/lightvm'))))
         self.count=min(200,self.client.describe()['pixel_capacity'])
-        self.client.configure({'schema':'lightvm.config','devices':[{
+        self.client.configure({'schema':'lightvm.config','outputs':[{
             'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':self.count}}]})
 
     def tearDown(self):self.client.close()
@@ -32,16 +32,16 @@ class PixelMapTests(unittest.TestCase):
     def load(self,source,optimize=True,settings=None):
         result=compile_source(source,optimize=optimize)
         self.assertTrue(result.success,result.diagnostics)
-        self.client.save_procedure('map_test',result.bytecode)
-        self.client.configure_scene([{'id':'fg','procedure':'map_test','settings':settings or {}}],device='lights')
-        self.client.require_ok(self.client.command(STOP,device='lights'))
+        self.client.save_program('map_test',result.bytecode)
+        self.client.configure_composition([{'id':'fg','program':'map_test','settings':settings or {}}],output='lights')
+        self.client.require_ok(self.client.command(STOP,output='lights'))
         return result
 
     def frames(self):
         output=[]
         for ms in (0,1,17,333,1000):
-            self.client.require_ok(self.client.command(FRAME,struct.pack('<I',ms),device='lights'))
-            output.append(bytes(self.client.snapshot(device='lights',layer='fg')[1]))
+            self.client.require_ok(self.client.command(FRAME,struct.pack('<I',ms),output='lights'))
+            output.append(bytes(self.client.snapshot(output='lights',layer='fg')[1]))
         return output
 
     def compare(self,source,settings=None):
@@ -142,13 +142,13 @@ def draw(ctx,runtime,pixels):
         self.assertFalse(result.success)
         result=self.load(source)
         forged=bytearray(result.bytecode);struct.pack_into('<I',forged,80,2)
-        with self.assertRaises(ProtocolError):self.client.save_procedure('forged',forged)
+        with self.assertRaises(ProtocolError):self.client.save_program('forged',forged)
         # A kernel cannot replace its store index with an unchecked constant.
         forged=bytearray(result.bytecode);nregs=struct.unpack_from('<I',forged,8)[0]
         pc=next(pc for pc,i in enumerate(instructions(result)) if i[0]==39)
         end=instructions(result)[pc][4]
         forged[96+nregs*8+(end-1)*8+2]=0
-        with self.assertRaises(ProtocolError):self.client.save_procedure('forged',forged)
+        with self.assertRaises(ProtocolError):self.client.save_program('forged',forged)
 
     def test_faults_preserve_completed_frame_and_heap_is_stable(self):
         source=PREFIX+'''@render
@@ -156,13 +156,13 @@ def draw(ctx,runtime,pixels):
  for i in range(pixels.count):
   pixels[i]=rgb(int(runtime.time*1000.0),0,0)
 '''
-        self.load(source);before=self.client.snapshot(device='lights',layer='fg')[1]
+        self.load(source);before=self.client.snapshot(output='lights',layer='fg')[1]
         heap=self.client.status_fields()['heap']
         for _ in range(10):
-            self.client.require_ok(self.client.command(FRAME,bytes(4),device='lights'))
+            self.client.require_ok(self.client.command(FRAME,bytes(4),output='lights'))
         self.assertEqual(self.client.status_fields()['heap'],heap)
-        with self.assertRaises(ProtocolError):self.client.require_ok(self.client.command(FRAME,struct.pack('<I',1000),device='lights'))
-        self.assertEqual(self.client.snapshot(device='lights',layer='fg')[1],before)
+        with self.assertRaises(ProtocolError):self.client.require_ok(self.client.command(FRAME,struct.pack('<I',1000),output='lights'))
+        self.assertEqual(self.client.snapshot(output='lights',layer='fg')[1],before)
 
 
 if __name__=='__main__':unittest.main()

@@ -24,7 +24,7 @@ Recipes (set these defaults in setup, or use initialization settings):
 
 eye_count controls the number of eyes. rainbow_eyes=True gives them distinct
 hues; False uses color. phase offsets the path in traversal units (2 per bounce
-round trip). Use eye_count=1 for separate scene layers with their own blend mode.
+round trip). Use eye_count=1 for separate composition layers with their own blend mode.
 
 History is sampled from the path at fixed ages, independent of display frames;
 no previous-frame images or accumulated 8-bit alpha are needed. Sparse samples

@@ -27,7 +27,7 @@ A program manifest uses an unversioned document kind:
 | `1.2` | 1.2.0 and later 1.x.x | 1.1.9, 2.0.0 |
 | `1.2.3` | 1.2.3 and later 1.x.x | 1.2.2, 2.0.0 |
 
-Missing or malformed requirements and missing device versions fail compatibility
+Missing or malformed requirements and missing controller versions fail compatibility
 checks. Full firmware/compiler versions use three numeric components; program
 requirements also accept the shorthand forms above. Numeric components are
 bounded to unsigned 32-bit values; version strings are at most 95 ASCII characters.
@@ -63,10 +63,10 @@ schema, profile, drawing API or interpreter revision for such additions.
 
 Firmware `describe` and `STATUS` report `version`. Target-aware Python compilation
 checks that version and the module limit. The editor compiles independently of
-the connected device, so source editing, download and browser saves remain
-available. Preview/upload checks the device release; firmware independently checks
+the connected controller, so source editing, download and browser saves remain
+available. Preview/upload checks the controller release; firmware independently checks
 admission before activation. A rejected package leaves the running animation and
-its generation intact. Optional services use capability booleans such as `scenes`,
+its generation intact. Optional services use capability booleans such as `compositions`,
 `presets`, and `connections`, with resource limits reported separately.
 
 Browser library reads validate structure and embedded metadata without requiring
@@ -87,7 +87,7 @@ and minimum release documented here or in release notes. No legacy interpreter,
 automatic runtime adapter or per-release execution switch is implied.
 
 Document kinds (`lightvm.program`, `lightvm.config`, `lightvm.network`,
-`lightvm.scene`, `lightvm.preset`, `lightvm.library`, `lightvm.discovery`) identify
+`lightvm.composition`, `lightvm.preset`, `lightvm.library`, `lightvm.discovery`) identify
 the kind of data, without independent version counters. The `animation` source
 profile is a fixed authoring name.
 
@@ -103,8 +103,8 @@ remain rejected even if a package claims a compatible release.
 Earlier schema-numbered artifacts and retired experiments are outside the initial
 1.0.0 contract. Recompile supported source with `profile("animation")` to produce a
 release-based package. Retired runtimes and operations remain removed. Saved
-configuration/network/scene documents use the unversioned document kinds above;
+configuration/network/composition documents use the unversioned document kinds above;
 there is no automatic conversion of old firmware storage. Back up data before
-explicitly reprovisioning a device with an unsupported storage layout. Later
+explicitly reprovisioning a controller with an unsupported storage layout. Later
 compatible releases must preserve supported 1.x behaviour and readable data,
 rather than repeat this cutover.

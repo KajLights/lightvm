@@ -113,7 +113,7 @@ const char *control_reset_program(VmInstance *a,const Json *request,int settings
     candidate->uploading=a->uploading; /* the shared install transaction survives a live reset */
     if(a->from_storage&&!vm_bind_storage(candidate,a->store,&a->code)){demo_free(candidate);return "package reference limit exceeded";}
     memcpy(candidate->slot,a->slot,sizeof(a->slot));
-    memcpy(candidate->device,a->device,sizeof(a->device));
+    memcpy(candidate->output_id,a->output_id,sizeof(a->output_id));
     memcpy(candidate->layer,a->layer,sizeof(a->layer));
     if(!a->from_storage)candidate->memory=a->memory;
     const char *error=vm_load(candidate);
@@ -173,8 +173,8 @@ static void result(VmInstance *a,uint16_t id,enum Status code,const char *messag
 static void describe(ControlWriter *w,bool with_manifest) {
     VmInstance *a=w->vm;
     Control *c=&a->control; char b[512];
-    snprintf(b,sizeof(b),"{\"device\":\"%s\",\"slot\":\"%s\",\"generation\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
-        a->device,a->slot,(unsigned long)a->generation,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
+    snprintf(b,sizeof(b),"{\"output\":\"%s\",\"slot\":\"%s\",\"generation\":%lu,\"program_us\":%" PRIu64 ",\"paused\":%s,\"faulted\":%s,\"contribution_valid\":%s,\"output_valid\":%s,\"contribution_frame\":%lu,\"output_frame\":%lu,\"buffer_bytes\":%lu",
+        a->output_id,a->slot,(unsigned long)a->generation,c->program_us,a->playing ? "false" : "true",c->faulted ? "true" : "false",c->contribution_valid ? "true" : "false",c->output_valid ? "true" : "false",(unsigned long)c->contribution_frame,(unsigned long)c->output_frame,(unsigned long)(c->buffer_bytes+c->output_charge));
     text(w,b);
     if(a->layer[0]){snprintf(b,sizeof(b),",\"layer\":\"%s\"",a->layer);text(w,b);}
     if(a->portable){
@@ -213,9 +213,9 @@ bool control_manage(VmInstance *a,uint16_t id,const uint8_t *payload,size_t size
     bool get=!strcmp(op,"program_state"),pause=!strcmp(op,"program_pause"),resume=!strcmp(op,"program_resume"),snapshot=!strcmp(op,"program_snapshot"),reset=!strcmp(op,"program_reset");
     if (!get && !pause && !resume && !snapshot && !reset) return false;
     if (!a->ready || !a->control.enabled) { result(a,id,STATUS_EXECUTION,"no control program loaded"); return true; }
-    static const char *const read_fields[]={"op","slot","device","layer",NULL};
-    static const char *const lifecycle_fields[]={"op","slot","device","layer","expected_generation",NULL};
-    static const char *const reset_fields[]={"op","slot","device","layer","expected_generation","settings",NULL};
+    static const char *const read_fields[]={"op","slot","output","layer",NULL};
+    static const char *const lifecycle_fields[]={"op","slot","output","layer","expected_generation",NULL};
+    static const char *const reset_fields[]={"op","slot","output","layer","expected_generation","settings",NULL};
     if (!json_fields(&j,0,(get || snapshot) ? read_fields : reset ? reset_fields : lifecycle_fields)) { result(a,id,STATUS_PROTOCOL,"invalid control management fields"); return true; }
     uint32_t generation;
     if ((pause || resume || reset) && (!json_u32(&j,json_get(&j,0,"expected_generation"),&generation) || generation!=a->generation)) {

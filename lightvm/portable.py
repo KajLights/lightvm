@@ -29,8 +29,8 @@ NATIVES = {
 }
 NATIVES.update(FEATURE_NATIVES)
 NATIVES.update({
-    'scene_mix': (53, 0, (6, F, I, I), 0),
-    'scene_copy': (54, 0, (6, I, I, I), 0),
+    'composition_mix': (53, 0, (6, F, I, I), 0),
+    'composition_copy': (54, 0, (6, I, I, I), 0),
 })
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
 PUBLIC = {'requires', 'profile', 'setting', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
@@ -221,19 +221,19 @@ class PortableCompiler(SpriteCompiler, Compiler):
                 if n.keywords: self.fail(n, 'math.sin takes one positional argument')
                 return self.native('sin', [self.expr(a) for a in n.args], n)
             method = n.func.attr
-            if self.capability(n.func.value) == 'pixels' and method in ('mix', 'copy_scene'):
+            if self.capability(n.func.value) == 'pixels' and method in ('mix', 'copy_composition'):
                 if self.profile_name != 'transition' or self.stage != 1:
-                    self.fail(n, 'scene drawing requires a transition render callback')
-                args = self.arguments(n, ('progress' if method == 'mix' else 'scene', 'start', 'stop'),
+                    self.fail(n, 'composition drawing requires a transition render callback')
+                args = self.arguments(n, ('progress' if method == 'mix' else 'composition', 'start', 'stop'),
                                       {'start': 0, 'stop': ast.Attribute(value=n.func.value, attr='count')})
                 if method == 'mix':
                     value = self.expr(args['progress'])
                 else:
-                    scene = args['scene']
-                    if not isinstance(scene, ast.Constant) or scene.value not in ('A', 'B'):
-                        self.fail(n, 'copy_scene requires the literal scene name A or B')
-                    value = self.literal(int(scene.value == 'B'))
-                return self.native('scene_mix' if method == 'mix' else 'scene_copy',
+                    composition = args['composition']
+                    if not isinstance(composition, ast.Constant) or composition.value not in ('A', 'B'):
+                        self.fail(n, 'copy_composition requires the literal composition name A or B')
+                    value = self.literal(int(composition.value == 'B'))
+                return self.native('composition_mix' if method == 'mix' else 'composition_copy',
                                    [self.output, value, self.expr(args['start']), self.expr(args['stop'])], n)
             if self.capability(n.func.value) == 'pixels' and method in ('point', 'colorwheel', 'gradient', 'palette'):
                 if n.keywords: self.fail(n, 'native drawing takes positional arguments')

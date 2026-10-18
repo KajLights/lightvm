@@ -2,20 +2,22 @@
 #define LIGHTVM_HOME_ASSISTANT_H
 #include "app.h"
 #include "mqtt.h"
-#define HA_LIGHT_LIMIT 8u
+#define HA_OUTPUT_LIMIT 8u
 typedef struct {
-    char id[OBJECT_NAME_LIMIT+1], name[65];
-    bool discovered, known, playing, removing, config_removed;
-} HaLight;
+    char id[OBJECT_NAME_LIMIT+1], name[65], preset[OBJECT_NAME_LIMIT+1];
+    uint32_t binding_crc;
+    unsigned remove_phase;
+    bool discovered, selector_discovered, known, preset_known, playing, removing;
+} HaOutput;
 typedef struct {
     App *app;
     Mqtt mqtt;
     uint64_t source;
-    uint32_t generation;
+    uint32_t generation, catalog_generation;
     unsigned phase;
     bool available;
     char root[96];
-    HaLight lights[HA_LIGHT_LIMIT];
+    HaOutput outputs[HA_OUTPUT_LIMIT];
 } HomeAssistant;
 void ha_init(HomeAssistant *, App *, MqttStream);
 void ha_tick(HomeAssistant *, bool network_ready, uint64_t now);

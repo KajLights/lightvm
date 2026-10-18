@@ -61,20 +61,20 @@ class MotionRuntimeTests(unittest.TestCase):
 
     def configure(self, count):
         self.count = count
-        self.client.configure({'schema':'lightvm.config', 'devices':[
+        self.client.configure({'schema':'lightvm.config', 'outputs':[
             {'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]})
 
     def load(self, source, settings=None, complete=False):
         result = compile_source(source if complete else PREFIX + source)
         self.assertTrue(result.success, result.diagnostics)
-        self.client.save_procedure('test', result.bytecode)
-        self.client.configure_scene([{'id':'fg','procedure':'test','settings':settings or {}}], device='lights')
-        self.client.require_ok(self.client.command(STOP, device='lights'))
+        self.client.save_program('test', result.bytecode)
+        self.client.configure_composition([{'id':'fg','program':'test','settings':settings or {}}], output='lights')
+        self.client.require_ok(self.client.command(STOP, output='lights'))
         return result
 
     def frame(self, milliseconds=0):
-        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', milliseconds), device='lights'))
-        return bytes(self.client.snapshot(device='lights', layer='fg')[1])
+        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', milliseconds), output='lights'))
+        return bytes(self.client.snapshot(output='lights', layer='fg')[1])
 
     def test_motion_and_all_easings_match_their_desktop_functions(self):
         cases = [('repeat(-0.25)', motion.repeat(-0.25)),
@@ -191,7 +191,7 @@ def draw(ctx,runtime,pixels):
         forged = bytearray(result.bytecode)
         struct.pack_into('<I', forged, 80, 2)
         with self.assertRaises(ProtocolError):
-            self.client.save_procedure('forged', forged)
+            self.client.save_program('forged', forged)
 
     def test_batch_nearest_sampling_scales_a_solid_brush(self):
         self.load('''def paint(s,runtime,pixels):
@@ -252,9 +252,9 @@ def draw(ctx,runtime,pixels):
                 struct.pack_into('<4BI',forged,code+pc*8,19,0,0,0,pc+1)
                 skipped += 1
         self.assertEqual(skipped, 1)
-        self.client.save_procedure('forged', forged)
+        self.client.save_program('forged', forged)
         with self.assertRaises(ProtocolError):
-            self.client.configure_scene([{'id':'fg','procedure':'forged'}],device='lights')
+            self.client.configure_composition([{'id':'fg','program':'forged'}],output='lights')
 
     def test_rainbow_example_edges_hue_cycle_easing_and_frame_rate_independence(self):
         count = min(200, self.client.describe()['pixel_capacity'])

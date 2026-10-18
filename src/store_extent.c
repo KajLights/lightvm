@@ -1,7 +1,7 @@
 #include "store_backend.h"
 #include "runtime.h"
 #include "protocol.h"
-#include "devices.h"
+#include "outputs.h"
 #include <string.h>
 #define SECTOR 4096u
 #define COMMIT_OFFSET 1024u

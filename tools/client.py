@@ -126,7 +126,7 @@ class HttpTransport:
         from urllib.request import build_opener, ProxyHandler
         parsed = urlsplit(url)
         if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ("", "/"):
-            raise ValueError("--url must be a device HTTP origin, e.g. http://192.168.1.20")
+            raise ValueError("--url must be a output HTTP origin, e.g. http://192.168.1.20")
         self.url = url.rstrip("/")
         self.timeout = timeout
         self.opener = build_opener(ProxyHandler({}))
@@ -184,15 +184,15 @@ class Client:
             result.extend(self.transport.read(size - len(result), remaining))
         return bytes(result)
 
-    def command(self, kind, payload=b"", slot=None, device=None, layer=None):
+    def command(self, kind, payload=b"", slot=None, output=None, layer=None):
         if slot is not None and slot not in ("A", "B"):
             raise ValueError("slot must be A or B")
-        if slot is not None or device is not None or layer is not None:
+        if slot is not None or output is not None or layer is not None:
             if kind not in (STATUS, PLAY, STOP, RESET, FRAME):
                 raise ValueError("slot routing supports STATUS/PLAY/STOP/RESET/FRAME")
-            fields = {"op": "device_command", "slot": slot or "A", "command": kind}
-            if device is not None:
-                fields["device"] = device
+            fields = {"op": "output_command", "slot": slot or "A", "command": kind}
+            if output is not None:
+                fields["output"] = output
             if layer is not None:
                 fields["layer"] = layer
             if kind == FRAME:
@@ -201,7 +201,7 @@ class Client:
                 fields["delta_ms"] = struct.unpack("<I", payload)[0]
                 self.pixel_snapshot.clear()
             elif payload:
-                raise ValueError("device command takes no payload")
+                raise ValueError("output command takes no payload")
             return self.command(MANAGE, json.dumps(fields, separators=(",", ":")).encode())
         self.data_reply.clear()
         if kind == FRAME:
@@ -239,13 +239,13 @@ class Client:
             raise ProtocolError(f"receiver status {reply.code}: {reply.message}")
         return reply
 
-    def status_fields(self, slot=None, device=None, layer=None):
-        reply = self.require_ok(self.command(STATUS, slot=slot, device=device, layer=layer))
+    def status_fields(self, slot=None, output=None, layer=None):
+        reply = self.require_ok(self.command(STATUS, slot=slot, output=output, layer=layer))
         # animation_error may contain spaces; capability/limit tokens do not.
         return dict(item.split("=", 1) for item in reply.message.split() if "=" in item)
 
-    def upload(self, bytecode, slot=None, device=None, settings=None):
-        fields = self.status_fields(slot=slot, device=device)
+    def upload(self, bytecode, slot=None, output=None, settings=None):
+        fields = self.status_fields(slot=slot, output=output)
         try:
             limit = int(fields.get("module_limit", MODULE_LIMIT))
         except ValueError as error:
@@ -257,7 +257,7 @@ class Client:
         arguments = json.dumps({'settings': settings}, separators=(',', ':'), allow_nan=False).encode() if settings else b''
         if len(arguments) > FRAME_LIMIT:
             raise ValueError('preview settings exceed command size limit')
-        self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode)) + (device.encode("ascii") if device is not None else b"")))
+        self.require_ok(self.command(BEGIN, struct.pack("<II", len(bytecode), zlib.crc32(bytecode)) + (output.encode("ascii") if output is not None else b"")))
         for offset in range(0, len(bytecode), FRAME_LIMIT - 4):
             chunk = bytecode[offset:offset + FRAME_LIMIT - 4]
             reply = self.require_ok(self.command(CHUNK, struct.pack("<I", offset) + chunk))
@@ -282,8 +282,8 @@ class Client:
 
     def upload_object(self, kind, data, name=None):
         capabilities = self.describe()
-        limit = capabilities["module_limit" if kind == "procedure" else "config_limit"]
-        if not (8 if kind == "procedure" else 1) <= len(data) <= limit:
+        limit = capabilities["module_limit" if kind == "program" else "config_limit"]
+        if not (8 if kind == "program" else 1) <= len(data) <= limit:
             raise ValueError(f"{kind} exceeds receiver size limit {limit}")
         metadata = {"kind": kind, "size": len(data), "crc32": zlib.crc32(data)}
         if name is not None:
@@ -338,51 +338,51 @@ class Client:
         return self.manage("config_save", expected_revision=description["active_revision"],
                            expected_saved_revision=description["saved_revision"])
 
-    def save_procedure(self, name, data):
+    def save_program(self, name, data):
         revision = self.describe()["catalog_revision"]
-        self.upload_object("procedure", data, name)
-        return self.manage("procedure_save", name=name, expected_revision=revision)
+        self.upload_object("program", data, name)
+        return self.manage("program_save", name=name, expected_revision=revision)
 
-    def procedures(self, program_type=None):
-        self.manage("procedure_list", **({"type": program_type} if program_type else {}))
+    def programs(self, program_type=None):
+        self.manage("program_list", **({"type": program_type} if program_type else {}))
         return json.loads(self.data_reply)
 
-    def get_procedure(self, name, program_type=None):
-        self.manage("procedure_get", name=name, **({"type": program_type} if program_type else {}))
+    def get_program(self, name, program_type=None):
+        self.manage("program_get", name=name, **({"type": program_type} if program_type else {}))
         return bytes(self.data_reply)
 
-    def delete_procedure(self, name, program_type=None):
+    def delete_program(self, name, program_type=None):
         revision = self.describe()["catalog_revision"]
-        return self.manage("procedure_delete", name=name, expected_revision=revision, **({"type": program_type} if program_type else {}))
+        return self.manage("program_delete", name=name, expected_revision=revision, **({"type": program_type} if program_type else {}))
 
-    def activate(self, name, action="play", slot=None, settings=None, device=None, layer=None):
+    def activate(self, name, action="play", slot=None, settings=None, output=None, layer=None):
         if layer is not None:
-            if action != 'play': raise ValueError('scene layers support play activation')
-            scene = self.scene(device=device, slot=slot)
-            state = next((item for item in scene.get('layers', []) if item['id'] == layer), None)
-            if state is None: raise ValueError('scene layer is not configured')
-            fields = {'slot':slot or 'A', 'name':name, 'layer':layer, 'expected_revision':scene['revision'], 'expected_generation':state['generation']}
-            if device is not None: fields['device'] = device
+            if action != 'play': raise ValueError('composition layers support play activation')
+            composition = self.composition(output=output, slot=slot)
+            state = next((item for item in composition.get('layers', []) if item['id'] == layer), None)
+            if state is None: raise ValueError('composition layer is not configured')
+            fields = {'slot':slot or 'A', 'name':name, 'layer':layer, 'expected_revision':composition['revision'], 'expected_generation':state['generation']}
+            if output is not None: fields['output'] = output
             if settings is not None: fields['settings'] = settings
-            return self.manage('scene_layer_activate', **fields)
+            return self.manage('composition_layer_activate', **fields)
         fields = {"name": name, "action": action}
-        if device is not None:
-            fields["device"] = device
+        if output is not None:
+            fields["output"] = output
         if slot is not None:
             fields["slot"] = slot
         if settings is not None:
             fields["settings"] = settings
-        return self.manage("procedure_activate", **fields)
+        return self.manage("program_activate", **fields)
 
-    def program_state(self, slot=None, device=None, layer=None):
-        self.manage("program_state", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
+    def program_state(self, slot=None, output=None, layer=None):
+        self.manage("program_state", **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
-    def reset_program(self, settings=None, slot=None, device=None, layer=None):
-        state = self.program_state(slot=slot, device=device, layer=layer)
+    def reset_program(self, settings=None, slot=None, output=None, layer=None):
+        state = self.program_state(slot=slot, output=output, layer=layer)
         fields = {"expected_generation": state["generation"]}
-        if device is not None:
-            fields["device"] = device
+        if output is not None:
+            fields["output"] = output
         if slot is not None:
             fields["slot"] = slot
         if settings is not None:
@@ -392,77 +392,77 @@ class Client:
         self.manage("program_reset", **fields)
         return json.loads(self.data_reply)
 
-    def pause_program(self, slot=None, device=None, layer=None):
-        state = self.program_state(slot=slot, device=device, layer=layer)
-        self.manage("program_pause", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
+    def pause_program(self, slot=None, output=None, layer=None):
+        state = self.program_state(slot=slot, output=output, layer=layer)
+        self.manage("program_pause", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
-    def resume_program(self, slot=None, device=None, layer=None):
-        state = self.program_state(slot=slot, device=device, layer=layer)
-        self.manage("program_resume", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
+    def resume_program(self, slot=None, output=None, layer=None):
+        state = self.program_state(slot=slot, output=output, layer=layer)
+        self.manage("program_resume", expected_generation=state["generation"], **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply)
 
-    def snapshot(self, slot=None, device=None, layer=None):
+    def snapshot(self, slot=None, output=None, layer=None):
         self.pixel_snapshot.clear()
-        self.manage("program_snapshot", **({"slot": slot} if slot is not None else {}), **({"device": device} if device is not None else {}), **({"layer": layer} if layer is not None else {}))
+        self.manage("program_snapshot", **({"slot": slot} if slot is not None else {}), **({"output": output} if output is not None else {}), **({"layer": layer} if layer is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
 
-    def scene(self, device=None, slot="A"):
-        self.manage('scene_get', slot=slot or 'A', **({'device':device} if device is not None else {}))
+    def composition(self, output=None, slot="A"):
+        self.manage('composition_get', slot=slot or 'A', **({'output':output} if output is not None else {}))
         return json.loads(self.data_reply)
 
-    def configure_scene(self, layers, device=None, slot="A"):
-        revision = self.scene(device=device, slot=slot)['revision']
-        document = {'schema':'lightvm.scene', 'layers':layers}
-        self.upload_object('scene', json.dumps(document, separators=(',',':')).encode())
-        return self.manage('scene_apply', slot=slot, expected_revision=revision, **({'device':device} if device is not None else {}))
+    def configure_composition(self, layers, output=None, slot="A"):
+        revision = self.composition(output=output, slot=slot)['revision']
+        document = {'schema':'lightvm.composition', 'layers':layers}
+        self.upload_object('composition', json.dumps(document, separators=(',',':')).encode())
+        return self.manage('composition_apply', slot=slot, expected_revision=revision, **({'output':output} if output is not None else {}))
 
-    def scene_snapshot(self, device=None, slot=None):
+    def composition_snapshot(self, output=None, slot=None):
         self.pixel_snapshot.clear()
-        self.manage('scene_snapshot', **({'slot':slot} if slot is not None else {}), **({'device':device} if device is not None else {}))
+        self.manage('composition_snapshot', **({'slot':slot} if slot is not None else {}), **({'output':output} if output is not None else {}))
         return json.loads(self.data_reply), bytes(self.pixel_snapshot)
 
-    def transition(self, device=None):
-        self.manage('transition_get', **({'device':device} if device is not None else {}))
+    def transition(self, output=None):
+        self.manage('transition_get', **({'output':output} if output is not None else {}))
         return json.loads(self.data_reply)
 
-    def _transition_control(self, operation, device=None, **fields):
-        self.manage(operation, **fields, **({'device':device} if device is not None else {}))
+    def _transition_control(self, operation, output=None, **fields):
+        self.manage(operation, **fields, **({'output':output} if output is not None else {}))
         return json.loads(self.data_reply)
 
-    def set_progress(self, progress, device=None):
-        return self._transition_control('transition_set', device, progress=progress)
+    def set_progress(self, progress, output=None):
+        return self._transition_control('transition_set', output, progress=progress)
 
-    def run_transition(self, target, duration_ms, device=None, interval_ms=0):
-        return self._transition_control('transition_run', device, target=target, duration_ms=duration_ms, interval_ms=interval_ms)
+    def run_transition(self, target, duration_ms, output=None, interval_ms=0):
+        return self._transition_control('transition_run', output, target=target, duration_ms=duration_ms, interval_ms=interval_ms)
 
-    def hold_transition(self, device=None):
-        return self._transition_control('transition_hold', device)
+    def hold_transition(self, output=None):
+        return self._transition_control('transition_hold', output)
 
-    def assign_transition_source(self, source, device=None):
-        return self._transition_control('transition_assign', device, source=source)
+    def assign_transition_source(self, source, output=None):
+        return self._transition_control('transition_assign', output, source=source)
 
-    def update_transition_source(self, source, assignment, progress=None, device=None):
+    def update_transition_source(self, source, assignment, progress=None, output=None):
         if isinstance(progress, float) and not math.isfinite(progress): progress = None
         return bool(self.manage('transition_update', source=source, assignment=assignment, progress=progress,
-                               **({'device':device} if device is not None else {})).value)
+                               **({'output':output} if output is not None else {})).value)
 
-    def select_transition(self, procedure, settings=None, seed=0, device=None):
-        fields = {'procedure':procedure, 'seed':seed, 'expected_revision':self.transition(device)['revision']}
+    def select_transition(self, program, settings=None, seed=0, output=None):
+        fields = {'program':program, 'seed':seed, 'expected_revision':self.transition(output)['revision']}
         if settings is not None: fields['settings'] = settings
-        return self._transition_control('transition_select', device, **fields)
+        return self._transition_control('transition_select', output, **fields)
 
-    def select_transition_effect(self, effect='crossfade', seed=0, mask=None, paint=None, device=None):
+    def select_transition_effect(self, effect='crossfade', seed=0, mask=None, paint=None, output=None):
         """Compatibility control for the original firmware effect table."""
-        fields = {'effect':effect, 'seed':seed, 'expected_revision':self.transition(device)['revision']}
+        fields = {'effect':effect, 'seed':seed, 'expected_revision':self.transition(output)['revision']}
         if mask is not None: fields['mask'] = mask
         if paint is not None: fields['paint'] = paint
-        return self._transition_control('transition_select', device, **fields)
+        return self._transition_control('transition_select', output, **fields)
 
-    def pause_scene(self, device=None, slot='A', paused=True):
-        return self.manage('scene_pause' if paused else 'scene_resume', slot=slot,
-                           expected_revision=self.scene(device, slot)['revision'],
-                           **({'device':device} if device is not None else {}))
+    def pause_composition(self, output=None, slot='A', paused=True):
+        return self.manage('composition_pause' if paused else 'composition_resume', slot=slot,
+                           expected_revision=self.composition(output, slot)['revision'],
+                           **({'output':output} if output is not None else {}))
 
     def presets(self):
         self.manage('preset_list')
@@ -472,58 +472,58 @@ class Client:
         self.manage('preset_get', name=name)
         return json.loads(self.data_reply)
 
-    def save_preset(self, name, layers, device=None):
+    def save_preset(self, name, layers, output=None):
         revision = self.describe()['catalog_revision']
         document = {'schema': 'lightvm.preset', 'layers': layers}
         try:
             self.upload_object('preset', json.dumps(document, separators=(',', ':')).encode(), name)
             return self.manage('preset_save', name=name, expected_revision=revision,
-                               **({'device': device} if device is not None else {}))
+                               **({'output': output} if output is not None else {}))
         except Exception:
             self.command(OBJECT_CANCEL)
             raise
 
-    def activate_preset(self, name, device=None, slot="A"):
-        revision = self.scene(device=device, slot=slot)['revision']
-        return self.manage('preset_activate', slot=slot, name=name, expected_revision=revision,
-                           **({'device': device} if device is not None else {}))
+    def activate_preset(self, name, output=None, slot=None):
+        revision = self.composition(output=output, slot=slot)['revision']
+        return self.manage('preset_activate', **({'slot':slot} if slot is not None else {}), name=name, expected_revision=revision,
+                           **({'output': output} if output is not None else {}))
 
     def delete_preset(self, name):
         revision = self.describe()['catalog_revision']
         return self.manage('preset_delete', name=name, expected_revision=revision)
 
-    def layer_opacity(self, layer, opacity, device=None, slot="A"):
-        revision = self.scene(device=device, slot=slot)['revision']
-        return self.manage('scene_layer_opacity', slot=slot, layer=layer, opacity=opacity, expected_revision=revision,
-                           **({'device':device} if device is not None else {}))
+    def layer_opacity(self, layer, opacity, output=None, slot="A"):
+        revision = self.composition(output=output, slot=slot)['revision']
+        return self.manage('composition_layer_opacity', slot=slot, layer=layer, opacity=opacity, expected_revision=revision,
+                           **({'output':output} if output is not None else {}))
 
-    def remove_layer(self, layer, device=None, slot="A"):
-        revision = self.scene(device=device, slot=slot)['revision']
-        return self.manage('scene_layer_remove', slot=slot, layer=layer, expected_revision=revision,
-                           **({'device':device} if device is not None else {}))
+    def remove_layer(self, layer, output=None, slot="A"):
+        revision = self.composition(output=output, slot=slot)['revision']
+        return self.manage('composition_layer_remove', slot=slot, layer=layer, expected_revision=revision,
+                           **({'output':output} if output is not None else {}))
 
-    def layer_blend(self, layer, blend, device=None, slot="A"):
-        revision = self.scene(device=device, slot=slot)['revision']
-        return self.manage('scene_layer_blend', slot=slot, layer=layer, blend=blend, expected_revision=revision,
-                           **({'device':device} if device is not None else {}))
+    def layer_blend(self, layer, blend, output=None, slot="A"):
+        revision = self.composition(output=output, slot=slot)['revision']
+        return self.manage('composition_layer_blend', slot=slot, layer=layer, blend=blend, expected_revision=revision,
+                           **({'output':output} if output is not None else {}))
 
-    def clear_scene(self, device=None, slot="A"):
-        revision = self.scene(device=device, slot=slot)['revision']
-        return self.manage('scene_clear', slot=slot, expected_revision=revision, **({'device':device} if device is not None else {}))
+    def clear_composition(self, output=None, slot="A"):
+        revision = self.composition(output=output, slot=slot)['revision']
+        return self.manage('composition_clear', slot=slot, expected_revision=revision, **({'output':output} if output is not None else {}))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     transport = parser.add_mutually_exclusive_group(required=True)
     transport.add_argument("--port", help="USB serial port, e.g. /dev/cu.usbmodem...")
-    transport.add_argument("--url", help="device HTTP origin, e.g. http://192.168.1.20")
+    transport.add_argument("--url", help="controller HTTP origin, e.g. http://192.168.1.20")
     transport.add_argument("--process", type=Path, help="desktop receiver executable")
     parser.add_argument("--no-reset", action="store_true", help="deassert DTR/RTS before opening an ESP32 USB serial port")
     parser.add_argument("--storage", type=Path, help="host persistent store file")
     parser.add_argument("--save", action="store_true", help="save an applied --config for reboot")
     parser.add_argument("--saved", action="store_true", help="read saved rather than active configuration")
     parser.add_argument("--action", choices=("play",), default="play")
-    parser.add_argument("--output", type=Path, help="binary readback destination")
+    parser.add_argument("--save-to", type=Path, help="binary program readback destination")
     action = parser.add_mutually_exclusive_group()
     action.add_argument("--network", type=Path, help="validate, save and apply network JSON")
     action.add_argument("--validate-network", type=Path, help="validate network JSON without saving")
@@ -534,15 +534,15 @@ def main():
     action.add_argument("--validate-config", type=Path, help="stage and validate JSON without applying")
     action.add_argument("--get-config", action="store_true")
     action.add_argument("--save-config", action="store_true")
-    action.add_argument("--store-procedure", metavar="NAME", help="save the supplied module under this name")
-    action.add_argument("--procedures", action="store_true")
-    action.add_argument("--get-procedure", metavar="NAME")
-    action.add_argument("--delete-procedure", metavar="NAME")
+    action.add_argument("--store-program", metavar="NAME", help="save the supplied module under this name")
+    action.add_argument("--programs", action="store_true")
+    action.add_argument("--get-program", metavar="NAME")
+    action.add_argument("--delete-program", metavar="NAME")
     action.add_argument("--activate", metavar="NAME")
-    action.add_argument("--scene", type=Path, help="apply a lightvm.scene JSON document in RAM")
-    action.add_argument("--get-scene", action="store_true")
-    action.add_argument("--scene-snapshot", action="store_true")
-    action.add_argument("--clear-scene", action="store_true")
+    action.add_argument("--composition", type=Path, help="apply a lightvm.composition JSON document in RAM")
+    action.add_argument("--get-composition", action="store_true")
+    action.add_argument("--composition-snapshot", action="store_true")
+    action.add_argument("--clear-composition", action="store_true")
     action.add_argument("--layer-opacity", type=int, metavar="U8")
     action.add_argument("--layer-blend", choices=("over", "add", "screen", "multiply"))
     action.add_argument("--remove-layer", action="store_true")
@@ -551,7 +551,7 @@ def main():
     action.add_argument("--run-to", type=float, metavar="PERCENT", help="run from current progress to target")
     action.add_argument("--hold-transition", action="store_true")
     action.add_argument("--transition-effect", choices=("crossfade","wipe","soft_wipe","dissolve","dip_black","white_flash"))
-    action.add_argument("--transition", metavar="NAME", help="select a stored Python transition procedure")
+    action.add_argument("--transition", metavar="NAME", help="select a stored Python transition program")
     action.add_argument("--assign-source", metavar="NAME")
     action.add_argument("--source-value", type=float, metavar="PERCENT")
     parser.add_argument("--source-name", help="assigned source name for --source-value")
@@ -560,19 +560,19 @@ def main():
     parser.add_argument("--interval-ms", type=float, default=0, help="repeat alternating fades at this interval; zero runs once")
     parser.add_argument("--transition-seed", type=int, default=0)
     parser.add_argument("--settings", help="JSON initialization settings for a named transition")
-    parser.add_argument("--slot", choices=("A", "B"), help="scene slot (defaults to A)")
-    parser.add_argument("--device", help="configured device ID for upload, activation and controls")
-    parser.add_argument("--layer", help="scene layer ID for activation, state and controls")
+    parser.add_argument("--slot", choices=("A", "B"), help="composition slot (defaults to A)")
+    parser.add_argument("--output", help="configured output ID for upload, activation and controls")
+    parser.add_argument("--layer", help="composition layer ID for activation, state and controls")
     action.add_argument("--cancel-upload", action="store_true")
     action.add_argument("--program-state", action="store_true", help="read settings and program state")
     action.add_argument("--pause", action="store_true", help="pause control program time")
     action.add_argument("--resume", action="store_true", help="resume the initialized control program")
     action.add_argument("--snapshot", action="store_true", help="read output without stepping playback")
     action.add_argument("--status", action="store_true", help="query receiver without uploading")
-    action.add_argument("--animate", action="store_true", help="start animation playback on the device")
+    action.add_argument("--animate", action="store_true", help="start animation playback on the output")
     action.add_argument("--stop", action="store_true", help="stop animation and clear the LEDs")
     action.add_argument("--frame-ms", type=int, help="render one frame with this delta and report an RGB preview")
-    parser.add_argument("--procedure-type", choices=("animation", "transition"), help="Filter or disambiguate stored programs")
+    parser.add_argument("--program-type", choices=("animation", "transition"), help="Filter or disambiguate stored programs")
     parser.add_argument("--timeout", type=float, default=5)
     parser.add_argument("module", nargs="?", type=Path)
     args = parser.parse_args()
@@ -582,20 +582,20 @@ def main():
         parser.error("--save requires --config")
     if args.saved and not args.get_config:
         parser.error("--saved requires --get-config")
-    if args.output and not args.get_procedure:
-        parser.error("--output requires --get-procedure")
-    if args.store_procedure and args.module is None:
-        parser.error("--store-procedure requires a .lbc program")
+    if args.save_to and not args.get_program:
+        parser.error("--save-to requires --get-program")
+    if args.store_program and args.module is None:
+        parser.error("--store-program requires a .lbc program")
     management = (args.network or args.validate_network or args.get_network or args.network_status or args.describe or args.config or args.validate_config or args.get_config or args.save_config or
-                  args.store_procedure or args.procedures or args.get_procedure or args.delete_procedure or
+                  args.store_program or args.programs or args.get_program or args.delete_program or
                   args.activate or args.cancel_upload or args.program_state or
-                  args.pause or args.resume or args.snapshot or args.scene or args.get_scene or args.scene_snapshot or args.clear_scene or args.layer_opacity is not None or args.layer_blend or args.remove_layer or args.get_transition or args.progress is not None or args.run_to is not None or args.hold_transition or args.transition_effect or args.transition or args.assign_source or args.source_value is not None)
+                  args.pause or args.resume or args.snapshot or args.composition or args.get_composition or args.composition_snapshot or args.clear_composition or args.layer_opacity is not None or args.layer_blend or args.remove_layer or args.get_transition or args.progress is not None or args.run_to is not None or args.hold_transition or args.transition_effect or args.transition or args.assign_source or args.source_value is not None)
     if args.source_value is not None and (not args.source_name or args.assignment is None):
         parser.error("--source-value requires --source-name and --assignment")
     if (args.layer_opacity is not None or args.layer_blend or args.remove_layer) and not args.layer:
         parser.error('--layer is required for a layer update or removal')
-    if management and args.module is not None and not args.store_procedure:
-        parser.error("module argument only applies to --store-procedure or playback")
+    if management and args.module is not None and not args.store_program:
+        parser.error("module argument only applies to --store-program or playback")
     if args.no_reset and not args.port:
         parser.error("--no-reset requires --port")
     if args.timeout <= 0:
@@ -611,38 +611,38 @@ def main():
         client = Client(connection, timeout=args.timeout)
         if management:
             if args.get_transition:
-                print(json.dumps(client.transition(device=args.device),indent=2))
+                print(json.dumps(client.transition(output=args.output),indent=2))
             elif args.progress is not None:
-                print(json.dumps(client.set_progress(args.progress,device=args.device),indent=2))
+                print(json.dumps(client.set_progress(args.progress,output=args.output),indent=2))
             elif args.run_to is not None:
-                print(json.dumps(client.run_transition(args.run_to,args.duration_ms,device=args.device,interval_ms=args.interval_ms),indent=2))
+                print(json.dumps(client.run_transition(args.run_to,args.duration_ms,output=args.output,interval_ms=args.interval_ms),indent=2))
             elif args.hold_transition:
-                print(json.dumps(client.hold_transition(device=args.device),indent=2))
+                print(json.dumps(client.hold_transition(output=args.output),indent=2))
             elif args.transition_effect:
-                print(json.dumps(client.select_transition_effect(args.transition_effect,seed=args.transition_seed,device=args.device),indent=2))
+                print(json.dumps(client.select_transition_effect(args.transition_effect,seed=args.transition_seed,output=args.output),indent=2))
             elif args.transition:
-                print(json.dumps(client.select_transition(args.transition,settings=json.loads(args.settings) if args.settings else None,seed=args.transition_seed,device=args.device),indent=2))
+                print(json.dumps(client.select_transition(args.transition,settings=json.loads(args.settings) if args.settings else None,seed=args.transition_seed,output=args.output),indent=2))
             elif args.assign_source:
-                print(json.dumps(client.assign_transition_source(args.assign_source,device=args.device),indent=2))
+                print(json.dumps(client.assign_transition_source(args.assign_source,output=args.output),indent=2))
             elif args.source_value is not None:
-                print(json.dumps({'applied':client.update_transition_source(args.source_name,args.assignment,args.source_value,device=args.device)}))
-            elif args.scene:
-                document=json.loads(args.scene.read_text())
-                if document.get('schema') != 'lightvm.scene': raise ValueError('expected lightvm.scene')
-                client.configure_scene(document['layers'],device=args.device,slot=args.slot or 'A')
-            elif args.get_scene:
-                print(json.dumps(client.scene(device=args.device,slot=args.slot or 'A'),indent=2))
-            elif args.scene_snapshot:
-                state,rgb=client.scene_snapshot(device=args.device,slot=args.slot)
+                print(json.dumps({'applied':client.update_transition_source(args.source_name,args.assignment,args.source_value,output=args.output)}))
+            elif args.composition:
+                document=json.loads(args.composition.read_text())
+                if document.get('schema') != 'lightvm.composition': raise ValueError('expected lightvm.composition')
+                client.configure_composition(document['layers'],output=args.output,slot=args.slot or 'A')
+            elif args.get_composition:
+                print(json.dumps(client.composition(output=args.output,slot=args.slot or 'A'),indent=2))
+            elif args.composition_snapshot:
+                state,rgb=client.composition_snapshot(output=args.output,slot=args.slot)
                 print(json.dumps({**state,'rgb':rgb.hex()},indent=2))
-            elif args.clear_scene:
-                client.clear_scene(device=args.device,slot=args.slot or 'A')
+            elif args.clear_composition:
+                client.clear_composition(output=args.output,slot=args.slot or 'A')
             elif args.layer_opacity is not None:
-                client.layer_opacity(args.layer,args.layer_opacity,device=args.device,slot=args.slot or 'A')
+                client.layer_opacity(args.layer,args.layer_opacity,output=args.output,slot=args.slot or 'A')
             elif args.layer_blend:
-                client.layer_blend(args.layer,args.layer_blend,device=args.device,slot=args.slot or 'A')
+                client.layer_blend(args.layer,args.layer_blend,output=args.output,slot=args.slot or 'A')
             elif args.remove_layer:
-                client.remove_layer(args.layer,device=args.device,slot=args.slot or 'A')
+                client.remove_layer(args.layer,output=args.output,slot=args.slot or 'A')
             elif args.network or args.validate_network:
                 path = args.network or args.validate_network
                 client.configure_network(json.loads(path.read_text()), validate=bool(args.validate_network))
@@ -654,12 +654,12 @@ def main():
                 print(json.dumps(client.describe(), indent=2))
             elif args.get_config:
                 print(json.dumps(client.get_config(saved=args.saved), indent=2))
-            elif args.procedures:
-                print(json.dumps(client.procedures(args.procedure_type), indent=2))
-            elif args.get_procedure:
-                data = client.get_procedure(args.get_procedure, args.procedure_type)
-                if args.output:
-                    args.output.write_bytes(data)
+            elif args.programs:
+                print(json.dumps(client.programs(args.program_type), indent=2))
+            elif args.get_program:
+                data = client.get_program(args.get_program, args.program_type)
+                if args.save_to:
+                    args.save_to.write_bytes(data)
                 else:
                     sys.stdout.buffer.write(data)
             elif args.config:
@@ -669,43 +669,43 @@ def main():
                 client.manage("config_validate")
             elif args.save_config:
                 client.save_config()
-            elif args.store_procedure:
-                client.save_procedure(args.store_procedure, args.module.read_bytes())
-            elif args.delete_procedure:
-                client.delete_procedure(args.delete_procedure, args.procedure_type)
+            elif args.store_program:
+                client.save_program(args.store_program, args.module.read_bytes())
+            elif args.delete_program:
+                client.delete_program(args.delete_program, args.program_type)
             elif args.activate:
-                client.activate(args.activate, args.action, args.slot, device=args.device, layer=args.layer)
+                client.activate(args.activate, args.action, args.slot, output=args.output, layer=args.layer)
             elif args.cancel_upload:
                 client.require_ok(client.command(OBJECT_CANCEL))
             elif args.program_state:
-                print(json.dumps(client.program_state(slot=args.slot, device=args.device, layer=args.layer), indent=2))
+                print(json.dumps(client.program_state(slot=args.slot, output=args.output, layer=args.layer), indent=2))
             elif args.pause:
-                print(json.dumps(client.pause_program(slot=args.slot, device=args.device, layer=args.layer), indent=2))
+                print(json.dumps(client.pause_program(slot=args.slot, output=args.output, layer=args.layer), indent=2))
             elif args.resume:
-                print(json.dumps(client.resume_program(slot=args.slot, device=args.device, layer=args.layer), indent=2))
+                print(json.dumps(client.resume_program(slot=args.slot, output=args.output, layer=args.layer), indent=2))
             elif args.snapshot:
-                state, rgb = client.snapshot(slot=args.slot, device=args.device, layer=args.layer)
+                state, rgb = client.snapshot(slot=args.slot, output=args.output, layer=args.layer)
                 print(json.dumps({**state, "rgb": rgb.hex()}, indent=2))
             return 0
         if args.module is not None:
-            loaded = client.upload(args.module.read_bytes(), slot=args.slot, device=args.device)
+            loaded = client.upload(args.module.read_bytes(), slot=args.slot, output=args.output)
             print(f"Loaded {loaded.value} bytes", file=sys.stderr)
         if args.animate:
-            reply = client.command(PLAY, slot=args.slot, device=args.device, layer=args.layer)
+            reply = client.command(PLAY, slot=args.slot, output=args.output, layer=args.layer)
         elif args.stop:
-            reply = client.command(STOP, slot=args.slot, device=args.device, layer=args.layer)
+            reply = client.command(STOP, slot=args.slot, output=args.output, layer=args.layer)
         elif args.frame_ms is not None:
-            reply = client.command(FRAME, struct.pack("<I", args.frame_ms), slot=args.slot, device=args.device, layer=args.layer)
+            reply = client.command(FRAME, struct.pack("<I", args.frame_ms), slot=args.slot, output=args.output, layer=args.layer)
             if client.pixel_snapshot:
-                rgba = args.layer is not None and client.program_state(device=args.device, layer=args.layer).get('pixel_format') == 'rgba8-premul'
+                rgba = args.layer is not None and client.program_state(output=args.output, layer=args.layer).get('pixel_format') == 'rgba8-premul'
                 stride = 4 if rgba else 3
                 colors = [tuple(client.pixel_snapshot[index:index+stride])
                           for index in range(0, min(5*stride, len(client.pixel_snapshot)), stride)]
                 print(f"{'RGBA' if rgba else 'RGB'} snapshot: {len(client.pixel_snapshot)//stride} pixels; first five {colors}", file=sys.stderr)
         elif args.status or args.module is None:
-            reply = client.command(STATUS, slot=args.slot, device=args.device, layer=args.layer)
+            reply = client.command(STATUS, slot=args.slot, output=args.output, layer=args.layer)
         else:
-            reply = client.command(PLAY, slot=args.slot, device=args.device, layer=args.layer)
+            reply = client.command(PLAY, slot=args.slot, output=args.output, layer=args.layer)
         print(f"Status {reply.code}, result {reply.value}: {reply.message}", file=sys.stderr)
         return 0 if reply.code == 0 else 1
     except (OSError, ValueError, ProtocolError, ImportError) as error:

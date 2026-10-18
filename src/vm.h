@@ -28,7 +28,7 @@ typedef struct VmInstance {
     void *transport;
     PixelBuffer *target; // Assigned contribution dimensions; no hardware access in control_step.
     PixelBuffer *output; // Optional native presentation destination.
-    char slot[33], device[33];
+    char slot[33], output_id[33];
     char layer[OBJECT_NAME_LIMIT+1];
     uint32_t generation;
     Control control;

@@ -1,9 +1,9 @@
 {
-  "schema": "lightvm.scene",
+  "schema": "lightvm.composition",
   "layers": [
     {
       "id": "bg",
-      "procedure": "rainbow",
+      "program": "rainbow",
       "settings": {
         "duration": 3.3,
         "random_color": false
@@ -11,7 +11,7 @@
     },
     {
       "id": "stars",
-      "procedure": "stars",
+      "program": "stars",
       "settings": {
         "capacity": 20,
         "duration": 2.0,

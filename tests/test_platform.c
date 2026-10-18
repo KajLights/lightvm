@@ -250,7 +250,7 @@ static void network_transactions(void) {
 }
 
 #include "portable_contract.inc"
-#include "scene_contract.inc"
+#include "composition_contract.inc"
 #include "transition_contract.inc"
 
 static unsigned service_calls;
@@ -278,14 +278,14 @@ int main(void) {
     command(&other,CMD_STATUS,NULL,0); CHECK(other_reply.code==STATUS_OK && other_reply.id==42);
     command(&other,CMD_OBJECT_CANCEL,NULL,0); CHECK(other_reply.code==STATUS_BUSY && app.upload_owner==1);
     command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_BUSY);
-    session_destroy(&session); CHECK(!app_device(&app,NULL)->vm.uploading && !app.upload_owner);
+    session_destroy(&session); CHECK(!app_output(&app,NULL)->vm.uploading && !app.upload_owner);
     session_init(&session,&app,1,capture,&reply);
     command(&other,CMD_BEGIN,begin,sizeof(begin)); CHECK(other_reply.code==STATUS_OK && app.upload_owner==2);
-    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app_device(&app,NULL)->vm.uploading); clock_now=0;
+    clock_now=30000001u; app_tick(&app); CHECK(!app.upload_owner && !app_output(&app,NULL)->vm.uploading); clock_now=0;
     command(&session,CMD_RESET,NULL,0);
 
     char config[400], metadata[120];
-    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config\",\"devices\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}]}",PIXEL_COUNT);
+    int config_size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config\",\"outputs\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":%u,\"brightness_limit\":7}}]}",PIXEL_COUNT);
     int metadata_size=snprintf(metadata,sizeof(metadata),"{\"kind\":\"config\",\"size\":%d,\"crc32\":%lu}",config_size,(unsigned long)crc32_bytes((const uint8_t *)config,(size_t)config_size));
     command(&session,CMD_OBJECT_BEGIN,(const uint8_t *)metadata,(size_t)metadata_size);
     CHECK(reply.code==STATUS_OK);
@@ -333,10 +333,10 @@ int main(void) {
     CHECK(!memcmp(displayed, reply.snapshot, PIXEL_BYTES));
 
     command(&session,CMD_PLAY,NULL,0);CHECK(reply.code==STATUS_OK);
-    unsigned live_frames=app_device(&app,NULL)->vm.frame_count;uint32_t generation=app_device(&app,NULL)->vm.generation;
+    unsigned live_frames=app_output(&app,NULL)->vm.frame_count;uint32_t generation=app_output(&app,NULL)->vm.generation;
     app.service_io=advance_service;upload(&session, &reply, fault_lbc, sizeof(fault_lbc));app.service_io=NULL;
-    CHECK(reply.code == STATUS_LOAD && app_device(&app,NULL)->vm.ready); /* failed preparation retains old instance */
-    CHECK(app_device(&app,NULL)->vm.generation==generation&&app_device(&app,NULL)->vm.playing&&app_device(&app,NULL)->vm.frame_count>live_frames&&service_calls>0);
+    CHECK(reply.code == STATUS_LOAD && app_output(&app,NULL)->vm.ready); /* failed preparation retains old instance */
+    CHECK(app_output(&app,NULL)->vm.generation==generation&&app_output(&app,NULL)->vm.playing&&app_output(&app,NULL)->vm.frame_count>live_frames&&service_calls>0);
     // A native link-loss callback may arrive at a flash checkpoint; cancellation
     // waits for the serialized command to release its upload workspace.
     write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
@@ -344,9 +344,9 @@ int main(void) {
     app.service_io=disconnect_service;app.service_context=&app;
     uint8_t interrupted[260]={0};memcpy(interrupted+4,render_lbc,100);
     command(&session,CMD_CHUNK,interrupted,104);app.service_io=NULL;app.service_context=NULL;
-    CHECK(!app.upload_owner&&!app.upload.active&&app.upload.pin==-1&&!app_device(&app,NULL)->vm.uploading&&app_device(&app,NULL)->vm.ready);
-    vm_destroy(&app_device(&app,NULL)->vm);vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);
-    app_device(&app,NULL)->vm.memory=fault_lbc;app_device(&app,NULL)->vm.expected=sizeof(fault_lbc);CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
+    CHECK(!app.upload_owner&&!app.upload.active&&app.upload.pin==-1&&!app_output(&app,NULL)->vm.uploading&&app_output(&app,NULL)->vm.ready);
+    vm_destroy(&app_output(&app,NULL)->vm);vm_init(&app_output(&app,NULL)->vm,&app_output(&app,NULL)->pixels,capture,&reply);
+    app_output(&app,NULL)->vm.memory=fault_lbc;app_output(&app,NULL)->vm.expected=sizeof(fault_lbc);CHECK(!vm_load(&app_output(&app,NULL)->vm));app_output(&app,NULL)->vm.ready=true;
     command(&session, CMD_FRAME, delta, sizeof(delta));
     CHECK(reply.code == STATUS_EXECUTION);
     command(&session, CMD_RESET, NULL, 0);
@@ -361,10 +361,10 @@ int main(void) {
     // Control steps allocate only during preparation. The output buffer is
     // charged alongside interpreter/history/staging storage in the same budget.
     upload(&session,&reply,control_lbc,sizeof(control_lbc));
-    CHECK(reply.code==STATUS_OK && app_device(&app,NULL)->vm.control.enabled);
+    CHECK(reply.code==STATUS_OK && app_output(&app,NULL)->vm.control.enabled);
     reply.snapshot_size=0; write_u32(delta,1);
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_OK);
-    CHECK(app_device(&app,NULL)->vm.control.output_charge==PIXEL_BYTES);
+    CHECK(app_output(&app,NULL)->vm.control.output_charge==PIXEL_BYTES);
     unsigned control_allocations=allocations;
     deny_allocation=true;
     for (unsigned i=0;i<100;++i) {
@@ -373,26 +373,26 @@ int main(void) {
     }
     CHECK(allocations==control_allocations);
     command(&session,CMD_PLAY,NULL,0); CHECK(reply.code==STATUS_OK);
-    uint64_t before_time=app_device(&app,NULL)->vm.control.program_us;
+    uint64_t before_time=app_output(&app,NULL)->vm.control.program_us;
     clock_now+=1500123u;
     app_tick(&app);
-    CHECK(app_device(&app,NULL)->vm.control.program_us-before_time==1500123u);
+    CHECK(app_output(&app,NULL)->vm.control.program_us-before_time==1500123u);
     CHECK(displayed[0]==0 && displayed[1]==5 && displayed[2]==220);
-    uint32_t before_frame=app_device(&app,NULL)->vm.control.output_frame;
+    uint32_t before_frame=app_output(&app,NULL)->vm.control.output_frame;
     deny_show=true; reply.snapshot_size=0; write_u32(delta,7);
     command(&session,CMD_FRAME,delta,sizeof(delta));
-    CHECK(reply.code==STATUS_EXECUTION && !app_device(&app,NULL)->vm.control.faulted && app_device(&app,NULL)->vm.playing);
-    CHECK(app_device(&app,NULL)->vm.control.output_frame==before_frame);
-    CHECK(displayed[2]==220 && app_device(&app,NULL)->pixels.rgb[2]==220);
-    CHECK(app_device(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
+    CHECK(reply.code==STATUS_EXECUTION && !app_output(&app,NULL)->vm.control.faulted && app_output(&app,NULL)->vm.playing);
+    CHECK(app_output(&app,NULL)->vm.control.output_frame==before_frame);
+    CHECK(displayed[2]==220 && app_output(&app,NULL)->pixels.rgb[2]==220);
+    CHECK(app_output(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
     deny_show=false; deny_allocation=false;
     command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==0);
     // Allocation failure during control preparation leaves management usable.
-    vm_init(&app_device(&app,NULL)->vm,&app_device(&app,NULL)->pixels,capture,&reply);app_device(&app,NULL)->vm.memory=control_lbc;app_device(&app,NULL)->vm.expected=sizeof(control_lbc);
-    CHECK(!vm_load(&app_device(&app,NULL)->vm));app_device(&app,NULL)->vm.ready=true;
+    vm_init(&app_output(&app,NULL)->vm,&app_output(&app,NULL)->pixels,capture,&reply);app_output(&app,NULL)->vm.memory=control_lbc;app_output(&app,NULL)->vm.expected=sizeof(control_lbc);
+    CHECK(!vm_load(&app_output(&app,NULL)->vm));app_output(&app,NULL)->vm.ready=true;
     deny_allocation=true; reply.snapshot_size=0;
     command(&session,CMD_FRAME,delta,sizeof(delta)); CHECK(reply.code==STATUS_EXECUTION);
-    CHECK(app_device(&app,NULL)->vm.control.output_charge==0);
+    CHECK(app_output(&app,NULL)->vm.control.output_charge==0);
     deny_allocation=false;
     // Admission also rejects an output reservation when the aggregate budget
     // is already occupied; it does not raise the limit or lose that accounting.
@@ -409,8 +409,8 @@ int main(void) {
     // Two independently owned buffers/instances exercise the future slot boundary.
     PixelBuffer first={0}, second={0};
     PixelConfig first_config={16,3,255,"GRB"}, second_config={16,7,255,"RGB"};
-    CHECK(pixels_init(&first,&first_config,device_type("ws2812b")));
-    CHECK(pixels_init(&second,&second_config,device_type("ws2812b")));
+    CHECK(pixels_init(&first,&first_config,output_type("ws2812b")));
+    CHECK(pixels_init(&second,&second_config,output_type("ws2812b")));
     CHECK(first.rgb!=second.rgb && first.driver!=second.driver);
     static VmInstance one,two;
     Capture first_reply={.marker=0x12345678u}, second_reply={.marker=0x12345678u};
@@ -491,12 +491,12 @@ int main(void) {
     char *pin=strstr((char *)app.staging,"GP16"); CHECK(pin); pin[3]='7';
     app.expected=(uint32_t)config_size; app.object_kind=1; app.staged=true; app.upload_owner=1;
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));
-    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app_device(&app,NULL)->pixels.driver && !app_device(&app,NULL)->vm.target);
+    CHECK(reply.code==STATUS_CONFIG && app.revision==1 && !app_output(&app,NULL)->pixels.driver && !app_output(&app,NULL)->vm.target);
     CHECK(strstr(reply.message,"initialization failed"));
     session_destroy(&session); app_destroy(&app);
     network_transactions();
     portable_contract();
-    scene_contract();
+    composition_contract();
     transition_contract();
     return 0;
 }

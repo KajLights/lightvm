@@ -1,7 +1,7 @@
 # Optional plain WebSocket management
 
 `LIGHTVM_WEBSOCKET` adds an RFC 6455 server at
-`ws://<device>:<http-port>/api/v1/ws`. It defaults **OFF**, requires
+`ws://<controller>:<http-port>/api/v1/ws`. It defaults **OFF**, requires
 `LIGHTVM_HTTP=ON`, and uses the existing HTTP listener, enable setting, and port.
 Embedded builds also require `LIGHTVM_WIFI=ON`. USB, HTTP commands, discovery,
 and WebSocket clients share the serialized engine and may run concurrently.
@@ -12,8 +12,8 @@ This module provides plain `ws://` only, with the same trusted-LAN access policy
 as HTTP: no authentication or encryption. It accepts browser origins; clients
 still need any local-network permission their browser requires. An HTTPS-hosted
 editor must satisfy that browser's mixed-content/local-network rules. The editor
-opens HTTP to read the device identity and capabilities, then selects WebSocket
-when `websocket_supported` is true. It verifies the device and boot identity again
+opens HTTP to read the controller identity and capabilities, then selects WebSocket
+when `websocket_supported` is true. It verifies the controller and boot identity again
 over WebSocket and closes the bootstrap HTTP session before attaching the path.
 All subsequent commands, including fader updates, use that socket. Firmware
 without the module keeps HTTP. An advertised WebSocket that cannot connect
@@ -114,7 +114,7 @@ RAM reservations. All ESP32 profiles fit the current app partition; C6 has rough
 44 KiB remaining in the measured WebSocket build.
 
 This is a build-size comparison, not a hardware latency or peak-heap benchmark.
-Firmware was cross-compiled without flashing a device.
+Firmware was cross-compiled without flashing a controller.
 
 ## Verification
 

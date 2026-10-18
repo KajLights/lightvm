@@ -3,10 +3,10 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Compiler } from './compiler';
-import { DeviceService } from './device-service';
+import { ControllerService } from './controller-service';
 import { Develop } from './Develop';
 import { RuntimeContext } from './runtime';
-import { createAppStore, deviceActions, editorActions } from './store';
+import { createAppStore, controllerActions, editorActions } from './store';
 import type { Description, ProgramState } from './types';
 import type { LightVMClient } from '../protocol.mjs';
 import originalRainbow from '../../examples/animations/rainbow.py?raw';
@@ -16,25 +16,56 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.restoreAllMocks(); });
 
 function workspace() {
   const store = createAppStore();
-  const compiler = new Compiler(store), devices = new DeviceService(store);
+  const compiler = new Compiler(store), controllers = new ControllerService(store);
   vi.spyOn(compiler, 'start').mockImplementation(() => {});
-  return { store, compiler, devices, show: () => render(
-    <Provider store={store}><MemoryRouter><RuntimeContext.Provider value={{ compiler, devices }}>
+  return { store, compiler, controllers, show: () => render(
+    <Provider store={store}><MemoryRouter><RuntimeContext.Provider value={{ compiler, controllers }}>
       <Develop active />
     </RuntimeContext.Provider></MemoryRouter></Provider>,
   ) };
 }
 
 describe('editor examples and playback status', () => {
-  it('saves and selects a Python transition under its recallable device name', async () => {
-    const { store, compiler, devices, show } = workspace();
-    const description = { device_id: 'pico', boot_id: 'boot', version: '1.0.0', transition_programs: true,
+  it('routes playback controls to the reported output, slot and layer', async () => {
+    const { store, controllers, show } = workspace();
+    const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0' } as Description;
+    const client = { closed: false, transport: { label: 'USB' }, manage: vi.fn(async () => {}) };
+    controllers.paths.attach('usb', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+    vi.spyOn(controllers, 'readProgramState').mockResolvedValue();
+    store.dispatch(controllerActions.programState({ output: 'second', slot: 'A', layer: 'stars', generation: 7,
+      paused: false, faulted: false, manifest: { schema: 'lightvm.program', profile: 'animation', compiler_version: '1.0.0', requires: '1.0.0', pixels: { format: 'rgba8-premul' }, settings: [] } }));
+    show();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Pause' })); });
+    expect(client.manage).toHaveBeenCalledWith('program_pause', { output: 'second', slot: 'A', layer: 'stars', expected_generation: 7 });
+  });
+
+  it('activates a stored animation on the selected output', async () => {
+    const { store, controllers, show } = workspace();
+    const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0', storage_available: true } as Description;
+    const client = { closed: false, transport: { label: 'USB' }, manage: vi.fn(async () => {}) };
+    controllers.paths.attach('usb', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+    vi.spyOn(controllers, 'readProgramState').mockResolvedValue();
+    store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [
+      { id: 'first', type: 'ws2812b', config: { pin: 'GP16', count: 5 } },
+      { id: 'second', type: 'ws2812b', config: { pin: 'GP17', count: 5 } },
+    ] }, revision: 1, savedRevision: 1 }));
+    store.dispatch(controllerActions.outputSelected('second'));
+    store.dispatch(controllerActions.programs([{ name: 'color', type: 'animation', size: 100, crc32: 1 }]));
+    show();
+    fireEvent.change(screen.getByLabelText('Stored compiled program'), { target: { value: 'animation:color' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Run stored program' })); });
+    expect(client.manage).toHaveBeenCalledWith('program_activate', { name: 'color', output: 'second' });
+  });
+
+  it('saves and selects a Python transition under its recallable controller name', async () => {
+    const { store, compiler, controllers, show } = workspace();
+    const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0', transition_programs: true,
       module_limit: 32768 } as Description;
-    const client = { closed: false, transport: { label: 'HTTP' }, saveProcedure: vi.fn(async () => {}),
+    const client = { closed: false, transport: { label: 'HTTP' }, saveProgram: vi.fn(async () => {}),
       selectTransition: vi.fn(async () => {}) };
-    devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
-    vi.spyOn(devices, 'readProcedures').mockResolvedValue();
-    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
+    controllers.paths.attach('http', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+    vi.spyOn(controllers, 'readPrograms').mockResolvedValue();
+    store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [
       { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 200 } },
     ] }, revision: 1, savedRevision: 1 }));
     store.dispatch(editorActions.edited({ source: crossfade, filename: 'crossfade.py' }));
@@ -46,7 +77,7 @@ describe('editor examples and playback status', () => {
     fireEvent.change(screen.getByLabelText('Stored transition name'), { target: { value: 'gentle_fade' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save and select transition →' }));
     await act(async () => {});
-    expect(client.saveProcedure).toHaveBeenCalledWith('gentle_fade', new Uint8Array([1, 2]));
+    expect(client.saveProgram).toHaveBeenCalledWith('gentle_fade', new Uint8Array([1, 2]));
     expect(client.selectTransition).toHaveBeenCalledWith('gentle_fade', 'lights', { settings: {} });
   });
   it('identifies the default and reloads the single Rainbow example from its canonical source', () => {
@@ -70,12 +101,12 @@ describe('editor examples and playback status', () => {
 
   it('explains a newer minimum release while keeping editing and browser saves available', () => {
     const { store, show } = workspace();
-    const description = { device_id: 'pico', version: '1.1.0' } as Description;
-    store.dispatch(deviceActions.connections({ paths: [{ key: 'http', label: 'HTTP' }], selectedPath: 'http', description }));
+    const description = { controller_id: 'pico', version: '1.1.0' } as Description;
+    store.dispatch(controllerActions.connections({ paths: [{ key: 'http', label: 'HTTP' }], selectedPath: 'http', description }));
     store.dispatch(editorActions.compiled({ revision: 0, bytes: 100,
       manifest: { compiler_version: '1.5.0', requires: '1.2', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [] }, diagnostics: [] }));
     show();
-    expect(screen.getByText(/Requires LightVM 1.2 within major 1; device runs 1.1.0/)).toBeInTheDocument();
+    expect(screen.getByText(/Requires LightVM 1.2 within major 1; controller runs 1.1.0/)).toBeInTheDocument();
     expect(document.querySelector('#upload')).toBeDisabled();
     expect(screen.getByLabelText('Animation Python source')).toBeEnabled();
     fireEvent.change(screen.getByLabelText('Animation name'), { target: { value: 'Future animation' } });
@@ -83,21 +114,21 @@ describe('editor examples and playback status', () => {
   });
 
   it('polls playback without replacing the edited draft settings with a running program', async () => {
-    const { store, devices, show } = workspace();
-    const description = { device_id: 'pico', boot_id: 'boot', board: 'pico_w', active_revision: 0,
+    const { store, controllers, show } = workspace();
+    const description = { controller_id: 'pico', boot_id: 'boot', board: 'pico_w', active_revision: 0,
       saved_revision: 0, catalog_revision: 0, network_revision: 0 } as Description;
     const running: ProgramState = { generation: 1, slot: 'A', paused: false,
       faulted: false, render_count: 0, settings_values: { duration: 60 },
       manifest: { compiler_version: '1.0.0', requires: '1.0.0', schema: 'lightvm.program', profile: 'animation', pixels: { format: 'rgba8-premul' }, settings: [{ name: 'duration', type: 'float' }] } };
     const response = vi.fn().mockResolvedValue({ ...running, render_count: 3 });
     const client = { closed: false, transport: { label: 'HTTP' }, describe: vi.fn().mockResolvedValue(description), json: response } as unknown as LightVMClient;
-    devices.paths.attach('http', client, description); devices.syncPaths(description);
-    store.dispatch(deviceActions.programState(running));
+    controllers.paths.attach('http', client, description); controllers.syncPaths(description);
+    store.dispatch(controllerActions.programState(running));
     store.dispatch(editorActions.compiled({ revision: 0, bytes: 100, manifest: running.manifest, diagnostics: [] })); show();
     fireEvent.click(screen.getByLabelText('Override duration'));
     fireEvent.change(screen.getByLabelText('duration'), { target: { value: '3' } });
 
-    await act(async () => { await devices.poll(); });
+    await act(async () => { await controllers.poll(); });
     expect(response).toHaveBeenCalledWith('program_state');
     expect(document.querySelector('#playback-state')).toHaveTextContent('Running');
     expect(screen.getByRole('button', { name: /^Pause$/ })).toBeEnabled();
@@ -105,7 +136,7 @@ describe('editor examples and playback status', () => {
     expect(screen.getByLabelText('duration')).toHaveValue(3);
 
     response.mockResolvedValue({ ...running, render_count: 3, paused: true });
-    await act(async () => { await devices.poll(); });
+    await act(async () => { await controllers.poll(); });
     expect(document.querySelector('#playback-state')).toHaveTextContent('Paused');
     expect(screen.getByRole('button', { name: /^Pause$/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /^Resume$/ })).toBeEnabled();
@@ -113,24 +144,24 @@ describe('editor examples and playback status', () => {
     expect(screen.getByLabelText('duration')).toHaveValue(3);
 
     response.mockResolvedValue({ ...running, generation: 2, settings_values: { duration: 20 } });
-    await act(async () => { await devices.poll(); });
+    await act(async () => { await controllers.poll(); });
     expect(screen.getByLabelText('duration')).toHaveValue(3);
     expect(document.querySelector('#playback-state')).toHaveTextContent('Running');
   });
 });
 
-describe('typed device storage', () => {
+describe('typed controller storage', () => {
   it('distinguishes same-name programs and deletes only the selected type', async () => {
-    const { store, devices, show } = workspace();
-    const description = { device_id: 'pico', boot_id: 'boot', version: '1.0.0',
+    const { store, controllers, show } = workspace();
+    const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0',
       module_limit: 32768, storage_bytes: 1048576, free_bytes: 524288 } as Description;
-    const client = { closed: false, transport: { label: 'HTTP' }, deleteProcedure: vi.fn(async () => {}) };
-    devices.paths.attach('http', client as unknown as LightVMClient, description); devices.syncPaths(description);
-    vi.spyOn(devices, 'readProcedures').mockResolvedValue();
-    store.dispatch(deviceActions.configuration({ config: { schema: 'lightvm.config', devices: [
+    const client = { closed: false, transport: { label: 'HTTP' }, deleteProgram: vi.fn(async () => {}) };
+    controllers.paths.attach('http', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+    vi.spyOn(controllers, 'readPrograms').mockResolvedValue();
+    store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [
       { id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 5 } },
     ] }, revision: 1, savedRevision: 1 }));
-    store.dispatch(deviceActions.procedures([
+    store.dispatch(controllerActions.programs([
       { name: 'wipe', type: 'animation', profile: 'animation', size: 500, crc32: 1 },
       { name: 'wipe', type: 'transition', profile: 'transition', size: 600, crc32: 2 },
     ]));
@@ -141,6 +172,6 @@ describe('typed device storage', () => {
     fireEvent.change(screen.getByLabelText('Stored compiled program'), { target: { value: 'transition:wipe' } });
     fireEvent.click(screen.getByRole('button', { name: 'Delete stored program' }));
     await act(async () => {});
-    expect(client.deleteProcedure).toHaveBeenCalledWith('wipe', 'transition');
+    expect(client.deleteProgram).toHaveBeenCalledWith('wipe', 'transition');
   });
 });

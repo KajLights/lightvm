@@ -251,7 +251,7 @@ def draw(ctx,runtime,pixels):
         self.assertEqual(self.client.status_fields()['code_storage'], 'flash')
 
     def test_stored_activation_settings_and_materialization(self):
-        self.client.save_procedure('paint',sample('color'))
+        self.client.save_program('paint',sample('color'))
         settings={'random_color':False,'color':0x123456}
         self.client.activate('paint',settings=settings)
         before=self.client.snapshot()[1];self.assertEqual(before,bytes([0x12,0x34,0x56])*5)
@@ -259,7 +259,7 @@ def draw(ctx,runtime,pixels):
         with self.assertRaises(ProtocolError):self.client.activate('paint',settings={'seed':-1})
         self.assertEqual(self.client.program_state()['generation'],generation)
         self.assertEqual(self.client.snapshot()[1],before)
-        self.client.save_procedure('other',sample('pattern'))
-        self.client.delete_procedure('other')
+        self.client.save_program('other',sample('pattern'))
+        self.client.delete_program('other')
         self.reset()
         self.assertEqual(self.frame(),before)

@@ -75,9 +75,9 @@ class BootSequenceTests(unittest.TestCase):
     def test_trigger_preserves_saved_startup_and_applies_recovery_policy(self):
         self.require_detector()
         module = color()
-        self.client.save_procedure("startup", module)
-        config = {"schema": "lightvm.config", "devices": [
-            {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}, "startup": {"procedure": "startup"}}
+        self.client.save_program("startup", module)
+        config = {"schema": "lightvm.config", "outputs": [
+            {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}, "startup": {"program": "startup"}}
         ]}
         self.client.configure(config, save=True)
         snapshot = self.storage.read_bytes()
@@ -86,11 +86,11 @@ class BootSequenceTests(unittest.TestCase):
             description = self.client.describe()
             self.assertEqual(description["boot_sequence"]["count"], count)
             recovery = description.get("recovery_supported", False) and count >= 3
-            self.assertEqual(description["active_procedure"], "" if recovery else "startup")
+            self.assertEqual(description["active_program"], "" if recovery else "startup")
             self.assertEqual(description["boot_error"], "")
             self.assertEqual(self.client.status_fields()["mode"], "idle" if recovery else "bytecode")
             self.assertEqual(self.client.get_config(saved=True), config)
-            self.assertEqual(self.client.get_procedure("startup"), module)
+            self.assertEqual(self.client.get_program("startup"), module)
             self.assertEqual(self.storage.read_bytes(), snapshot)
 
     def test_missing_or_invalid_metadata_keeps_management_available(self):

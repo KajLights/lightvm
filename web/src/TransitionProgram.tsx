@@ -9,25 +9,25 @@ import type { Manifest, TransitionState } from './types';
 export function TransitionProgram({ state, busy, onApply, id = 'transition-program' }: {
   state: TransitionState | null; busy: boolean;
   id?: string;
-  onApply: (procedure: string, settings: SettingsValues) => Promise<void>;
+  onApply: (program: string, settings: SettingsValues) => Promise<void>;
 }) {
-  const { devices } = useRuntime(), client = devices.client;
-  const device = useAppSelector(snapshot => snapshot.device);
-  const [procedure, setProcedure] = useState(state?.procedure ?? '');
+  const { controllers } = useRuntime(), client = controllers.client;
+  const controller = useAppSelector(snapshot => snapshot.controller);
+  const [program, setProgram] = useState(state?.program ?? '');
   const [settings, setSettings] = useState<SettingsValues>({});
   const [metadata, setMetadata] = useState<{ key: string; manifest?: Manifest; error?: string } | null>(null);
   const [retry, setRetry] = useState(0);
   const observed = useRef<string | null>(null);
-  const programs = device.procedures.filter(program => (program.type ?? program.profile) === 'transition');
-  const selected = programs.find(program => program.name === procedure);
+  const programs = controller.programs.filter(program => (program.type ?? program.profile) === 'transition');
+  const selected = programs.find(item => item.name === program);
   const key = selected ? JSON.stringify([selected.name, selected.size, selected.crc32]) : '';
-  const current = state ? JSON.stringify([state.procedure ?? '', state.program_crc32]) : null;
+  const current = state ? JSON.stringify([state.program ?? '', state.program_crc32]) : null;
 
   useEffect(() => {
     if (current === null || current === observed.current) return;
     observed.current = current;
-    if (procedure !== (state?.procedure ?? '')) { setProcedure(state?.procedure ?? ''); setSettings({}); }
-  }, [current, state?.procedure]);
+    if (program !== (state?.program ?? '')) { setProgram(state?.program ?? ''); setSettings({}); }
+  }, [current, state?.program]);
 
   useEffect(() => {
     let active = true;
@@ -36,8 +36,8 @@ export function TransitionProgram({ state, busy, onApply, id = 'transition-progr
       const program = selected;
       void (async () => {
         try {
-          const bytes = await client.getProcedure(program.name, 'transition');
-          if (bytes.length !== program.size || crc32(bytes) !== program.crc32) throw new Error('The stored transition changed. Refresh the device catalogue and try again.');
+          const bytes = await client.getProgram(program.name, 'transition');
+          if (bytes.length !== program.size || crc32(bytes) !== program.crc32) throw new Error('The stored transition changed. Refresh the controller catalogue and try again.');
           const manifest = programManifest(bytes);
           if (manifest.profile !== 'transition') throw new Error('Choose a stored transition program.');
           if (active) setMetadata({ key, manifest });
@@ -56,10 +56,10 @@ export function TransitionProgram({ state, busy, onApply, id = 'transition-progr
 
   return <div className="transition-program">
     <label htmlFor={id}>Transition program</label>
-    <select id={id} value={procedure} disabled={busy || !device.description?.transition_programs || !programs.length}
-      onChange={event => { setProcedure(event.target.value); setSettings({}); }}>
+    <select id={id} value={program} disabled={busy || !controller.description?.transition_programs || !programs.length}
+      onChange={event => { setProgram(event.target.value); setSettings({}); }}>
       <option value="">Choose a deployed transition</option>
-      {procedure && !selected && <option value={procedure} disabled>{procedure} ({state?.procedure === procedure ? 'currently running' : 'unavailable'})</option>}
+      {program && !selected && <option value={program} disabled>{program} ({state?.program === program ? 'currently running' : 'unavailable'})</option>}
       {programs.map(program => <option key={program.name}>{program.name}</option>)}
     </select>
     {selected && !metadata && <p className="helper" role="status">Loading transition settings…</p>}
@@ -67,9 +67,9 @@ export function TransitionProgram({ state, busy, onApply, id = 'transition-progr
     {manifest && manifest.settings.length > 0 && <p className="helper">Unchecked settings use the program defaults. Apply to use your changes.</p>}
     {(error || validation) && <p className="helper" role="alert">{error || validation}</p>}
     {error && <button className="quiet" disabled={busy} onClick={() => setRetry(value => value + 1)}>Retry settings</button>}
-    <button className="secondary full" disabled={busy || !selected || !manifest || Boolean(validation) || !device.description?.transition_programs}
-      onClick={() => { if (manifest) void onApply(procedure, settingsFor(manifest, settings)); }}>Apply transition</button>
-    {!programs.length && <p className="helper">Save a transition to the device in Develop to choose it here.</p>}
-    {state && <p className="helper">Active transition: {state.procedure || state.effect}</p>}
+    <button className="secondary full" disabled={busy || !selected || !manifest || Boolean(validation) || !controller.description?.transition_programs}
+      onClick={() => { if (manifest) void onApply(program, settingsFor(manifest, settings)); }}>Apply transition</button>
+    {!programs.length && <p className="helper">Save a transition to the controller in Develop to choose it here.</p>}
+    {state && <p className="helper">Active transition: {state.program || state.effect}</p>}
   </div>;
 }

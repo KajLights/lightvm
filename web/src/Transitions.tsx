@@ -6,19 +6,19 @@ import { TransitionProgram } from './TransitionProgram';
 import type { TransitionState } from './types';
 
 export function TransitionControls() {
-  const { devices } = useRuntime();
-  const device = useAppSelector(state => state.device), operation = useAppSelector(state => state.activity.operation);
+  const { controllers } = useRuntime();
+  const controller = useAppSelector(state => state.controller), operation = useAppSelector(state => state.activity.operation);
   const [state, setState] = useState<TransitionState | null>(null);
   const [progress, setProgress] = useState(0), [duration, setDuration] = useState(2000);
   const [presets, setPresets] = useState({ A: '', B: '' });
-  const output = device.selectedOutput, client = devices.client;
-  const supported = Boolean(device.description?.ab_transitions), connected = Boolean(device.selectedPath && output);
+  const output = controller.selectedOutput, client = controllers.client;
+  const supported = Boolean(controller.description?.ab_transitions), connected = Boolean(controller.selectedPath && output);
   const sliderTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined), editing = useRef(false);
   useEffect(() => {
     let active = true, polling = false;
     setState(null); setProgress(0); setPresets({ A: '', B: '' });
     async function read() {
-      if (!active || !client || !supported || !output || polling || devices.snapshot.activity.operation) return;
+      if (!active || !client || !supported || !output || polling || controllers.snapshot.activity.operation) return;
       polling = true;
       try {
         const next = await client.transition(output) as TransitionState;
@@ -28,16 +28,16 @@ export function TransitionControls() {
     }
     void read(); const timer = setInterval(() => void read(), 500);
     return () => { active = false; clearInterval(timer); clearTimeout(sliderTimer.current); editing.current = false; };
-  }, [client, output, supported, devices]);
+  }, [client, output, supported, controllers]);
   if (!supported) return null;
   const busy = Boolean(operation) || !connected;
   async function control(label: string, action: (connection: LightVMClient) => Promise<unknown>) {
     clearTimeout(sliderTimer.current); editing.current = false;
-    await devices.run(label, async current => {
-      const connection = devices.require(current);
+    await controllers.run(label, async current => {
+      const connection = controllers.require(current);
       await action(connection);
       const next = await connection.transition(output) as TransitionState;
-      if (devices.client === connection && devices.snapshot.device.selectedOutput === output) {
+      if (controllers.client === connection && controllers.snapshot.controller.selectedOutput === output) {
         setState(next); setProgress(next.progress);
       }
     });
@@ -50,18 +50,18 @@ export function TransitionControls() {
   }
   return <section className="card transition-panel" aria-label="A/B transition">
     <div className="card-heading"><h2>A/B transition</h2></div>
-    <p className="helper">Prepare either scene while the other is visible. Endpoints retain both scenes and their animation state.</p>
+    <p className="helper">Prepare either composition while the other is visible. Endpoints retain both compositions and their animation state.</p>
     <div className="transition-controls-grid"><div>
     <div className="button-pair">{(['A', 'B'] as const).map(slot => <div key={slot}>
-      <label htmlFor={'transition-slot-' + slot}>Scene {slot}</label>
+      <label htmlFor={'transition-slot-' + slot}>Composition {slot}</label>
       <select id={'transition-slot-' + slot} value={presets[slot]} onChange={event => setPresets({ ...presets, [slot]: event.target.value })}>
-        <option value="">Choose a device preset</option>{device.presets.map(preset => <option key={preset.name}>{preset.name}</option>)}
+        <option value="">Choose a controller preset</option>{controller.presets.map(preset => <option key={preset.name}>{preset.name}</option>)}
       </select>
-      <button className="secondary full" disabled={busy || !presets[slot]} onClick={() => void control('Preparing scene ' + slot, connection => connection.activatePreset(presets[slot], output, slot))}>Load {slot}</button>
-      <p className="helper">{state?.[slot]?.active ? state[slot].layers?.length ? state[slot].layers!.length + (state[slot].layers!.length === 1 ? ' layer ready' : ' layers ready') : 'Empty scene' : 'Empty slot'}</p>
+      <button className="secondary full" disabled={busy || !presets[slot]} onClick={() => void control('Preparing composition ' + slot, connection => connection.activatePreset(presets[slot], output, slot))}>Load {slot}</button>
+      <p className="helper">{state?.[slot]?.active ? state[slot].layers?.length ? state[slot].layers!.length + (state[slot].layers!.length === 1 ? ' layer ready' : ' layers ready') : 'Empty composition' : 'Empty slot'}</p>
     </div>)}</div>
-    <TransitionProgram key={[device.selectedPath, output, device.description?.boot_id].join(':')} state={state} busy={busy || !state}
-      onApply={(procedure, settings) => control('Selecting transition', connection => connection.selectTransition(procedure, output, { settings }))} />
+    <TransitionProgram key={[controller.selectedPath, output, controller.description?.boot_id].join(':')} state={state} busy={busy || !state}
+      onApply={(program, settings) => control('Selecting transition', connection => connection.selectTransition(program, output, { settings }))} />
     </div><div>
     <label htmlFor="transition-progress">Progress · {progress.toFixed(1)}%</label>
     <input id="transition-progress" type="range" min="0" max="100" step="0.1" value={progress} disabled={busy} onChange={event => slide(Number(event.target.value))} />

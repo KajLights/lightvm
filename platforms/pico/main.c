@@ -50,8 +50,8 @@ int main(void) {
         int byte = getchar_timeout_us(1000);
         if (byte == PICO_ERROR_TIMEOUT)
             continue;
-        // Bound ingress work, but do not render every device between individual
-        // bytes of a command. A busy multi-device controller must remain usable.
+        // Bound ingress work, but do not render every output between individual
+        // bytes of a command. A busy multi-output controller must remain usable.
         uint8_t input[256];size_t size=0;
         do {
             input[size++]=(uint8_t)byte;

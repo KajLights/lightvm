@@ -72,7 +72,7 @@ void control_presented(VmInstance *a,bool success) {
 static void show_frame(VmInstance *a,bool asynchronous) {
     uint64_t show_started=platform_time_us();
     bool success;
-    // Each device presents its own complete RGB frame and retains an
+    // Each output presents its own complete RGB frame and retains an
     // independent committed contribution.
     if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
     const uint8_t *frame=control_output_frame(a);

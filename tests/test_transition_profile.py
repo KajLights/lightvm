@@ -19,14 +19,14 @@ class TransitionProfileTests(unittest.TestCase):
         self.receiver = os.environ.get('LIGHTVM_RECEIVER', str(ROOT / 'build/ab-host/lightvm'))
         self.connect()
         self.count = 67
-        self.client.configure({'schema': 'lightvm.config', 'devices': [
+        self.client.configure({'schema': 'lightvm.config', 'outputs': [
             {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': self.count}}]})
         for name, color in (('a', '200,100,20'), ('b', '20,40,220')):
             self.save(name, 'from lightvm import profile,render,rgb\nprofile("animation")\n'
                       '@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(' + color + '))\n')
         for name in ('crossfade', 'wipe'):
             self.save(name, (ROOT / 'examples/transitions' / (name + '.py')).read_text())
-        self.scenes()
+        self.compositions()
 
     def connect(self):
         self.client = Client(ProcessTransport(self.receiver, self.storage))
@@ -38,17 +38,17 @@ class TransitionProfileTests(unittest.TestCase):
     def save(self, name, source):
         result = compile_source(source)
         self.assertTrue(result.success, result.diagnostics)
-        self.client.save_procedure(name, result.bytecode)
+        self.client.save_program(name, result.bytecode)
         return result
 
-    def scenes(self):
+    def compositions(self):
         for slot, name in (('A', 'a'), ('B', 'b')):
-            self.client.configure_scene([{'id': 'base', 'procedure': name}], device='lights', slot=slot)
-        self.client.require_ok(self.client.command(STOP, device='lights'))
+            self.client.configure_composition([{'id': 'base', 'program': name}], output='lights', slot=slot)
+        self.client.require_ok(self.client.command(STOP, output='lights'))
 
     def frame(self, progress):
-        self.client.set_progress(progress, device='lights')
-        self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights'))
+        self.client.set_progress(progress, output='lights')
+        self.client.require_ok(self.client.command(FRAME, bytes(4), output='lights'))
         return bytes(self.client.pixel_snapshot)
 
     def test_libraries_compile_to_bounded_bulk_operations(self):
@@ -68,19 +68,19 @@ class TransitionProfileTests(unittest.TestCase):
             self.assertEqual(struct.unpack_from('<I', result.bytecode, 72)[0], 4)
 
     def test_crossfade_exact_endpoints_complementary_weights_and_no_white_paint(self):
-        state = self.client.select_transition('crossfade', device='lights')
-        self.assertEqual(state['procedure'], 'crossfade')
+        state = self.client.select_transition('crossfade', output='lights')
+        self.assertEqual(state['program'], 'crossfade')
         self.assertEqual(state['effect'], 'program')
         self.assertEqual((state['mask'], state['paint']), ('', ''))
         for p, rgb in ((0, (200,100,20)), (35, (137,79,90)), (100, (20,40,220)), (35, (137,79,90))):
             self.assertEqual(self.frame(p), bytes(rgb) * self.count)
-        self.client.configure_scene([{'id':'base','procedure':'a'}], device='lights', slot='B')
+        self.client.configure_composition([{'id':'base','program':'a'}], output='lights', slot='B')
         for p in (0.001, 1, 35, 49.999, 50, 99.999):
             self.assertEqual(self.frame(p), bytes((200,100,20)) * self.count)
 
     def test_wipe_direction_settings_and_seek_at_partial_chunks(self):
         for reverse in (False, True):
-            self.client.select_transition('wipe', settings={'reverse': reverse}, device='lights')
+            self.client.select_transition('wipe', settings={'reverse': reverse}, output='lights')
             for p in (0, 35, 100, 75, 35, 0):
                 n = int(p / 100 * self.count)
                 a, b = bytes((200,100,20)), bytes((20,40,220))
@@ -90,12 +90,12 @@ class TransitionProfileTests(unittest.TestCase):
     def test_wipe_separator_sprite_tracks_boundary_clips_and_seeks(self):
         for count in (1, 2, 67):
             self.count = count
-            self.client.configure({'schema': 'lightvm.config', 'devices': [
+            self.client.configure({'schema': 'lightvm.config', 'outputs': [
                 {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': count}}]})
-            self.scenes()
+            self.compositions()
             for reverse in (False, True):
-                self.client.select_transition('wipe', settings={'reverse': reverse, 'separator': True}, device='lights')
-                heap = self.client.status_fields(device='lights')['heap']
+                self.client.select_transition('wipe', settings={'reverse': reverse, 'separator': True}, output='lights')
+                heap = self.client.status_fields(output='lights')['heap']
                 for p in (0, 1, 35, 50, 75, 99, 100, 50, 35, 0):
                     n = int(p / 100 * count)
                     a, b = (200, 100, 20), (20, 40, 220)
@@ -106,7 +106,7 @@ class TransitionProfileTests(unittest.TestCase):
                             if 0 <= boundary+offset < count:
                                 expected[boundary+offset] = (intensity,) * 3
                     self.assertEqual(self.frame(p), bytes(c for pixel in expected for c in pixel))
-                self.assertEqual(self.client.status_fields(device='lights')['heap'], heap)
+                self.assertEqual(self.client.status_fields(output='lights')['heap'], heap)
 
     def test_separator_compilation_omits_immutable_default_style_reads(self):
         source=(ROOT/'examples/transitions/wipe.py').read_text()
@@ -121,7 +121,7 @@ class TransitionProfileTests(unittest.TestCase):
 
     def test_wipe_separator_colour_setting_preserves_endpoints_and_seeking(self):
         for reverse in (False, True):
-            self.client.select_transition('wipe', settings={'reverse': reverse, 'separator': True, 'color': 0xff6600}, device='lights')
+            self.client.select_transition('wipe', settings={'reverse': reverse, 'separator': True, 'color': 0xff6600}, output='lights')
             for p in (0, 35, 75, 100, 35):
                 n = int(p / 100 * self.count)
                 a, b = (200, 100, 20), (20, 40, 220)
@@ -145,44 +145,44 @@ class TransitionProfileTests(unittest.TestCase):
             self.assertIn('unknown context field or caller argument property', str(result.diagnostics))
 
     def test_opaque_layers_and_crossfades_have_identical_pixels(self):
-        self.client.configure({'schema': 'lightvm.config', 'devices': [
+        self.client.configure({'schema': 'lightvm.config', 'outputs': [
             {'id':name,'type':'ws2812b','config':{'pin':pin,'count':self.count}}
             for name,pin in (('lights','GP16'),('layers','GP17'))]})
-        self.client.configure_scene([{'id':'lower','procedure':'a'},{'id':'upper','procedure':'b'}],device='layers')
-        self.client.require_ok(self.client.command(STOP,device='layers'))
-        self.client.select_transition('crossfade',device='lights')
+        self.client.configure_composition([{'id':'lower','program':'a'},{'id':'upper','program':'b'}],output='layers')
+        self.client.require_ok(self.client.command(STOP,output='layers'))
+        self.client.select_transition('crossfade',output='lights')
         for opacity in (0,1,17,35,63,127,128,129,192,254,255):
-            self.client.layer_opacity('upper',opacity,device='layers')
-            self.client.require_ok(self.client.command(FRAME,bytes(4),device='layers'))
+            self.client.layer_opacity('upper',opacity,output='layers')
+            self.client.require_ok(self.client.command(FRAME,bytes(4),output='layers'))
             expected=bytes(self.client.pixel_snapshot)
             self.assertEqual(self.frame(opacity*100/255),expected)
 
     def test_flash_names_survive_restart_and_profiles_are_discoverable(self):
         self.client.save_config()
-        before = {p['name']: p for p in self.client.procedures()}
+        before = {p['name']: p for p in self.client.programs()}
         self.assertEqual(before['crossfade']['profile'], 'transition')
         self.assertEqual(before['a']['profile'], 'animation')
-        self.client.close(); self.connect(); self.scenes()
-        self.assertEqual(self.client.get_procedure('crossfade'), compile_source(
+        self.client.close(); self.connect(); self.compositions()
+        self.assertEqual(self.client.get_program('crossfade'), compile_source(
             (ROOT / 'examples/transitions/crossfade.py').read_text()).bytecode)
-        self.client.select_transition('crossfade', device='lights')
+        self.client.select_transition('crossfade', output='lights')
         self.assertEqual(self.frame(35), bytes((137,79,90)) * self.count)
 
     def test_failed_selection_and_wrong_profile_preserve_running_state(self):
-        self.client.select_transition('crossfade', device='lights')
+        self.client.select_transition('crossfade', output='lights')
         expected = self.frame(35)
-        self.client.run_transition(100, 5000, device='lights')
-        state = self.client.transition(device='lights')
+        self.client.run_transition(100, 5000, output='lights')
+        state = self.client.transition(output='lights')
         for name, settings in (('missing', None), ('a', None), ('wipe', {'reverse': 1}), ('wipe', {'missing': True})):
             with self.assertRaises(ProtocolError):
-                self.client.select_transition(name, settings=settings, device='lights')
-            after = self.client.transition(device='lights')
-            self.assertEqual(after['procedure'], 'crossfade')
+                self.client.select_transition(name, settings=settings, output='lights')
+            after = self.client.transition(output='lights')
+            self.assertEqual(after['program'], 'crossfade')
             self.assertEqual(after['revision'], state['revision'])
             self.assertEqual(after['driver']['assignment'], state['driver']['assignment'])
-        with self.assertRaises(ProtocolError): self.client.activate('wipe', device='lights')
-        with self.assertRaises(ProtocolError): self.client.configure_scene([{'id':'bad','procedure':'wipe'}], device='lights')
-        with self.assertRaises(ProtocolError): self.client.delete_procedure('crossfade')
+        with self.assertRaises(ProtocolError): self.client.activate('wipe', output='lights')
+        with self.assertRaises(ProtocolError): self.client.configure_composition([{'id':'bad','program':'wipe'}], output='lights')
+        with self.assertRaises(ProtocolError): self.client.delete_program('crossfade')
         self.assertEqual(self.frame(35), expected)
 
     def test_evaluation_uses_progress_and_restores_state_before_each_seek(self):
@@ -196,14 +196,14 @@ def draw(ctx,runtime,pixels):
  ctx.calls+=1
  pixels.fill(rgb(ctx.calls,int(runtime.progress*100.0),0))
 ''')
-        self.client.select_transition('seek', device='lights')
+        self.client.select_transition('seek', output='lights')
         for p in (35, 80, 35):
             self.assertEqual(self.frame(p), bytes((2,p,0)) * self.count)
         self.assertEqual(self.frame(0), bytes((200,100,20)) * self.count)
         self.assertEqual(self.frame(100), bytes((20,40,220)) * self.count)
-        heap = self.client.status_fields(device='lights')['heap']
+        heap = self.client.status_fields(output='lights')['heap']
         for _ in range(10): self.frame(35)
-        self.assertEqual(self.client.status_fields(device='lights')['heap'], heap)
+        self.assertEqual(self.client.status_fields(output='lights')['heap'], heap)
 
     def test_seek_restores_large_owned_payload_across_checkpoint_chunks(self):
         self.save('seek_array', '''from array import array
@@ -220,18 +220,18 @@ def draw(ctx,runtime,pixels):
  ctx.data[299]+=5
  pixels.fill(rgb(ctx.data[0],ctx.data[128],ctx.data[299]+int(runtime.progress*100.0)))
 ''')
-        self.client.select_transition('seek_array',device='lights')
+        self.client.select_transition('seek_array',output='lights')
         for p in (35,80,35,1,99,35):
             self.assertEqual(self.frame(p),bytes((2,13,10+p))*self.count)
 
     def test_replacing_a_stored_name_preserves_the_pinned_active_version(self):
-        self.client.select_transition('crossfade', device='lights')
-        state = self.client.transition(device='lights')
+        self.client.select_transition('crossfade', output='lights')
+        state = self.client.transition(output='lights')
         self.save('crossfade', (ROOT / 'examples/transitions/wipe.py').read_text())
         self.assertEqual(self.frame(35), bytes((137,79,90)) * self.count)
-        self.assertEqual(self.client.transition(device='lights')['program_crc32'], state['program_crc32'])
-        self.client.select_transition('crossfade', device='lights')
-        self.assertNotEqual(self.client.transition(device='lights')['program_crc32'], state['program_crc32'])
+        self.assertEqual(self.client.transition(output='lights')['program_crc32'], state['program_crc32'])
+        self.client.select_transition('crossfade', output='lights')
+        self.assertNotEqual(self.client.transition(output='lights')['program_crc32'], state['program_crc32'])
         n = int(.35 * self.count)
         self.assertEqual(self.frame(35), bytes((20,40,220))*n + bytes((200,100,20))*(self.count-n))
 
@@ -245,15 +245,15 @@ def draw(ctx,runtime,pixels):
  else:
   pixels.mix(runtime.progress)
 ''')
-        self.client.select_transition('fault', device='lights')
+        self.client.select_transition('fault', output='lights')
         expected = self.frame(35)
-        self.client.set_progress(75, device='lights')
-        with self.assertRaises(ProtocolError): self.client.require_ok(self.client.command(FRAME, bytes(4), device='lights'))
-        self.assertEqual(bytes(self.client.scene_snapshot(device='lights')[1]), expected)
-        self.client.select_transition('crossfade', device='lights')
+        self.client.set_progress(75, output='lights')
+        with self.assertRaises(ProtocolError): self.client.require_ok(self.client.command(FRAME, bytes(4), output='lights'))
+        self.assertEqual(bytes(self.client.composition_snapshot(output='lights')[1]), expected)
+        self.client.select_transition('crossfade', output='lights')
         self.assertEqual(self.frame(35), expected)
 
-    def test_progress_and_scene_access_are_profile_checked(self):
+    def test_progress_and_composition_access_are_profile_checked(self):
         source = (ROOT / 'examples/transitions/crossfade.py').read_text()
         self.assertFalse(compile_source(source, target={'version':'1.0.0'}).success)
         self.assertTrue(compile_source(source, target={'version':'1.0.0', 'transition_programs':True}).success)

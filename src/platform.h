@@ -13,8 +13,8 @@ typedef struct {
     const char *output;
 } PlatformInfo;
 const PlatformInfo *platform_info(void);
-// Stable native device identity and a fresh non-authentication boot nonce.
-void platform_identity(char *device, size_t device_capacity, char *boot, size_t boot_capacity);
+// Stable native controller identity and a fresh non-authentication boot nonce.
+void platform_identity(char *controller, size_t controller_capacity, char *boot, size_t boot_capacity);
 uint64_t platform_time_us(void); // Monotonic microseconds, including idle time.
 
 typedef struct { const char *name; int32_t gpio; } BoardPin;

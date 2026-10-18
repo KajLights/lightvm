@@ -121,8 +121,8 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
             weight=draw_opacity_float(a[1].f);
         }else if(a[1].u>1)return false;
         unsigned cursor=p->bulk?p->bulk:start,end=cursor+32;if(end>stop)end=stop;
-        const uint8_t *left=p->scene_frames[0],*right=p->scene_frames[1];
-        if(id==54){left=p->scene_frames[a[1].u];right=left;weight=0;}
+        const uint8_t *left=p->composition_frames[0],*right=p->composition_frames[1];
+        if(id==54){left=p->composition_frames[a[1].u];right=left;weight=0;}
         draw_composite_rgb(r->data+(size_t)cursor*4,4,left?left+(size_t)cursor*3:NULL,
                            right?right+(size_t)cursor*3:NULL,end-cursor,weight);
         more(p,end,stop);return true;

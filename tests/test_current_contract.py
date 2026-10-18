@@ -42,7 +42,7 @@ class CurrentContractTests(unittest.TestCase):
 
     def assert_rejected(self, candidate):
         with self.assertRaises(ProtocolError):
-            self.client.save_procedure('obsolete', candidate)
+            self.client.save_program('obsolete', candidate)
         self.assertEqual(self.client.program_state()['generation'], self.generation)
         self.client.require_ok(self.client.command(FRAME, bytes(4)))
         self.assertEqual(bytes(self.client.pixel_snapshot), bytes([37, 2, 3]) * 5)
@@ -69,7 +69,7 @@ class CurrentContractTests(unittest.TestCase):
             with self.subTest(required=required):
                 raw = manifest_variant(color(37), requires=required,
                                        compiler_version='1.25.7+development', notes={'future': True})
-                self.client.save_procedure('compatible', raw)
+                self.client.save_program('compatible', raw)
                 self.client.activate('compatible')
                 self.client.require_ok(self.client.command(FRAME, bytes(4)))
                 self.assertEqual(bytes(self.client.pixel_snapshot), bytes([37, 2, 3]) * 5)
@@ -92,7 +92,7 @@ class CurrentContractTests(unittest.TestCase):
             with self.assertRaises(ProtocolError): self.client.manage(op)
         self.assertEqual(self.client.command(5).code, 1)
         with self.assertRaises(ProtocolError):
-            self.client.manage('procedure_activate', name='missing', export='run')
+            self.client.manage('program_activate', name='missing', export='run')
         state = self.client.program_state()
         self.assertNotIn('values', state); self.assertNotIn('parameter_revision', state)
         description = self.client.describe()
@@ -112,19 +112,19 @@ class CurrentContractTests(unittest.TestCase):
         for source in sorted((ROOT / 'examples/animations').glob('*.py')):
             with self.subTest(example=source.stem):
                 raw = program(source.read_text())
-                self.client.clear_scene(device='lights')
-                self.client.save_procedure('example', raw)
-                self.client.activate('example', device='lights')
-                self.client.require_ok(self.client.command(STOP, device='lights'))
-                self.client.require_ok(self.client.command(FRAME, struct.pack('<I', 17), device='lights'))
+                self.client.clear_composition(output='lights')
+                self.client.save_program('example', raw)
+                self.client.activate('example', output='lights')
+                self.client.require_ok(self.client.command(STOP, output='lights'))
+                self.client.require_ok(self.client.command(FRAME, struct.pack('<I', 17), output='lights'))
                 self.assertEqual(len(self.client.pixel_snapshot), 60)
-                self.client.configure_scene([{'id':'effect','procedure':'example'}], device='lights')
-                self.client.require_ok(self.client.command(STOP, device='lights'))
-                self.client.require_ok(self.client.command(FRAME, struct.pack('<I', 17), device='lights'))
-                self.assertEqual(len(self.client.snapshot(device='lights', layer='effect')[1]), 80)
+                self.client.configure_composition([{'id':'effect','program':'example'}], output='lights')
+                self.client.require_ok(self.client.command(STOP, output='lights'))
+                self.client.require_ok(self.client.command(FRAME, struct.pack('<I', 17), output='lights'))
+                self.assertEqual(len(self.client.snapshot(output='lights', layer='effect')[1]), 80)
 
     def test_obsolete_directory_formats_are_preserved_in_either_bank(self):
-        self.client.save_procedure('seed', color())
+        self.client.save_program('seed', color())
         self.transport.close()
         original = self.storage.read_bytes()
         for version in (0, 2, 3):
@@ -146,7 +146,7 @@ class CurrentContractTests(unittest.TestCase):
                     self.client = Client(self.transport)
                     self.assertIn('reprovision', self.client.describe()['boot_error'])
                     self.assertFalse(self.client.describe()['storage_available'])
-                    with self.assertRaises(ProtocolError): self.client.save_procedure('new', color())
+                    with self.assertRaises(ProtocolError): self.client.save_program('new', color())
                     self.assertEqual(self.client.command(1).code, 0)
                     self.transport.close()
                     self.assertEqual(self.storage.read_bytes(), raw)

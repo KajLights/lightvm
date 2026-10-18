@@ -18,7 +18,7 @@ const char *draw_blend_name(DrawBlend);
  * in 0..65536 and one final rounding for source-over. Strides are 3 (opaque
  * RGB) or 4 (premultiplied RGBA). A NULL input is black (RGB) or clear (RGBA).
  * Inputs may alias output only at the same start and stride. Non-over modes expect
- * an opaque lower surface, as in the scene blend contract. */
+ * an opaque lower surface, as in the composition blend contract. */
 uint32_t draw_opacity(unsigned alpha);
 static inline uint32_t draw_opacity_float(float opacity) {
     return (uint32_t)(opacity * (float)DRAW_OPACITY_ONE + 0.5f);
@@ -32,7 +32,7 @@ void draw_composite(uint8_t *out, unsigned out_stride,
                     unsigned count, uint32_t opacity, DrawBlend);
 /* Premultiplied RGBA / RGBWA pixels with alpha after 3 / 4 color channels. */
 void draw_over_channels(uint8_t *dst, const uint8_t *src, unsigned channels, uint32_t opacity);
-/* Scene blending over an opaque destination; input is premultiplied RGBA. */
+/* Composition blending over an opaque destination; input is premultiplied RGBA. */
 void draw_blend(uint8_t *dst, const uint8_t *src, unsigned opacity, DrawBlend);
 size_t draw_batch_bytes(unsigned capacity, unsigned fields);
 DrawInstance *draw_instance(DrawBatch *, unsigned slot, unsigned fields);

@@ -1,4 +1,4 @@
-"""Blend scene A into scene B at the supplied progress."""
+"""Blend composition A into composition B at the supplied progress."""
 from lightvm import profile, render
 from lightvm.transitions import crossfade
 

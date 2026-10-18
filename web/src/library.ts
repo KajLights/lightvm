@@ -11,7 +11,7 @@ export interface SavedAnimation {
 export interface PresetLayer { id: string; animation: string; settings: SettingsValues; opacity: number; blend: Blend }
 export interface SavedPreset { id: string; name: string; layers: PresetLayer[] }
 export interface Library { schema: 'lightvm.library'; animations: SavedAnimation[]; presets: SavedPreset[] }
-export interface DeviceLayer { id: string; procedure: string; crc32: number; settings: SettingsValues; opacity: number; blend: Blend }
+export interface CompositionLayer { id: string; program: string; crc32: number; settings: SettingsValues; opacity: number; blend: Blend }
 export const LIBRARY_KEY = 'lightvm.library.v1';
 export const BLENDS: Blend[] = ['over', 'add', 'screen', 'multiply'];
 export const emptyLibrary = (): Library => ({ schema: 'lightvm.library', animations: [], presets: [] });
@@ -73,13 +73,13 @@ export async function saveAnimation(library: Library, compiled: Compilation, fil
   };
   return { animation, library: { ...library, animations: [...library.animations, animation] } };
 }
-export function deviceLayers(library: Library, layers: PresetLayer[]): DeviceLayer[] {
+export function compositionLayers(library: Library, layers: PresetLayer[]): CompositionLayer[] {
   if (!layers.length || layers.length > 8) throw new Error('Choose between one and eight layers.');
   return layers.map(layer => {
     const animation = library.animations.find(item => item.id === layer.animation);
     if (!animation) throw new Error('The saved animation for layer ' + layer.id + ' is missing.');
-    if (animation.manifest.profile === 'transition') throw new Error('A transition combines A and B; it cannot be a scene layer.');
-    return { id: layer.id, procedure: programName(animation), crc32: crc32(bytesFor(animation)), settings: settingsFor(animation.manifest, layer.settings), opacity: layer.opacity, blend: layer.blend };
+    if (animation.manifest.profile === 'transition') throw new Error('A transition combines A and B; it cannot be a composition layer.');
+    return { id: layer.id, program: programName(animation), crc32: crc32(bytesFor(animation)), settings: settingsFor(animation.manifest, layer.settings), opacity: layer.opacity, blend: layer.blend };
   });
 }
 
@@ -112,7 +112,7 @@ export function parseLibrary(text: string): Library {
         !checkSettings(layer.settings) || !Number.isInteger(layer.opacity) || layer.opacity < 0 || layer.opacity > 255 || !BLENDS.includes(layer.blend)) throw new Error('Invalid preset layer.');
       layerIds.add(layer.id);
     }
-    deviceLayers(library, preset.layers);
+    compositionLayers(library, preset.layers);
   }
   return { ...library, schema: 'lightvm.library' };
 }

@@ -120,18 +120,18 @@ while the old generation is still live.
 
 `describe` advertises `typed_storage`, `storage_backend`, `storage_writable`,
 `storage_bytes`, `free_bytes`, `largest_free_bytes` and `storage_allocation_unit`.
-There are no `procedure_limit` or `preset_limit` fields.
+There are no `program_limit` or `preset_limit` fields.
 
-`procedure_list` optionally accepts `type: "animation"` or `"transition"`; every
-entry returns both `type` and `profile`. `procedure_get` and `procedure_delete`
+`program_list` optionally accepts `type: "animation"` or `"transition"`; every
+entry returns both `type` and `profile`. `program_get` and `program_delete`
 accept the same type selector. Omitting it is allowed for an unambiguous program
 name; otherwise the request fails with `ambiguous_name`. Presets have their own
 namespace and do not participate in program-name ambiguity.
 
-The uploaded bytecode profile determines the type of `procedure_save`. An optional
+The uploaded bytecode profile determines the type of `program_save`. An optional
 explicit type must match it. Replacement affects only that typed key. Animation
 startup/layer references and transition selection already supply their type by
-context. The Python client supports `procedures(program_type)`,
-`get_procedure(name, program_type)` and `delete_procedure(name, program_type)`;
-the CLI exposes `--procedure-type`. The browser client and editor preserve the type
+context. The Python client supports `programs(program_type)`,
+`get_program(name, program_type)` and `delete_program(name, program_type)`;
+the CLI exposes `--program-type`. The browser client and editor preserve the type
 when selecting, retrieving and deleting stored programs.

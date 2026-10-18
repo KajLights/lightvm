@@ -3,22 +3,22 @@ import { Link } from 'react-router-dom';
 import type { LightVMClient } from '../protocol.mjs';
 import { useRuntime } from './runtime';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
-import { programName, readLibrary, type DeviceLayer, type SavedAnimation, type SettingsValues } from './library';
-import { prepareLibraryScene } from './library-device';
+import { programName, readLibrary, type CompositionLayer, type SavedAnimation, type SettingsValues } from './library';
+import { prepareLibraryComposition } from './library-controller';
 import { FADER_SOURCE, TransitionFaderInput } from './transition-fader';
 import { TransitionProgram } from './TransitionProgram';
-import type { Procedure, TransitionState } from './types';
+import type { Program, TransitionState } from './types';
 
 export const ANIMATION_DRAG_TYPE = 'application/x-lightvm-animation';
 type AnimationChoice = { key: string; label: string; detail: string } & (
-  { animation: SavedAnimation; procedure?: never } | { procedure: Procedure; animation?: never });
-function sceneSignature(scene: TransitionState['A']) {
-  return JSON.stringify(scene.layers?.map(layer => [layer.id, layer.procedure, layer.generation]) ?? []);
+  { animation: SavedAnimation; program?: never } | { program: Program; animation?: never });
+function compositionSignature(composition: TransitionState['A']) {
+  return JSON.stringify(composition.layers?.map(layer => [layer.id, layer.program, layer.generation]) ?? []);
 }
 
 export function Fader() {
-  const { devices } = useRuntime(), dispatch = useAppDispatch();
-  const device = useAppSelector(state => state.device), operation = useAppSelector(state => state.activity.operation);
+  const { controllers } = useRuntime(), dispatch = useAppDispatch();
+  const controller = useAppSelector(state => state.controller), operation = useAppSelector(state => state.activity.operation);
   const [state, setState] = useState<TransitionState | null>(null);
   const [progress, setProgress] = useState(0), [owned, setOwned] = useState(false);
   const [duration, setDuration] = useState(2000), [interval, setIntervalMs] = useState(10000);
@@ -31,10 +31,10 @@ export function Fader() {
     return [
       ...browser.map(animation => ({ key: 'browser:' + animation.id, label: animation.name + ' v' + animation.version,
         detail: 'Saved in this browser', animation })),
-      ...device.procedures.filter(procedure => (procedure.type ?? procedure.profile) === 'animation' && !known.has(procedure.name))
-        .map(procedure => ({ key: 'device:' + procedure.name, label: procedure.name, detail: 'Saved on device', procedure })),
+      ...controller.programs.filter(program => (program.type ?? program.profile) === 'animation' && !known.has(program.name))
+        .map(program => ({ key: 'controller:' + program.name, label: program.name, detail: 'Saved on controller', program })),
     ] as AnimationChoice[];
-  }, [saved, device.procedures]);
+  }, [saved, controller.programs]);
   const animationNames = useMemo(() => {
     const names = new Map<string, Set<string>>();
     for (const animation of saved.library.animations) {
@@ -44,21 +44,21 @@ export function Fader() {
     }
     return new Map([...names].map(([key, values]) => [key, values.size === 1 ? [...values][0] : 'Saved animation']));
   }, [saved]);
-  const output = device.selectedOutput, client = devices.client;
-  const supported = Boolean(device.description?.ab_transitions && device.description.transition_sources);
+  const output = controller.selectedOutput, client = controllers.client;
+  const supported = Boolean(controller.description?.ab_transitions && controller.description.transition_sources);
   const active = useRef<TransitionFaderInput | null>(null), command = useRef(0);
   const input = useMemo(() => client && output ? new TransitionFaderInput(client, output,
     value => setState(previous => previous ? { ...previous, progress: value } : previous),
     error => {
       setOwned(false);
-      if (error) { dispatch(activityActions.notice(error.message)); devices.log(error.message, 'error'); }
-    }) : null, [client, output, device.description?.boot_id, devices, dispatch]);
+      if (error) { dispatch(activityActions.notice(error.message)); controllers.log(error.message, 'error'); }
+    }) : null, [client, output, controller.description?.boot_id, controllers, dispatch]);
 
   useEffect(() => {
     active.current = input; command.current++; setState(null); setProgress(0); setOwned(false); setSlotLabels({});
     let reading = false;
     async function read() {
-      if (!input || !client || !output || !supported || reading || devices.snapshot.activity.operation || input.pending) return;
+      if (!input || !client || !output || !supported || reading || controllers.snapshot.activity.operation || input.pending) return;
       reading = true;
       const revision = input.revision, epoch = command.current;
       try {
@@ -71,19 +71,19 @@ export function Fader() {
     }
     void read(); const timer = setInterval(() => void read(), 500);
     return () => { active.current = null; clearInterval(timer); input?.stop(); };
-  }, [input, client, output, supported, devices]);
+  }, [input, client, output, supported, controllers]);
 
-  const busy = Boolean(operation) || !device.selectedPath || !client || !output || !state;
+  const busy = Boolean(operation) || !controller.selectedPath || !client || !output || !state;
   const validDuration = Number.isFinite(duration) && duration >= 0;
   const validInterval = Number.isFinite(interval) && interval > 0 && interval >= duration;
   async function control(label: string, action: (connection: LightVMClient) => Promise<unknown>, claim = false) {
     if (!input || !output) return;
     input.stop(); setOwned(false); const epoch = ++command.current;
-    await devices.run(label, async current => {
-      const connection = devices.require(current);
+    await controllers.run(label, async current => {
+      const connection = controllers.require(current);
       const result = await action(connection) as TransitionState | undefined;
       const next = await connection.transition(output) as TransitionState;
-      if (active.current !== input || epoch !== command.current || devices.client !== connection || devices.snapshot.device.selectedOutput !== output) return;
+      if (active.current !== input || epoch !== command.current || controllers.client !== connection || controllers.snapshot.controller.selectedOutput !== output) return;
       if (claim && result?.driver.assignment === next.driver.assignment && next.driver.kind === 'source' && next.driver.source === FADER_SOURCE) {
         input.attach(next.driver.assignment); setOwned(true);
       }
@@ -99,30 +99,30 @@ export function Fader() {
     if (!choice || busy || !input || !output) return;
     setOver(null); setLoading(slot); const epoch = ++command.current;
     try {
-      await devices.run('Loading animation into ' + slot, async current => {
-        const connection = devices.require(current);
-        const layers: DeviceLayer[] = choice.animation ? await prepareLibraryScene(connection, saved.library, [{
+      await controllers.run('Loading animation into ' + slot, async current => {
+        const connection = controllers.require(current);
+        const layers: CompositionLayer[] = choice.animation ? await prepareLibraryComposition(connection, saved.library, [{
           id: 'main', animation: choice.animation.id, settings: { ...choice.animation.settings }, opacity: 255, blend: 'over',
-        }]) : [{ id: 'main', procedure: choice.procedure.name, crc32: choice.procedure.crc32, settings: {}, opacity: 255, blend: 'over' }];
-        const applied = await connection.configureScene(layers, output, slot);
-        await devices.readProcedures(connection); await devices.readProgramState(connection);
+        }]) : [{ id: 'main', program: choice.program.name, crc32: choice.program.crc32, settings: {}, opacity: 255, blend: 'over' }];
+        const applied = await connection.configureComposition(layers, output, slot);
+        await controllers.readPrograms(connection); await controllers.readProgramState(connection);
         const revision = input.revision, next = await connection.transition(output) as TransitionState;
-        if (active.current !== input || epoch !== command.current || devices.client !== connection || devices.snapshot.device.selectedOutput !== output) return;
+        if (active.current !== input || epoch !== command.current || controllers.client !== connection || controllers.snapshot.controller.selectedOutput !== output) return;
         input.observe(next); setState(next);
-        if (applied.value === next.revision) setSlotLabels(previous => ({ ...previous, [slot]: { label: choice.label, signature: sceneSignature(next[slot]) } }));
+        if (applied.value === next.revision) setSlotLabels(previous => ({ ...previous, [slot]: { label: choice.label, signature: compositionSignature(next[slot]) } }));
         if (revision === input.revision && !input.pending) setProgress(next.progress);
-        devices.log('Loaded ' + choice.label + ' into scene ' + slot + '.', 'success');
+        controllers.log('Loaded ' + choice.label + ' into composition ' + slot + '.', 'success');
       });
     } finally { setLoading(null); }
   }
-  async function selectTransition(procedure: string, settings: SettingsValues) {
+  async function selectTransition(program: string, settings: SettingsValues) {
     if (busy || !input || !output) return;
     const epoch = ++command.current;
-    await devices.run('Selecting transition', async current => {
-      const connection = devices.require(current);
-      await connection.selectTransition(procedure, output, { settings });
+    await controllers.run('Selecting transition', async current => {
+      const connection = controllers.require(current);
+      await connection.selectTransition(program, output, { settings });
       const revision = input.revision, next = await connection.transition(output) as TransitionState;
-      if (active.current !== input || epoch !== command.current || devices.client !== connection || devices.snapshot.device.selectedOutput !== output) return;
+      if (active.current !== input || epoch !== command.current || controllers.client !== connection || controllers.snapshot.controller.selectedOutput !== output) return;
       input.observe(next); setState(next);
       if (revision === input.revision && !input.pending) setProgress(next.progress);
     });
@@ -134,22 +134,22 @@ export function Fader() {
   }
   const driver = owned ? 'Fader controls the transition' : state?.driver.kind === 'timed' ? 'Timed transition running'
     : state?.driver.kind === 'source' ? state.driver.source === FADER_SOURCE ? 'Fader released · Use fader to reconnect' : 'Controlled by ' + state.driver.source : 'Holding current position';
-  const develop = '/devices/' + encodeURIComponent(device.description?.device_id ?? '') + '/develop';
-  function sceneLabel(slot: 'A' | 'B') {
+  const develop = '/controllers/' + encodeURIComponent(controller.description?.controller_id ?? '') + '/develop';
+  function compositionLabel(slot: 'A' | 'B') {
     const selected = slotLabels[slot];
-    if (state && selected && selected.signature === sceneSignature(state[slot])) return selected.label;
-    return state?.[slot].layers?.map(layer => animationNames.get(layer.procedure) ||
-      (/^a[0-9a-f]{31}$/.test(layer.procedure) ? layer.id : layer.procedure)).join(' + ') || 'Empty scene';
+    if (state && selected && selected.signature === compositionSignature(state[slot])) return selected.label;
+    return state?.[slot].layers?.map(layer => animationNames.get(layer.program) ||
+      (/^a[0-9a-f]{31}$/.test(layer.program) ? layer.id : layer.program)).join(' + ') || 'Empty composition';
   }
 
   return <>
     <div className="intro"><div><p className="eyebrow">FADER</p><h1>Move between your animations.</h1><p>Fade by hand or let the controller run a timed transition.</p></div>
       <Link className="quiet-link" to={develop}>Edit and save animations →</Link></div>
-    {!supported ? <section className="card"><p>This device does not provide external transition inputs.</p></section> : <>
+    {!supported ? <section className="card"><p>This controller does not provide external transition inputs.</p></section> : <>
       <div className="fader-output"><label htmlFor="fader-output">Output</label>
-        <select id="fader-output" value={output ?? ''} disabled={Boolean(operation) || !device.selectedPath} onChange={event => void devices.selectOutput(event.target.value)}>
-          {!device.config?.devices.length && <option value="">Configure an output first</option>}
-          {device.config?.devices.map(item => <option key={item.id}>{item.id}</option>)}
+        <select id="fader-output" value={output ?? ''} disabled={Boolean(operation) || !controller.selectedPath} onChange={event => void controllers.selectOutput(event.target.value)}>
+          {!controller.config?.outputs.length && <option value="">Configure an output first</option>}
+          {controller.config?.outputs.map(item => <option key={item.id}>{item.id}</option>)}
         </select></div>
       <div className="fader-layout">
         <section className="card fader-card" aria-label="Manual transition">
@@ -159,15 +159,15 @@ export function Fader() {
             onDragOver={event => { if (canDrop(event)) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setOver(slot); } }}
             onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(null); }}
             onDrop={event => drop(event, slot)}>
-            <h3 id={'fader-slot-' + slot}><span aria-hidden="true">{slot}</span>Scene {slot}</h3>
-            <p className="fader-slot-name">{loading === slot ? 'Loading animation…' : sceneLabel(slot)}</p>
-            <p className="helper">Drop a saved animation here to {state?.[slot].layers?.length ? 'replace this scene' : 'load this scene'}.</p>
+            <h3 id={'fader-slot-' + slot}><span aria-hidden="true">{slot}</span>Composition {slot}</h3>
+            <p className="fader-slot-name">{loading === slot ? 'Loading animation…' : compositionLabel(slot)}</p>
+            <p className="helper">Drop a saved animation here to {state?.[slot].layers?.length ? 'replace this composition' : 'load this composition'}.</p>
           </section>)}</div>
           <label htmlFor="transition-fader">Transition fader</label>
           <output className="fader-value" htmlFor="transition-fader">{progress.toFixed(1)}<span>%</span></output>
           <input id="transition-fader" className="fader-range" type="range" min="0" max="100" step="0.1" value={progress}
             style={{ '--fader-progress': progress + '%' } as CSSProperties} disabled={busy || !owned}
-            aria-valuetext={progress.toFixed(1) + '% towards scene B'} onChange={event => slide(Number(event.target.value))} />
+            aria-valuetext={progress.toFixed(1) + '% towards composition B'} onChange={event => slide(Number(event.target.value))} />
           <div className="fader-endpoints"><span>A · 0%</span><span>B · 100%</span></div>
           <div className="fader-actions"><button className="primary" disabled={busy || owned} onClick={() => void control('Connecting fader', connection => connection.assignTransitionSource(FADER_SOURCE, output), true)}>Use fader</button>
             <button className="secondary" disabled={busy} onClick={() => void control('Holding transition', connection => connection.holdTransition(output))}>Hold</button></div>
@@ -179,7 +179,7 @@ export function Fader() {
         <section className="card" aria-label="Deployed transitions">
           <div className="card-heading"><h2>Transition</h2></div>
           <p className="muted">Choose how A changes into B for the fader and timed runs.</p>
-          <TransitionProgram id="fader-transition-program" key={[device.selectedPath, output, device.description?.boot_id].join(':')} state={state} busy={busy} onApply={selectTransition} />
+          <TransitionProgram id="fader-transition-program" key={[controller.selectedPath, output, controller.description?.boot_id].join(':')} state={state} busy={busy} onApply={selectTransition} />
         </section>
         <section className="card fader-library" aria-label="Saved animations">
           <div className="card-heading"><h2>Saved animations</h2><span className="muted">{animations.length}</span></div>

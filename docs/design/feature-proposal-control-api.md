@@ -2,7 +2,7 @@
 
 Status: Proposed. The implemented contract is [animation](../animation-profile.md)
 with frozen initialization settings and [current management](../control-api.md).
-Live INPUT, general events, jobs and device capabilities below are future work.
+Live INPUT, general events, jobs and controller capabilities below are future work.
 
 The [external input research and design](feature-proposal-inputs.md) develops
 the scalar INPUT path for transition progress and live animation/sprite controls,
@@ -58,11 +58,11 @@ not deduplicate retried actions; non-idempotent requests need retry identities.
 ## Publication and ownership
 
 Current animations publish completed premultiplied RGBA contributions; the
-compositor publishes a completed scene and the driver presents immutable RGB.
+compositor publishes a completed composition and the driver presents immutable RGB.
 Future output batches must define success/suspension boundaries and failure
 behavior. A wait cannot hold an unfinished output batch. Guest state generally
 is not transactional. Previously published output survives a failing step.
-Different physical devices cannot promise simultaneous electrical rollback.
+Different physical outputs cannot promise simultaneous electrical rollback.
 
 Ordinary actuators begin with one exclusive owner. Combining servo targets or
 bus transactions needs its own arbitration contract; pixel blend modes do not
@@ -85,5 +85,5 @@ generate/check producer-consumer metadata, reject superseded contracts and test
 queue overflow, pause clocks, cancellation, stale generations, ownership,
 fault publication and no allocation during execution. Continue to support
 independent [A/B transition planning](feature-proposal-ab-transitions.md),
-[devices](feature-proposal-device-support.md) and
+[controllers](feature-proposal-output-support.md) and
 [build profiles](feature-proposal-build-profiles.md).

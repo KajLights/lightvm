@@ -53,34 +53,34 @@ def draw(ctx,runtime,pixels):
         target=client.describe()
         from lightvm.release import BASELINE, release_error
         if release_error(target.get('version'), BASELINE):raise RuntimeError('build the receiver with a compatible LightVM release first')
-        client.configure({'schema':'lightvm.config','devices':[{
+        client.configure({'schema':'lightvm.config','outputs':[{
             'id':'benchmark','type':'ws2812b','config':{'pin':'GP16','count':args.pixels}}]})
         expected={}
         for name,source,optimize in variants:
             artifact=compile_source(source,optimize=optimize)
             if not artifact.success:raise RuntimeError(artifact.diagnostics)
-            client.save_procedure(name.replace('/','_'),artifact.bytecode)
+            client.save_program(name.replace('/','_'),artifact.bytecode)
             report['variants'][name]={'bytecode_bytes':len(artifact.bytecode),'schema':artifact.manifest['schema'],
                                       'source_sha256':hashlib.sha256(source.encode()).hexdigest(),'windows':[]}
-            client.configure_scene([{'id':'fg','procedure':name.replace('/','_')}],device='benchmark')
-            client.require_ok(client.command(STOP,device='benchmark'))
+            client.configure_composition([{'id':'fg','program':name.replace('/','_')}],output='benchmark')
+            client.require_ok(client.command(STOP,output='benchmark'))
             frames=[]
             for delta in (0,17,333,1000):
-                client.require_ok(client.command(FRAME,struct.pack('<I',delta),device='benchmark'))
-                frames.append(bytes(client.snapshot(device='benchmark',layer='fg')[1]))
+                client.require_ok(client.command(FRAME,struct.pack('<I',delta),output='benchmark'))
+                frames.append(bytes(client.snapshot(output='benchmark',layer='fg')[1]))
             family=name.split('/')[0]
             if family in expected and frames!=expected[family]:raise AssertionError('pixel mismatch: '+name)
             expected[family]=frames
         for round_index in range(args.rounds):
             order=variants if round_index%2==0 else list(reversed(variants))
             for name,_,_ in order:
-                client.configure_scene([{'id':'fg','procedure':name.replace('/','_')}],device='benchmark')
-                client.require_ok(client.command(STOP,device='benchmark'))
-                for _ in range(10):client.require_ok(client.command(FRAME,struct.pack('<I',16),device='benchmark'))
-                before=client.program_state(device='benchmark',layer='fg')
+                client.configure_composition([{'id':'fg','program':name.replace('/','_')}],output='benchmark')
+                client.require_ok(client.command(STOP,output='benchmark'))
+                for _ in range(10):client.require_ok(client.command(FRAME,struct.pack('<I',16),output='benchmark'))
+                before=client.program_state(output='benchmark',layer='fg')
                 heap=client.status_fields()['heap']
-                for _ in range(args.frames):client.require_ok(client.command(FRAME,struct.pack('<I',16),device='benchmark'))
-                after=client.program_state(device='benchmark',layer='fg')
+                for _ in range(args.frames):client.require_ok(client.command(FRAME,struct.pack('<I',16),output='benchmark'))
+                after=client.program_state(output='benchmark',layer='fg')
                 if heap!=client.status_fields()['heap']:raise AssertionError('heap changed during rendering')
                 frames=after['render_count']-before['render_count']
                 report['variants'][name]['windows'].append({

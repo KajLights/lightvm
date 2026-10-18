@@ -1,9 +1,11 @@
-# MQTT control and Home Assistant lights
+# MQTT control and Home Assistant presets
 
 LightVM connects to an existing MQTT broker shared with Home Assistant. MQTT is
-an optional control path alongside HTTP, WebSocket and USB/serial. The first binding exposes
-**one on/off light per selected physical output**, with a saved preset assigned to
-ON. It does not expose every preset as a separate light.
+an optional control path alongside HTTP, WebSocket and USB/serial. Each exposed
+output has **one on/off light and one Preset selector**, grouped under its
+controller's HA device. A preset recalls a complete composition, including its
+animation versions, layer settings, opacity and blending. A one-layer composition
+works exactly the same way. Composition editing stays in LightVM.
 
 ## Build
 
@@ -24,17 +26,18 @@ idf.py -C platforms/esp32 -B "$PWD/build/mqtt-c6" \
 ```
 
 A host with saved MQTT enabled continues serving after stdin closes. Use its
-storage file to keep a stable host device identity between launches. Embedded
+storage file to keep a stable host controller identity between launches. Embedded
 identity comes from the board/MAC. USB provisioning remains available when MQTT
 is disabled, disconnected or retrying. Power-recovery AP mode suspends MQTT for
 that boot and retains the saved broker settings.
 
 ## Configure
 
-1. Save the desired animation programs and a preset to the device through the
-   existing editor or CLI. A preset can contain one animation or a layered scene.
-2. Under **Configure → Output & startup**, choose **Home Assistant ON preset**
-   for each output to expose. Optionally set its Home Assistant display name.
+1. Save the desired animation programs and the presets to the controller through the
+   existing editor or CLI. A preset can contain one animation or a layered composition.
+2. Under **Configure → Output & startup**, choose **Home Assistant default preset**
+   for each output to expose, then check the presets to include in its selector.
+   Optionally set its Home Assistant display name.
    Apply in RAM to try it, or apply and save for reboot.
 3. Under the network settings, enable MQTT and enter the broker hostname or IPv4 address,
    port and credentials. Save and reconnect the network.
@@ -43,22 +46,32 @@ that boot and retains the saved broker settings.
 
 There can be up to eight exposed outputs. Outputs without `home_assistant` stay
 out of discovery and ignore MQTT commands. Names default to the output ID.
-Changing the display name or assigned preset preserves the entity's unique ID;
-changing the output ID creates a new entity.
+Changing the display name or assigned preset preserves both entities' unique IDs;
+changing the output ID creates new entities.
 
 The same settings are available in JSON. Add this optional object to each
-physical device in `lightvm.config` (see `examples/config/mqtt-lights.json`):
+physical output in `lightvm.config` (see `examples/config/mqtt-lights.json`):
 
 ```json
-"home_assistant": {"on_preset": "evening", "name": "Desk lamp"}
+"home_assistant": {
+  "default_preset": "evening",
+  "presets": ["evening", "rainbow", "stars"],
+  "name": "Desk lamp"
+}
 ```
 
-`on_preset` accepts a preset name of 1–30 letters, digits, dots, underscores or
-hyphens. `name` accepts 1–64 UTF-8 bytes. The preset is resolved when ON is
-received; a missing or incompatible recipe leaves playback unchanged and puts
-an error in `network_status.mqtt_error`. This permits assigning a recipe before
-uploading it. Preset deletion is allowed; update the binding before removing a
-recipe that should still be usable from HA.
+`presets` is a required list of 1–16 unique preset names for that output.
+`default_preset` must appear in it. Names contain 1–32 letters, digits, dots,
+underscores or hyphens. The name `None` is reserved by HA for unknown select state
+and cannot be exposed. `name` accepts 1–64 UTF-8 bytes. These limits also remain
+subject to the controller's configuration size and JSON token budget.
+
+Only presets currently stored on the controller appear in HA's options. Saving,
+replacing or deleting a preset refreshes discovery; changing the output's list
+also refreshes it. Bindings may refer to presets before upload. A missing or
+incompatible preset leaves playback unchanged and reports an error in
+`network_status.mqtt_error`. Configure each output's list for its pixel count and
+available memory; activation still validates the full composition on that output.
 
 Network settings extend `lightvm.network` with a separate `mqtt` object:
 
@@ -98,7 +111,7 @@ credentials select anonymous access. Omitting `mqtt` retains its settings;
 omitting an MQTT field retains its current value, including the password. An
 explicit empty password clears it. Readbacks omit the password, and the editor
 keeps attempted passwords out of Redux/browser persistence and clears them after
-saving. Credentials remain in device storage/RAM, as with Wi-Fi credentials.
+saving. Credentials remain in controller storage/RAM, as with Wi-Fi credentials.
 
 This iteration uses **plain TCP MQTT 3.1.1 over IPv4**. Broker addresses may be
 numeric IPv4 addresses or DNS hostnames up to 127 ASCII bytes, with labels up to
@@ -114,17 +127,20 @@ versions on the same broker.
 
 ## Topics and power behavior
 
-`device_id` comes from `describe`. `output_id` is the hardware device's `id`.
+`controller_id` comes from `describe`. `output_id` is the output’s `id`.
 
 | Topic | Payload / behavior |
 | --- | --- |
-| `homeassistant/lightvm/<device_id>/<output_id>/set` | Exact `ON` or `OFF`; publish without retain. |
-| `homeassistant/lightvm/<device_id>/<output_id>/state` | Retained actual playback state, `ON` or `OFF`. |
-| `homeassistant/lightvm/<device_id>/availability` | Retained `online`; retained Last Will `offline`. |
-| `homeassistant/light/<device_id>/<hex_output_id>/config` | Retained MQTT light discovery document. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/set` | Exact `ON` or `OFF`; publish without retain. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/preset/set` | Preset name from this output’s list; starts it, without retain. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/preset/state` | Retained preset name, or `None` for unknown. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/state` | Retained actual playback state, `ON` or `OFF`. |
+| `homeassistant/lightvm/<controller_id>/availability` | Retained `online`; retained Last Will `offline`. |
+| `homeassistant/light/<controller_id>/<hex_output_id>/config` | Retained MQTT light discovery document. |
+| `homeassistant/select/<controller_id>/<hex_output_id>_preset/config` | Retained MQTT Select discovery document. |
 | `homeassistant/status` | HA's `online` birth message triggers discovery/state/availability refresh. |
 
-All binding topics use the default `homeassistant/` namespace. Allow the device
+All binding topics use the default `homeassistant/` namespace. Allow the controller
 account to read and write `homeassistant/#` on brokers with topic ACLs. Home
 Assistant learns command, state and availability topics from discovery; no manual
 entity YAML or topic configuration is needed.
@@ -132,21 +148,41 @@ entity YAML or topic configuration is needed.
 Discovery encodes the output ID as lowercase UTF-8 hex to satisfy HA's topic
 identifier restrictions without collisions (for example `desk` becomes
 `6465736b`). State and command topics use the original ID. Every light has a
-stable unique ID and all outputs are grouped under one controller device in HA.
+stable unique ID and all outputs are grouped under one device representing the controller in HA.
 Discovery uses HA's default light schema, advertises only power control, supplies
 a state topic and explicitly disables retained commands. See the official
 [MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
 and [MQTT light](https://www.home-assistant.io/integrations/light.mqtt/) contracts.
+The accompanying [MQTT Select](https://www.home-assistant.io/integrations/select.mqtt/)
+entity is named `<output name> Preset` and reports confirmed state.
 
-ON while stopped prepares the assigned preset and starts it on the entire output,
-replacing an existing A/B presenter as well as its scenes. Failed preparation
-preserves the old runtime. Repeated ON while already playing leaves that runtime
-running, including playback started by HTTP or USB; it does not restart effects.
-OFF stops the output and presents black pixels. State tracks the output's playing
-flag, rather than estimating brightness from pixel values, and reports changes
-made through MQTT, HTTP, WebSocket or serial. Other physical outputs continue independently.
+Selecting a preset prepares and starts it on the entire output, replacing any
+A/B presenter. ON while stopped recalls the last identifiable, exposed preset;
+if there is none, it uses `default_preset`. OFF stops playback and presents black
+pixels, retaining the preset selection. Repeated ON or selection of the already
+playing preset does not restart it. Failed preparation preserves the old runtime
+and selection. A reboot starts with no selection until a preset is activated;
+startup remains a separately configured program.
 
-Commands with a retained flag, unknown devices and unsupported payloads are
+Power and preset state reflect changes through MQTT, HTTP, WebSocket and serial.
+Editing a layer or its initialization settings, running an unsaved composition,
+replacing/deleting the saved recipe, or mixing A/B at an intermediate percentage
+reports unknown preset state rather than claiming the old preset is still active.
+At A/B endpoints the visible slot's unmodified preset can be identified. Entire
+output pause/stop retains identity. `describe.outputs[].preset` and
+`composition_get.preset` report the saved identity or JSON null.
+
+For example, turn on an output and recall a preset in HA:
+
+```yaml
+- action: select.select_option
+  target:
+    entity_id: select.desk_lamp_preset
+  data:
+    option: stars
+```
+
+Commands with a retained flag, unknown outputs and unsupported payloads are
 ignored. Retained commands must not be used for boot recovery. Each reconnect
 uses a clean broker session and resubscribes; queued offline commands are not
 replayed. Subscriptions request QoS0, outgoing publications use QoS0, and the
@@ -160,7 +196,7 @@ the network or disabling/reconfiguring MQTT closes the session so the broker's
 Last Will marks it offline; silent radio/power loss can take the broker's
 keepalive timeout to be detected. Playback continues during MQTT outages.
 
-Removing an exposed output or its binding clears its retained discovery and state
+Removing an exposed output or its binding clears both retained discovery documents and both state topics
 on the connected broker. Removal is retried across reconnects during the same
 firmware run. If you change brokers, wipe storage, or reboot after removing a
 binding while offline, remove the old discovery entries on the old broker/HA
@@ -176,7 +212,7 @@ socket adapter and a Pico W lwIP raw adapter with asynchronous DNS. No network
 callbacks run engine commands, and no worker thread owns the VM.
 
 `src/home_assistant.[ch]` owns topic/discovery conventions, output bindings and
-state observation. It dispatches power commands through the ordinary application
+state observation. It dispatches power and preset commands through the ordinary application
 command boundary. The runtime, recipe validation, peak-memory admission and
 failure behavior remain shared with HTTP/WebSocket/serial. Calling `preset_activate`
 without a slot replaces the complete output; explicitly selecting `A` or `B`

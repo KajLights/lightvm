@@ -13,9 +13,9 @@ static const PlatformInfo info={"pico",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return time_us_64(); }
 void pico_port_init(void) {}
-void platform_identity(char *device,size_t capacity,char *boot,size_t boot_capacity) {
+void platform_identity(char *controller,size_t capacity,char *boot,size_t boot_capacity) {
     char unique[2*PICO_UNIQUE_BOARD_ID_SIZE_BYTES+1]; pico_get_unique_board_id_string(unique,sizeof(unique));
-    snprintf(device,capacity,"pico-%s",unique);
+    snprintf(controller,capacity,"pico-%s",unique);
     snprintf(boot,boot_capacity,"%08lx%08lx",(unsigned long)get_rand_32(),(unsigned long)get_rand_32());
 }
 #define PIN(n) {"GP" #n,n}

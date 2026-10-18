@@ -5,9 +5,9 @@ The compiler emits portable bytecode with document kind `lightvm.program` and
 profile `animation`. Its `requires` field names the minimum LightVM application
 release. It parses source without executing it. See [versioning](versioning.md).
 
-Every animation can run alone or as a [scene layer](composition.md).
+Every animation can run alone or as a [composition layer](composition.md).
 The separate [transition profile](transition-profile.md) uses the same compiler,
-init/render conventions and libraries to combine prepared A/B scenes by progress.
+init/render conventions and libraries to combine prepared A/B compositions by progress.
 Each frame starts blank. Unpainted pixels let lower layers remain visible.
 Ordinary colour writes paint solid pixels. Alpha is optional for effects that need partial transparency.
 The same profile supports native drawing, [PixelArray and sprites](pixelarray-sprites.md),
@@ -64,7 +64,7 @@ ctx.image[3] = rgb(255, 64, 0)
 pixels.draw(ctx.image)
 ```
 
-Direct playback displays the animation over black. A scene displays it over the lower layers.
+Direct playback displays the animation over black. A composition displays it over the lower layers.
 The animation code is the same in both cases.
 
 Preparation calls init at time/delta zero, then renders the initial frame at zero.
@@ -97,7 +97,7 @@ fresh instance with supplied overrides. Reset keeps the old instance if candidat
 preparation fails. `program_state` reports `manifest.settings` and
 `settings_values`. The editor's
 initialization settings panel applies settings through an explicit restart.
-Activation/reset inputs belong to that invocation. Per-device `startup.args` in
+Activation/reset inputs belong to that invocation. Per-output `startup.settings` in
 configuration supplies inputs at boot; omitted arguments use the program defaults.
 
 ## Arrays and standard library subset
@@ -151,7 +151,7 @@ three typed native values: pixel count, time and delta. Context and output stora
 are instance bindings. Init may write state and use randomness; render may also
 write output. Admission independently validates these rights and signatures.
 
-Application compatibility uses `requires` and the device’s `version`. The typed
+Application compatibility uses `requires` and the controller’s `version`. The typed
 container’s fixed layout marker (LBC1, layout 4) and animation binding 3 describe
 how to decode and validate the bytes; neither tracks application releases.
 Premultiplied RGBA output is the supported binding. Retired bindings and native

@@ -62,8 +62,8 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
     if (ap>=0) {
         if (!json_fields(&j,ap,ap_fields)) return fail(error,capacity,"wifi.ap: invalid fields");
         int ssid=json_get(&j,ap,"ssid"),password=json_get(&j,ap,"password");
-        out->ap_ssid[0]=0; // An explicitly supplied AP object defaults to the device name.
-        if (ssid>=0 && !json_string(&j,ssid,out->ap_ssid,sizeof(out->ap_ssid))) return fail(error,capacity,"wifi.ap.ssid: expected at most 32 UTF-8 bytes; empty selects device name");
+        out->ap_ssid[0]=0; // An explicitly supplied AP object defaults to the controller name.
+        if (ssid>=0 && !json_string(&j,ssid,out->ap_ssid,sizeof(out->ap_ssid))) return fail(error,capacity,"wifi.ap.ssid: expected at most 32 UTF-8 bytes; empty selects controller name");
         if (password>=0 && !json_string(&j,password,out->ap_password,sizeof(out->ap_password))) return fail(error,capacity,"wifi.ap.password: invalid string");
     }
     size_t ap_length=strlen(out->ap_password);

@@ -5,7 +5,7 @@ below are implemented. API sketches describe a possible source contract.
 
 Date: 17 October 2026
 
-Implemented slice, 18 October 2026: the device workspace's
+Implemented slice, 18 October 2026: the controller workspace's
 [Fader tab](../web-editor.md#fader-and-timed-transitions) supplies a virtual slider
 through the existing external transition source API and supports switching to
 native timed transitions. General signal registries, hardware adapters and live
@@ -123,7 +123,7 @@ become eligible for the next invocation.
 Validate and commit a producer's multi-channel update as one batch. This prevents
 a snapshot from seeing a new red channel with an old green channel. Independent
 producers remain independent; this does not imply globally simultaneous samples.
-Scenes and layers currently run independently and can contribute frames of
+Compositions and layers currently run independently and can contribute frames of
 different ages. Per-invocation snapshots preserve that contract without promising
 synchronized A/B rendering.
 
@@ -147,7 +147,7 @@ Recommended defaults are:
 - Pause retains the animation contribution and clock while native acquisition
   continues. Resume samples current inputs. STOP keeps output stopped; incoming
   values do not implicitly resume it. Existing timed progress remains independent
-  of scene pause.
+  of composition pause.
 - Unloading or replacing a consumer releases its bindings. Persisted recipes can
   bind a replacement only after validating its declarations. Source drivers can
   remain active for other consumers.
@@ -161,9 +161,9 @@ Input values cannot determine array sizes, sprite capacity or other allocations.
 Transition evaluation needs particular care. Prepare its baseline using declared
 input defaults and zero progress, so it cannot depend on live values present at
 selection time. Its initialized VM state is restored before each evaluation.
-Capture live inputs alongside progress and scene fronts, and keep that snapshot
+Capture live inputs alongside progress and composition fronts, and keep that snapshot
 outside the restored baseline. Progress seeking remains deterministic for the
-same scene frames, input snapshot, settings and seed. Exact
+same composition frames, input snapshot, settings and seed. Exact
 0% and 100% continue to bypass the transition callback and show A or B.
 
 ## Mapping and signal conditioning
@@ -190,7 +190,7 @@ Provide optional deadband for noisy continuous controls, hysteresis for
 thresholds, and debounce for digital inputs. A low-pass filter can use
 `alpha = dt / (tau + dt)` and `filtered += alpha * (value - filtered)`.
 Advance filters on a bounded native control cadence using monotonic elapsed time,
-so smoothing behaves consistently when frame rates change or a scene pauses.
+so smoothing behaves consistently when frame rates change or a composition pauses.
 Initialize the filter from the first valid sample; define reconnection behaviour
 explicitly. Angle and hue smoothing needs wrap-aware handling at the seam.
 
@@ -278,7 +278,7 @@ typed reads, no dynamic lookup per pixel, and no writes to frozen settings.
 | GPIO button or encoder | Publish stable level; capture edges or counted steps for the event extension. | Debounce and capture must work between animation frames. |
 | I2C or SPI peripheral | A specific native sensor driver publishes named measurements. | Bus ownership, addresses, transaction deadlines and reconnect behaviour belong to the driver. |
 | UART peripheral | Bounded decoder with explicit baud/framing settings and message limits. | UART bytes need message framing and recovery after partial or malformed messages. |
-| Computer or browser serial bridge | Read an external device and publish controls through the existing LightVM management connection. | The bridge must stay running; it is distinct from a standalone controller driver. |
+| Computer or browser serial bridge | Read an external controller and publish controls through the existing LightVM management connection. | The bridge must stay running; it is distinct from a standalone controller driver. |
 | HTTP API | Add general input publication to the existing serialized command API. | Good first integration path; measure overhead before selecting it for rapid updates. |
 | UDP datagrams | Optional listener decodes bounded control batches and publishes signals. | Loss, duplication, reordering, source identity and source timeout must be handled. |
 | OSC | Optional adapter for an established typed control-message format. | Support a declared bounded subset; scheduled bundles require additional clock and queue semantics. |
@@ -309,11 +309,11 @@ decoder. A separate UART can have its own bounded line or binary decoder. Reads
 may split a message or combine several, so the decoder must retain partial data
 and resynchronize after an oversized or invalid frame.
 
-A browser bridge can use Web Serial to read another serial device, then forward
+A browser bridge can use Web Serial to read another serial controller, then forward
 decoded controls over LightVM USB or HTTP. Web Serial exposes byte streams and
 requires port selection; see [Chrome's serial API guide](https://developer.chrome.com/docs/capabilities/serial).
 The existing LightVM serial picker filters supported controllers, so an external
-device needs its own picker and decoder. A USB peripheral plugged directly into
+controller needs its own picker and decoder. A USB peripheral plugged directly into
 the controller would require a separate USB-host capability and driver; current
 USB management does not establish that support.
 
@@ -410,7 +410,7 @@ an entire live A/B session remains a separate startup feature.
    trigger actions with explicit overflow, pause and retry semantics. Add
    high-rate sample processing only with separate resource budgets.
 
-The first useful demonstration should have two independently animated A/B scenes,
+The first useful demonstration should have two independently animated A/B compositions,
 one potentiometer or synthetic source driving their transition, and three named
 inputs controlling an existing sprite's colour, visible length and brightness.
 The same animation should run unchanged when those controls are supplied by a

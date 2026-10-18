@@ -88,21 +88,21 @@ static uint64_t until(uint64_t now,uint32_t ttl) {
 }
 static void expire(Discovery *d,uint64_t now) {
     for (unsigned i=1;i<DISCOVERY_LIMIT;i++) {
-        DiscoveryDevice *p=&d->devices[i];
+        DiscoveryController *p=&d->controllers[i];
         uint64_t last=p->ptr_until;
         if (p->srv_until>last) last=p->srv_until;
         if (p->ip_until>last) last=p->ip_until;
         if (p->txt_until>last) last=p->txt_until;
         if (p->hostname[0] && now>=last) memset(p,0,sizeof(*p));
     }
-    bool full=true; for (unsigned i=1;i<DISCOVERY_LIMIT;i++) if (!d->devices[i].hostname[0]) full=false;
+    bool full=true; for (unsigned i=1;i<DISCOVERY_LIMIT;i++) if (!d->controllers[i].hostname[0]) full=false;
     if (!full) d->truncated=false;
 }
-static DiscoveryDevice *peer(Discovery *d,const char *hostname,bool create) {
-    if (!strcmp(hostname,d->devices[0].hostname)) return NULL;
-    DiscoveryDevice *empty=NULL;
+static DiscoveryController *peer(Discovery *d,const char *hostname,bool create) {
+    if (!strcmp(hostname,d->controllers[0].hostname)) return NULL;
+    DiscoveryController *empty=NULL;
     for (unsigned i=1;i<DISCOVERY_LIMIT;i++) {
-        DiscoveryDevice *p=&d->devices[i];
+        DiscoveryController *p=&d->controllers[i];
         if (!strcmp(hostname,p->hostname)) return p;
         if (!p->hostname[0] && !empty) empty=p;
     }
@@ -122,13 +122,13 @@ static void text(Packet *p,const char *key,const char *value) {
     size_t a=strlen(key),b=strlen(value); number(p,(uint32_t)(a+b),1); put(p,key,a); put(p,value,b);
 }
 static void own_records(Discovery *d,Packet *p,uint32_t ttl,bool alias,bool legacy) {
-    DiscoveryDevice *self=&d->devices[0]; char host[40],instance[64];
+    DiscoveryController *self=&d->controllers[0]; char host[40],instance[64];
     snprintf(host,sizeof(host),"%s.local",self->hostname);
     snprintf(instance,sizeof(instance),"%s.%s",self->hostname,service);
     bool flush=!legacy;
     size_t n=rr(p,service,PTR,false,ttl); name(p,instance); finish_rr(p,n);
     n=rr(p,instance,SRV,flush,ttl); number(p,0,2); number(p,0,2); number(p,self->port,2); name(p,host); finish_rr(p,n);
-    n=rr(p,instance,TXT,flush,ttl); text(p,"id=",self->device_id); text(p,"board=",self->board); text(p,"version=",LIGHTVM_VERSION); finish_rr(p,n);
+    n=rr(p,instance,TXT,flush,ttl); text(p,"id=",self->controller_id); text(p,"board=",self->board); text(p,"version=",LIGHTVM_VERSION); finish_rr(p,n);
     n=rr(p,host,A,flush,ttl); put(p,self->ip,4); finish_rr(p,n);
     if (alias) { n=rr(p,bootstrap,A,false,ttl?10:0); put(p,self->ip,4); finish_rr(p,n); }
 }
@@ -145,22 +145,22 @@ static void response(Discovery *d,uint32_t ttl,bool alias,const uint8_t ip[4],ui
     if (enumeration) { size_t n=rr(&p,"_services._dns-sd._udp.local",PTR,false,ttl); name(&p,service); finish_rr(&p,n); }
     send_packet(d,&p,ip,port);
 }
-static bool complete(const DiscoveryDevice *p,uint64_t now) {
-    return p->hostname[0] && p->device_id[0] && p->board[0] && p->port && p->ptr_until>now && p->srv_until>now && p->txt_until>now && p->ip_until>now;
+static bool complete(const DiscoveryController *p,uint64_t now) {
+    return p->hostname[0] && p->controller_id[0] && p->board[0] && p->port && p->ptr_until>now && p->srv_until>now && p->txt_until>now && p->ip_until>now;
 }
 static void query(Discovery *d,bool probe,uint64_t now) {
     Packet p={d->packet,0,sizeof(d->packet),false}; char host[40];
-    snprintf(host,sizeof(host),"%s.local",d->devices[0].hostname);
+    snprintf(host,sizeof(host),"%s.local",d->controllers[0].hostname);
     unsigned known=0;
     if (!probe) for (unsigned i=1;i<DISCOVERY_LIMIT;i++) {
-        DiscoveryDevice *peer=&d->devices[i];
+        DiscoveryController *peer=&d->controllers[i];
         if (complete(peer,now+1000000u)) known++;
     }
     number(&p,0,2); number(&p,0,2); number(&p,1,2); number(&p,known,2); number(&p,probe?1:0,2); number(&p,0,2);
     name(&p,probe?host:service); number(&p,probe?ANY:PTR,2); number(&p,1,2);
-    if (probe) { size_t n=rr(&p,host,A,false,DISCOVERY_TTL); put(&p,d->devices[0].ip,4); finish_rr(&p,n); }
+    if (probe) { size_t n=rr(&p,host,A,false,DISCOVERY_TTL); put(&p,d->controllers[0].ip,4); finish_rr(&p,n); }
     else for (unsigned i=1;i<DISCOVERY_LIMIT;i++) {
-        DiscoveryDevice *peer=&d->devices[i];
+        DiscoveryController *peer=&d->controllers[i];
         if (complete(peer,now+1000000u)) {
             char instance[64]; snprintf(instance,sizeof(instance),"%s.%s",peer->hostname,service);
             uint64_t end=peer->ptr_until;
@@ -175,8 +175,8 @@ static void query(Discovery *d,bool probe,uint64_t now) {
 void discovery_start(Discovery *d,const char *hostname,const char *id,const char *board,const uint8_t ip[4],
                      uint16_t port,DiscoverySend send,void *context,uint64_t now) {
     memset(d,0,sizeof(*d));
-    if (!label(hostname,sizeof(d->devices[0].hostname)) || !label(id,sizeof(d->devices[0].device_id)) || !label(board,sizeof(d->devices[0].board)) || !port) return;
-    DiscoveryDevice *self=&d->devices[0]; strcpy(self->hostname,hostname); strcpy(self->device_id,id); strcpy(self->board,board);
+    if (!label(hostname,sizeof(d->controllers[0].hostname)) || !label(id,sizeof(d->controllers[0].controller_id)) || !label(board,sizeof(d->controllers[0].board)) || !port) return;
+    DiscoveryController *self=&d->controllers[0]; strcpy(self->hostname,hostname); strcpy(self->controller_id,id); strcpy(self->board,board);
     memcpy(self->ip,ip,4); self->port=port; d->send=send; d->context=context; d->active=true;
     d->next_announce=now+(uint64_t)(ip[3]%100)*1000u; d->next_query=now;
 }
@@ -185,7 +185,7 @@ void discovery_stop(Discovery *d,uint64_t now) {
     if (d->active && d->announced) response(d,0,true,multicast,DISCOVERY_PORT,0,NULL,0,0,false);
     memset(d,0,sizeof(*d));
 }
-static void parse_txt(DiscoveryDevice *p,const uint8_t *bytes,size_t at,size_t end) {
+static void parse_txt(DiscoveryController *p,const uint8_t *bytes,size_t at,size_t end) {
     char id[64]="",board[32]=""; bool release=false;
     while (at<end) {
         unsigned n=bytes[at++]; if (n>end-at) return;
@@ -205,7 +205,7 @@ static void parse_txt(DiscoveryDevice *p,const uint8_t *bytes,size_t at,size_t e
             if (memchr(out,0,length) || !label(out,capacity)) return;
         }
     }
-    if (release && id[0] && board[0]) { strcpy(p->device_id,id); strcpy(p->board,board); }
+    if (release && id[0] && board[0]) { strcpy(p->controller_id,id); strcpy(p->board,board); }
 }
 void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8_t from[4],uint16_t port,uint64_t now) {
     if (!d->active || size<12 || size>DISCOVERY_PACKET_LIMIT) return;
@@ -214,8 +214,8 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
     size_t at=12; bool answer=false,alias=false,enumeration=false,unicast=port!=DISCOVERY_PORT;
     unsigned wanted=0,known=0;
     char first[96]=""; unsigned first_type=0,first_class=0;
-    char host[40],instance[64]; snprintf(host,sizeof(host),"%s.local",d->devices[0].hostname);
-    snprintf(instance,sizeof(instance),"%s.%s",d->devices[0].hostname,service);
+    char host[40],instance[64]; snprintf(host,sizeof(host),"%s.local",d->controllers[0].hostname);
+    snprintf(instance,sizeof(instance),"%s.%s",d->controllers[0].hostname,service);
     for (unsigned i=0;i<questions;i++) {
         char question[96]; if (!read_name(bytes,size,&at,question,sizeof(question)) || size-at<4) return;
         unsigned type=u16(bytes+at),klass=u16(bytes+at+2); at+=4;
@@ -248,25 +248,25 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
         if (!(flags&0x8000) && i<u16(bytes+6) && r.klass==1) {
             size_t data=r.data; char target[96];
             if (r.type==PTR && r.ttl>=DISCOVERY_TTL/2 && !strcmp(r.name,service) && read_name(bytes,size,&data,target,sizeof(target)) && data==r.end && !strcmp(target,instance)) known|=WANT_SERVICE;
-            if (r.type==A && r.end-r.data==4 && !memcmp(bytes+r.data,d->devices[0].ip,4)) {
+            if (r.type==A && r.end-r.data==4 && !memcmp(bytes+r.data,d->controllers[0].ip,4)) {
                 if (!strcmp(r.name,bootstrap) && r.ttl>=5) known|=WANT_ALIAS;
                 if (!strcmp(r.name,host) && r.ttl>=DISCOVERY_TTL/2) known|=WANT_HOST;
             }
             if (!strcmp(r.name,instance) && r.ttl>=DISCOVERY_TTL/2) {
-                if (r.type==SRV && r.end-r.data>=7 && u16(bytes+r.data+4)==d->devices[0].port) {
+                if (r.type==SRV && r.end-r.data>=7 && u16(bytes+r.data+4)==d->controllers[0].port) {
                     data+=6; if (read_name(bytes,size,&data,target,sizeof(target)) && data==r.end && !strcmp(target,host)) known|=WANT_SRV;
                 } else if (r.type==TXT) {
-                    DiscoveryDevice txt={0}; parse_txt(&txt,bytes,r.data,r.end);
-                    if (!strcmp(txt.device_id,d->devices[0].device_id) && !strcmp(txt.board,d->devices[0].board)) known|=WANT_TXT;
+                    DiscoveryController txt={0}; parse_txt(&txt,bytes,r.data,r.end);
+                    if (!strcmp(txt.controller_id,d->controllers[0].controller_id) && !strcmp(txt.board,d->controllers[0].board)) known|=WANT_TXT;
                 }
             }
         }
-        if ((flags&0x8000 || authority) && r.klass==1 && r.type==A && !strcmp(r.name,host) && r.end-r.data==4 && r.ttl && memcmp(bytes+r.data,d->devices[0].ip,4)) {
+        if ((flags&0x8000 || authority) && r.klass==1 && r.type==A && !strcmp(r.name,host) && r.end-r.data==4 && r.ttl && memcmp(bytes+r.data,d->controllers[0].ip,4)) {
             // A unique-name conflict: choose another suffix and probe again. The
             // shared bootstrap name is intentionally excluded from this path.
-            if ((flags&0x8000) || memcmp(d->devices[0].ip,bytes+r.data,4)<0) {
-                char renamed[32]; snprintf(renamed,sizeof(renamed),"lightvm-%02x%02x%02x-%u",d->devices[0].ip[1],d->devices[0].ip[2],d->devices[0].ip[3],++d->collision);
-                strcpy(d->devices[0].hostname,renamed); d->probes=0; d->announced=false; d->next_announce=now+250000u;
+            if ((flags&0x8000) || memcmp(d->controllers[0].ip,bytes+r.data,4)<0) {
+                char renamed[32]; snprintf(renamed,sizeof(renamed),"lightvm-%02x%02x%02x-%u",d->controllers[0].ip[1],d->controllers[0].ip[2],d->controllers[0].ip[3],++d->collision);
+                strcpy(d->controllers[0].hostname,renamed); d->probes=0; d->announced=false; d->next_announce=now+250000u;
                 return;
             }
         }
@@ -279,7 +279,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
             for (unsigned i=0;i<records;i++) {
                 Record r; if (!record(bytes,size,&at,&r)) return;
                 if (r.klass!=1) continue;
-                char key[32],target[96]; DiscoveryDevice *p=NULL; size_t data=r.data;
+                char key[32],target[96]; DiscoveryController *p=NULL; size_t data=r.data;
                 if (pass==0 && r.type==PTR && !strcmp(r.name,service)) {
                     if (!read_name(bytes,size,&data,target,sizeof(target)) || data!=r.end || !instance_label(target,key)) continue;
                     p=peer(d,key,r.ttl!=0); if (p) { if (!r.ttl) memset(p,0,sizeof(*p)); else p->ptr_until=until(now,r.ttl); }
@@ -290,7 +290,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
                         if (!read_name(bytes,size,&data,target,sizeof(target)) || data!=r.end || !host_label(target,key) || strcmp(key,p->hostname)) continue;
                         p->port=u16(bytes+r.data+4); p->srv_until=until(now,r.ttl);
                     } else if (r.type==TXT) {
-                        p->device_id[0]=0; p->board[0]=0; parse_txt(p,bytes,r.data,r.end); p->txt_until=until(now,r.ttl);
+                        p->controller_id[0]=0; p->board[0]=0; parse_txt(p,bytes,r.data,r.end); p->txt_until=until(now,r.ttl);
                     }
                 } else if (pass==2 && r.type==A && r.end-r.data==4 && host_label(r.name,key)) {
                     p=peer(d,key,false); if (p && ip_valid(bytes+r.data)) { memcpy(p->ip,bytes+r.data,4); p->ip_until=until(now,r.ttl); }
@@ -301,7 +301,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
         if (unicast) response(d,DISCOVERY_TTL,alias,from,port,port!=DISCOVERY_PORT?u16(bytes):0,port!=DISCOVERY_PORT?first:NULL,first_type,first_class,enumeration);
         else {
             d->reply_alias|=alias;
-            if (!d->reply_pending) { d->reply_pending=true; d->reply_at=now+20000u+(uint64_t)(d->devices[0].ip[3]%100)*1000u; }
+            if (!d->reply_pending) { d->reply_pending=true; d->reply_at=now+20000u+(uint64_t)(d->controllers[0].ip[3]%100)*1000u; }
             // Enumeration is rare; send it with the same bounded answer packet.
             if (enumeration) response(d,DISCOVERY_TTL,false,multicast,DISCOVERY_PORT,0,NULL,0,0,true);
         }
@@ -331,11 +331,11 @@ static void json(char *out,size_t capacity,size_t *used,const char *format,...) 
 size_t discovery_json(Discovery *d,char *out,size_t capacity,uint64_t now) {
     size_t used=0; unsigned count=0;
     if (d && d->active) expire(d,now);
-    json(out,capacity,&used,"{\"schema\":\"lightvm.discovery\",\"capacity\":%u,\"available\":%s,\"truncated\":%s,\"devices\":[",DISCOVERY_LIMIT,d && d->active?"true":"false",d && d->truncated?"true":"false");
+    json(out,capacity,&used,"{\"schema\":\"lightvm.discovery\",\"capacity\":%u,\"available\":%s,\"truncated\":%s,\"controllers\":[",DISCOVERY_LIMIT,d && d->active?"true":"false",d && d->truncated?"true":"false");
     if (d && d->active) {
         for (unsigned i=0;i<DISCOVERY_LIMIT;i++) {
-            DiscoveryDevice *p=&d->devices[i]; if (i && !complete(p,now)) continue;
-            json(out,capacity,&used,"%s{\"hostname\":\"%s.local\",\"device_id\":\"%s\",\"board\":\"%s\",\"ip\":\"%u.%u.%u.%u\",\"port\":%u,\"url\":\"http://%u.%u.%u.%u:%u\"}",count++?",":"",p->hostname,p->device_id,p->board,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port);
+            DiscoveryController *p=&d->controllers[i]; if (i && !complete(p,now)) continue;
+            json(out,capacity,&used,"%s{\"hostname\":\"%s.local\",\"controller_id\":\"%s\",\"board\":\"%s\",\"ip\":\"%u.%u.%u.%u\",\"port\":%u,\"url\":\"http://%u.%u.%u.%u:%u\"}",count++?",":"",p->hostname,p->controller_id,p->board,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port);
         }
     }
     json(out,capacity,&used,"]}"); return used<capacity?used:0;

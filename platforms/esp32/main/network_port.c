@@ -184,7 +184,7 @@ static bool start_discovery(uint16_t port) {
         setsockopt(discovery_socket,IPPROTO_IP,IP_ADD_MEMBERSHIP,&group,sizeof(group)) ||
         fcntl(discovery_socket,F_SETFL,O_NONBLOCK)) goto failed;
     uint8_t ip[4]; memcpy(ip,&local.s_addr,4);
-    discovery_start(&discovery,hostname,engine->device_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
+    discovery_start(&discovery,hostname,engine->controller_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
     if (!discovery.active) goto failed;
     return true;
 failed:
@@ -193,7 +193,7 @@ failed:
 static void poll_discovery(uint64_t now,uint16_t port) {
     bool enabled=handle && network_online(&engine->network) && network_http_enabled(&engine->network);
     struct in_addr address={0}; inet_pton(AF_INET,engine->network.ip,&address);
-    if (discovery.active && (!enabled || memcmp(&address.s_addr,discovery.devices[0].ip,4) || port!=discovery.devices[0].port)) stop_discovery();
+    if (discovery.active && (!enabled || memcmp(&address.s_addr,discovery.controllers[0].ip,4) || port!=discovery.controllers[0].port)) stop_discovery();
     static uint64_t retry;
     if (enabled && !discovery.active && now>=retry) { start_discovery(port); retry=now+5000000u; }
     if (discovery_socket<0) return;
@@ -336,7 +336,7 @@ static bool start_http(uint16_t port) {
         if (httpd_start(&bootstrap_handle,&config)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; }
         const httpd_method_t bootstrap_methods[]={HTTP_GET,HTTP_OPTIONS};
         for (unsigned i=0;i<2;i++) {
-            httpd_uri_t route={.uri="/api/v1/devices",.method=bootstrap_methods[i],.handler=request};
+            httpd_uri_t route={.uri="/api/v1/controllers",.method=bootstrap_methods[i],.handler=request};
             if (httpd_register_uri_handler(bootstrap_handle,&route)!=ESP_OK) { httpd_stop(bootstrap_handle); bootstrap_handle=NULL; httpd_stop(handle); handle=NULL; return false; }
         }
     }

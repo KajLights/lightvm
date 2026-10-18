@@ -19,25 +19,25 @@ class SweepTests(unittest.TestCase):
         self.configure(5)
         program = compile_source(SOURCE)
         self.assertTrue(program.success, program.diagnostics)
-        self.client.save_procedure('sweep', program.bytecode)
+        self.client.save_program('sweep', program.bytecode)
 
     def tearDown(self):
         self.client.close()
 
     def configure(self, count):
         self.count = count
-        self.client.configure({'schema': 'lightvm.config', 'devices': [
+        self.client.configure({'schema': 'lightvm.config', 'outputs': [
             {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': count}}]})
 
     def load(self, **settings):
-        self.client.configure_scene([{'id': 'eyes', 'procedure': 'sweep', 'settings': {
+        self.client.configure_composition([{'id': 'eyes', 'program': 'sweep', 'settings': {
             'eye_count': 1, 'eye_width': 1, 'rainbow_eyes': False, 'eased': False,
-            **settings}}], device='lights')
-        self.client.require_ok(self.client.command(STOP, device='lights'))
+            **settings}}], output='lights')
+        self.client.require_ok(self.client.command(STOP, output='lights'))
 
     def frame(self, ms=0):
-        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', ms), device='lights'))
-        return bytes(self.client.snapshot(device='lights', layer='eyes')[1])
+        self.client.require_ok(self.client.command(FRAME, struct.pack('<I', ms), output='lights'))
+        return bytes(self.client.snapshot(output='lights', layer='eyes')[1])
 
     def alphas(self, ms=0):
         return list(self.frame(ms)[3::4])
@@ -94,9 +94,9 @@ class SweepTests(unittest.TestCase):
     def test_batched_eyes_share_frames_and_rendering_does_not_allocate(self):
         self.configure(100)
         self.load(eye_count=1)
-        single = self.client.program_state(device='lights', layer='eyes')
+        single = self.client.program_state(output='lights', layer='eyes')
         self.load(eye_count=4)
-        batch = self.client.program_state(device='lights', layer='eyes')
+        batch = self.client.program_state(output='lights', layer='eyes')
         self.assertEqual(batch['buffer_bytes'], single['buffer_bytes'])
         self.assertEqual(batch['state_bytes'] - single['state_bytes'], 3 * 104)
         heap = self.client.status_fields()['heap']

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Exercise the normal device API with identical bytecode on a device and host.
+"""Exercise the normal controller API with identical bytecode on a controller and host.
 
 Replaces the resident program, stops playback and restores active configuration.
-Persistent procedures and saved configuration are untouched.
+Persistent programs and saved configuration are untouched.
 """
 import argparse
 from pathlib import Path
@@ -21,14 +21,14 @@ def check(condition,message):
 
 def smoke(client, board, reference):
     info=client.describe()
-    check(info['board']==board, 'unexpected device identity')
+    check(info['board']==board, 'unexpected controller identity')
     from lightvm.release import BASELINE, release_error
     check(release_error(info.get('version'), BASELINE) is None, 'compatible LightVM release required')
     original=client.get_config()
     count=min(100,info['pixel_capacity'])
     pin='D1' if board=='xiao_esp32c3' else 'D0' if board.startswith('xiao_esp32') else 'GP16'
-    config={'schema':'lightvm.config','devices':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}]}
-    host_config={**config,'devices':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]}
+    config={'schema':'lightvm.config','outputs':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}]}
+    host_config={**config,'outputs':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]}
     try:
         client.configure(config);reference.configure(host_config)
         for source in sorted((ROOT/'examples/animations').glob('*.py')):
@@ -76,9 +76,9 @@ def main():
     parser.add_argument('--reference',type=Path,default=ROOT/'build/host/lightvm')
     parser.add_argument('--no-reset',action='store_true')
     args=parser.parse_args()
-    device=SerialTransport(args.port,no_reset=args.no_reset or args.board.startswith('xiao_esp32')) if args.port else ProcessTransport(args.process)
+    output=SerialTransport(args.port,no_reset=args.no_reset or args.board.startswith('xiao_esp32')) if args.port else ProcessTransport(args.process)
     reference=ProcessTransport(args.reference)
-    try:smoke(Client(device),args.board,Client(reference))
-    finally:device.close();reference.close()
+    try:smoke(Client(controller),args.board,Client(reference))
+    finally:controller.close();reference.close()
 
 if __name__=='__main__':main()

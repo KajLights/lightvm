@@ -1,7 +1,7 @@
 import fixtures from '../../tests/portable_fixtures.h?raw';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bytesFor, deviceLayers, emptyLibrary, importLibrary, LIBRARY_KEY, parseLibrary, readLibrary, saveAnimation, writeLibrary } from './library';
+import { bytesFor, compositionLayers, emptyLibrary, importLibrary, LIBRARY_KEY, parseLibrary, readLibrary, saveAnimation, writeLibrary } from './library';
 import type { Compilation } from './types';
 
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
@@ -13,7 +13,7 @@ const manifest = JSON.parse(new TextDecoder().decode(bytecode.subarray(bytecode.
 const compiled: Compilation = { id: 1, source: '# editable source', bytecode, diagnostics: [], manifest };
 
 describe('editable library and pinned presets', () => {
-  it('keeps transition source and bytecode in the library without accepting it as a scene layer', async () => {
+  it('keeps transition source and bytecode in the library without accepting it as a composition layer', async () => {
     const raw = fixtures.split('transition_lbc[] = {')[1].split('};')[0];
     const bytes = Uint8Array.from(raw.match(/0x[0-9a-f]{2}/g)!.map(value => parseInt(value, 16)));
     const size = new DataView(bytes.buffer).getUint32(76, true);
@@ -23,7 +23,7 @@ describe('editable library and pinned presets', () => {
     const imported = await importLibrary(emptyLibrary(), JSON.stringify(library));
     expect(imported.animations[0].manifest.profile).toBe('transition');
     expect(imported.animations[0].source).toBe('# editable transition');
-    expect(() => deviceLayers(imported, [{ id: 'bad', animation: animation.id, settings: {}, opacity: 255, blend: 'over' }])).toThrow(/cannot be a scene layer/);
+    expect(() => compositionLayers(imported, [{ id: 'bad', animation: animation.id, settings: {}, opacity: 255, blend: 'over' }])).toThrow(/cannot be a composition layer/);
   });
   it('round trips source, compiled code and independent instance settings across library reloads', async () => {
     const first = await saveAnimation(emptyLibrary(), compiled, 'sweep.py', 'Sweep', { duration: 2 });
@@ -34,7 +34,7 @@ describe('editable library and pinned presets', () => {
     expect(loaded.animations.map(item => item.version)).toEqual([1, 2]);
     expect(loaded.animations[0].source).toBe('# editable source');
     expect(bytesFor(loaded.animations[0])).toEqual(compiled.bytecode);
-    expect(deviceLayers(loaded, loaded.presets[0].layers)).toEqual([{ id: 'eye', procedure: 'a' + first.animation.digest.slice(0, 31), crc32: expect.any(Number), settings: { duration: 4, color: 255 }, opacity: 128, blend: 'screen' }]);
+    expect(compositionLayers(loaded, loaded.presets[0].layers)).toEqual([{ id: 'eye', program: 'a' + first.animation.digest.slice(0, 31), crc32: expect.any(Number), settings: { duration: 4, color: 255 }, opacity: 128, blend: 'screen' }]);
     expect(loaded.animations[0].settings).toEqual({ duration: 2 });
     expect(await importLibrary(emptyLibrary(), JSON.stringify(loaded))).toEqual(loaded);
   });

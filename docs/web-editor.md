@@ -1,38 +1,38 @@
-# Browser device workspace
+# Browser controller workspace
 
 The browser app is a static React, TypeScript and Redux Toolkit application built
-with Vite. **Devices** is the entry point. Connect to a LightVM board over HTTP or
-USB, then use the **Develop**, **Fader** and **Configure** views for that device. **Firmware**
+with Vite. **Controllers** is the entry point. Connect to a LightVM board over HTTP or
+USB, then use the **Develop**, **Fader** and **Configure** views for that controller. **Firmware**
 installs and updates XIAO ESP32-C3, S3 and C6 through Web Serial, and Pico and
 Pico W from BOOTSEL through WebUSB. The Pico UF2s are also available to download.
-The app can also open Develop without a device for editing and bytecode compilation.
+The app can also open Develop without a controller for editing and bytecode compilation.
 
 The app reuses the existing JavaScript protocol, transport and discovery modules.
-A persistent device service owns USB/HTTP sessions and pins each operation to its
-selected command path. Redux holds serializable device snapshots, the editor draft
+A persistent controller service owns USB/HTTP sessions and pins each operation to its
+selected command path. Redux holds serializable controller snapshots, the editor draft
 and operation state. Connection and worker objects stay outside the store. Wi-Fi
 passwords remain in the network form and are cleared after an attempted save.
 
 ## Fader and timed transitions
 
-Open the device workspace's **Fader** tab and select the output. Drag an animation
-from **Saved animations** onto **Scene A** or **Scene B**, or use that animation's
+Open the controller workspace's **Fader** tab and select the output. Drag an animation
+from **Saved animations** onto **Composition A** or **Composition B**, or use that animation's
 **Load A** / **Load B** buttons. The list includes browser animation versions and
-animations already stored on the device. Browser versions use their saved
+animations already stored on the controller. Browser versions use their saved
 initialization settings and upload their compiled program only when missing;
-device-only programs use their defaults. Saved transition programs are excluded.
+controller-only programs use their defaults. Saved transition programs are excluded.
 
-Loading replaces that slot with one animation while preserving the other scene,
+Loading replaces that slot with one animation while preserving the other composition,
 transition percentage and current manual or timed driver. Failed preparation
-retains the running scenes. For layered scenes, prepare either slot in Develop's
-A/B panel. Both scenes keep running. Opening the tab does not interrupt an
+retains the running compositions. For layered compositions, prepare either slot in Develop's
+A/B panel. Both compositions keep running. Opening the tab does not interrupt an
 existing timed transition.
 
 Choose a deployed program under **Transition program**, adjust its exposed
 settings if needed, then **Apply transition**. The list comes from transitions
-stored on the connected device, including any separately named variants.
+stored on the connected controller, including any separately named variants.
 Unchecked settings use the program defaults; colour settings have a colour picker.
-Applying retains both scenes, the percentage and the current fader or timed driver.
+Applying retains both compositions, the percentage and the current fader or timed driver.
 The same selector is available in Develop's A/B panel.
 
 For the wipe example, leave `separator` at its default for a plain wipe. Override
@@ -72,7 +72,7 @@ From the repository root, with Node 22 and Python 3 installed:
 Open **http://localhost:8000** in desktop Chrome or Edge. The server binds to
 loopback. Use the server's --port option to choose another port. npm run dev starts
 the Vite development server on loopback for frontend work. The Python server runs
-the Vite build before serving build/web; it has no compilation or device backend.
+the Vite build before serving build/web; it has no compilation or controller backend.
 
 The first visit to Develop loads the pinned Pyodide assets, and the
 CodeMirror editor uses a pinned CDN asset. Internet access is initially needed;
@@ -80,7 +80,7 @@ offline operation is not guaranteed. Source is checked 220 ms after an edit. Onl
 the current successful compilation can be uploaded or downloaded. Errors link
 back to the affected line. The canonical examples and compiler
 sources are packaged with the static build. Python source is parsed and never run by the
-compiler. Only the compiled bytecode is sent to a device.
+compiler. Only the compiled bytecode is sent to a controller.
 
 The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
 firmware bundle. The published editor builds matching Wi-Fi, HTTP, WebSocket and boot
@@ -119,7 +119,7 @@ at **http://192.168.4.1**. Open the hosted editor before joining that network or
 serve this local build. Select **Host an access point** in **Wi-Fi & HTTP** to
 save AP settings; station and AP drafts are retained when switching modes.
 Passwords remain only in the form and are cleared after attempted saves.
-The device serves the full API, while editor/compiler assets remain separate;
+The controller serves the full API, while editor/compiler assets remain separate;
 load Develop while online before relying on compilation without internet.
 During power-cycle recovery, the panel shows saved network settings while the
 open recovery AP stays active. **Save network for next boot** preserves the
@@ -128,16 +128,16 @@ those values. Startup programs stay idle during recovery; manual activation rema
 See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode)
 and [power-cycle recovery](boot-sequence.md#recovery-access-point).
 
-## Device and development flow
+## Controller and development flow
 
-**Devices** tries the lightvm.local HTTP discovery endpoint. Pick a nearby board,
+**Controllers** tries the lightvm.local HTTP discovery endpoint. Pick a nearby board,
 enter a direct HTTP address, or choose a USB port in the browser. HTTP can connect
 without USB. Discovery is read-only, and local-network browser permission may be
 needed. A USB-only board may need its network settings provisioned over USB first.
-See [networking](networking.md#local-device-discovery) for details.
+See [networking](networking.md#local-controller-discovery) for details.
 
-Network connections identify the device over HTTP and automatically select
-[WebSocket](websocket.md) when the firmware advertises support. The device ID and
+Network connections identify the controller over HTTP and automatically select
+[WebSocket](websocket.md) when the firmware advertises support. The controller ID and
 boot ID must match on both transports before the editor attaches the connection.
 The bootstrap HTTP session is then closed; fader updates, uploads and other
 commands use the persistent socket. The connection selector and status display
@@ -147,21 +147,21 @@ socket disconnects its path; commands are never automatically replayed or moved
 to HTTP or USB.
 
 After connecting, the workspace shows the board, output binding and current
-command path. USB and a network path can be attached to the same device and boot epoch.
+command path. USB and a network path can be attached to the same controller and boot epoch.
 Switching paths does not replay commands through another connection. Disconnecting
-the browser leaves autonomous playback running. If the device reboots, reconnect
+the browser leaves autonomous playback running. If the controller reboots, reconnect
 and review its state. Web Serial requires HTTPS or localhost and desktop
 Chrome/Edge. Editing and bytecode downloads still work in browsers without Web Serial.
 
 In **Configure → Output & startup**, select the data pin, count, colour order and
 brightness limit for each output, and optionally select its stored startup program
-and arguments. Add or remove outputs independently. Startup arguments are a JSON
-object; omitted values use program defaults. Changing a program clears its argument
+and settings. Add or remove outputs independently. Startup settings are a JSON
+object; omitted values use program defaults. Changing a program clears its settings
 draft, and choosing idle removes that output’s startup invocation. An advanced
 JSON editor stays synchronized with the form.
 Validate has no hardware side effect; Apply changes RAM; Apply & save persists for
 reboot. Unchanged hardware retains playback, including after startup-only edits. Saves use the revision
-loaded with the draft. If another client changes device settings, the draft stays
+loaded with the draft. If another client changes controller settings, the draft stays
 intact and saving pauses until the new state is reviewed.
 
 **Configure → Wi-Fi & HTTP** appears only on network-capable firmware. It edits Wi-Fi
@@ -198,17 +198,17 @@ Unused animation versions and browser presets can be deleted from the library;
 saved browser presets protect their referenced animation versions.
 Layers are ordered bottom to top, with individual settings, opacity and `over`,
 `add`, `screen` or `multiply` blending. **Preview preset** saves missing compiled
-program versions on the device, then admits and activates the entire scene.
-The device checks available storage for each upload. The displayed frame
-buffer estimate excludes VM state; device admission remains authoritative.
+program versions on the controller, then admits and activates the entire composition.
+The controller checks available storage for each upload. The displayed frame
+buffer estimate excludes VM state; controller admission remains authoritative.
 
-**Save preset** stores the recipe in the browser. **Save preset to device** stores
+**Save preset** stores the recipe in the browser. **Save preset to controller** stores
 the shared compiled programs and compact recipe in flash; it does not change
 playback. Either save replaces a preset of the same name. **Run on output**
-activates a device preset on the selected output, even after reconnecting or
+activates a controller preset on the selected output, even after reconnecting or
 rebooting. Startup remains a single stored program configured separately; saved
-presets do not automatically run at boot. Device presets require `presets: true`.
-Device presets and compiled programs share available storage without fixed count
+presets do not automatically run at boot. Controller presets require `presets: true`.
+Controller presets and compiled programs share available storage without fixed count
 quotas. The storage panel shows free and total capacity and distinguishes animations
 and transitions with the same name.
 
@@ -222,7 +222,7 @@ saved data can be downloaded with **Export preserved library** until explicit
 import recovery. Libraries remain readable when a saved program requires newer
 firmware; the editor explains its minimum release when previewing. Pre-baseline
 artifacts remain available for source editing and export, and require recompilation
-before execution. See [versioning](versioning.md). Device program storage
+before execution. See [versioning](versioning.md). Controller program storage
 controls can remove unused compiled programs; saved presets and active/saved
 startup or playback references protect programs still in use.
 
@@ -258,7 +258,7 @@ after Pages is enabled with GitHub Actions as its source.
 
 The protocol suite covers framing, discovery, request identities, revision
 conflicts and a real host upload/play cycle. The browser acceptance check uses a
-host simulator plus Chrome or Chromium and exercises the device picker, both
+host simulator plus Chrome or Chromium and exercises the controller picker, both
 workspace views, configurations, uploads and live controls. Set LIGHTVM_RECEIVER
 to a host build and CHROME_EXECUTABLE if needed, then run npm run test:browser.
 Use a host build with `LIGHTVM_HTTP=ON` and `LIGHTVM_WEBSOCKET=ON` to also check
@@ -277,3 +277,11 @@ Browser rendering and simulator checks do not establish physical flashing,
 readback, wireless behavior or power-recovery timing. Validate these separately
 on each board when a hardware test is explicitly requested. Preserve reserved
 storage and retain source/configuration backups across contract cutovers.
+
+## Home Assistant outputs
+
+Under **Configure → Output & startup**, choose **Home Assistant default preset**
+to expose that output. Check its **Home Assistant presets** and optionally set a
+name. Apply in RAM or save the configuration for reboot. Enable MQTT separately
+in **Wi-Fi, HTTP & MQTT**. Each exposed output appears in HA as an on/off light
+and a Preset selector; selecting a preset starts its complete composition.

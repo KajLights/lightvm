@@ -12,13 +12,13 @@ supports Edit → Preview → Save animation → optional Compose → Save prese
 The [animation profile](docs/animation-profile.md) defines persistent buffers,
 arrays and the `@init` / `@render` callbacks. Caller arguments supply context,
 time, delta and pixels; settings are frozen at initialization.
-Every animation can run alone or as a scene layer. Frames start transparent.
+Every animation can run alone or as a composition layer. Frames start transparent.
 Ordinary colour writes paint solid pixels; alpha is optional. Use `clear()` to remove paint
 from an array, and `fill(rgb(0, 0, 0))` when solid black is required.
 Programs declare a minimum LightVM release; compiler, editor and firmware share
 one [application SemVer contract](docs/versioning.md).
-Up to eight independent device slots run concurrently. Each output can also run
-a [native scene](docs/composition.md) with independent background and transparent
+Multiple independent outputs run concurrently, subject to controller resources. Each output can also run
+a [native composition](docs/composition.md) with independent background and transparent
 foreground animations. The [PixelArray and sprite SDK](docs/pixelarray-sprites.md)
 adds shared artwork, user-defined sprite callbacks, optional channels and native
 geometry/colour transforms. Multiple languages and a broader component system
@@ -36,7 +36,7 @@ generic bulk backend; Rainbow uses ordinary pixel expressions.
   proposals, future requirements in [`docs/design/`](docs/design/).
 - [`examples/animations/`](examples/animations/): the six canonical Python effects,
   shared by the editor, tools and tests.
-- [`examples/scenes/`](examples/scenes/): combinations of those animations on one output.
+- [`examples/compositions/`](examples/compositions/): combinations of those animations on one output.
 - [`examples/config/`](examples/config/): board startup and network configuration
   examples.
 - [`tests/pico_output/`](tests/pico_output/): production DMA capture and lifecycle probe.
@@ -52,14 +52,14 @@ build/venv/bin/pip install -r requirements.txt
 cmake -S . -B build/host -DLIGHTVM_PLATFORM=host -DCMAKE_BUILD_TYPE=Release
 cmake --build build/host --parallel
 build/venv/bin/python tools/build_examples.py
-build/venv/bin/python tools/smoke_device.py --process build/host/lightvm \
+build/venv/bin/python tools/smoke_controller.py --process build/host/lightvm \
   --reference build/host/lightvm --board simulator
 ```
 
 The smoke runner temporarily configures an output, uploads all six effects and
 compares their RGB output with a host running identical bytecode. It restores the
 original active configuration, stops playback and leaves saved configuration and
-procedures unchanged.
+programs unchanged.
 
 Enable the existing HTTP and power-recovery profiles with
 `-DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON -DLIGHTVM_BOOT_SEQUENCE=ON`.
@@ -68,7 +68,7 @@ Add `-DLIGHTVM_WEBSOCKET=ON` for the optional plain
 Use `-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h"` in a separate build
 directory to exercise the 175-pixel, 16 KiB program-budget profile.
 
-## Compile, save and run on a device
+## Compile, save and run on a controller
 
 The examples are Color, Pattern, Rainbow, Stars, Rainbow Sprite, and Sweep. The source
 API initializes context once and renders each frame using the actual elapsed delta.
@@ -82,7 +82,7 @@ preset rather than a separate animation.
 
 Each effect has one source in `examples/animations/`, shared by the editor, build tools and
 current animation tests. `examples/animations/rainbow.py` is the picolights gradient with a
-60-second default cycle; its `duration` setting accepts startup arguments such
+60-second default cycle; its `duration` setting accepts startup settings such
 as `{"duration": 3.3}`.
 
 ```sh
@@ -90,7 +90,7 @@ build/venv/bin/python -m lightvm.compiler examples/animations/rainbow.py \
   -o build/examples/rainbow.lbc
 build/venv/bin/python tools/client.py --port PORT --status
 build/venv/bin/python tools/client.py --port PORT \
-  --store-procedure rainbow build/examples/rainbow.lbc
+  --store-program rainbow build/examples/rainbow.lbc
 build/venv/bin/python tools/client.py --port PORT \
   --config examples/config/pico-startup.json --save
 build/venv/bin/python tools/client.py --port PORT --activate rainbow
@@ -98,16 +98,16 @@ build/venv/bin/python tools/client.py --port PORT --activate rainbow
 
 Use the configuration matching the board and actual wiring. For XIAO ESP32-C3,
 use `examples/config/xiao-c3-startup.json` and add `--no-reset` to serial commands;
-S3/C6 use `examples/config/xiao-startup.json`. The device keeps its configured pin,
-count, order and brightness when changing programs. Reboot runs each device’s
-`startup.procedure` with its `startup.args`; omitted arguments use program defaults. `STATUS` reports `mode=bytecode` and `code_storage=flash`
+S3/C6 use `examples/config/xiao-startup.json`. The controller keeps its configured pin,
+count, order and brightness when changing programs. Reboot runs each output’s
+`startup.program` with its `startup.settings`; omitted settings use program defaults. `STATUS` reports `mode=bytecode` and `code_storage=flash`
 for both named and transient programs. Uploads share one 256-byte page buffer;
 there is no package-sized buffer in an animation instance.
 
 Uploading a new version under the same stored name preserves the current running
 version in pinned flash until explicit activation. Activation prepares a separate
 candidate and retains the old instance on failure. Startup resolves the current
-catalogue entry for each configured procedure name; saving a replacement changes
+catalogue entry for each configured program name; saving a replacement changes
 what runs on the next boot. Root-level `targets` and `startup` are unsupported.
 
 The application version comes from `lightvm/release.json`, initially `1.0.0`.
@@ -121,7 +121,7 @@ feature floors, internal format markers and the pre-baseline cutover.
 The management frame and storage layouts remain fixed internal encodings.
 Unsupported committed storage stays untouched and unavailable for writes, with a
 repair/reprovision diagnostic. Back up data before explicitly reprovisioning such
-devices. Current-layout interrupted-write recovery and content-pinned running
+controllers. Current-layout interrupted-write recovery and content-pinned running
 revisions remain supported.
 
 ## Firmware builds
@@ -163,7 +163,7 @@ idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c3" -p PORT flash
 Use a separate directory and `xiao_esp32s3` or `xiao_esp32c6` for those boards.
 The normal partition tables and flash store are retained.
 
-## Browser workspace and device APIs
+## Browser workspace and controller APIs
 
 ```sh
 npm ci
@@ -173,10 +173,10 @@ python3 tools/serve_editor.py
 The [browser workspace](docs/web-editor.md) follows Edit → physical Preview → Save
 animation → optional Compose → Save preset. It keeps editable animation versions
 and exportable presets in a browser library, and saves shared compiled programs
-and compact preset recipes on the device. Preview addresses the selected output
+and compact preset recipes on the controller. Preview addresses the selected output
 over HTTP/USB. The editor and example dropdown share the canonical sources.
-[MQTT control and Home Assistant lights](docs/mqtt.md) provide optional on/off
-control through an existing broker, with one saved-preset binding per output.
+[MQTT control and Home Assistant lights](docs/mqtt.md) provide optional power and preset selection
+through an existing broker, with one light and one Preset selector per output.
 Build with `-DLIGHTVM_MQTT=ON` (and Wi-Fi on embedded boards).
 See [configuration and management](docs/configuration.md),
 [networking](docs/networking.md) and [power recovery](docs/boot-sequence.md).
@@ -196,20 +196,20 @@ HTTP tests require a host build with HTTP enabled and permission to open local
 loopback sockets. The tests preserve the existing driver/storage/configuration
 contracts using fixtures generated by the current compiler. They cover
 admission, cooperative execution, faults, buffer ownership, settings validation and generation conflicts,
-snapshots, procedure replacement, bank rotation and startup persistence. Effect
+snapshots, program replacement, bank rotation and startup persistence. Effect
 replay executes Color, Pattern, and Rainbow through an independent Python caller
 harness. Sprite tests check Stars, Rainbow Sprite and Sweep, including transparency,
-motion, frame-independent trails and bounded memory. Scene tests cover each layer blend mode.
+motion, frame-independent trails and bounded memory. Composition tests cover each layer blend mode.
 Rainbow permits one channel level for f32 arithmetic. Memory telemetry includes contexts and replacement peaks.
 
-Measure the current Rainbow on a device with:
+Measure the current Rainbow on a controller with:
 
 ```sh
-build/venv/bin/python tools/benchmark_device.py --port PORT --board pico_w \
+build/venv/bin/python tools/benchmark_controller.py --port PORT --board pico_w \
   --pixels 200 --output build/benchmark-pico-w.json
 ```
 
-The device command measures the current canonical
+The controller command measures the current canonical
 Rainbow through the integrated firmware's render/output times and playback
 rate through the existing API, temporarily configuring the output and restoring
 its prior configuration afterward. Flash saves retain existing blocking behavior.
@@ -219,3 +219,8 @@ its prior configuration afterward. Flash saves retain existing blocking behavior
 Original code and documentation: [MIT](LICENSE), copyright 2026 Kaj Wik Siebert.
 SDK and toolchain notices remain in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 and `licenses/`; distribute these with firmware.
+
+The current vocabulary and breaking API names are defined in
+[Controller concepts](docs/architecture.md#controller-concepts). Earlier
+experimental installs require the documented
+[clean installation](docs/architecture.md#clean-installation-after-the-naming-change).

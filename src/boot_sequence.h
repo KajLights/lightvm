@@ -14,7 +14,7 @@ typedef struct {
     const char *error;
 } BootSequence;
 
-// Call once per device boot, before applying saved startup policy.
+// Call once per controller boot, before applying saved startup policy.
 bool boot_sequence_init(BootSequence *state);
 // Clears the durable counter once; the current boot's trigger remains latched.
 void boot_sequence_tick(BootSequence *state, uint64_t now);
