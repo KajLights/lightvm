@@ -296,3 +296,10 @@ cancellation. Device-scoped binary operations use MANAGE
 `{"op":"device_command","device":"desk","command":1}`. Supported command IDs
 are STATUS (1), RESET (6), PLAY (7), STOP (8) and FRAME (9, with `delta_ms`). Each
 device currently has local slot A; global B–H bindings are unsupported.
+
+## Home Assistant bindings
+
+Each output may include `home_assistant:{"on_preset":"evening","name":"Desk lamp"}`.
+Enable the optional MQTT build/profile and broker settings to expose one on/off
+light per selected output. See [MQTT and Home Assistant lights](mqtt.md) for
+configuration, power behavior and topic contracts.

@@ -1,5 +1,9 @@
 #include "session.h"
 #include "port.h"
+#if LIGHTVM_MQTT
+#include "home_assistant.h"
+#include "mqtt_posix.h"
+#endif
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
@@ -69,10 +73,18 @@ int main(int argc, char **argv) {
     if (listen_address && !network.listening) { fprintf(stderr,"Cannot listen for HTTP\n"); app_destroy(&app); host_storage_close(); return 1; }
     app.network.driver.context=&network; app.network.driver.configure=configure_network;
 #endif
+#if LIGHTVM_MQTT
+    static HomeAssistant ha;
+    static MqttSocket mqtt_socket;
+    ha_init(&ha,&app,mqtt_socket_stream(&mqtt_socket));
+#endif
     app.service_io=service_io;
     bool stdin_open=true;
     for (;;) {
         app_tick(&app);
+#if LIGHTVM_MQTT
+        ha_tick(&ha,true,platform_time_us());
+#endif
         fd_set input;
         FD_ZERO(&input);
         if (stdin_open) FD_SET(STDIN_FILENO, &input);
@@ -92,9 +104,17 @@ int main(int argc, char **argv) {
         if (size<=0) {
             session_destroy(&session); stdin_open=false;
 #if LIGHTVM_HTTP
-            if (!network.listening) break;
+            if (!network.listening
+#if LIGHTVM_MQTT
+                && !app.network.config.mqtt.enabled
+#endif
+            ) break;
+#else
+#if LIGHTVM_MQTT
+            if(!app.network.config.mqtt.enabled)break;
 #else
             break;
+#endif
 #endif
             continue;
         }
@@ -103,6 +123,9 @@ int main(int argc, char **argv) {
     session_destroy(&session);
 #if LIGHTVM_HTTP
     if (network.listening) host_http_stop();
+#endif
+#if LIGHTVM_MQTT
+    ha_close(&ha);
 #endif
     app_destroy(&app);
     host_storage_close();

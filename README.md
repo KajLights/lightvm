@@ -175,6 +175,9 @@ animation → optional Compose → Save preset. It keeps editable animation vers
 and exportable presets in a browser library, and saves shared compiled programs
 and compact preset recipes on the device. Preview addresses the selected output
 over HTTP/USB. The editor and example dropdown share the canonical sources.
+[MQTT control and Home Assistant lights](docs/mqtt.md) provide optional on/off
+control through an existing broker, with one saved-preset binding per output.
+Build with `-DLIGHTVM_MQTT=ON` (and Wi-Fi on embedded boards).
 See [configuration and management](docs/configuration.md),
 [networking](docs/networking.md) and [power recovery](docs/boot-sequence.md).
 

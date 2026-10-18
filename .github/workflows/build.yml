@@ -14,7 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         profile: [host, host-175]
-        transport: [usb, http, websocket]
+        # WebSocket profiles also enable MQTT to exercise coexistence.
+        transport: [usb, http, websocket, mqtt]
         boot_sequence: ['OFF', 'ON']
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +35,7 @@ jobs:
           if [[ '${{ matrix.profile }}' == host-175 ]]; then
             board_args=(-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h")
           fi
-          cmake -S . -B build/${{ matrix.profile }}-${{ matrix.transport }} -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -DLIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
+          cmake -S . -B build/${{ matrix.profile }}-${{ matrix.transport }} -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=${{ (matrix.transport == 'http' || matrix.transport == 'websocket') && 'ON' || 'OFF' }} -DLIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -DLIGHTVM_MQTT=${{ (matrix.transport == 'websocket' || matrix.transport == 'mqtt') && 'ON' || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
           cmake --build build/${{ matrix.profile }}-${{ matrix.transport }} --parallel 2
           size build/${{ matrix.profile }}-${{ matrix.transport }}/lightvm > build/${{ matrix.profile }}-${{ matrix.transport }}/size.txt
       - name: Contract and integration tests
@@ -76,14 +77,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        name: [pico, pico-w-usb, pico-w-wifi, pico-w-http, pico-w-websocket]
+        name: [pico, pico-w-usb, pico-w-wifi, pico-w-http, pico-w-websocket, pico-w-mqtt]
         boot_sequence: ['OFF', 'ON']
         include:
           - {name: pico, board: pico, wifi: 'OFF', http: 'OFF'}
           - {name: pico-w-usb, board: pico_w, wifi: 'OFF', http: 'OFF'}
           - {name: pico-w-wifi, board: pico_w, wifi: 'ON', http: 'OFF'}
           - {name: pico-w-http, board: pico_w, wifi: 'ON', http: 'ON'}
-          - {name: pico-w-websocket, board: pico_w, wifi: 'ON', http: 'ON'}
+          - {name: pico-w-websocket, board: pico_w, wifi: 'ON', http: 'ON', mqtt: 'ON'}
+          - {name: pico-w-mqtt, board: pico_w, wifi: 'ON', http: 'OFF', mqtt: 'ON'}
     steps:
       - uses: actions/checkout@v4
       - name: Install pinned Pico SDK and Arm compiler
@@ -97,7 +99,7 @@ jobs:
           echo "$PWD/build/deps/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin" >> "$GITHUB_PATH"
       - name: Build firmware
         run: |
-          cmake -S . -B build/${{ matrix.name }} -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=${{ matrix.board }} -DLIGHTVM_WIFI=${{ matrix.wifi }} -DLIGHTVM_HTTP=${{ matrix.http }} -DLIGHTVM_WEBSOCKET=${{ matrix.name == 'pico-w-websocket' && 'ON' || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build/${{ matrix.name }} -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=${{ matrix.board }} -DLIGHTVM_WIFI=${{ matrix.wifi }} -DLIGHTVM_HTTP=${{ matrix.http }} -DLIGHTVM_WEBSOCKET=${{ matrix.name == 'pico-w-websocket' && 'ON' || 'OFF' }} -DLIGHTVM_MQTT=${{ matrix.mqtt || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
           cmake --build build/${{ matrix.name }} --parallel 2
           arm-none-eabi-size build/${{ matrix.name }}/lightvm.elf > build/${{ matrix.name }}/size.txt
       - uses: actions/upload-artifact@v4
@@ -122,7 +124,7 @@ jobs:
       fail-fast: false
       matrix:
         board: [xiao_esp32c3, xiao_esp32s3, xiao_esp32c6]
-        transport: [usb, wifi, http, websocket]
+        transport: [usb, wifi, http, websocket, mqtt]
         boot_sequence: ['OFF', 'ON']
     defaults:
       run:
@@ -132,7 +134,7 @@ jobs:
       - name: Build firmware and record size
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ (matrix.transport == 'http' || matrix.transport == 'websocket') && 'ON' || 'OFF' }} -D LIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -D LIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} build
+          idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ (matrix.transport == 'http' || matrix.transport == 'websocket') && 'ON' || 'OFF' }} -D LIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -D LIGHTVM_MQTT=${{ (matrix.transport == 'websocket' || matrix.transport == 'mqtt') && 'ON' || 'OFF' }} -D LIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} build
           idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" size > build/${{ matrix.board }}-${{ matrix.transport }}/size.txt
       - uses: actions/upload-artifact@v4
         with:

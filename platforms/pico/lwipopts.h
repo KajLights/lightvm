@@ -3,7 +3,7 @@
 #define NO_SYS 1
 #define LWIP_SOCKET 0
 #define LWIP_NETCONN 0
-#define LWIP_TCP LIGHTVM_HTTP
+#define LWIP_TCP (LIGHTVM_HTTP || LIGHTVM_MQTT)
 #define LWIP_UDP 1
 #define LWIP_DHCP 1
 #define LWIP_DNS 0
@@ -17,7 +17,7 @@
 #define LWIP_NETIF_LINK_CALLBACK 1
 #define MEM_ALIGNMENT 4
 #define MEM_SIZE (8 * 1024)
-#define MEMP_NUM_TCP_PCB 5
+#define MEMP_NUM_TCP_PCB (5 + LIGHTVM_MQTT)
 #define MEMP_NUM_TCP_PCB_LISTEN 2
 #define MEMP_NUM_TCP_SEG 24
 #define MEMP_NUM_UDP_PCB 4

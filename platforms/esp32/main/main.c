@@ -1,5 +1,9 @@
 #include "session.h"
 #include "port.h"
+#if LIGHTVM_MQTT
+#include "home_assistant.h"
+#include "mqtt_posix.h"
+#endif
 #if LIGHTVM_WIFI
 #include "network_port.h"
 #endif
@@ -61,6 +65,11 @@ void app_main(void) {
 #if LIGHTVM_WIFI
     esp32_network_init(&app);
 #endif
+#if LIGHTVM_MQTT
+    static HomeAssistant ha;
+    static MqttSocket mqtt_socket;
+    ha_init(&ha,&app,mqtt_socket_stream(&mqtt_socket));
+#endif
     app.service_io=service_io;
     bool connected=usb_serial_jtag_is_connected();
     for (;;) {
@@ -71,6 +80,9 @@ void app_main(void) {
         if (connected && !current) { session_destroy(&session); session_init(&session,&app,1,output_message,&transport); }
         connected=current;
         app_tick(&app);
+#if LIGHTVM_MQTT
+        ha_tick(&ha,network_online(&app.network),platform_time_us());
+#endif
         uint8_t input[256];
         int size = usb_serial_jtag_read_bytes(input, sizeof(input), 0);
         if (size > 0) {

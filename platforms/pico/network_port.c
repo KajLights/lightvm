@@ -4,6 +4,12 @@
 #include "pico/rand.h"
 #include "dhcp_port.h"
 #include "lwip/tcp.h"
+#if LIGHTVM_MQTT
+#include "home_assistant.h"
+#include "mqtt_port.h"
+static HomeAssistant ha;
+static PicoMqtt mqtt_stream;
+#endif
 #include <stdio.h>
 #include <string.h>
 #if LIGHTVM_HTTP
@@ -39,6 +45,9 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
     uint32_t country=!strcmp(c->country,"XX")?CYW43_COUNTRY_WORLDWIDE:CYW43_COUNTRY(c->country[0],c->country[1],0);
     if (initialized) {
+#if LIGHTVM_MQTT
+        ha_close(&ha);
+#endif
 #if LIGHTVM_HTTP
         stop_http();
 #endif
@@ -80,6 +89,9 @@ static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capa
 }
 static void disconnect(void *ctx) {
     (void)ctx; if (!initialized) return;
+#if LIGHTVM_MQTT
+    ha_close(&ha);
+#endif
     if (mode==NET_MODE_AP) {
 #if LIGHTVM_HTTP
         stop_http();
@@ -239,6 +251,9 @@ static bool start_http(uint16_t port) {
 #endif
 void pico_network_init(App *app) {
     engine=app;
+#if LIGHTVM_MQTT
+    ha_init(&ha,app,pico_mqtt_stream(&mqtt_stream));
+#endif
     app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect,link,disconnect,random_value};
 #if LIGHTVM_HTTP
     http_init(&http,app);
@@ -281,5 +296,11 @@ void pico_network_poll(void) {
         }
     }
     if (listener) http_tick(&http,now);
+#endif
+}
+
+void pico_mqtt_poll(void) {
+#if LIGHTVM_MQTT
+    ha_tick(&ha,network_online(&engine->network),platform_time_us());
 #endif
 }

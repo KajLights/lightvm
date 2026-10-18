@@ -96,6 +96,16 @@ function Hardware() {
         {output.startup && <><label htmlFor={'startup-args-' + index}>Startup arguments (JSON)</label><textarea id={'startup-args-' + index} className="config-code" spellCheck={false} value={argumentDrafts[index] ?? JSON.stringify(output.startup.args || {}, null, 2)} aria-invalid={argumentDrafts[index] !== undefined && !parseArguments(argumentDrafts[index])} onChange={event => editArguments(index, event.target.value)} />
           {argumentDrafts[index] !== undefined && !parseArguments(argumentDrafts[index]) && <p role="alert">Arguments must be a JSON object with numeric or boolean values.</p>}
           <p className="helper">Arguments are passed when the animation initializes. Omitted arguments use its defaults.</p></>}
+        {device.description?.mqtt_supported && <>
+          <label htmlFor={'ha-preset-' + index}>Home Assistant ON preset</label>
+          <select id={'ha-preset-' + index} value={output.home_assistant?.on_preset || ''} onChange={event => setOutput(index, item => { if (event.target.value) item.home_assistant = { ...item.home_assistant, on_preset: event.target.value }; else delete item.home_assistant; })}>
+            <option value="">Do not expose this output</option>
+            {output.home_assistant && !device.presets.some(item => item.name === output.home_assistant?.on_preset) && <option value={output.home_assistant.on_preset}>{output.home_assistant.on_preset + ' (unavailable)'}</option>}
+            {device.presets.map(preset => <option key={preset.name} value={preset.name}>{preset.name}</option>)}
+          </select>
+          {output.home_assistant && <><label htmlFor={'ha-name-' + index}>Home Assistant name</label><input id={'ha-name-' + index} value={output.home_assistant.name || ''} placeholder={output.id} onChange={event => setOutput(index, item => { if (item.home_assistant) { if (event.target.value) item.home_assistant.name = event.target.value; else delete item.home_assistant.name; } })} /></>}
+          <p className="helper">Each exposed output is one on/off light. ON starts its preset; OFF clears the LEDs. Enable MQTT in network settings.</p>
+        </>}
         <button className="quiet small" onClick={() => removeOutput(index)}>Remove output</button>
       </fieldset>)}
       <button id="output-add" className="quiet" disabled={!draft} onClick={addOutput}>Add WS2812B output</button>
@@ -115,6 +125,8 @@ function Network() {
   const [config, setConfig] = useState<NetworkConfig | null>(() => device.networkConfig ? structuredClone(device.networkConfig) : null);
   const [rows, setRows] = useState<NetworkRow[]>(() => rowsFrom(device.networkConfig));
   const [apPassword, setApPassword] = useState('');
+  const [mqttPassword, setMqttPassword] = useState('');
+  const [mqttClearPassword, setMqttClearPassword] = useState(false);
   const [apOpen, setApOpen] = useState(false);
   const [base, setBase] = useState(() => ({ revision: device.networkRevision, boot_id: device.description?.boot_id }));
   const [dirty, setDirty] = useState(false);
@@ -122,10 +134,10 @@ function Network() {
   useEffect(() => {
     if (!device.networkConfig || dirty) return;
     setConfig(structuredClone(device.networkConfig)); setRows(rowsFrom(device.networkConfig));
-    setApPassword(''); setApOpen(false);
+    setApPassword(''); setApOpen(false); setMqttPassword(''); setMqttClearPassword(false);
     setBase({ revision: device.networkRevision, boot_id: device.description?.boot_id });
   }, [device.networkConfig, device.networkRevision, device.description?.boot_id, dirty]);
-  if (!device.description?.wifi_supported && !device.description?.http_supported) return null;
+  if (!device.description?.wifi_supported && !device.description?.http_supported && !device.description?.mqtt_supported) return null;
   const stale = dirty && (base.revision !== device.networkRevision || base.boot_id !== device.description?.boot_id);
   const status = device.networkStatus;
   function modify(patch: (draft: NetworkConfig) => void) { if (!config) return; const next = structuredClone(config); patch(next); setConfig(next); setDirty(true); }
@@ -136,7 +148,7 @@ function Network() {
   function reload() {
     if (!device.networkConfig) return;
     setDirty(false); setConfig(structuredClone(device.networkConfig)); setRows(rowsFrom(device.networkConfig));
-    setApPassword(''); setApOpen(false);
+    setApPassword(''); setApOpen(false); setMqttPassword(''); setMqttClearPassword(false);
     setBase({ revision: device.networkRevision, boot_id: device.description?.boot_id }); dispatch(activityActions.notice(''));
   }
   async function save() {
@@ -146,12 +158,17 @@ function Network() {
     if (device.description?.wifi_ap_supported) {
       next.wifi.ap = { ...next.wifi.ap, ...(apOpen ? { password: '' } : apPassword ? { password: apPassword } : {}) };
     }
+    if (next.mqtt) {
+      delete next.mqtt.password;
+      if (mqttClearPassword) next.mqtt.password = '';
+      else if (mqttPassword) next.mqtt.password = mqttPassword;
+    }
     try {
       const success = await devices.configureNetwork(next, base.revision);
       if (success) setDirty(false);
-    } finally { setRows(current => current.map(row => ({ ...row, password: '' }))); setApPassword(''); }
+    } finally { setRows(current => current.map(row => ({ ...row, password: '' }))); setApPassword(''); setMqttPassword(''); }
   }
-  return <section className="card network-card"><div className="card-heading"><div><p className="eyebrow">CONNECTIVITY</p><h2>Wi-Fi &amp; HTTP</h2></div><button id="network-refresh" className="quiet small" disabled={!device.selectedPath || busy} onClick={() => void devices.run('Refreshing network', async client => devices.readNetwork(devices.require(client)))}>Refresh</button></div>
+  return <section className="card network-card"><div className="card-heading"><div><p className="eyebrow">CONNECTIVITY</p><h2>{device.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</h2></div><button id="network-refresh" className="quiet small" disabled={!device.selectedPath || busy} onClick={() => void devices.run('Refreshing network', async client => devices.readNetwork(devices.require(client)))}>Refresh</button></div>
     <p id="network-state" className="helper">{status ? [status.state, status.ssid, status.ip, status.error, status.retry_ms ? 'retry in ' + Math.ceil(status.retry_ms / 1000) + 's' : ''].filter(Boolean).join(' · ') : 'Connect to inspect network status.'}</p>
     {status?.initial_setup && <p className="helper">Initial setup access point. Save network settings to choose how this device connects after reboot.</p>}
     {status?.recovery && <p className="helper" role="status">Recovery access point. These are your saved network settings. Changes apply after restart; this AP stays available for the current boot.</p>}
@@ -176,6 +193,18 @@ function Network() {
           <div className="button-pair"><button className="quiet" disabled={rows[0].id === row.id} onClick={() => move(row.id, -1)}>Move up</button><button className="quiet" disabled={rows.at(-1)?.id === row.id} onClick={() => move(row.id, 1)}>Move down</button><button className="quiet" onClick={() => { setRows(current => current.filter(item => item.id !== row.id)); setDirty(true); }}>Remove</button></div>
         </div>)}</div><button id="wifi-add" className="quiet" disabled={rows.length >= 8} onClick={() => { setRows(current => [...current, { id: nextId, ssid: '', password: '', hidden: false, open: false }]); setNextId(nextId + 1); setDirty(true); }}>Add network</button></div></>}
       {device.description?.http_supported && <><div className="divider" /><label className="checkbox-label"><input id="http-enabled" type="checkbox" checked={Boolean(config?.http.enabled)} onChange={event => modify(draft => { draft.http.enabled = event.target.checked; })} /> Enable HTTP commands</label><label htmlFor="http-port">HTTP port</label><input id="http-port" type="number" min={1} max={65535} value={config?.http.port || 80} onChange={event => modify(draft => { draft.http.port = Number(event.target.value); })} /></>}
+      {device.description?.mqtt_supported && <><div className="divider" /><h3>MQTT</h3>
+        <label className="checkbox-label"><input id="mqtt-enabled" type="checkbox" checked={Boolean(config?.mqtt?.enabled)} onChange={event => modify(draft => { draft.mqtt = { host: '', port: 1883, username: '', ...draft.mqtt, enabled: event.target.checked }; })} /> Enable MQTT control</label>
+        {config?.mqtt && <>
+          <label htmlFor="mqtt-host">Broker IPv4 address</label><input id="mqtt-host" value={config.mqtt.host} placeholder="192.168.1.10" autoComplete="off" onChange={event => modify(draft => { if (draft.mqtt) draft.mqtt.host = event.target.value; })} />
+          <label htmlFor="mqtt-port">MQTT port</label><input id="mqtt-port" type="number" min={1} max={65535} value={config.mqtt.port} onChange={event => modify(draft => { if (draft.mqtt) draft.mqtt.port = Number(event.target.value); })} />
+          <label htmlFor="mqtt-user">MQTT username</label><input id="mqtt-user" value={config.mqtt.username} autoComplete="off" onChange={event => modify(draft => { if (draft.mqtt) draft.mqtt.username = event.target.value; })} />
+          <label htmlFor="mqtt-password">MQTT password</label><input id="mqtt-password" type="password" value={mqttPassword} disabled={mqttClearPassword} placeholder="Keep saved password" autoComplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore="true" onChange={event => { setMqttPassword(event.target.value); setDirty(true); }} />
+          <label className="checkbox-label"><input type="checkbox" checked={mqttClearPassword} onChange={event => { setMqttClearPassword(event.target.checked); setMqttPassword(''); setDirty(true); }} /> Clear MQTT password</label>
+        </>}
+        <p className="helper">Connect to the same broker as Home Assistant. This version uses plain MQTT on your trusted LAN. Choose each light's ON preset under Output &amp; startup.</p>
+        <p role="status">{status?.mqtt_connected ? 'MQTT connected' : 'MQTT disconnected'}{status?.mqtt_error ? ' · ' + status.mqtt_error : ''}</p>
+      </>}
       <button id="network-save" className="primary full" disabled={stale} onClick={() => void save()}>{status?.recovery ? 'Save network for next boot' : 'Save & reconnect network'}</button>
     </fieldset><p className="helper">Network changes keep the animation running. The HTTP connection may need reconnecting.</p>
   </section>;
@@ -183,9 +212,9 @@ function Network() {
 
 export function Configure() {
   const device = useAppSelector(state => state.device), [section, setSection] = useState<'output' | 'network'>('output');
-  const networkSupported = Boolean(device.description?.wifi_supported || device.description?.http_supported);
+  const networkSupported = Boolean(device.description?.wifi_supported || device.description?.http_supported || device.description?.mqtt_supported);
   return <><div className="intro"><div><p className="eyebrow">CONFIGURE</p><h1>Make the device yours.</h1><p>Set its output, startup program and network access.</p></div></div>
-    <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>Wi-Fi &amp; HTTP</button>}</nav>
+    <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{device.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}</nav>
     <div hidden={section !== 'output'}><Hardware /></div>
     {networkSupported && <div hidden={section !== 'network'}><Network /></div>}
   </>;

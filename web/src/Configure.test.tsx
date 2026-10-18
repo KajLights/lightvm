@@ -31,6 +31,42 @@ function readyStore() {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('configuration drafts', () => {
+  it('assigns one HA preset per output and preserves it through other edits', async () => {
+    const store = readyStore();
+    store.dispatch(deviceActions.description({ ...description, mqtt_supported: true }));
+    store.dispatch(deviceActions.presets([{ name: 'warm', size: 100, crc32: 1 }]));
+    const configure = vi.spyOn(runtime.devices, 'configure').mockResolvedValue(false);
+    render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.change(screen.getByLabelText('Home Assistant ON preset'), { target: { value: 'warm' } });
+    fireEvent.change(screen.getByLabelText('Home Assistant name'), { target: { value: 'Desk lamp' } });
+    fireEvent.change(screen.getByLabelText('Pixel count'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
+    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({ devices: [expect.objectContaining({ home_assistant: { on_preset: 'warm', name: 'Desk lamp' }, config: expect.objectContaining({ count: 7 }) })] }), expect.anything(), { save: true }));
+    fireEvent.change(screen.getByLabelText('Home Assistant ON preset'), { target: { value: '' } });
+    expect(JSON.parse((screen.getByLabelText('Device configuration JSON') as HTMLTextAreaElement).value).devices[0]).not.toHaveProperty('home_assistant');
+  });
+
+  it('configures an MQTT-only host and clears attempted broker passwords', async () => {
+    const store = readyStore();
+    store.dispatch(deviceActions.description({ ...description, wifi_supported: false, http_supported: false, mqtt_supported: true }));
+    const save = vi.spyOn(runtime.devices, 'configureNetwork').mockResolvedValue(false);
+    render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi, HTTP & MQTT' }));
+    fireEvent.click(screen.getByLabelText('Enable MQTT control'));
+    fireEvent.change(screen.getByLabelText('Broker IPv4 address'), { target: { value: '192.168.1.10' } });
+    fireEvent.change(screen.getByLabelText('MQTT username'), { target: { value: 'kaj' } });
+    fireEvent.change(screen.getByLabelText('MQTT password'), { target: { value: 'mqtt-secret' } });
+    expect(JSON.stringify(store.getState())).not.toContain('mqtt-secret');
+    fireEvent.click(screen.getByRole('button', { name: 'Save & reconnect network' }));
+    await waitFor(() => expect(screen.getByLabelText('MQTT password')).toHaveValue(''));
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ mqtt: { enabled: true, host: '192.168.1.10', port: 1883, username: 'kaj', password: 'mqtt-secret' } }), 1);
+    fireEvent.click(screen.getByRole('button', { name: 'Save & reconnect network' }));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ mqtt: { enabled: true, host: '192.168.1.10', port: 1883, username: 'kaj' } }), 1));
+    fireEvent.click(screen.getByLabelText('Clear MQTT password'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save & reconnect network' }));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ mqtt: expect.objectContaining({ password: '' }) }), 1));
+  });
+
   it('keeps a hardware draft and blocks saving when device revisions change', () => {
     const store = readyStore();
     render(<Provider store={store}><Configure /></Provider>);

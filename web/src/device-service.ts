@@ -168,13 +168,14 @@ export class DeviceService {
   }
   async readNetwork(client: LightVMClient) {
     const description = this.store.getState().device.description;
-    if (!(description?.wifi_supported || description?.http_supported)) return;
+    if (!(description?.wifi_supported || description?.http_supported || description?.mqtt_supported)) return;
     const reply = await client.manage('network_get'), status = await client.json('network_status');
     if (client !== this.client) return;
     // Passwords never enter Redux state or DevTools.
     const config = parseJSON(new TextDecoder().decode(reply.data)) as NetworkConfig;
     for (const network of config.wifi.networks) delete network.password;
     if (config.wifi.ap) delete config.wifi.ap.password;
+    if (config.mqtt) delete config.mqtt.password;
     this.store.dispatch(deviceActions.network({ config, revision: reply.value >>> 0 }));
     this.store.dispatch(deviceActions.networkStatus(status));
   }
@@ -227,7 +228,7 @@ export class DeviceService {
         if (description.active_revision !== state.configRevision || description.saved_revision !== state.savedRevision) await this.readConfig(connection.client);
         if (!this.store.getState().activity.operation && description.catalog_revision !== state.description?.catalog_revision) { await this.readProcedures(connection.client); await this.readPresets(connection.client); }
         if (!this.store.getState().activity.operation && description.network_revision !== state.networkRevision) await this.readNetwork(connection.client);
-        if (!this.store.getState().activity.operation && (description.wifi_supported || description.http_supported)) {
+        if (!this.store.getState().activity.operation && (description.wifi_supported || description.http_supported || description.mqtt_supported)) {
           const status = await connection.client.json('network_status');
           if (connection.client === this.client) this.store.dispatch(deviceActions.networkStatus(status));
         }
@@ -255,6 +256,7 @@ export class DeviceService {
       const safeConfig = structuredClone(config);
       for (const network of safeConfig.wifi.networks) delete network.password;
       if (safeConfig.wifi.ap) delete safeConfig.wifi.ap.password;
+      if (safeConfig.mqtt) delete safeConfig.mqtt.password;
       this.store.dispatch(deviceActions.network({ config: safeConfig, revision: reply.value >>> 0 }));
       this.log(recovery ? 'Network settings saved for next boot. Recovery AP remains active.' : 'Network settings saved. Reconnect after the network changes.', 'success');
       if (connection.closed) {

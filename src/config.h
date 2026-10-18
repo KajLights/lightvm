@@ -4,6 +4,9 @@
 #ifndef LIGHTVM_WIFI
 #define LIGHTVM_WIFI 0
 #endif
+#ifndef LIGHTVM_MQTT
+#define LIGHTVM_MQTT 0
+#endif
 #ifndef LIGHTVM_HTTP
 #define LIGHTVM_HTTP 0
 #endif

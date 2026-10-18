@@ -44,6 +44,9 @@ int main(void) {
         if (connected && !current) { session_destroy(&session); session_init(&session,&app,1,output_message,NULL); }
         connected=current;
         app_tick(&app);
+#if LIGHTVM_MQTT
+        pico_mqtt_poll();
+#endif
         int byte = getchar_timeout_us(1000);
         if (byte == PICO_ERROR_TIMEOUT)
             continue;

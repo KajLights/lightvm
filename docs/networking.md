@@ -16,7 +16,9 @@ the DNS suffix, if any, depends on the router.
 
 HTTP has **no authentication or encryption**. It is intended for your trusted LAN.
 The server exposes commands and discovery metadata, not the editor's static files.
-Firmware OTA, MQTT, HTTPS and source storage are not included. AP mode serves
+Firmware OTA, HTTPS and source storage are not included. Optional
+[MQTT control and Home Assistant lights](mqtt.md) connect to an existing broker
+independently of the HTTP enable switch. AP mode serves
 the same full API; the editor remains hosted separately.
 
 ## Build

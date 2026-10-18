@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.18)
 
 option(LIGHTVM_WIFI "Include native Wi-Fi" OFF)
+option(LIGHTVM_MQTT "Include MQTT control and Home Assistant lights" OFF)
 option(LIGHTVM_HTTP "Include HTTP management" OFF)
 option(LIGHTVM_WEBSOCKET "Include plain WebSocket management (requires HTTP)" OFF)
 if(LIGHTVM_WEBSOCKET AND NOT LIGHTVM_HTTP)
     message(FATAL_ERROR "WebSocket management requires LIGHTVM_HTTP=ON")
 endif()
 option(LIGHTVM_BOOT_SEQUENCE "Include persistent power-cycle sequence detection" OFF)
-if(LIGHTVM_HTTP AND NOT LIGHTVM_WIFI)
-    message(FATAL_ERROR "Embedded HTTP requires LIGHTVM_WIFI=ON")
+if((LIGHTVM_HTTP OR LIGHTVM_MQTT) AND NOT LIGHTVM_WIFI)
+    message(FATAL_ERROR "Embedded HTTP/MQTT requires LIGHTVM_WIFI=ON")
 endif()
 # IDF discovers component requirements in a separate early-expansion process.
 # Propagate the build switches to that process before it resolves dependencies.

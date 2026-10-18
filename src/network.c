@@ -9,7 +9,7 @@ static bool optional_bool(const Json *j,int object,const char *key,bool *value) 
 }
 bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity) {
     Json j; memset(out,0,sizeof(*out)); strcpy(out->country,"XX"); out->port=80;
-    static const char *const root[]={"schema","wifi","http",NULL};
+    static const char *const root[]={"schema","wifi","http","mqtt",NULL};
     static const char *const wifi[]={"enabled","country","networks","mode","ap",NULL};
     static const char *const ap_fields[]={"ssid","password",NULL};
     static const char *const http[]={"enabled","port",NULL};
@@ -68,6 +68,31 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
         }
     }
     if (out->wifi_enabled && out->mode==NET_MODE_STATION && !out->count) return fail(error,capacity,"wifi.networks: enabled station Wi-Fi needs an SSID");
+    if(previous)out->mqtt=previous->mqtt;
+    else out->mqtt.port=1883;
+    int mqtt=json_get(&j,0,"mqtt");
+    if(mqtt>=0){
+        static const char *const fields[]={"enabled","host","port","username","password",NULL};
+        if(!json_fields(&j,mqtt,fields) || !optional_bool(&j,mqtt,"enabled",&out->mqtt.enabled))
+            return fail(error,capacity,"mqtt: invalid fields");
+        int host=json_get(&j,mqtt,"host"),user=json_get(&j,mqtt,"username"),password=json_get(&j,mqtt,"password"),port_token=json_get(&j,mqtt,"port");
+        if(host>=0 && !json_string(&j,host,out->mqtt.host,sizeof(out->mqtt.host)))return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");
+        if(user>=0 && !json_string(&j,user,out->mqtt.username,sizeof(out->mqtt.username)))return fail(error,capacity,"mqtt.username: expected at most 64 UTF-8 bytes");
+        if(password>=0 && !json_string(&j,password,out->mqtt.password,sizeof(out->mqtt.password)))return fail(error,capacity,"mqtt.password: expected at most 64 UTF-8 bytes");
+        uint32_t mqtt_port=out->mqtt.port;
+        if(port_token>=0 && (!json_u32(&j,port_token,&mqtt_port)||!mqtt_port||mqtt_port>65535))return fail(error,capacity,"mqtt.port: expected 1..65535");
+        out->mqtt.port=(uint16_t)mqtt_port;
+    }
+    if(out->mqtt.enabled){
+        unsigned parts=0,value=0,digits=0;
+        for(const char *s=out->mqtt.host;;s++){
+            if(*s>='0'&&*s<='9'){value=value*10u+(unsigned)(*s-'0');if(++digits>3||value>255)return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");}
+            else if(*s=='.'||!*s){if(!digits||++parts>4)return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");value=digits=0;if(!*s)break;}
+            else return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");
+        }
+        if(parts!=4)return fail(error,capacity,"mqtt.host: expected numeric IPv4 address");
+        if(out->mqtt.password[0]&&!out->mqtt.username[0])return fail(error,capacity,"mqtt.username: required with a password");
+    }
     error[0]=0; return true;
 }
 typedef struct { char *out; size_t used,capacity; bool failed; } Writer;
@@ -90,14 +115,17 @@ size_t network_json(const NetworkConfig *c,bool secrets,char *out,size_t capacit
     }
     put(&w,"],\"mode\":\"%s\",\"ap\":{\"ssid\":",c->mode==NET_MODE_AP?"ap":"station"); quote(&w,c->ap_ssid);
     if (secrets) { put(&w,",\"password\":"); quote(&w,c->ap_password); }
-    put(&w,"}},\"http\":{\"enabled\":%s,\"port\":%u}}",c->http_enabled?"true":"false",c->port);
+    put(&w,"}},\"http\":{\"enabled\":%s,\"port\":%u},\"mqtt\":{\"enabled\":%s,\"host\":",c->http_enabled?"true":"false",c->port,c->mqtt.enabled?"true":"false");
+    quote(&w,c->mqtt.host);put(&w,",\"port\":%u,\"username\":",c->mqtt.port);quote(&w,c->mqtt.username);
+    if(secrets){put(&w,",\"password\":");quote(&w,c->mqtt.password);}
+    put(&w,"}}");
     return w.failed?0:w.used;
 }
 const char *network_state_name(NetworkState s) { static const char *const names[]={"disabled","scanning","connecting","connected","backoff","ap_starting","ap_active"}; return names[s]; }
-void network_init(Network *n) { memset(n,0,sizeof(*n)); strcpy(n->config.country,"XX"); n->config.port=80; n->connected_index=-1; }
+void network_init(Network *n) { memset(n,0,sizeof(*n)); strcpy(n->config.country,"XX"); n->config.port=80; n->config.mqtt.port=1883; n->connected_index=-1; }
 void network_bootstrap(Network *n,bool setup_enabled) {
     if (!setup_enabled || n->saved_valid || n->recovery) return;
-    memset(&n->config,0,sizeof(n->config)); strcpy(n->config.country,"XX"); n->config.port=80;
+    memset(&n->config,0,sizeof(n->config)); strcpy(n->config.country,"XX"); n->config.port=80; n->config.mqtt.port=1883;
     n->config.wifi_enabled=true; n->config.http_enabled=true; n->config.mode=NET_MODE_AP;
     n->initial_setup=true;
 }
