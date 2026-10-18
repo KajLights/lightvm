@@ -43,7 +43,7 @@ already stored older wipe exposes only the settings it was compiled with.
 
 **Use fader** takes control at the current percentage. Move the slider from A at
 0% to B at 100%, using the pointer or keyboard. The browser supplies an external
-input named `desktop.fader` through the selected USB or HTTP connection. Updates
+input named `desktop.fader` through the selected USB or network connection. Updates
 use the assignment token returned by the controller. The browser sends at most
 one update every 33 ms, with one request in flight and only the latest pending
 position, so slow connections do not build a backlog of obsolete positions.
@@ -83,13 +83,13 @@ sources are packaged with the static build. Python source is parsed and never ru
 compiler. Only the compiled bytecode is sent to a device.
 
 The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
-firmware bundle. The published editor builds matching Wi-Fi, HTTP and boot
+firmware bundle. The published editor builds matching Wi-Fi, HTTP, WebSocket and boot
 sequence firmware for all three XIAO boards and includes the bootloader,
 partition table and application binaries. Confirm that the physical board is a
 supported XIAO model; the installer detects the ESP chip family only. Choose the
 serial port when prompted. Existing boards should keep their data
 when offered an erase choice. The published bundle also contains a USB Pico
-image and a Wi-Fi/HTTP Pico W image, both with boot-sequence support. Hold
+image and a Wi-Fi/HTTP/WebSocket Pico W image, both with boot-sequence support. Hold
 BOOTSEL while connecting a Pico, select its printed model, and choose RP2 Boot
 in the WebUSB picker. The RP2040 bootloader cannot distinguish Pico from Pico W.
 The installer validates the UF2 and checksum, writes below the reserved flash
@@ -102,13 +102,13 @@ To include local builds in the editor, package the matching ESP-IDF outputs and
 Pico UF2s before starting Vite or building the site:
 
     python3 tools/package_web_firmware.py --build-id local \
-      --board xiao_esp32c6=build/boot-sequence-c6 \
+      --board xiao_esp32c6=build/firmware/xiao_esp32c6 \
       --pico pico=build/boot-sequence-pico/lightvm.uf2 \
-      --pico pico_w=build/boot-sequence-pico-w-http/lightvm.uf2
+      --pico pico_w=build/firmware/pico_w/lightvm.uf2
     npm run dev
 
 The packager checks the chip and flash offsets in `flasher_args.json` and requires
-Wi-Fi, HTTP and boot-sequence support in the ESP build's `CMakeCache.txt` before
+Wi-Fi, HTTP, WebSocket and boot-sequence support in the ESP build's `CMakeCache.txt` before
 copying images into `build/editor-assets/firmware`. Add a `--board` argument
 for each additional built XIAO profile. Each `--pico` UF2 is checked for RP2040
 family, contiguous blocks and the reserved flash boundary. The Pages workflow
@@ -136,8 +136,18 @@ without USB. Discovery is read-only, and local-network browser permission may be
 needed. A USB-only board may need its network settings provisioned over USB first.
 See [networking](networking.md#local-device-discovery) for details.
 
+Network connections identify the device over HTTP and automatically select
+[WebSocket](websocket.md) when the firmware advertises support. The device ID and
+boot ID must match on both transports before the editor attaches the connection.
+The bootstrap HTTP session is then closed; fader updates, uploads and other
+commands use the persistent socket. The connection selector and status display
+show **WebSocket** or **HTTP**. Firmware without WebSocket support continues over
+HTTP. An advertised WebSocket that fails to connect reports an error. A lost
+socket disconnects its path; commands are never automatically replayed or moved
+to HTTP or USB.
+
 After connecting, the workspace shows the board, output binding and current
-command path. USB and HTTP can be attached to the same device and boot epoch.
+command path. USB and a network path can be attached to the same device and boot epoch.
 Switching paths does not replay commands through another connection. Disconnecting
 the browser leaves autonomous playback running. If the device reboots, reconnect
 and review its state. Web Serial requires HTTPS or localhost and desktop
@@ -251,13 +261,15 @@ conflicts and a real host upload/play cycle. The browser acceptance check uses a
 host simulator plus Chrome or Chromium and exercises the device picker, both
 workspace views, configurations, uploads and live controls. Set LIGHTVM_RECEIVER
 to a host build and CHROME_EXECUTABLE if needed, then run npm run test:browser.
-It requires the pinned browser compiler assets.
+Use a host build with `LIGHTVM_HTTP=ON` and `LIGHTVM_WEBSOCKET=ON` to also check
+socket negotiation, fader commands without HTTP requests, HTTPS local-network
+access and disconnect handling. It requires the pinned browser compiler assets.
 
 ### Firmware acceptance
 
 The Pages workflow builds the supported board profiles and packages images from
 one source tree. The ESP32 packager requires the correct chip, flash layout and
-Wi-Fi/HTTP/boot-sequence feature flags. Pico packaging validates every UF2 block
+Wi-Fi/HTTP/WebSocket/boot-sequence feature flags. Pico packaging validates every UF2 block
 and its reserved-storage boundary. The browser uses the vendored pico⚡flash
 PICOBOOT implementation for RP2040 boards.
 

@@ -47,7 +47,10 @@ export function App() {
             </select>
             <button id="disconnect" className="quiet" disabled={busy || !device.selectedPath} onClick={() => void devices.disconnect()}>Disconnect path</button>
             <Link to="/devices">Connections &amp; devices</Link>
-            <p id="path-health" className="helper">{(['usb', 'http'] as Path[]).map(key => key.toUpperCase() + ': ' + (device.paths.some(path => path.key === key) ? 'connected' : 'disconnected')).join(' · ')}</p>
+            <p id="path-health" className="helper">{(['usb', 'http'] as Path[]).map(key => {
+              const path = device.paths.find(path => path.key === key);
+              return (path?.protocol || (key === 'usb' ? 'USB' : 'Network')) + ': ' + (path ? 'connected' : 'disconnected');
+            }).join(' · ')}</p>
           </div>
         </section>
         <nav className="workspace-tabs" aria-label="Device workspace">
@@ -95,7 +98,7 @@ function Devices({ onConnected }: { onConnected: () => void }) {
         <label htmlFor="nearby-devices">Nearby devices</label><select id="nearby-devices" value={selected} disabled={busy || !state.nearby.length || hasHttp} onChange={event => { setSelected(event.target.value); const device = state.nearby.find(item => item.device_id === event.target.value); if (device) setAddress(device.url); }}><option value="">Choose a device</option>{state.nearby.map(device => <option key={device.device_id} value={device.device_id}>{device.board + ' · ' + device.hostname}</option>)}</select>
         <p id="discovery-state" className="helper" role="status">{state.discoveryMessage}</p>
         <label htmlFor="http-address">Device HTTP address</label><input id="http-address" type="url" value={address} onChange={event => { setAddress(event.target.value); setSelected(''); }} placeholder="http://lightvm.local" autoComplete="off" />
-        <button id="connect-http" className="primary full" disabled={busy || hasHttp || !address} onClick={() => void connect('http')}>Connect HTTP <span aria-hidden="true">→</span></button>
+        <button id="connect-http" className="primary full" disabled={busy || hasHttp || !address} onClick={() => void connect('http')}>Connect device <span aria-hidden="true">→</span></button>
         <p className="helper">Browser local-network permission may be required. A direct address also works.</p>
       </section>
       <section className="card device-card"><div className="card-heading"><h2>Plugged in over USB</h2></div><p className="muted">Connect a Pico or ESP32 running LightVM. The browser will ask you to choose its USB port.</p>

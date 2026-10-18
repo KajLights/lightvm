@@ -11,9 +11,13 @@ listener uses a custom port.
 This module provides plain `ws://` only, with the same trusted-LAN access policy
 as HTTP: no authentication or encryption. It accepts browser origins; clients
 still need any local-network permission their browser requires. An HTTPS-hosted
-editor must satisfy that browser's mixed-content/local-network rules. The web
-editor's existing transport selection is unchanged; enabling this firmware
-module does not automatically move its fader onto WebSockets.
+editor must satisfy that browser's mixed-content/local-network rules. The editor
+opens HTTP to read the device identity and capabilities, then selects WebSocket
+when `websocket_supported` is true. It verifies the device and boot identity again
+over WebSocket and closes the bootstrap HTTP session before attaching the path.
+All subsequent commands, including fader updates, use that socket. Firmware
+without the module keeps HTTP. An advertised WebSocket that cannot connect
+reports an error; active commands are never retried over HTTP after a socket loss.
 
 ## Build
 

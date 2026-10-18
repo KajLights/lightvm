@@ -170,8 +170,10 @@ name, probes for collisions and chooses another suffix if necessary.
 
 The editor fetches `http://lightvm.local/api/v1/devices` automatically and displays
 a **Nearby devices** picker. The board performs DNS-SD queries; the browser only
-uses HTTP. Select a device and click **Connect HTTP**. Reads and commands use the
-selected IP and port, so the shared name cannot switch boards during a session.
+uses HTTP for discovery. Select a device and click **Connect device**. Commands
+use WebSocket when the firmware advertises support, otherwise HTTP. Both use the
+selected IP and port, so the shared name cannot switch boards during a session;
+the WebSocket handoff also verifies the same device ID and boot ID.
 USB and known HTTP addresses can seed discovery when `.local` resolution is
 unavailable. **Refresh** retries discovery, and background refresh runs every ten
 seconds while the editor is visible. Discovery never creates command sessions,

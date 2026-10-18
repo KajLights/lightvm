@@ -17,7 +17,7 @@ function readDraft() {
 }
 interface DeviceState {
   description: Description | null;
-  paths: { key: Path; label: string }[]; selectedPath: Path | null;
+  paths: { key: Path; label: string; protocol?: string }[]; selectedPath: Path | null;
   config: HardwareConfig | null; configRevision: number; savedRevision: number;
   networkConfig: NetworkConfig | null; networkRevision: number; networkStatus: NetworkStatus | null;
   procedures: Procedure[]; presets: Procedure[]; programState: ProgramState | null;

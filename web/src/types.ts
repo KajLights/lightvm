@@ -5,7 +5,7 @@ export interface Description {
   version: string; animation_reset?: boolean; activation_settings?: boolean;
   module_limit: number; config_limit: number;
   pixel_capacity: number; pins: string[]; slots: string[];
-  storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean;
+  storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean; websocket_supported?: boolean;
   active_revision: number; saved_revision: number; catalog_revision: number;
   network_revision: number; active_procedure: string; boot_error?: string;
   animation_error?: string;

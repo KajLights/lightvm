@@ -3,6 +3,72 @@ import { DeviceService } from './device-service';
 import { createAppStore, deviceActions } from './store';
 import type { Description, NetworkConfig } from './types';
 import type { LightVMClient } from '../protocol.mjs';
+import { LightVMClient as Client } from '../protocol.mjs';
+import { HttpTransport, WebSocketTransport } from '../transports.mjs';
+
+describe('network connection selection', () => {
+  function connection(websocket = true) {
+    const store = createAppStore(), service = new DeviceService(store);
+    const description = { device_id: 'board', boot_id: 'boot', board: 'pico_w', websocket_supported: websocket } as Description;
+    const httpOpen = vi.spyOn(HttpTransport.prototype, 'open').mockImplementation(async function(this: HttpTransport) { this.identity = { session_id: '1'.repeat(32), device_id: 'board', boot_id: 'boot' }; return this; });
+    const httpClose = vi.spyOn(HttpTransport.prototype, 'close').mockResolvedValue();
+    const socketOpen = vi.spyOn(WebSocketTransport.prototype, 'open').mockImplementation(async function(this: WebSocketTransport) { return this; });
+    const socketClose = vi.spyOn(WebSocketTransport.prototype, 'close').mockResolvedValue(undefined);
+    const describe = vi.spyOn(Client.prototype, 'describe').mockResolvedValue(description);
+    const refresh = vi.spyOn(service, 'refresh').mockResolvedValue();
+    return { store, service, description, httpOpen, httpClose, socketOpen, socketClose, describe, refresh };
+  }
+  it('upgrades before refreshing or attaching and closes its bootstrap HTTP session', async () => {
+    const c = connection();
+    expect(await c.service.connect('http', 'http://192.168.1.2:8080')).toBe(true);
+    expect(c.service.client?.transport).toBeInstanceOf(WebSocketTransport);
+    expect(c.httpOpen).toHaveBeenCalledOnce(); expect(c.socketOpen).toHaveBeenCalledOnce();
+    expect(c.httpClose).toHaveBeenCalled(); expect(c.socketClose).not.toHaveBeenCalled();
+    expect(c.refresh).toHaveBeenCalledWith(c.service.client);
+    expect(c.store.getState().device.paths).toEqual([{ key: 'http', label: '192.168.1.2:8080 · WebSocket', protocol: 'WebSocket' }]);
+    expect(c.store.getState().activity.entries[0].text).toContain('via WebSocket');
+  });
+  it('uses HTTP when the optional server is compiled out', async () => {
+    const c = connection(false);
+    expect(await c.service.connect('http', 'http://device.local')).toBe(true);
+    expect(c.service.client?.transport).toBeInstanceOf(HttpTransport);
+    expect(c.socketOpen).not.toHaveBeenCalled(); expect(c.httpClose).not.toHaveBeenCalled();
+  });
+  it.each(['device_id', 'boot_id'] as const)('rejects a changed %s during upgrade and closes both candidates', async field => {
+    const c = connection();
+    c.describe.mockResolvedValueOnce(c.description).mockResolvedValueOnce({ ...c.description, [field]: 'changed' });
+    expect(await c.service.connect('http', 'http://device.local')).toBe(false);
+    expect(c.httpClose).toHaveBeenCalled(); expect(c.socketClose).toHaveBeenCalled();
+    expect(c.service.paths.paths.size).toBe(0); expect(c.refresh).not.toHaveBeenCalled();
+    expect(c.store.getState().activity.notice).toContain('rebooted or changed');
+  });
+  it('reports a failed advertised upgrade without silently attaching HTTP', async () => {
+    const c = connection(); c.socketOpen.mockRejectedValue(new Error('WebSocket blocked'));
+    expect(await c.service.connect('http', 'http://device.local')).toBe(false);
+    expect(c.httpClose).toHaveBeenCalled(); expect(c.socketClose).toHaveBeenCalled();
+    expect(c.service.paths.paths.size).toBe(0); expect(c.refresh).not.toHaveBeenCalled();
+  });
+  it('does not attach a socket lost while its bootstrap session is being released', async () => {
+    const c = connection();
+    c.httpClose.mockImplementation(async () => {
+      const socket = c.socketOpen.mock.contexts[0] as WebSocketTransport;
+      socket.onDisconnect(new Error('Socket lost during bootstrap close'));
+    });
+    expect(await c.service.connect('http', 'http://device.local')).toBe(false);
+    expect(c.service.paths.paths.size).toBe(0); expect(c.refresh).not.toHaveBeenCalled();
+  });
+  it('detaches a lost socket without switching to USB or replaying commands', async () => {
+    const c = connection();
+    expect(await c.service.connect('http', 'http://device.local')).toBe(true);
+    const current = c.service.client!;
+    const usb = { transport: { label: 'USB', protocol: 'USB' } } as LightVMClient;
+    c.service.paths.attach('usb', usb, c.description); c.service.paths.select('http');
+    current.transport.onDisconnect(new Error('Socket lost'));
+    expect(c.service.client).toBeNull(); expect(c.service.paths.paths.get('usb')?.client).toBe(usb);
+    expect(c.socketOpen).toHaveBeenCalledOnce();
+    expect(c.store.getState().activity.notice).toBe('Socket lost');
+  });
+});
 
 describe('network commit', () => {
   it('keeps the successful save when changing network settings interrupts the path', async () => {
@@ -23,7 +89,7 @@ describe('network commit', () => {
     expect(store.getState().device.networkConfig?.wifi.networks[0]).toEqual({ ssid: 'studio' });
     expect(store.getState().device.networkConfig?.wifi.ap).toEqual({ ssid: 'lights' });
     expect(JSON.stringify(store.getState())).not.toContain('secret');
-    expect(store.getState().activity.notice).toMatch(/saved.*Reconnect HTTP/);
+    expect(store.getState().activity.notice).toMatch(/saved.*Reconnect/);
   });
   it('removes AP passwords from device readbacks before dispatching them', async () => {
     const store = createAppStore(), service = new DeviceService(store);
@@ -49,7 +115,7 @@ describe('network commit', () => {
     expect(await service.configureNetwork(config, 3)).toBe(true);
     expect(service.client).toBe(client);
     expect(JSON.stringify(store.getState().activity)).toContain('Recovery AP remains active');
-    expect(JSON.stringify(store.getState().activity)).not.toContain('Reconnect HTTP');
+    expect(JSON.stringify(store.getState().activity)).not.toContain('Reconnect');
   });
 });
 

@@ -95,7 +95,7 @@ export function Firmware({ usbConnected }: { usbConnected: boolean }) {
     {usbConnected && <p className="stale-banner">Disconnect the current USB session before flashing, then choose the device again here.</p>}
     {espBoards.length > 0 && <div className="firmware-section">
       <h2>Seeed XIAO ESP32</h2>
-      <p className="helper">Available: {espBoards.map(board => 'XIAO ' + board).join(', ')}. Each installer image includes Wi-Fi, HTTP, and boot-sequence support.</p>
+      <p className="helper">Available: {espBoards.map(board => 'XIAO ' + board).join(', ')}. Each installer image includes Wi-Fi, HTTP, WebSocket, and boot-sequence support.</p>
       <ol className="firmware-steps"><li>Connect the supported XIAO board by USB and close any serial monitor.</li><li>Choose <strong>Install XIAO firmware</strong> and select its serial port.</li><li>After it restarts, connect from Devices.</li></ol>
       {createElement('esp-web-install-button', { manifest: espManifestUrl },
         createElement('button', { slot: 'activate', className: 'primary', disabled: usbConnected || busy }, 'Install XIAO firmware'),

@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
 const root = path.resolve(__dirname, '..');
 const python = process.env.LIGHTVM_PYTHON || path.join(root, 'build/venv/bin/python');
 const receiverPath = process.env.LIGHTVM_RECEIVER || path.join(root, 'build/network-host/lightvm');
@@ -23,6 +24,12 @@ function announcedUrl(child, output) {
     output.on('data', received); child.once('error', failed); child.once('exit', exited);
   });
 }
+async function grantLocalNetwork(cdp, page, origin) {
+  const session = await page.context().newCDPSession(page);
+  const { targetInfo } = await session.send('Target.getTargetInfo');
+  await session.detach();
+  await cdp.send('Browser.grantPermissions', { origin, browserContextId: targetInfo.browserContextId, permissions: ['localNetwork', 'loopbackNetwork', 'localNetworkAccess'] });
+}
 (async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'lightvm-network-ui-'));
   let receiver, server, browser, page;
@@ -33,13 +40,45 @@ function announcedUrl(child, output) {
     const editorUrl = await announcedUrl(server, server.stdout);
     browser = await chromium.launch({ headless: true, ...(process.env.CHROME_EXECUTABLE ? { executablePath: process.env.CHROME_EXECUTABLE } : {}) });
     const cdp = await browser.newBrowserCDPSession();
-    await cdp.send('Browser.grantPermissions', { origin: editorUrl, permissions: ['localNetwork', 'loopbackNetwork', 'localNetworkAccess'] });
     page = await browser.newPage({ viewport: { width: 1440, height: 1200 } });
+    await grantLocalNetwork(cdp, page, editorUrl);
     // Route only the bootstrap hostname to the actual simulator metadata.
     // DNS packet interoperability is tested separately; HTTP and UI are real.
     await page.route('http://lightvm.local/api/v1/devices', async route => {
       const response = await route.fetch({ url: url + '/api/v1/devices' });
       await route.fulfill({ response });
+    });
+    const { FrameDecoder } = await import('../web/protocol.mjs');
+    const replies = new EventEmitter(), counts = { sockets: 0, socketFader: 0, httpFader: 0 };
+    const waitForCommand = (op, timeout = 12000) => new Promise((resolve, reject) => {
+      const done = () => { clearTimeout(timer); resolve(); };
+      const timer = setTimeout(() => { replies.off(op, done); reject(new Error('No command reply: ' + op)); }, timeout);
+      replies.once(op, done);
+    });
+    page.on('response', response => {
+      const bytes = response.request().postDataBuffer();
+      if (!response.ok() || !response.url().endsWith('/api/v1/command') || !bytes) return;
+      try {
+        const { op } = JSON.parse(bytes.subarray(16).toString());
+        if (op === 'transition_update') counts.httpFader++;
+        replies.emit(op);
+      } catch { /* Non-JSON upload commands. */ }
+    });
+    page.on('websocket', socket => {
+      if (!socket.url().endsWith('/api/v1/ws')) return;
+      counts.sockets++;
+      const pending = new Map();
+      const sent = new FrameDecoder(({ kind, id, payload }) => {
+        if (kind !== 11) return;
+        const { op } = JSON.parse(new TextDecoder().decode(payload)); pending.set(id, op);
+        if (op === 'transition_update') counts.socketFader++;
+      });
+      const received = new FrameDecoder(({ kind, id }) => {
+        if (kind !== 129) return;
+        const op = pending.get(id); pending.delete(id); if (op) replies.emit(op);
+      });
+      socket.on('framesent', ({ payload }) => sent.feed(new Uint8Array(payload)));
+      socket.on('framereceived', ({ payload }) => received.feed(new Uint8Array(payload)));
     });
     const errors = []; page.on('pageerror', error => errors.push(error.message)); page.on("console", m => { if (m.type()==="error") console.log(m.text()); }); page.on("requestfailed", r => console.log("REQUEST FAILED", r.url(), r.failure()));
     // The serial API is simulated over a second logical HTTP session. Native
@@ -66,8 +105,10 @@ function announcedUrl(child, output) {
     assert.equal(await page.locator('#nearby-devices option').count(), 2);
     await page.locator('#connect-http').click();
     await page.waitForFunction(() => location.hash.endsWith('/configure') && document.querySelector('#output-add'));
-    assert.match(await page.locator('#path-health').innerText(), /HTTP: connected/);
-    console.log('Device picker connected HTTP and opened configuration: passed');
+    const deviceInfo = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--describe'], { encoding: 'utf8' }));
+    assert.match(await page.locator('#path-health').innerText(), deviceInfo.websocket_supported ? /WebSocket: connected/ : /HTTP: connected/);
+    assert.equal(counts.sockets, deviceInfo.websocket_supported ? 1 : 0);
+    console.log('Device picker selected ' + (deviceInfo.websocket_supported ? 'WebSocket' : 'HTTP') + ' and opened configuration: passed');
 
     await page.locator('#output-add').click();
     await page.locator('#config-count-0').fill('5');
@@ -125,11 +166,12 @@ function announcedUrl(child, output) {
     await page.locator('#transition-slot-B').selectOption('browser');
     await page.getByRole('button', { name: 'Load B', exact: true }).click();
     await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
+    const transitionApplied = waitForCommand('transition_set');
     await page.locator('#transition-progress').evaluate(input => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '35');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    await page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_set"'));
+    await transitionApplied;
     await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
     const transition = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
     assert.equal(transition.progress, 35); assert.equal(transition.A.layers.length, 2); assert.equal(transition.B.layers.length, 2);
@@ -163,6 +205,8 @@ function announcedUrl(child, output) {
     const faderLibrary = await page.evaluate(() => JSON.parse(localStorage.getItem('lightvm.library.v1')));
     assert.equal(faderLibrary.animations.length, 2);
 
+    await page.locator('#command-path').selectOption('http');
+    await page.waitForFunction(() => !document.querySelector('#command-path')?.disabled);
     await page.getByRole('link', { name: 'Fader', exact: true }).click();
     await page.getByRole('button', { name: 'Use fader', exact: true }).waitFor();
     const transitionPicker = page.getByRole('region', { name: 'Deployed transitions' });
@@ -198,9 +242,10 @@ function announcedUrl(child, output) {
     assert.equal(afterSelect.progress, beforeSelect.progress);
     assert.deepEqual(identity(afterSelect.A), identity(beforeSelect.A)); assert.deepEqual(identity(afterSelect.B), identity(beforeSelect.B));
     console.log('Selected deployed wipe with colour settings and switched programs while retaining fader control: passed');
+    const beforeFader = { ...counts };
     for (const progress of [0, 35, 100]) {
       if (Number(await page.locator('#transition-fader').inputValue()) !== progress) {
-        const applied = page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_update"'));
+        const applied = waitForCommand('transition_update');
         await page.locator('#transition-fader').evaluate((input, progress) => {
           Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(progress));
           input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -212,8 +257,13 @@ function announcedUrl(child, output) {
       assert.equal(manual.progress, progress); assert.equal(manual.A.layers.length, 2); assert.equal(manual.B.layers.length, 2);
     }
     await page.locator('#transition-fader').focus();
-    const keyboard = page.waitForResponse(response => response.request().postDataBuffer()?.subarray(16).toString().includes('"op":"transition_update"'));
+    const keyboard = waitForCommand('transition_update');
     await page.keyboard.press('Home'); await keyboard;
+    if (deviceInfo.websocket_supported) {
+      assert.ok(counts.socketFader > beforeFader.socketFader);
+      assert.equal(counts.httpFader, beforeFader.httpFader);
+      console.log('Manual fader updates used WebSocket with no HTTP fader requests: passed');
+    }
 
     const beforeDrops = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--device', 'lights2', '--get-transition'], { encoding: 'utf8' }));
     await page.getByRole('article', { name: 'Browser color v1' }).dragTo(page.getByRole('region', { name: 'Scene B' }));
@@ -266,10 +316,7 @@ function announcedUrl(child, output) {
       check.observer.observe(document.querySelector('#network-fields'), { attributes: true, attributeFilter: ['disabled'] });
       window.pollingCheck = check;
     });
-    for (let count = 0; count < 2; count++) await page.waitForResponse(response => {
-      const body = response.request().postDataBuffer();
-      return response.ok() && body?.subarray(16).toString().includes('"op":"network_status"');
-    }, { timeout: 12000 });
+    for (let count = 0; count < 2; count++) await waitForCommand('network_status');
     const stable = await page.evaluate(() => {
       const check = window.pollingCheck; check.observer.disconnect();
       const result = { focused: document.activeElement === check.input, value: check.input.value, mutations: check.mutations, blurs: check.blurs };
@@ -308,6 +355,35 @@ function announcedUrl(child, output) {
     await page.getByRole('navigation', { name: 'Device workspace' }).getByRole('link', { name: /Firmware/ }).click();
     await page.getByRole('heading', { name: 'Firmware installation' }).waitFor();
     assert.equal(new URL(page.url()).hash.endsWith('/firmware'), true);
+    if (deviceInfo.websocket_supported) {
+      // Exercise the hosted editor's secure-context rules with a plain local
+      // socket. Fulfil only the editor's HTTPS assets from the local server;
+      // its HTTP bootstrap and ws:// connection still reach the real device.
+      const secureOrigin = 'https://lightvm-editor.test';
+      const secure = await browser.newPage();
+      await grantLocalNetwork(cdp, secure, secureOrigin);
+      secure.on('pageerror', error => errors.push(error.message));
+      await secure.route(secureOrigin + '/**', async route => {
+        const requested = new URL(route.request().url());
+        const response = await route.fetch({ url: editorUrl + requested.pathname + requested.search });
+        await route.fulfill({ response });
+      });
+      await secure.route('http://lightvm.local/api/v1/devices', async route => {
+        const response = await route.fetch({ url: url + '/api/v1/devices' });
+        await route.fulfill({ response });
+      });
+      await secure.goto(secureOrigin + '/#/devices');
+      await secure.locator('#http-address').fill(url);
+      await secure.locator('#connect-http').click();
+      await secure.waitForFunction(() => document.querySelector('#path-health')?.textContent.includes('WebSocket: connected'));
+      assert.equal(await secure.evaluate(() => isSecureContext), true);
+      await secure.close();
+      console.log('HTTPS editor connected to the plain local WebSocket: passed');
+      receiver.kill();
+      await page.waitForFunction(() => document.querySelector('#command-path')?.value === '' && document.querySelector('#notice')?.textContent.includes('WebSocket'));
+      assert.equal(counts.sockets, 1, 'Socket loss must not reconnect automatically');
+      console.log('Socket loss detached the selected path without automatic failover: passed');
+    }
     assert.deepEqual(errors, []);
     console.log('Program, configuration and network tabs persisted; firmware route and mobile layout: passed');
   } catch (error) { if (page) { console.log(await page.locator("body").innerText()); await page.screenshot({ path: path.join(root, "build/network-editor-failure.png"), fullPage: true }); } throw error; } finally { await browser?.close(); receiver?.kill(); server?.kill(); fs.rmSync(directory, { recursive: true, force: true }); }

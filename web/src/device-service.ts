@@ -1,5 +1,5 @@
 import { LightVMClient, COMMAND, parseJSON } from '../protocol.mjs';
-import { HttpTransport, SerialTransport } from '../transports.mjs';
+import { HttpTransport, SerialTransport, WebSocketTransport } from '../transports.mjs';
 import { Connections } from '../connections.mjs';
 import { DeviceDiscovery } from '../discovery.mjs';
 import { activityActions, deviceActions, editorActions, type AppStore } from './store';
@@ -31,7 +31,7 @@ export class DeviceService {
   log(text: string, kind = '') { this.store.dispatch(activityActions.log({ text, kind })); }
   syncPaths(description?: Description) {
     this.store.dispatch(deviceActions.connections({
-      paths: [...this.paths.paths].map(([key, value]) => ({ key, label: value.client.transport.label })),
+      paths: [...this.paths.paths].map(([key, value]) => ({ key, label: value.client.transport.label, protocol: value.client.transport.protocol || key.toUpperCase() })),
       selectedPath: this.paths.selected, description,
     }));
   }
@@ -73,13 +73,12 @@ export class DeviceService {
         if (!device) throw new Error('Select a discovered device or enter its direct address.');
         address = device.url;
       }
-      const transport = key === 'usb' ? new SerialTransport() : new HttpTransport(address);
+      let transport: SerialTransport | HttpTransport | WebSocketTransport = key === 'usb' ? new SerialTransport() : new HttpTransport(address);
       let candidate: LightVMClient | undefined;
-      try {
-        await transport.open();
-        candidate = new LightVMClient(transport, {
+      const clientFor = (transport: SerialTransport | HttpTransport | WebSocketTransport): LightVMClient => {
+        const client = new LightVMClient(transport, {
           onDisconnect: (error: Error) => {
-            if (this.paths.paths.get(key)?.client !== candidate) return;
+            if (this.paths.paths.get(key)?.client !== client) return;
             const selected = this.paths.selected === key;
             this.paths.detach(key); this.syncPaths();
             if (selected) {
@@ -91,12 +90,33 @@ export class DeviceService {
             }
           },
         });
-        const description = await candidate.describe() as Description;
+        return client;
+      };
+      try {
+        await transport.open();
+        candidate = clientFor(transport);
+        let description = await candidate.describe() as Description;
         if (!description.device_id || !description.boot_id) throw new Error('This firmware cannot identify its device and boot. Install current LightVM firmware.');
+        if (key === 'http') {
+          const identity = (transport as HttpTransport).identity;
+          if (identity.device_id !== description.device_id || identity.boot_id !== description.boot_id) throw new Error('The device rebooted or changed while connecting. Reconnect and review its state.');
+          if (description.websocket_supported) {
+            const bootstrap = candidate;
+            try {
+              transport = new WebSocketTransport(address); candidate = undefined;
+              await transport.open(); candidate = clientFor(transport);
+              const upgraded = await candidate.describe() as Description;
+              if (upgraded.device_id !== description.device_id || upgraded.boot_id !== description.boot_id) throw new Error('The device rebooted or changed during WebSocket connection. Reconnect and review its state.');
+              description = upgraded;
+            } finally { await bootstrap.close(); }
+          }
+        }
+        if (this.stopping) throw new Error('Connection closed.');
+        if (candidate.closed) throw new Error('Device connection ended while connecting. Reconnect and review its state.');
         this.paths.attach(key, candidate, description); this.syncPaths(description);
         await this.refresh(candidate);
         this.store.dispatch(editorActions.targetChanged());
-        this.log('Connected to ' + description.board + ' via ' + key.toUpperCase() + '.', 'success');
+        this.log('Connected to ' + description.board + ' via ' + transport.protocol + '.', 'success');
       } catch (error) {
         if (candidate) await candidate.close(); else await transport.close();
         throw error;
@@ -236,12 +256,12 @@ export class DeviceService {
       for (const network of safeConfig.wifi.networks) delete network.password;
       if (safeConfig.wifi.ap) delete safeConfig.wifi.ap.password;
       this.store.dispatch(deviceActions.network({ config: safeConfig, revision: reply.value >>> 0 }));
-      this.log(recovery ? 'Network settings saved for next boot. Recovery AP remains active.' : 'Network settings saved. Reconnect HTTP after the network changes.', 'success');
+      this.log(recovery ? 'Network settings saved for next boot. Recovery AP remains active.' : 'Network settings saved. Reconnect after the network changes.', 'success');
       if (connection.closed) {
         this.store.dispatch(activityActions.notice('Network settings saved. Reconnect to continue.'));
       } else {
         try { await this.readNetwork(connection); }
-        catch { this.store.dispatch(activityActions.notice('Network settings saved. Reconnect HTTP to refresh its status.')); }
+        catch { this.store.dispatch(activityActions.notice('Network settings saved. Reconnect to refresh network status.')); }
       }
     });
   }

@@ -53,6 +53,7 @@ def validate_esp_profile(board: str, directory: Path) -> None:
     expected = {"LIGHTVM_BOARD:STRING": board,
                 "LIGHTVM_WIFI:BOOL": "ON",
                 "LIGHTVM_HTTP:BOOL": "ON",
+                "LIGHTVM_WEBSOCKET:BOOL": "ON",
                 "LIGHTVM_BOOT_SEQUENCE:BOOL": "ON"}
     for key, value in expected.items():
         if settings.get(key) != value:

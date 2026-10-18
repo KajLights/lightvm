@@ -135,6 +135,70 @@ test("HTTP transport preserves command frames and never retries uncertain mutati
   await transport.close();
 });
 
+function socketClass() {
+  return class Socket extends EventTarget {
+    static instances = [];
+    constructor(url) { super(); this.url = url; this.readyState = 0; this.bufferedAmount = 0; this.sent = []; this.constructor.instances.push(this); }
+    open() { this.readyState = 1; this.dispatchEvent(new Event('open')); }
+    send(bytes) { this.sent.push(bytes.slice()); }
+    message(bytes) { this.dispatchEvent(new MessageEvent('message', { data: bytes })); }
+    close() { this.readyState = 3; this.dispatchEvent(new Event('close')); }
+  };
+}
+
+test('WebSocket transport carries binary frames and never replays a lost mutation', async () => {
+  const { WebSocketTransport } = await import('../web/transports.mjs');
+  const Socket = socketClass(), transport = new WebSocketTransport('http://192.168.1.2:8080', { WebSocket: Socket });
+  const opened = transport.open(), socket = Socket.instances[0]; socket.open(); await opened;
+  assert.equal(socket.url, 'ws://192.168.1.2:8080/api/v1/ws');
+  assert.equal(transport.url, 'http://192.168.1.2:8080');
+  assert.equal(socket.binaryType, 'arraybuffer');
+  let disconnects = 0;
+  const client = new LightVMClient(transport, { onDisconnect: () => disconnects++ });
+  const status = client.command(COMMAND.STATUS);
+  await new Promise(resolve => setImmediate(resolve));
+  const reply = new Uint8Array(8); new DataView(reply.buffer).setInt32(4, 42, true);
+  const data = frame(129, 1, reply); socket.message(data.buffer);
+  assert.equal((await status).value, 42);
+  const mutation = client.command(COMMAND.STOP), queued = client.command(COMMAND.PLAY);
+  const failed = assert.rejects(mutation, /WebSocket connection ended/);
+  const cancelled = assert.rejects(queued, /Reconnect/);
+  await new Promise(resolve => setImmediate(resolve));
+  socket.close(); await failed; await cancelled;
+  assert.equal(socket.sent.length, 2);
+  assert.equal(socket.sent[1][5], COMMAND.STOP);
+  assert.equal(Socket.instances.length, 1); assert.equal(disconnects, 1);
+  await transport.close();
+});
+
+test('WebSocket opening, cancellation and protocol errors are bounded', async () => {
+  const { WebSocketTransport } = await import('../web/transports.mjs');
+  assert.throws(() => new WebSocketTransport('http://device/path'), /HTTP origin/);
+  const Socket = socketClass();
+  const secure = new WebSocketTransport('https://device', { WebSocket: Socket });
+  const opening = secure.open(), cancelled = assert.rejects(opening, /closed/);
+  assert.equal(Socket.instances[0].url, 'wss://device/api/v1/ws');
+  await secure.close(); await cancelled;
+  const stalled = new WebSocketTransport('http://device', { WebSocket: Socket, timeout: 5 });
+  await assert.rejects(stalled.open(), /timed out/); await stalled.close();
+  const invalid = new WebSocketTransport('http://device', { WebSocket: Socket });
+  const connected = invalid.open(), socket = Socket.instances.at(-1); socket.open(); await connected;
+  let error; invalid.onDisconnect = problem => { error = problem; };
+  socket.message('not binary');
+  assert.match(error.message, /binary LightVM/);
+  await assert.rejects(invalid.write(frame(COMMAND.STOP, 1)), /closed/);
+  await invalid.close();
+});
+
+test('WebSocket send backpressure closes the path instead of accumulating commands', async () => {
+  const { WebSocketTransport } = await import('../web/transports.mjs');
+  const Socket = socketClass(), transport = new WebSocketTransport('http://device', { WebSocket: Socket });
+  const opening = transport.open(), socket = Socket.instances[0]; socket.open(); await opening;
+  socket.bufferedAmount = 65536;
+  await assert.rejects(transport.write(frame(COMMAND.STOP, 1)), /buffer is full/);
+  assert.equal(socket.sent.length, 0); await transport.close();
+});
+
 test("path selection rejects other devices and boot epochs and does not fail over", async () => {
   const { Connections } = await import("../web/connections.mjs");
   const paths = new Connections(), usb = {}, http = {}, description = { device_id: "one", boot_id: "boot" };

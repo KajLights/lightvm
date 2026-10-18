@@ -9,7 +9,7 @@ you save an effect and use it again.
 A **controller** is the physical board, such as a Pico. Its firmware runs the
 animations and sends data to the LEDs.
 
-The browser compiles animation source and sends commands through USB or HTTP.
+The browser compiles animation source and sends commands through USB, HTTP or WebSocket.
 The controller continues playback after the browser disconnects.
 
 These terms have specific meanings:

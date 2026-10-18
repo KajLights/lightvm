@@ -2,7 +2,7 @@ const pause = milliseconds => new Promise(resolve => setTimeout(resolve, millise
 const FILTERS = [{ vendorId: 0x2e8a }, { vendorId: 0x303a, productId: 0x1001 }];
 
 export class SerialTransport {
-  constructor() { this.onData = () => {}; this.onDisconnect = () => {}; this.closing = false; }
+  constructor() { this.onData = () => {}; this.onDisconnect = () => {}; this.closing = false; this.protocol = "USB"; }
 
   async open() {
     if (!navigator.serial) throw new Error("USB Serial requires desktop Chrome or Edge in a secure context.");
@@ -53,7 +53,7 @@ export class HttpTransport {
     this.addressSpace = parsed.hostname === "localhost" || parsed.hostname.startsWith("127.") || parsed.hostname === "[::1]" ? "loopback" : "local";
     this.url = parsed.origin; this.timeout = timeout; this.request = request.bind(globalThis);
     this.onData = () => {}; this.onDisconnect = () => {}; this.closing = false;
-    this.label = `${parsed.host} · HTTP`; this.controllers = new Set();
+    this.label = `${parsed.host} · HTTP`; this.protocol = "HTTP"; this.controllers = new Set();
   }
   async exchange(path, { method = "POST", body } = {}) {
     const controller = new AbortController(); this.controllers.add(controller);
@@ -86,5 +86,76 @@ export class HttpTransport {
       if (this.session) await this.exchange(`/api/v1/sessions/${this.session}`, { method: "DELETE" }).catch(() => {});
       this.session = null;
     })();
+  }
+}
+
+export class WebSocketTransport {
+  constructor(url, { timeout = 5000, WebSocket: Socket = globalThis.WebSocket } = {}) {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") throw new Error("Enter a device HTTP origin, e.g. http://192.168.1.20");
+    this.url = parsed.origin;
+    this.socketUrl = this.url.replace(/^http/, "ws") + "/api/v1/ws";
+    this.label = `${parsed.host} · WebSocket`; this.protocol = "WebSocket";
+    this.timeout = timeout; this.Socket = Socket;
+    /** @type {(bytes: Uint8Array) => void} */
+    this.onData = () => {};
+    /** @type {(error: Error) => void} */
+    this.onDisconnect = () => {};
+    this.closing = false; this.opened = false; this.disconnected = false;
+  }
+
+  open() {
+    if (this.openPromise) return this.openPromise;
+    return this.openPromise = new Promise((resolve, reject) => {
+      if (this.closing) { reject(new Error("WebSocket connection closed.")); return; }
+      this.rejectOpen = reject;
+      const fail = error => {
+        clearTimeout(this.openTimer); this.rejectOpen?.(error); this.rejectOpen = null;
+        if (!this.closing && !this.disconnected) { this.disconnected = true; this.onDisconnect(error); }
+        void this.close();
+      };
+      this.fail = fail;
+      try {
+        if (!this.Socket) throw new Error("This browser does not support WebSockets.");
+        this.socket = new this.Socket(this.socketUrl);
+        this.socket.binaryType = "arraybuffer";
+        this.socket.addEventListener("open", () => {
+          if (this.closing) return;
+          clearTimeout(this.openTimer); this.rejectOpen = null; this.opened = true; resolve(this);
+        });
+        this.socket.addEventListener("message", event => {
+          if (this.closing) return;
+          if (!(event.data instanceof ArrayBuffer)) { fail(new Error("Invalid WebSocket response: expected binary LightVM frames.")); return; }
+          this.onData(new Uint8Array(event.data));
+        });
+        this.socket.addEventListener("error", () => fail(new Error("Cannot reach the device WebSocket. Check Wi-Fi and browser local-network permission, then reconnect.")));
+        this.socket.addEventListener("close", () => {
+          if (!this.closing) fail(new Error("WebSocket connection ended. Reconnect and review device state before retrying."));
+          this.finishClose?.();
+        });
+        this.openTimer = setTimeout(() => fail(new Error("Device WebSocket connection timed out. Reconnect and check browser local-network permission.")), this.timeout);
+      } catch (error) { fail(error); }
+    });
+  }
+
+  async write(bytes) {
+    if (this.closing || !this.opened || this.socket.readyState !== 1) throw new Error("WebSocket connection closed. Reconnect before sending commands.");
+    try {
+      if (this.socket.bufferedAmount + bytes.byteLength > 65536) throw new Error("WebSocket send buffer is full. Reconnect and review device state before retrying.");
+      this.socket.send(bytes);
+    } catch (error) { this.fail(error); throw error; }
+  }
+
+  close() {
+    if (this.closePromise) return this.closePromise;
+    this.closing = true; clearTimeout(this.openTimer);
+    this.rejectOpen?.(new Error("WebSocket connection closed.")); this.rejectOpen = null;
+    return this.closePromise = new Promise(resolve => {
+      let timer;
+      this.finishClose = () => { clearTimeout(timer); resolve(); };
+      if (!this.socket || this.socket.readyState === 3) { resolve(); return; }
+      timer = setTimeout(this.finishClose, 1000);
+      try { this.socket.close(); } catch { this.finishClose(); }
+    });
   }
 }
