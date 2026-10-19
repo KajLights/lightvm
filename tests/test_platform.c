@@ -286,7 +286,7 @@ static void indicator_contract(void) {
 #if LIGHTVM_MQTT
     // Exercise expiry and queue backpressure without clocks or real sockets.
     HomeAssistant *ha=calloc(1,sizeof(*ha));CHECK(ha);ha->app=&app;strcpy(ha->root,"homeassistant/lightvm/test");ha->mqtt.state=MQTT_ONLINE;
-    strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=2;ha->keys[0].input_known=true;
+    strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=3;ha->keys[0].input_known=true;
     app.digital_inputs.count=1;strcpy(app.digital_inputs.devices[0].config.id,"buttons");
     app.digital_inputs.queued=1;app.digital_inputs.events[0]=(DigitalInputEvent){.time=0,.input=0,.channel=0,.type=DIGITAL_PRESS_START};
     CHECK(!ha_keys_tick(ha,DIGITAL_INPUT_EVENT_TTL_US+1)&&!app.digital_inputs.queued&&!ha->mqtt.queued);
@@ -296,6 +296,68 @@ static void indicator_contract(void) {
     free(ha);
 #endif
     delayed_output=false;session_destroy(&session);app_destroy(&app);CHECK(!borrowed_output);
+}
+static void indicator_effect_contract(void) {
+    static App app;Session session;Capture reply={.marker=0x12345678u};
+    storage_available=true;memset(flash,255,sizeof(flash));clock_now=0;clock_step=0;
+    app_init(&app,capture,&reply);session_init(&session,&app,1,capture,&reply);
+    const char *config="{\"schema\":\"lightvm.config\",\"outputs\":[{\"id\":\"keys\",\"type\":\"ws2812b\",\"mode\":\"indicators\",\"config\":{\"pin\":\"GP16\",\"count\":16}}]}";
+    memcpy(app.staging,config,strlen(config));app.expected=(uint32_t)strlen(config);app.object_kind=1;app.staged=true;app.upload_owner=1;
+    const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
+    command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
+    // Exact boundaries, repeated cycles and skipped frames use the wall clock, not tick counts.
+    const struct { const char *name;unsigned times[12],levels[12]; } patterns[]={
+        {"steady",{0,125,150,250,500,600,900,1000,1050,2000,10000,10000000},{64,64,64,64,64,64,64,64,64,64,64,64}},
+        {"slow_blink",{0,499,500,999,1000,1499,1500,2000,2499,2500,3000,10000000},{64,64,0,0,64,64,0,64,64,0,64,64}},
+        {"rapid_blink",{0,124,125,249,250,374,375,499,500,625,750,10000000},{64,64,0,0,64,64,0,0,64,0,64,64}},
+        {"010100",{0,149,150,299,300,449,450,599,600,899,900,1050},{0,0,64,64,0,0,64,64,0,0,0,64}}
+    };
+    char update[256];uint64_t epoch;
+    for(unsigned p=0;p<4;p++){
+        epoch=clock_now+1000000;clock_now=epoch;
+        snprintf(update,sizeof(update),"{\"op\":\"indicator_set\",\"output\":\"keys\",\"pixel\":0,\"value\":{\"state\":\"ON\",\"brightness\":64,\"color\":{\"r\":255,\"g\":0,\"b\":0},\"effect\":\"%s\"}}",patterns[p].name);
+        command(&session,CMD_MANAGE,(const uint8_t *)update,strlen(update));CHECK(reply.code==STATUS_OK);
+        for(unsigned n=0;n<12;n++){
+            clock_now=epoch+(uint64_t)patterns[p].times[n]*1000;app_tick(&app);
+            CHECK(displayed[0]==patterns[p].levels[n]&&displayed[1]==0&&displayed[3]==0);
+            CHECK(app.outputs[0]->indicators[0].on&&app.outputs[0]->indicators[0].brightness==64);
+        }
+    }
+    // Effect transitions cannot mutate an in-flight driver's borrowed frame.
+    epoch=clock_now+1000000;clock_now=epoch;delayed_output=true;output_ready=false;
+    const char *rapid="{\"op\":\"indicator_set\",\"output\":\"keys\",\"pixel\":0,\"value\":{\"effect\":\"rapid_blink\"}}";
+    command(&session,CMD_MANAGE,(const uint8_t *)rapid,strlen(rapid));app_tick(&app);CHECK(borrowed_output&&borrowed_output[0]==64);
+    clock_now=epoch+125000;app_tick(&app);CHECK(borrowed_output[0]==64);
+    output_ready=true;app_tick(&app);CHECK(displayed[0]==64&&borrowed_output&&borrowed_output[0]==0);
+    app_tick(&app);CHECK(displayed[0]==0&&!borrowed_output);delayed_output=false;
+    // Ordinary updates (including reselecting the same effect) preserve blink phase.
+    const char *dim="{\"op\":\"indicator_set\",\"output\":\"keys\",\"pixel\":0,\"value\":{\"effect\":\"rapid_blink\",\"brightness\":32}}";
+    command(&session,CMD_MANAGE,(const uint8_t *)dim,strlen(dim));app_tick(&app);CHECK(displayed[0]==0);
+    clock_now=epoch+250000;app_tick(&app);CHECK(displayed[0]==32);
+    app.digital_inputs.count=1;DigitalInput *input=&app.digital_inputs.devices[0];
+    strcpy(input->config.id,"buttons");strcpy(input->config.indicators,"keys");
+    input->available=true;input->next_sample=UINT64_MAX;input->stable=1;
+    const char *enable="{\"op\":\"key_feedback_set\",\"input\":\"buttons\",\"key\":1,\"enabled\":true}";
+    command(&session,CMD_MANAGE,(const uint8_t *)enable,strlen(enable));CHECK(reply.code==STATUS_OK&&input->press_feedback==1);
+    app_tick(&app);CHECK(displayed[0]==255);
+    uint32_t generation=app.store.generation;
+    command(&session,CMD_MANAGE,(const uint8_t *)enable,strlen(enable));CHECK(reply.code==STATUS_OK&&app.store.generation==generation);
+    const char *disable="{\"op\":\"key_feedback_set\",\"input\":\"buttons\",\"key\":1,\"enabled\":false}";
+    fail_after=0;command(&session,CMD_MANAGE,(const uint8_t *)disable,strlen(disable));
+    CHECK(reply.code==STATUS_STORAGE&&input->press_feedback==1&&app.store.generation==generation);fail_after=-1;
+    clock_now=epoch+375000;app_tick(&app);CHECK(displayed[0]==255);
+    input->available=false;app_tick(&app);CHECK(displayed[0]==0);
+    input->available=true;app_tick(&app);CHECK(displayed[0]==255);
+    // Feedback is also serviced while another operation yields, without waiting for app_tick.
+    input->stable=0;runtime_checkpoint();CHECK(displayed[0]==0);
+    clock_now=epoch+500000;app_tick(&app);CHECK(displayed[0]==32);
+    // Off remains the accepted target, but a held key still provides feedback.
+    const char *off="{\"op\":\"indicator_set\",\"output\":\"keys\",\"pixel\":0,\"value\":{\"state\":\"OFF\"}}";
+    command(&session,CMD_MANAGE,(const uint8_t *)off,strlen(off));input->stable=1;app_tick(&app);CHECK(displayed[0]==255);
+    command(&session,CMD_MANAGE,(const uint8_t *)disable,strlen(disable));CHECK(reply.code==STATUS_OK);
+    cooperative_show=true;app_tick(&app);cooperative_show=false;
+    CHECK(displayed[0]==0&&!app.outputs[0]->indicators[0].on);
+    session_destroy(&session);app_destroy(&app);
 }
 int main(void) {
     storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
@@ -540,6 +602,6 @@ int main(void) {
     composition_contract();
     transition_contract();
     startup_transition_clock();
-    indicator_contract();
+    indicator_contract();indicator_effect_contract();
     return 0;
 }

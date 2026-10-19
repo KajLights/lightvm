@@ -54,11 +54,12 @@ class KeypadTests(unittest.TestCase):
         return f'{self.root}/input/keypad/{n}'
 
     def discovery(self, n, kind='light'):
-        return f'homeassistant/{kind}/{self.controller}/i_{b"keypad".hex()}_{n}/config'
+        suffix = '_press_feedback' if kind == 'switch' else ''
+        return f'homeassistant/{kind}/{self.controller}/i_{b"keypad".hex()}_{n}{suffix}/config'
 
     def wait_ready(self):
         self.broker.wait(f'{self.root}/availability', b'online')
-        self.broker.wait(self.key(16) + '/state')
+        self.broker.wait(self.key(16) + '/press_feedback/state')
 
     def tearDown(self):
         self.client.close()
@@ -85,13 +86,32 @@ class KeypadTests(unittest.TestCase):
         self.client.manage('indicator_get', output='key_lights', pixel=pixel)
         return json.loads(self.client.data_reply)
 
+    def frame(self):
+        self.client.pixel_snapshot.clear()
+        self.client.manage('indicator_snapshot', output='key_lights')
+        return bytes(self.client.pixel_snapshot)
+
+    def wait_pixel(self, rgb, pixel=0):
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            actual = self.frame()[pixel*3:pixel*3+3]
+            if actual == bytes(rgb):
+                return
+            time.sleep(.01)
+        self.fail(f'pixel {pixel}: expected {rgb}, got {list(actual)}')
+
+    def feedback(self, key, enabled):
+        value = b'ON' if enabled else b'OFF'
+        self.broker.publish(self.key(key) + '/press_feedback/set', value)
+        self.broker.wait(self.key(key) + '/press_feedback/state', value)
+
     def event(self, n, event_type, count=None):
         payload = {'event_type': event_type}
         if count is not None:
             payload['multi_press_count'] = count
         return self.broker.wait(self.key(n) + '/event', json.dumps(payload, separators=(',', ':')).encode())
 
-    def test_one_device_with_sixteen_lights_and_button_event_entities(self):
+    def test_one_device_with_sixteen_lights_switches_and_button_event_entities(self):
         ids = []
         for n in range(1, 17):
             light = json.loads(self.broker.latest[self.discovery(n)])
@@ -100,6 +120,19 @@ class KeypadTests(unittest.TestCase):
             self.assertFalse(light['retain'])
             self.assertFalse(light['transition'])
             self.assertFalse(light['flash'])
+            self.assertTrue(light['effect'])
+            self.assertEqual(light['effect_list'], ['steady', 'slow_blink', 'rapid_blink', '010100'])
+            switch = json.loads(self.broker.latest[self.discovery(n, 'switch')])
+            self.assertEqual(switch['device'], light['device'])
+            self.assertEqual(switch['entity_category'], 'config')
+            self.assertEqual(switch['command_topic'], self.key(n) + '/press_feedback/set')
+            self.assertEqual(switch['state_topic'], self.key(n) + '/press_feedback/state')
+            self.assertFalse(switch['retain'])
+            self.assertEqual(switch['availability_mode'], 'all')
+            self.assertEqual(switch['availability'], [{'topic': self.root + '/availability'},
+                                                     {'topic': self.key(n) + '/availability'},
+                                                     {'topic': self.key(n) + '/event/availability'}])
+            self.assertEqual(self.broker.latest[switch['state_topic']], b'OFF')
             event = json.loads(self.broker.latest[self.discovery(n, 'event')])
             self.assertEqual(event['device'], light['device'])
             self.assertEqual(event['device']['identifiers'], [self.controller])
@@ -110,8 +143,12 @@ class KeypadTests(unittest.TestCase):
             self.assertEqual(event['availability_mode'], 'all')
             self.assertEqual(event['availability'], [{'topic': self.root + '/availability'},
                                                     {'topic': self.key(n) + '/event/availability'}])
-            ids += [light['unique_id'], event['unique_id']]
-        self.assertEqual(len(set(ids)), 32)
+            ids += [light['unique_id'], event['unique_id'], switch['unique_id']]
+        self.assertEqual(len(set(ids)), 48)
+        subscriptions = []
+        while not self.broker.subscriptions.empty():
+            subscriptions.append(self.broker.subscriptions.get_nowait())
+        self.assertIn(self.root + '/input/+/+/press_feedback/set', subscriptions)
         self.assertFalse(any(t.startswith('homeassistant/device_automation/') for t in self.broker.latest))
         self.masks(65535)
         self.event(16, 'press_start')
@@ -153,7 +190,7 @@ class KeypadTests(unittest.TestCase):
         command = {'state': 'ON', 'brightness': 128, 'color': {'r': 255, 'g': 80, 'b': 20}}
         self.broker.publish(self.key(1) + '/set', json.dumps(command))
         state = json.loads(self.broker.wait(self.key(1) + '/state'))
-        self.assertEqual(state, {**command, 'color_mode': 'rgb'})
+        self.assertEqual(state, {**command, 'color_mode': 'rgb', 'effect': 'steady'})
         self.assertEqual(self.indicator(), state)
         self.assertEqual(self.indicator(1)['state'], 'OFF')
         self.client.manage('indicator_snapshot', output='key_lights')
@@ -170,24 +207,29 @@ class KeypadTests(unittest.TestCase):
                 self.client.manage(op, output='key_lights')
 
     def test_birth_reconnect_and_reboot_do_not_replay_held_keys(self):
+        self.feedback(1, True)
         self.masks(1)
         self.event(1, 'press_start')
-        self.broker.publish(self.key(1) + '/set', '{"state":"ON","color":{"r":10,"g":20,"b":30}}')
+        self.broker.publish(self.key(1) + '/set', '{"state":"ON","brightness":32,"color":{"r":10,"g":20,"b":30}}')
         state = self.broker.wait(self.key(1) + '/state')
         before = len(self.broker.history)
         self.broker.publish('homeassistant/status', 'online')
         self.wait_ready()
         self.assertEqual(self.broker.latest[self.key(1) + '/state'], state)
+        self.wait_pixel([10, 20, 30])
         self.assertFalse(any(t.endswith('/event') for t, _, _ in self.broker.history[before:]))
         self.broker.connection.shutdown(2)
         self.wait_ready()
         self.assertEqual(self.broker.latest[self.key(1) + '/state'], state)
+        self.wait_pixel([10, 20, 30])
         self.client.close()
         self.start()
         self.wait_ready()
         self.assertEqual(self.indicator()['state'], 'OFF')
+        self.wait_pixel([255, 255, 255])
         self.drain(.6)
         self.masks(0)
+        self.wait_pixel([0, 0, 0])
         self.drain(.35)
         events = [v for v in self.broker.history if v[0].endswith('/event')]
         self.assertEqual(len(events), 1)
@@ -209,8 +251,9 @@ class KeypadTests(unittest.TestCase):
         self.broker.wait(self.discovery(16), b'')
         self.broker.wait(self.key(16) + '/event/availability', b'')
         for n in range(1, 17):
-            for kind in ('light', 'event'):
+            for kind in ('light', 'event', 'switch'):
                 self.assertEqual(self.broker.latest[self.discovery(n, kind)], b'')
+            self.assertEqual(self.broker.latest[self.key(n) + '/press_feedback/state'], b'')
 
     def test_configuration_rejects_pin_bus_and_indicator_conflicts_before_apply(self):
         for mutate in (
@@ -235,6 +278,8 @@ class KeypadTests(unittest.TestCase):
     def test_label_edits_preserve_rgb_identity_and_removing_indicator_binding_keeps_events(self):
         initial = json.loads(self.broker.latest[self.discovery(1)])
         initial_event = json.loads(self.broker.latest[self.discovery(1, 'event')])
+        initial_switch = json.loads(self.broker.latest[self.discovery(1, 'switch')])
+        self.feedback(1, True)
         self.broker.publish(self.key(1) + '/set', '{"state":"ON"}')
         self.broker.wait(self.key(1) + '/state')
         self.config['inputs'][0]['home_assistant']['names'] = ['Kitchen "lamp" 🌈'] + [f'Key {n}' for n in range(2, 17)]
@@ -246,7 +291,10 @@ class KeypadTests(unittest.TestCase):
         self.assertEqual(updated_event['name'], 'Kitchen "lamp" 🌈')
         self.assertEqual(updated_event['unique_id'], initial_event['unique_id'])
         self.assertEqual(self.indicator()['state'], 'ON')
-        self.broker.wait(self.key(1) + '/state')
+        self.broker.wait(self.key(1) + '/press_feedback/state', b'ON')
+        updated_switch = json.loads(self.broker.latest[self.discovery(1, 'switch')])
+        self.assertEqual(updated_switch['unique_id'], initial_switch['unique_id'])
+        self.assertEqual(updated_switch['name'], 'Kitchen "lamp" 🌈 press feedback')
         del self.config['inputs'][0]['home_assistant']['indicators']
         self.client.configure(self.config)
         self.broker.wait(self.discovery(16), b'')
@@ -256,6 +304,94 @@ class KeypadTests(unittest.TestCase):
         self.masks(1)
         self.event(1, 'press_start')
         self.assertEqual(self.broker.latest[self.discovery(1)], b'')
+        self.assertEqual(self.broker.latest[self.discovery(1, 'switch')], b'')
+
+    def test_effects_accept_colour_and_brightness_and_reject_invalid_updates_atomically(self):
+        for effect in ('steady', 'slow_blink', 'rapid_blink', '010100'):
+            value = {'state': 'ON', 'brightness': 64, 'color': {'r': 255, 'g': 0, 'b': 0}, 'effect': effect}
+            self.broker.publish(self.key(1) + '/set', json.dumps(value))
+            state = json.loads(self.broker.wait(self.key(1) + '/state'))
+            self.assertEqual(state, {**value, 'color_mode': 'rgb'})
+            self.wait_pixel([64, 0, 0])
+            if effect != 'steady':
+                self.wait_pixel([0, 0, 0])
+            before = len(self.broker.history)
+            self.drain(.2)
+            self.assertFalse(any(t == self.key(1) + '/state' for t, _, _ in self.broker.history[before:]))
+        for effect in ('unknown', 10100, {'speed': 2}, None):
+            self.broker.publish(self.key(1) + '/set', json.dumps({'state': 'OFF', 'brightness': 255, 'effect': effect}))
+            self.drain(.05)
+            self.assertEqual(self.indicator(), state)
+        self.broker.publish(self.key(1) + '/set', '{"effect":"steady"}', retained=True)
+        self.drain(.05)
+        self.assertEqual(self.indicator(), state)
+
+    def test_feedback_persists_per_key_and_ignores_retained_or_malformed_commands(self):
+        self.feedback(1, True)
+        self.feedback(16, True)
+        saved = (self.path / 'store.bin').read_bytes()
+        for payload, retained in [(b'ON', False), (b'OFF', True), (b'true', False), (b'ON\x00', False)]:
+            self.broker.publish(self.key(1) + '/press_feedback/set', payload, retained=retained)
+        self.drain()
+        self.assertEqual((self.path / 'store.bin').read_bytes(), saved)
+        self.client.close()
+        self.start()
+        self.wait_ready()
+        for n in range(1, 17):
+            self.assertEqual(self.broker.latest[self.key(n) + '/press_feedback/state'], b'ON' if n in (1, 16) else b'OFF')
+        self.feedback(1, False)
+        self.client.close()
+        self.start()
+        self.wait_ready()
+        self.assertEqual(self.broker.latest[self.key(1) + '/press_feedback/state'], b'OFF')
+        self.assertEqual(self.broker.latest[self.key(16) + '/press_feedback/state'], b'ON')
+        self.masks(1 << 15)
+        self.wait_pixel([255, 255, 255], pixel=15)
+        self.wait_pixel([0, 0, 0], pixel=0)
+        self.masks(0)
+        self.wait_pixel([0, 0, 0], pixel=15)
+
+    def test_feedback_overrides_blink_and_off_without_changing_ha_target(self):
+        self.feedback(1, True)
+        value = {'state': 'ON', 'brightness': 32, 'color': {'r': 255, 'g': 0, 'b': 0}, 'effect': 'rapid_blink'}
+        self.broker.publish(self.key(1) + '/set', json.dumps(value))
+        state = json.loads(self.broker.wait(self.key(1) + '/state'))
+        self.wait_pixel([0, 0, 0])
+        self.masks(3)
+        self.event(2, 'press_start')
+        self.wait_pixel([255, 0, 0])
+        self.wait_pixel([0, 0, 0], pixel=1)
+        self.drain(.3)
+        self.assertEqual(self.indicator(), state)
+        self.wait_pixel([255, 0, 0])
+        # Changing the HA target while held updates its colour, without losing the override.
+        self.broker.publish(self.key(1) + '/set', '{"state":"OFF","color":{"r":0,"g":255,"b":0}}')
+        state = json.loads(self.broker.wait(self.key(1) + '/state'))
+        self.wait_pixel([0, 255, 0])
+        self.assertEqual(state['brightness'], 32)
+        self.assertEqual(state['effect'], 'rapid_blink')
+        self.masks(0)
+        self.wait_pixel([0, 0, 0])
+        self.assertEqual(self.indicator(), state)
+
+    def test_feedback_works_without_mqtt_and_clears_when_input_is_unavailable(self):
+        self.feedback(1, True)
+        self.client.configure_network({'schema': 'lightvm.network', 'wifi': {'enabled': False, 'networks': []},
+                                       'http': {'enabled': False}, 'mqtt': {'enabled': False}})
+        self.client.manage('indicator_set', output='key_lights', pixel=0,
+                           value={'state': 'ON', 'brightness': 20, 'color': {'r': 255, 'g': 0, 'b': 0}})
+        self.wait_pixel([20, 0, 0])
+        self.masks(1)
+        self.wait_pixel([255, 0, 0])
+        self.raw.unlink()
+        self.wait_pixel([20, 0, 0])
+        self.assertFalse(self.client.describe()['inputs'][0]['available'])
+        self.masks(0)
+        time.sleep(1.05)
+        self.masks(1)
+        self.wait_pixel([255, 0, 0])
+        self.masks(0)
+        self.wait_pixel([20, 0, 0])
 
     def test_live_animation_sources_coexist_with_hardware_inputs_and_rgb_indicators(self):
         self.config['outputs'].append({'id': 'desk', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 8}})

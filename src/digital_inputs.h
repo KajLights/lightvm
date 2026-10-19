@@ -29,7 +29,7 @@ typedef struct {
 typedef struct {
     DigitalInputConfig config;
     void *bus;
-    uint16_t stable, candidate;
+    uint16_t stable, candidate, press_feedback;
     uint64_t changed[DIGITAL_INPUT_CHANNELS], next_sample;
     DigitalInputGesture gestures[DIGITAL_INPUT_CHANNELS];
     bool initialized, available, configured;

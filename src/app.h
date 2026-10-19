@@ -10,7 +10,13 @@
 #include "boot_sequence.h"
 #endif
 
-typedef struct { uint8_t rgb[3],brightness;bool on; } IndicatorLight;
+typedef enum { INDICATOR_STEADY, INDICATOR_SLOW_BLINK, INDICATOR_RAPID_BLINK, INDICATOR_010100 } IndicatorEffect;
+typedef struct {
+    uint8_t rgb[3],brightness;
+    bool on;
+    IndicatorEffect effect;
+    uint64_t effect_started;
+} IndicatorLight;
 typedef struct {
     HardwareOutput hardware;
     VmInstance vm;

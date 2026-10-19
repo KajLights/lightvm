@@ -197,6 +197,14 @@ static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t
         d->vm.target=&d->pixels;d->vm.output=&d->pixels;
     }
     for(unsigned i=0;i<a->output_count;i++)a->outputs[i]->hardware=a->hardware.outputs[i];
+    for(unsigned i=0;i<a->digital_inputs.count;i++){
+        DigitalInput *input=&a->digital_inputs.devices[i];uint8_t mask[2];input->press_feedback=0;
+        const StoreEntry *entry=store_find(&a->store,STORE_KEY_FEEDBACK,input->config.id);
+        if(entry){
+            if(entry->size!=sizeof(mask)||!store_read(&a->store,entry,0,mask,sizeof(mask)))goto failed;
+            input->press_feedback=(uint16_t)(mask[0]|(mask[1]<<8));
+        }
+    }
     memmove(a->config_json,data,size);a->config_size=size;a->upload_output=&a->fallback;a->hardware_changing=false;return true;
 failed:
     for(unsigned i=0;i<a->output_count;i++)destroy_output(&a->outputs[i]);
@@ -253,12 +261,13 @@ static bool activate(App *a,const char *name,uint16_t id,const char *action,cons
     if(error){if(!a->booting)error_reply(a,id,STATUS_LOAD,"activation_failed",error);return false;}
     reply(a,id,STATUS_OK,(int32_t)d->vm.control.count,"animation activated");return true;
 }
+static void indicator_tick(App *,AppOutput *,uint64_t);
 static void service(void *context) {
     App *a=context;
     if(!a->hardware_changing)digital_inputs_tick(&a->digital_inputs,platform_time_us());
     bool previous=a->command_active;a->command_active=true;
     for(unsigned i=0;i<a->output_count;i++)if(a->outputs[i]){
-        if(a->outputs[i]->hardware.indicators)continue;
+        if(a->outputs[i]->hardware.indicators){indicator_tick(a,a->outputs[i],platform_time_us());continue;}
         if(a->outputs[i]->transition){
             if(!a->outputs[i]->transition->start_pending)transition_tick(a->outputs[i]->transition,64);
         }
@@ -317,6 +326,49 @@ bool app_boot_sequence_triggered(const App *a) {
     (void)a; return false;
 #endif
 }
+static const char *const indicator_effects[]={"steady","slow_blink","rapid_blink","010100"};
+static uint8_t indicator_brightness(const IndicatorLight *l,bool pressed,uint64_t now) {
+    if(pressed)return 255;
+    if(!l->on)return 0;
+    uint64_t elapsed=now-l->effect_started;
+    switch(l->effect){
+    case INDICATOR_SLOW_BLINK: if((elapsed/500000)%2)return 0;break;
+    case INDICATOR_RAPID_BLINK: if((elapsed/125000)%2)return 0;break;
+    case INDICATOR_010100: { unsigned step=(unsigned)((elapsed/150000)%6);if(step!=1&&step!=3)return 0;break; }
+    default: break;
+    }
+    return l->brightness;
+}
+static void indicator_tick(App *a,AppOutput *d,uint64_t now) {
+    if(a->hardware_changing||runtime_owns(d))return;
+    const void *previous=runtime_enter(d);
+    if(d->indicator_pending){
+        int status=d->pixels.type->poll(d->pixels.driver);
+        if(!status)goto done;
+        d->indicator_pending=false;d->indicator_fault=status<0;
+        if(status<0){d->indicator_dirty=true;d->indicator_retry=now+1000000;}
+    }
+    // Poll before touching the frame: an asynchronous driver may still borrow it.
+    uint16_t pressed=0;
+    for(unsigned n=0;n<a->digital_inputs.count;n++){
+        const DigitalInput *input=&a->digital_inputs.devices[n];
+        if(input->available&&!strcmp(input->config.indicators,d->hardware.id))pressed=input->stable&input->press_feedback;
+    }
+    for(unsigned p=0;p<d->pixels.count;p++){
+        uint8_t brightness=indicator_brightness(&d->indicators[p],p<16&&(pressed&(1u<<p)),now);
+        for(unsigned c=0;c<3;c++){
+            const IndicatorLight *l=&d->indicators[p];
+            uint8_t value=(uint8_t)((l->rgb[c]*brightness+127u)/255u);
+            if(d->pixels.rgb[p*3+c]!=value){d->pixels.rgb[p*3+c]=value;d->indicator_dirty=true;}
+        }
+    }
+    if(d->indicator_dirty&&now>=d->indicator_retry){
+        if(d->pixels.type->submit(d->pixels.driver,d->pixels.rgb,d->pixels.count)){d->indicator_pending=true;d->indicator_dirty=false;}
+        else {d->indicator_fault=true;d->indicator_retry=now+1000000;}
+    }
+done:
+    runtime_leave(previous);
+}
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
     digital_inputs_tick(&a->digital_inputs,now);
@@ -333,23 +385,7 @@ void app_tick(App *a) {
     unsigned first=a->output_count?a->schedule_cursor++%a->output_count:0;
     for(unsigned i=0;i<a->output_count;i++){
         AppOutput *d=a->outputs[(first+i)%a->output_count];
-        if(d->hardware.indicators){
-            if(d->indicator_pending){
-                int status=d->pixels.type->poll(d->pixels.driver);
-                if(!status)continue;
-                d->indicator_pending=false;d->indicator_fault=status<0;
-                if(status<0){d->indicator_dirty=true;d->indicator_retry=now+1000000;}
-            }
-            if(d->indicator_dirty&&now>=d->indicator_retry){
-                for(unsigned p=0;p<d->pixels.count;p++)for(unsigned c=0;c<3;c++){
-                    const IndicatorLight *l=&d->indicators[p];
-                    d->pixels.rgb[p*3+c]=l->on?(l->rgb[c]*l->brightness+127u)/255u:0;
-                }
-                if(d->pixels.type->submit(d->pixels.driver,d->pixels.rgb,d->pixels.count)){d->indicator_pending=true;d->indicator_dirty=false;}
-                else {d->indicator_fault=true;d->indicator_retry=now+1000000;}
-            }
-            continue;
-        }
+        if(d->hardware.indicators){indicator_tick(a,d,platform_time_us());continue;}
         if(d->transition)transition_tick(d->transition,4096);else if(d->composition)composition_tick(d->composition,4096);else vm_tick(&d->vm);
     }
 }
@@ -1357,7 +1393,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
 size_t app_indicator_json(const AppOutput *d,unsigned pixel,char *buffer,size_t capacity) {
     if(!d||!d->indicators||pixel>=d->pixels.count)return 0;
     const IndicatorLight *l=&d->indicators[pixel];
-    int n=snprintf(buffer,capacity,"{\"state\":\"%s\",\"brightness\":%u,\"color_mode\":\"rgb\",\"color\":{\"r\":%u,\"g\":%u,\"b\":%u}}",l->on?"ON":"OFF",l->brightness,l->rgb[0],l->rgb[1],l->rgb[2]);
+    int n=snprintf(buffer,capacity,"{\"state\":\"%s\",\"brightness\":%u,\"color_mode\":\"rgb\",\"color\":{\"r\":%u,\"g\":%u,\"b\":%u},\"effect\":\"%s\"}",l->on?"ON":"OFF",l->brightness,l->rgb[0],l->rgb[1],l->rgb[2],indicator_effects[l->effect]);
     return n>0&&(size_t)n<capacity?(size_t)n:0;
 }
 static bool indicator_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op) {
@@ -1372,7 +1408,7 @@ static bool indicator_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const
     if(!d->indicators||!json_fields(j,0,fields)||!json_u32(j,json_get(j,0,"pixel"),&pixel)||pixel>=d->pixels.count)goto invalid;
     int value=json_get(j,0,"value");
     if(!strcmp(op,"indicator_set")){
-        static const char *const light_fields[]={"state","brightness","color",NULL};
+        static const char *const light_fields[]={"state","brightness","color","effect",NULL};
         static const char *const color_fields[]={"r","g","b",NULL};
         if(!json_fields(j,value,light_fields)||!j->tokens[value].children)goto invalid;
         IndicatorLight next=d->indicators[pixel];
@@ -1385,12 +1421,44 @@ static bool indicator_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const
             const char *channels[]={"r","g","b"};
             for(unsigned c=0;c<3;c++){if(!json_u32(j,json_get(j,color,channels[c]),&n)||n>255)goto invalid;next.rgb[c]=(uint8_t)n;}
         }
+        int effect=json_get(j,value,"effect");
+        if(effect>=0){
+            unsigned e=0;while(e<sizeof(indicator_effects)/sizeof(indicator_effects[0])&&!json_equal(j,effect,indicator_effects[e]))e++;
+            if(e==sizeof(indicator_effects)/sizeof(indicator_effects[0]))goto invalid;
+            next.effect=(IndicatorEffect)e;
+        }
+        if(next.effect!=d->indicators[pixel].effect||(next.on&&!d->indicators[pixel].on))next.effect_started=platform_time_us();
         d->indicators[pixel]=next;d->indicator_dirty=true;
     }else if(value>=0)goto invalid;
     char buffer[160];size_t size=app_indicator_json(d,pixel,buffer,sizeof(buffer));
     Writer w={.app=a,.id=id};bytes(&w,buffer,size);flush(&w);reply(a,id,STATUS_OK,0,"indicator state");return true;
 invalid:
     error_reply(a,id,STATUS_CONFIG,"invalid_indicator","expected indicator output, pixel and valid RGB light value");return true;
+}
+static bool key_feedback_manage(App *a,uint16_t id,const Json *j,const char *op) {
+    if(strcmp(op,"key_feedback_set")&&strcmp(op,"key_feedback_get"))return false;
+    static const char *const fields[]={"op","input","key","enabled",NULL};
+    char input[OBJECT_NAME_LIMIT+1];uint32_t key;bool enabled;
+    if(!json_fields(j,0,fields)||!json_string(j,json_get(j,0,"input"),input,sizeof(input))||
+       !json_u32(j,json_get(j,0,"key"),&key)||key<1||key>DIGITAL_INPUT_CHANNELS)goto invalid;
+    DigitalInput *d=NULL;
+    for(unsigned n=0;n<a->digital_inputs.count;n++)if(!strcmp(a->digital_inputs.devices[n].config.id,input))d=&a->digital_inputs.devices[n];
+    if(!d||!d->config.indicators[0])goto invalid;
+    uint16_t bit=(uint16_t)(1u<<(key-1));
+    if(!strcmp(op,"key_feedback_set")){
+        if(!json_bool(j,json_get(j,0,"enabled"),&enabled))goto invalid;
+        uint16_t next=enabled?(uint16_t)(d->press_feedback|bit):(uint16_t)(d->press_feedback&~bit);
+        if(next!=d->press_feedback){
+            uint8_t mask[2]={(uint8_t)next,(uint8_t)(next>>8)};
+            bool ok=store_put(&a->store,STORE_KEY_FEEDBACK,input,mask,sizeof(mask));resume_clock(a);
+            if(!ok){error_reply(a,id,STATUS_STORAGE,"feedback_not_saved","could not persist key press feedback");return true;}
+            d->press_feedback=next;
+        }
+    }else if(json_get(j,0,"enabled")>=0)goto invalid;
+    Writer w={.app=a,.id=id};literal(&w,"{\"enabled\":");literal(&w,d->press_feedback&bit?"true":"false");literal(&w,"}");flush(&w);
+    reply(a,id,STATUS_OK,0,"key press feedback setting");return true;
+invalid:
+    error_reply(a,id,STATUS_CONFIG,"invalid_key_feedback","expected bound input, key (1..16) and boolean enabled");return true;
 }
 __attribute__((noinline)) static AppOutput *request_output(App *a,const uint8_t *p,size_t size){
     Json j;char output[OBJECT_NAME_LIMIT+1]="";if(!json_parse(&j,p,size))return NULL;
@@ -1437,7 +1505,7 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_output","invalid request, unknown output or invalid A/B slot");return;}
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
-    if(indicator_manage(a,d,id,j,op)){platform_free(j);return;}
+    if(key_feedback_manage(a,id,j,op)||indicator_manage(a,d,id,j,op)){platform_free(j);return;}
     if(d->hardware.indicators&&(!strncmp(op,"transition_",11)||!strncmp(op,"composition_",12)||
        !strcmp(op,"preset_activate")||!strcmp(op,"preset_recall")||!strcmp(op,"output_power")||
        !strcmp(op,"program_activate")||!strcmp(op,"program_reset")||!strcmp(op,"program_pause")||!strcmp(op,"program_resume")||!strcmp(op,"program_inputs")||!strcmp(op,"output_command"))){

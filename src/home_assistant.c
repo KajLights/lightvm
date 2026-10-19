@@ -158,12 +158,12 @@ void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
     if(h->mqtt.error[0])snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"%s",h->mqtt.error);
     if(!h->app->mqtt_connected){digital_inputs_discard_events(&h->app->digital_inputs);return;}
     if(h->generation!=h->mqtt.generation){h->generation=h->mqtt.generation;h->phase=0;refresh(h);h->app->mqtt_error[0]=0;}
-    if(h->phase<4){
+    if(h->phase<5){
         if(h->mqtt.subscription)return;
         char filter[MQTT_TOPIC_SIZE];
         if(h->phase<2)snprintf(filter,sizeof(filter),"%s/+/%sset",h->root,h->phase?"preset/":"");
         else if(h->phase==2)snprintf(filter,sizeof(filter),"homeassistant/status");
-        else snprintf(filter,sizeof(filter),"%s/input/+/+/set",h->root);
+        else snprintf(filter,sizeof(filter),"%s/input/+/+/%sset",h->root,h->phase==4?"press_feedback/":"");
         if(mqtt_subscribe(&h->mqtt,filter))h->phase++;
         return;
     }

@@ -5,7 +5,7 @@
 #define STORE_CONFIG "$config"
 #define STORE_NETWORK "$network"
 #define STORE_PAGE_BYTES 256u
-typedef enum { STORE_ANY, STORE_ANIMATION, STORE_TRANSITION, STORE_PRESET, STORE_CONFIGURATION, STORE_NETWORK_SETTINGS, STORE_OUTPUT_STATE } StoreType;
+typedef enum { STORE_ANY, STORE_ANIMATION, STORE_TRANSITION, STORE_PRESET, STORE_CONFIGURATION, STORE_NETWORK_SETTINGS, STORE_OUTPUT_STATE, STORE_KEY_FEEDBACK } StoreType;
 /* id is an opaque backend version token. Applications must not interpret it. */
 typedef struct { char name[OBJECT_NAME_LIMIT+1]; StoreType type; uint32_t id,size,crc; } StoreEntry;
 typedef struct StoreBackend StoreBackend;

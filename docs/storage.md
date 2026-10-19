@@ -151,3 +151,19 @@ current recalled target; repeated targets and boot do not write.
 The next restore-last startup resolves the current named preset. Records do not
 pin deleted presets or contain live VM state. They share normal store capacity
 and advance the catalogue generation, without changing configuration revisions.
+
+## Keypad press-feedback settings
+
+The private `STORE_KEY_FEEDBACK` type (7) uses the input ID as its key and stores
+a two-byte little-endian bitmask (bit 0 is Key 1, bit 15 is Key 16). Missing records
+mean feedback is disabled for every key. Accepted changes persist atomically before
+the live setting changes; failed saves leave the previous setting active. Repeated
+values, key presses, blinking, boot and HA reconnects do not write. Records consume
+normal store capacity and advance the catalogue generation, without changing
+hardware/network configuration revisions or appearing in program/preset lists.
+They survive input/output rebinding and removal; disable a key's feedback through HA
+or the management API to save its disabled state. Light targets/effects remain transient.
+
+The current firmware reads existing stores without a migration. Earlier firmware
+that does not recognize type 7 cannot read catalogues containing these records;
+wipe storage and reprovision if returning to such an experimental build.

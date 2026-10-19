@@ -232,13 +232,14 @@ keypad example replaces the active output configuration; combine its `outputs`
 and `inputs` with existing outputs when keeping other lights. An original Pico
 supports the peripherals over USB, but standalone MQTT needs Pico W networking.
 
-HA discovers **one controller device**, containing sixteen button event entities
-and sixteen RGB light entities. Existing HA output lights and preset selectors
+HA discovers **one controller device**, containing sixteen button event entities,
+sixteen RGB light entities and sixteen **Press feedback** configuration switches.
+Existing HA output lights and preset selectors
 also belong to that same controller device. The RGB lights support on/off,
-brightness and RGB colour through the MQTT JSON light schema; transition and
-flash are disabled in discovery. Pressing a key does not locally toggle its
-indicator: HA automations decide what the gesture does and what the indicator
-should display. For example, use Key 1's `press_start` event to toggle a kitchen
+brightness, RGB colour and effects through the MQTT JSON light schema; transition
+and flash are disabled in discovery. HA automations decide what the gesture does
+and what the indicator should display. Optional local press feedback temporarily
+brightens the indicator while held. For example, use Key 1's `press_start` event to toggle a kitchen
 lamp immediately, then use the lamp's reported state to set the Key 1 indicator.
 Use explicit light entities when targeting an automation action; targeting the
 whole keypad device would affect all its lights. No custom HA integration or
@@ -260,16 +261,64 @@ For input ID `keypad` and one-based key number `n` (1..16):
 | --- | --- |
 | `homeassistant/lightvm/<controller_id>/input/keypad/<n>/event` | Non-retained JSON, e.g. `{"event_type":"press_start"}` or `{"event_type":"multi_press_end","multi_press_count":2}`. |
 | `homeassistant/lightvm/<controller_id>/input/keypad/<n>/event/availability` | Retained input acquisition health, combined with controller availability by the event entity. |
-| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/set` | JSON light command, e.g. `{"state":"ON","brightness":128,"color":{"r":0,"g":255,"b":0}}`. Publish without retain. |
-| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/state` | Retained accepted light target, including state, brightness, RGB and `color_mode:"rgb"`. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/set` | JSON light command, e.g. `{"state":"ON","brightness":128,"color":{"r":0,"g":255,"b":0},"effect":"slow_blink"}`. Publish without retain. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/state` | Retained accepted light target, including state, brightness, RGB, effect and `color_mode:"rgb"`. Blink phases and pressed brightness do not change this target. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/press_feedback/set` | Exact `ON` or `OFF`; automatically persists this key's feedback setting. Publish without retain. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/press_feedback/state` | Retained accepted feedback setting, `ON` or `OFF`. |
 | `homeassistant/lightvm/<controller_id>/input/keypad/<n>/availability` | Retained indicator output health, combined with controller availability. |
 | `homeassistant/light/<controller_id>/i_<hex_input_id>_<n>/config` | Retained RGB-light discovery. |
+| `homeassistant/switch/<controller_id>/i_<hex_input_id>_<n>_press_feedback/config` | Retained feedback-switch discovery with `entity_category:"config"`; requires controller, input and indicator availability. |
 | `homeassistant/event/<controller_id>/i_<hex_input_id>_<n>/config` | Retained button event discovery, with `device_class:"button"`. |
 
-The input's `home_assistant` may omit `indicators` for events without lights.
+The input's `home_assistant` may omit `indicators` for events without lights or feedback switches.
 Each channel has its own stable event identity and independent gesture state.
 Labels can change without changing identity. Physical held state and expander
 availability are also reported by `describe.inputs`.
+
+### Indicator effects and press feedback
+
+Each indicator advertises these effect names in HA:
+
+| Effect | Local pattern |
+| --- | --- |
+| `steady` | Constant configured colour and brightness; the default. |
+| `slow_blink` | 500 ms on, 500 ms off. |
+| `rapid_blink` | 125 ms on, 125 ms off. |
+| `010100` | Repeating off/on/off/on/off/off, with 150 ms per step (900 ms per cycle). |
+
+Select an effect together with the usual light fields. Quote `"010100"` in YAML
+so it remains a string. For example, replacing the entity ID with your indicator:
+
+```yaml
+action: light.turn_on
+target:
+  entity_id: light.key_1_indicator
+data:
+  rgb_color: [0, 255, 0]
+  brightness_pct: 20
+  effect: "010100"
+```
+
+An omitted effect keeps the previous selection. Changing effects or turning an
+off indicator on starts the pattern at its first step. Other updates preserve
+the phase, including selecting the same effect again. Timing uses the local
+monotonic clock; missed frames skip ahead rather than slowing down the pattern.
+
+Each **Key N press feedback** switch defaults off. Enabling it saves the setting
+on the controller immediately; no separate onboard save or HA restore automation
+is needed. Changes require writable storage and are rejected if saving fails.
+Settings follow the input ID and key number across renames, output rebinding,
+configuration changes and reboot. Turning a switch off persists that change too.
+
+While a feedback-enabled key is down, its indicator displays the configured RGB
+colour continuously at brightness 255, still subject to the physical output's
+`brightness_limit`. This overrides blinking and the light's off state; RGB black
+still renders black. It uses the debounced physical level (including a key held
+at boot) and works without MQTT or HA. Indicator rendering also runs at cooperative
+runtime checkpoints so other animation work can yield to feedback. HA light state remains the requested target.
+Updates while held take effect immediately, including colour changes. Release
+resumes the latest target at its current blink phase. Disabling feedback or losing
+input acquisition removes the override. Presses never write to flash.
 
 ### Gesture semantics and timing
 
@@ -327,14 +376,17 @@ Native queue expiry precedes MQTT queueing; an already queued network packet
 cannot be recalled. Retained commands and malformed/unsupported light fields are
 rejected without partial state changes. Rendering continues while MQTT is unavailable.
 
-RGB state survives MQTT reconnects and HA restarts in controller RAM. Reboot
-starts indicators off; transient light values are not written to flash. HA
+RGB state and effect selection survive MQTT reconnects and HA restarts in controller RAM. Reboot
+starts targets off, white, brightness 255 and `steady`; transient light values are not written to flash.
+Saved press-feedback switches remain enabled, so a held key can still illuminate. HA
 automations can restore desired indications when the controller becomes available.
 Changing unrelated configuration preserves unchanged indicator hardware and state.
-Removing an HA input binding clears its light and event discovery and retained
-light state and input/output availability, including retries across reconnects
+Removing an HA input binding clears its light, feedback-switch and event discovery and retained
+light/feedback state and input/output availability, including retries across reconnects
 during the same firmware run. The existing limitation on offline removal followed by reboot
 applies here too.
+Stored feedback settings remain associated with their input ID if a binding is
+removed and later re-added. Disable feedback before removing it to reset the setting.
 
 Host replay uses `LIGHTVM_I2C_INPUTS=/absolute/path/inputs.bin`: eight little-endian
 16-bit raw input masks, indexed by addresses `0x20`..`0x27`. Both simulated buses
@@ -393,6 +445,11 @@ serial control, retained/invalid commands, missing presets, HA restart, reconnec
 reboot, credential redaction and discovery removal. Editor tests cover preset
 assignment and broker-password handling. CI builds both MQTT-only and combined
 HTTP/MQTT profiles.
+
+Keypad tests also cover effect discovery and atomic commands, local feedback
+without MQTT, per-key persistence across process restarts, retained-command rejection,
+input loss, and switch cleanup. Clock-controlled C tests verify the blink steps,
+feedback precedence, asynchronous frame ownership and storage failure handling.
 
 Pico W hardware acceptance verified hostname resolution through DHCP-provided
 DNS, authenticated broker connection, retained HA discovery and availability,

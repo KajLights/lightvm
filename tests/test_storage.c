@@ -93,4 +93,4 @@ static void readonly_assets(void){
     CHECK(vm_heap_used()==0);store_destroy(&s);
     assets[1].type=STORE_ANIMATION;CHECK(!store_mount_with(&s,&store_assets_backend,&configuration));store_destroy(&s);
 }
-int main(void){catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);readonly_assets();puts("storage backends passed");return 0;}
+int main(void){catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);failures(STORE_KEY_FEEDBACK);readonly_assets();puts("storage backends passed");return 0;}

@@ -44,7 +44,7 @@ static bool decode(ExtentStore *s,StoreEntry *e,const uint8_t *r){
     if(!memchr(r,0,33))return false;
     memcpy(e->name,r,33);e->id=read_u32(r+36);e->size=read_u32(r+40);e->crc=read_u32(r+44);
     e->type=(StoreType)r[33];
-    if(e->type<STORE_ANIMATION||e->type>STORE_OUTPUT_STATE)return false;
+    if(e->type<STORE_ANIMATION||e->type>STORE_KEY_FEEDBACK)return false;
     if(e->type==STORE_CONFIGURATION){if(strcmp(e->name,STORE_CONFIG))return false;}
     else if(e->type==STORE_NETWORK_SETTINGS){if(strcmp(e->name,STORE_NETWORK))return false;}
     else if(!object_name_valid(e->name))return false;

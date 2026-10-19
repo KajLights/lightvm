@@ -17,7 +17,7 @@ StoreType store_type(const char *name) {
 }
 static bool valid(const StoreEntry *e) {
     bool system=e->type==STORE_CONFIGURATION||e->type==STORE_NETWORK_SETTINGS;
-    return e->type>=STORE_ANIMATION&&e->type<=STORE_OUTPUT_STATE&&
+    return e->type>=STORE_ANIMATION&&e->type<=STORE_KEY_FEEDBACK&&
         (system? !strcmp(e->name,e->type==STORE_CONFIGURATION?STORE_CONFIG:STORE_NETWORK):object_name_valid(e->name))&&
         e->size&&e->size<=(e->type==STORE_ANIMATION||e->type==STORE_TRANSITION?MODULE_LIMIT:CONFIG_LIMIT);
 }

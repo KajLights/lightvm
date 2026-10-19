@@ -153,7 +153,8 @@ An output with `mode: "indicators"` reserves up to sixteen pixels for independen
 RGB control through HA or the management API. It cannot have startup policies,
 HA preset bindings. Animation commands and transient uploads
 to it are rejected. Its normal submit/poll presenter owns one shared frame;
-each indicator has on/off, brightness and RGB state, without per-pixel VMs.
+each indicator has on/off, brightness, RGB and effect state, without per-pixel VMs.
+Effects are `steady`, `slow_blink`, `rapid_blink` and `010100` (double-blink-pause).
 Omitted mode means `animation`, including ordinary animated APA102 strips.
 
 The optional `inputs` array accepts up to four generic `tca9555` adapters. Each
@@ -174,7 +175,9 @@ An input's optional `home_assistant` object enables sixteen HA button event enti
 Its optional `indicators` names a sixteen-pixel output in indicator mode: channel
 0 pairs with pixel 0, through channel 15/pixel 15. An output may be bound once.
 Optional `names` supplies exactly sixteen labels of 1..32 UTF-8 bytes for the
-button events and indicator lights; defaults are Key 1 through Key 16. IDs determine
+button events, indicator lights and per-key press-feedback configuration switches;
+defaults are Key 1 through Key 16. Feedback is configured through HA or
+`key_feedback_set`, and persisted separately from this hardware document. IDs determine
 discovery identity; labels can change without changing those IDs.
 See [the keypad example](../examples/config/pico-rgb-keypad.json) and
 [HA keypad setup](mqtt.md#keypad-and-rgb-indicators).
@@ -253,9 +256,11 @@ status are not part of this protocol.
 | MANAGE operation | Additional fields / result |
 |---|---|
 | `describe` | Board, output types, permitted pins, capacities, active/saved/catalog revisions, active program CRC and boot/runtime diagnostics |
-| `indicator_set` | `output`, zero-based `pixel`, `value` with optional `state` (`ON`/`OFF`), `brightness` (0..255) and `color: {r,g,b}` (0..255); atomically updates that light and returns its JSON state. |
-| `indicator_get` | `output`, zero-based `pixel`; JSON light state, including colour while off. |
-| `indicator_snapshot` | `output`; RGB bytes in PIXELS replies, after per-indicator brightness and before physical brightness limit/wire conversion. |
+| `indicator_set` | `output`, zero-based `pixel`, `value` with optional `state` (`ON`/`OFF`), `brightness` (0..255), `color: {r,g,b}` (0..255), `effect` (`steady`, `slow_blink`, `rapid_blink`, `010100`); atomically updates that light and returns its JSON state. |
+| `indicator_get` | `output`, zero-based `pixel`; accepted JSON light target including effect and colour while off; unaffected by blink phase or press feedback. |
+| `indicator_snapshot` | `output`; RGB bytes in PIXELS replies, after effects and press feedback and before physical brightness limit/wire conversion. |
+| `key_feedback_set` | `input`, one-based `key` (1..16), boolean `enabled`; persists before applying; returns `{"enabled":true/false}`. Requires an input bound to an indicator output. |
+| `key_feedback_get` | `input`, one-based `key` (1..16); returns `{"enabled":true/false}`. |
 | `config_get`, `config_saved` | Active or persisted JSON; absent persisted config reads as empty |
 | `config_validate` | Validate staged configuration, including startup preset preparation and layer argument validation |
 | `config_apply` | `expected_revision` (active); apply staged config |
