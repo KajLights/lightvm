@@ -81,7 +81,9 @@ async function claim() {
 
 it('opens the workspace Fader tab without interrupting the timed driver', async () => {
   const { client } = setup();
+  expect(screen.queryByLabelText('Transition program')).not.toBeInTheDocument();
   await screen.findByText('Timed transition running');
+  expect(screen.getByLabelText('Transition program')).toHaveValue('crossfade');
   expect(screen.getByRole('link', { name: 'Mixer' })).toHaveAttribute('aria-current', 'page');
   expect(screen.getByRole('slider', { name: 'Transition fader' })).toHaveValue('35');
   expect(screen.getByRole('slider')).toBeDisabled();

@@ -154,7 +154,7 @@ export function Fader() {
             {state?.error && <p className="connection-banner" role="alert">{state.error}</p>}
           </section>
           <section className="transition-module" aria-label="Deployed transitions"><h2>Transition / AUTO</h2>
-            <TransitionProgram id="fader-transition-program" key={[controller.selectedPath, output, controller.description?.boot_id].join(':')} state={state} busy={busy} onApply={selectTransition} />
+            {state ? <TransitionProgram id="fader-transition-program" key={[controller.selectedPath, output, controller.description?.boot_id].join(':')} state={state} busy={busy} onApply={selectTransition} /> : <p className="helper" role="status">Reading active transition…</p>}
             <label htmlFor="fader-duration">Fade duration (ms)</label><input id="fader-duration" type="number" min="0" value={Number.isNaN(duration) ? '' : duration} onChange={event => setDuration(event.target.value === '' ? NaN : Number(event.target.value))} />
             <details><summary>Repeat A ↔ B</summary><label htmlFor="fader-interval">Repeat every (ms)</label><input id="fader-interval" type="number" min={Math.max(1, duration || 0)} value={Number.isNaN(interval) ? '' : interval} onChange={event => setIntervalMs(event.target.value === '' ? NaN : Number(event.target.value))} />
               <button className="secondary full" disabled={busy || !validDuration || !validInterval} onClick={() => void control('Starting timed loop', async connection => { await connection.setProgress(0, output); await connection.runTransition(100, duration, output, interval); })}>Start timed loop</button><p className="helper">Repeats on the device until you take control or hold.</p></details>
