@@ -76,7 +76,7 @@ def main():
     parser.add_argument('--reference',type=Path,default=ROOT/'build/host/lightvm')
     parser.add_argument('--no-reset',action='store_true')
     args=parser.parse_args()
-    output=SerialTransport(args.port,no_reset=args.no_reset or args.board.startswith('xiao_esp32')) if args.port else ProcessTransport(args.process)
+    controller=SerialTransport(args.port,no_reset=args.no_reset or args.board.startswith('xiao_esp32')) if args.port else ProcessTransport(args.process)
     reference=ProcessTransport(args.reference)
     try:smoke(Client(controller),args.board,Client(reference))
     finally:controller.close();reference.close()

@@ -299,16 +299,22 @@ it('keeps the active transition, compositions and fader when transition preparat
 });
 
 it('retains transition drafts across polling and follows an externally selected program', async () => {
-  const workspace = setup(); await screen.findByText('Timed transition running');
-  fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
-  await screen.findByLabelText('Override reverse');
+  vi.useFakeTimers();
+  let workspace!: ReturnType<typeof setup>;
+  await act(async () => { workspace = setup(); });
+  expect(screen.getByLabelText('Transition program')).toHaveValue('crossfade');
+  await act(async () => {
+    fireEvent.change(screen.getByLabelText('Transition program'), { target: { value: 'wipe' } });
+  });
   fireEvent.click(screen.getByLabelText('Override reverse'));
   fireEvent.change(screen.getByLabelText('reverse'), { target: { value: 'true' } });
-  await waitFor(() => expect(workspace.client.transition).toHaveBeenCalledTimes(2));
+  await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+  expect(workspace.client.transition).toHaveBeenCalledTimes(2);
   expect(screen.getByLabelText('Transition program')).toHaveValue('wipe');
   expect(screen.getByLabelText('reverse')).toHaveValue('true');
   workspace.setState({ ...workspace.getState(), program: 'wipe_with_colour', program_crc32: 5 });
-  await waitFor(() => expect(screen.getByLabelText('Transition program')).toHaveValue('wipe_with_colour'));
+  await act(async () => { await vi.advanceTimersByTimeAsync(500); });
+  expect(screen.getByLabelText('Transition program')).toHaveValue('wipe_with_colour');
   expect(screen.queryByLabelText('Override reverse')).not.toBeInTheDocument();
 });
 

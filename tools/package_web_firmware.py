@@ -91,8 +91,8 @@ def package(output: Path, board_dirs: dict[str, Path], pico_files: dict[str, Pat
             source = directory / relative
             if not source.is_file() or source.stat().st_size == 0:
                 raise ValueError(f"{board}: missing or empty {relative}")
-            if offset == 0x10000 and source.stat().st_size > 0x100000:
-                raise ValueError(f"{board}: app exceeds its 1 MiB partition")
+            if offset == 0x10000 and source.stat().st_size > 0x200000:
+                raise ValueError(f"{board}: app exceeds its 2 MiB partition")
             destination = output / board / Path(relative).name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, destination)

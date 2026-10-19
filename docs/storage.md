@@ -82,12 +82,16 @@ symbols use the same board geometry as the flash driver and reject overlapping
 firmware. Each build exports `storage-layout.json`; firmware packaging and the
 browser installer use its linked boundary when validating the UF2. The optional boot journal occupies 8 KiB immediately before storage.
 
-ESP32 generates its partition table from the requested capacity, preserving the
-existing application and other default partition addresses. The optional boot
-journal follows the store. `LIGHTVM_PARTITION_TABLE` may instead name a custom CSV
-with a `lightvm` data partition and, when enabled, a `lightvm_boot` partition. The
-backend uses the actual `lightvm` partition size. ESP-IDF validates overlaps and
-physical flash bounds. Reinstall the generated partition table when changing it.
+ESP32 generates its partition table from the requested capacity, reserving a
+2 MiB application partition at `0x10000` and placing storage at `0x210000`.
+The optional boot journal follows the store. `LIGHTVM_PARTITION_TABLE` may instead
+name a custom CSV with a `lightvm` data partition and, when enabled, a
+`lightvm_boot` partition. The backend uses the actual `lightvm` partition size.
+ESP-IDF validates overlaps and
+physical flash bounds. When updating from the earlier 1 MiB application layout,
+erase flash with `idf.py -C platforms/esp32 -B BUILD_DIR erase-flash`, then flash
+the rebuilt firmware and partition table and provision configuration, programs
+and presets again. Changing partition addresses likewise requires a clean install.
 The host's backing file must have exactly the configured size.
 
 ## Native extent format

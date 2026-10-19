@@ -51,7 +51,7 @@ set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig" CACHE FILEPATH "Build-local ESP-ID
 set(SDKCONFIG_DEFAULTS "${CMAKE_CURRENT_LIST_DIR}/sdkconfig.defaults")
 include("${LIGHTVM_ROOT}/cmake/lightvm_storage.cmake")
 # A custom table may reserve OTA or other use-case-specific partitions. Without
-# one, generate the existing layout with the requested storage capacity.
+# one, reserve 2 MiB for firmware and use the requested storage capacity.
 set(LIGHTVM_PARTITION_TABLE "" CACHE FILEPATH "Custom ESP32 partition table (optional)")
 if(LIGHTVM_PARTITION_TABLE)
     get_filename_component(LIGHTVM_PARTITION_FILENAME "${LIGHTVM_PARTITION_TABLE}" ABSOLUTE)
@@ -60,9 +60,9 @@ if(LIGHTVM_PARTITION_TABLE)
     endif()
 else()
     set(LIGHTVM_PARTITION_FILENAME "${CMAKE_BINARY_DIR}/lightvm-partitions.csv")
-    set(LIGHTVM_PARTITION_TEXT "# Name, Type, SubType, Offset, Size, Flags\nnvs, data, nvs, 0x9000, 0x6000,\nphy_init, data, phy, 0xf000, 0x1000,\nfactory, app, factory, 0x10000, 1M,\nlightvm, data, 0x40, 0x110000, ${LIGHTVM_STORAGE_BYTES_VALUE},\n")
+    set(LIGHTVM_PARTITION_TEXT "# Name, Type, SubType, Offset, Size, Flags\nnvs, data, nvs, 0x9000, 0x6000,\nphy_init, data, phy, 0xf000, 0x1000,\nfactory, app, factory, 0x10000, 2M,\nlightvm, data, 0x40, 0x210000, ${LIGHTVM_STORAGE_BYTES_VALUE},\n")
     if(LIGHTVM_BOOT_SEQUENCE)
-        math(EXPR LIGHTVM_BOOT_OFFSET "0x110000 + ${LIGHTVM_STORAGE_BYTES_VALUE}" OUTPUT_FORMAT HEXADECIMAL)
+        math(EXPR LIGHTVM_BOOT_OFFSET "0x210000 + ${LIGHTVM_STORAGE_BYTES_VALUE}" OUTPUT_FORMAT HEXADECIMAL)
         string(APPEND LIGHTVM_PARTITION_TEXT "lightvm_boot, data, 0x41, ${LIGHTVM_BOOT_OFFSET}, 8K,\n")
     endif()
     file(WRITE "${LIGHTVM_PARTITION_FILENAME}" "${LIGHTVM_PARTITION_TEXT}")
