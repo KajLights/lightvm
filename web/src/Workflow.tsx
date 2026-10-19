@@ -121,7 +121,7 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
     if (layers.some(layer => invalidLayers[layer.id])) throw new Error('Fix the layer input recipes before saving.');
     if (!/^[A-Za-z0-9_.-]{1,32}$/.test(presetName)) throw new Error('Use 1–32 letters, digits, dots, underscores or hyphens for the preset name.');
     compositionLayers(library, layers);
-    if (entryTransition && !validTransitionSpec(entryTransition)) throw new Error('Choose a valid entry transition and duration.');
+    if (entryTransition && !validTransitionSpec(entryTransition)) throw new Error('Choose a valid preset transition and duration.');
     return { ...(entryTransition ? { entry_transition: structuredClone(entryTransition) } : {}), id: library.presets.find(item => item.name === presetName)?.id ?? crypto.randomUUID(), name: presetName, layers: structuredClone(layers) };
   }
   async function savePreset() {
@@ -218,9 +218,9 @@ export function DevelopmentWorkflow({ editorPanel, playback, active = true }: { 
         {controller.description?.ab_transitions && <><label htmlFor="preset-composition-slot">Preview composition slot</label><select id="preset-composition-slot" value={compositionSlot} onChange={event => setCompositionSlot(event.target.value)}><option>A</option><option>B</option></select></>}
         <button className="primary full" disabled={busy || !connected || !layers.length || !controller.description?.compositions} onClick={() => void previewLayers()}>Preview preset →</button>
         <label htmlFor="preset-name">Preset name</label><input id="preset-name" value={presetName} maxLength={32} onChange={event => setPresetName(event.target.value)} placeholder="blue-scanner" />
-        <RecallTransition id="preset-entry-transition" label="Preset entry transition" value={entryTransition} onChange={setEntryTransition} disabled={busy} />
+        <RecallTransition id="preset-entry-transition" label="Preset transition" value={entryTransition} onChange={setEntryTransition} disabled={busy} />
         <div className="button-pair"><button className="secondary" disabled={busy || !layers.length || !presetName || Boolean(storageError)} onClick={() => void savePreset()}>Save preset</button><button className="secondary" disabled={busy || !writable || !connected || !layers.length || !presetName || !controller.description?.presets} onClick={() => void saveToController()}>Save preset to controller</button></div>
-        <p className="helper">Save preset keeps an editable recipe in this browser. Save to controller stores its compiled programs and recipe in flash. Saving an existing name replaces that preset. Presets run on request; startup currently uses a single stored program.</p>
+        <p className="helper">Save preset keeps an editable recipe in this browser. Save to controller stores its compiled programs and recipe in flash. Saving an existing name replaces that preset. Choose a saved preset or restore the last state under Configure → Output & startup.</p>
         {connected && !controller.description?.presets && <p className="helper">Install firmware with preset storage support to save recipes on this controller.</p>}
       </section>
       <section className="card"><div className="card-heading"><h2>Presets</h2></div>

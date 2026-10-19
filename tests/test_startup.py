@@ -1,13 +1,13 @@
-"""Per-output constructor arguments and startup isolation over the real protocol."""
-import json
+"""Preset power-on policy and durable desired state through the real protocol."""
 import os
 from pathlib import Path
 import tempfile
 import unittest
+import zlib
 
-from bytecode_fixtures import color, fault, program, sample
+from bytecode_fixtures import color, program, sample
 from test_configuration import ROOT, config
-from client import Client, ProcessTransport, ProtocolError, FRAME
+from client import Client, ProcessTransport, ProtocolError
 
 
 class StartupTests(unittest.TestCase):
@@ -17,6 +17,9 @@ class StartupTests(unittest.TestCase):
         self.receiver = os.environ.get('LIGHTVM_RECEIVER', ROOT / 'build/host/lightvm')
         self.client = None
         self.restart()
+        self.client.configure(config())
+        self.save_preset('red', color(19))
+        self.save_preset('blue', color(77))
 
     def tearDown(self):
         self.client.close()
@@ -27,142 +30,259 @@ class StartupTests(unittest.TestCase):
             self.client.close()
         self.client = Client(ProcessTransport(self.receiver, self.storage))
 
-    def outputs(self, startups):
-        entries = []
-        for i, startup in enumerate(startups):
-            entry = {'id': f'lights{i}', 'type': 'ws2812b', 'config': {'pin': f'GP{i}', 'count': 5}}
-            if startup is not None:
-                entry['startup'] = startup
-            entries.append(entry)
-        return {'schema': 'lightvm.config', 'outputs': entries}
+    def save_preset(self, name, module, settings=None, inputs=None):
+        self.client.save_program(name, module)
+        layer = {'id': 'main', 'program': name, 'crc32': zlib.crc32(module)}
+        if settings is not None:
+            layer['settings'] = settings
+        if inputs is not None:
+            layer['inputs'] = inputs
+        self.client.save_preset(name, [layer])
 
-    def test_independent_arguments_defaults_and_idle_device_after_reboot(self):
-        self.client.save_program('rainbow', sample('rainbow'))
-        self.client.save_program('color', sample('color'))
-        candidate = self.outputs([
-            {'program': 'rainbow', 'settings': {'random_color': False}, 'inputs': {'phase': {'driver': {'kind': 'ramp', 'duration': 3.3, 'mode': 'repeat'}}}},
-            {'program': 'rainbow', 'inputs': {'phase': {'driver': {'kind': 'ramp', 'duration': 7.0, 'mode': 'repeat'}}, 'scale': {'value': 0.0}}},
-            {'program': 'color', 'settings': {'color': 0x123456, 'random_color': False}},
-            {'program': 'rainbow'}, {'program': 'rainbow', 'settings': {}}, None,
-        ])
+    def policy(self, mode, preset=None):
+        candidate = config()
+        candidate['outputs'][0]['startup'] = {'mode': mode}
+        if preset is not None:
+            candidate['outputs'][0]['startup']['preset'] = preset
+        return candidate
+
+    def output(self, name='lights'):
+        return next(d for d in self.client.describe()['outputs'] if d['id'] == name)
+
+    def test_selected_preset_boots_with_its_layers_settings_and_inputs(self):
+        self.save_preset('rainbow', sample('rainbow'), {'random_color': False},
+                         {'phase': {'driver': {'kind': 'ramp', 'duration': 3.3, 'mode': 'repeat'}}})
+        candidate = self.policy('preset', 'rainbow')
         self.client.configure(candidate, save=True)
-        self.assertEqual(self.client.get_config(), candidate)
-        self.assertEqual(self.client.get_config(saved=True), candidate)
-        for entry in candidate['outputs']:
-            self.assertEqual(self.client.status_fields(output=entry['id'])['mode'], 'idle')
+        self.assertFalse(self.output()['power'])
         self.restart()
-        for i, duration in ((0, 3.3), (1, 7.0), (3, 60.0), (4, 60.0)):
-            inputs = self.client.program_state(output=f'lights{i}')['inputs']
-            self.assertAlmostEqual(inputs['phase']['binding']['driver']['duration'], duration, places=5)
-        self.assertEqual(self.client.program_state(output='lights1')['inputs']['scale']['value'], 0)
-        self.assertEqual(self.client.snapshot(output='lights2')[1], bytes.fromhex('123456') * 5)
-        self.assertEqual(self.client.status_fields(output='lights5')['mode'], 'idle')
-        self.assertEqual(self.client.describe()['boot_error'], '')
+        self.assertTrue(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'rainbow')
+        self.assertEqual(self.client.program_state(layer='main', slot='B')['inputs']['phase']['binding']['driver']['duration'], 3.3)
         self.assertEqual(self.client.get_config(), candidate)
+        self.assertEqual(self.client.describe()['boot_error'], '')
 
-    def test_rejects_old_format_and_bad_startup_without_changing_playback(self):
-        self.client.save_program('rainbow', sample('rainbow'))
+    def test_default_and_explicit_off_ignore_previous_on_state(self):
+        for candidate in (config(), self.policy('off')):
+            self.client.configure(candidate, save=True)
+            self.client.recall_preset('red')
+            self.restart()
+            self.assertFalse(self.output()['power'])
+            self.assertEqual(self.client.status_fields()['mode'], 'idle')
+
+    def test_restore_last_survives_abrupt_restart_on_and_off(self):
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.client.recall_preset('red')
+        self.restart()
+        self.assertTrue(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.client.set_power(False)
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.assertEqual(self.client.status_fields()['mode'], 'idle')
+        self.client.set_power(True)
+        self.assertEqual(self.output()['selected_preset'], 'red')
+
+    def test_explicit_off_after_a_stopped_preview_updates_remembered_power(self):
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.client.recall_preset('red')
+        self.client.upload(color(31))
+        self.client.set_power(False)
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'red')
+
+    def test_explicit_off_on_an_off_boot_replaces_previous_on_target(self):
+        self.client.configure(self.policy('off'), save=True)
+        self.client.recall_preset('red')
+        self.restart()
+        self.client.set_power(False)
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'red')
+
+    def test_restore_tracks_preset_selection_but_ignores_editor_preview(self):
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.client.recall_preset('red')
+        self.client.recall_preset('blue')
+        self.client.upload(color(31))
+        self.restart()
+        self.assertEqual(self.output()['selected_preset'], 'blue')
+        self.assertTrue(self.output()['power'])
+
+    def test_repeated_commands_and_boot_do_not_rewrite_flash(self):
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.client.recall_preset('red')
+        snapshot = self.storage.read_bytes()
+        self.client.recall_preset('red')
+        self.client.set_power(True)
+        self.assertEqual(self.storage.read_bytes(), snapshot)
+        self.restart()
+        self.assertEqual(self.storage.read_bytes(), snapshot)
+        self.assertEqual([p['name'] for p in self.client.presets()], ['red', 'blue'])
+        self.assertEqual({p['name'] for p in self.client.programs()}, {'red', 'blue'})
+
+    def test_restore_target_is_saved_before_a_long_fade_finishes(self):
+        module = program((ROOT / 'examples/transitions/wipe.py').read_text())
+        self.client.save_program('wipe', module)
+        transition = {'program': 'wipe', 'crc32': zlib.crc32(module), 'duration_ms': 60000}
+        candidate = self.policy('restore_last')
+        self.client.save_preset('red', self.client.preset('red')['layers'], entry_transition=transition)
+        self.client.configure(candidate, save=True)
+        self.client.recall_preset('red')
+        self.assertLess(self.client.transition()['progress'], 100)
+        self.client.set_power(False)
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.assertEqual(self.client.status_fields()['mode'], 'idle')
+        self.client.set_power(True)
+        self.restart()
+        self.assertTrue(self.output()['power'])
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.assertEqual(self.client.transition()['program'], 'wipe')
+
+    def test_each_output_restores_by_identity_after_reordering(self):
+        candidate = self.policy('restore_last')
+        candidate['outputs'].append({'id': 'desk', 'type': 'ws2812b', 'config': {'pin': 'GP17', 'count': 5}, 'startup': {'mode': 'preset', 'preset': 'blue'}})
+        self.client.configure(candidate, save=True)
+        self.client.recall_preset('red', output='lights')
+        candidate['outputs'].reverse()
+        self.client.configure(candidate, save=True)
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.restart()
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.assertEqual(self.output('desk')['selected_preset'], 'blue')
+
+    def test_startup_and_power_use_the_same_preset_transition(self):
+        module = program((ROOT / 'examples/transitions/wipe.py').read_text())
+        self.client.save_program('wipe', module)
+        spec = {'program': 'wipe', 'crc32': zlib.crc32(module), 'duration_ms': 5000}
+        self.client.save_preset('red', self.client.preset('red')['layers'], entry_transition=spec)
+        self.client.configure(self.policy('preset', 'red'), save=True)
+        self.restart()
+        for power in (None, False, True):
+            if power is not None:
+                self.client.set_power(power)
+            state = self.client.transition()
+            self.assertEqual(state['program'], 'wipe')
+            self.assertEqual(state['driver']['duration_ms'], 5000)
+            self.assertLess(state['progress'], 100)
+
+    def test_startup_policy_edits_take_effect_only_on_reboot(self):
+        self.client.configure(self.policy('preset', 'red'), save=True)
+        self.restart()
+        self.client.configure(self.policy('preset', 'blue'), save=True)
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.restart()
+        self.assertEqual(self.output()['selected_preset'], 'blue')
+
+    def test_switching_from_fixed_preset_to_restore_last_captures_current_target(self):
+        self.client.configure(self.policy('preset', 'red'), save=True)
+        self.restart()
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.restart()
+        self.assertEqual(self.output()['selected_preset'], 'red')
+        self.assertTrue(self.output()['power'])
+
+    def test_invalid_startup_retains_playback_and_configuration(self):
         self.client.configure(config())
-        self.client.upload(color(17))
-        before = self.client.program_state()['generation']
-        heap = self.client.status_fields()['heap']
-        candidates = []
-        for field in ('targets', 'startup'):
-            for value in ({}, None, {'program': 'rainbow', 'target': 'A'}):
-                candidates.append({**config(), field: value})
-        for startup in (None, [], {}, {'program': ''}, {'program': 'rainbow', 'unknown': 1},
-                        {'program': 'rainbow', 'settings': None}, {'program': 'rainbow', 'settings': []}):
+        self.client.recall_preset('red')
+        before = self.client.transition()['revision']
+        for startup in (None, [], {}, {'program': 'red'}, {'mode': 'last'}, {'mode': 'preset'},
+                        {'mode': 'preset', 'preset': ''}, {'mode': 'preset', 'preset': 'missing'},
+                        {'mode': 'off', 'preset': 'red'}, {'mode': 'restore_last', 'settings': {}},
+                        {'mode': 'preset', 'preset': 'red', 'settings': {}}):
             candidate = config()
             candidate['outputs'][0]['startup'] = startup
-            candidates.append(candidate)
-        for args in ({'unknown': 1}, {'duration': 'fast'}, {'duration': False}, {'duration': 0},
-                     {'duration': {}}, {'duration': []}, {'duration': None}, {'random_color': 1}, {'color': -1}):
-            candidate = config(startup='rainbow')
-            candidate['outputs'][0]['startup']['settings'] = args
-            candidates.append(candidate)
-        for candidate in candidates:
-            with self.subTest(candidate=candidate), self.assertRaises(ProtocolError):
+            with self.subTest(startup=startup), self.assertRaises(ProtocolError):
                 self.client.configure(candidate)
             self.assertEqual(self.client.get_config(), config())
-            self.assertEqual(self.client.program_state()['generation'], before)
-            self.assertEqual(self.client.status_fields()['heap'], heap)
-            self.client.require_ok(self.client.command(FRAME, bytes(4)))
-            self.assertEqual(self.client.pixel_snapshot[0], 17)
-        for args in ('{"duration":3,"duration":4}', '{"duration":3,"durat\\u0069on":4}'):
-            raw = json.dumps(config(startup='rainbow')).replace('"program": "rainbow"', '"program": "rainbow", "settings":' + args)
+            self.assertEqual(self.client.transition()['revision'], before)
+        for field in ('startup', 'targets'):
             with self.assertRaises(ProtocolError):
-                self.client.upload_object('config', raw.encode())
-        for value in ('fast', 0):
-            candidate = config(startup='rainbow')
-            candidate['outputs'][0]['startup']['settings'] = {'duration': value}
-            with self.assertRaisesRegex(ProtocolError, r'outputs\[lights\]\.startup\.settings\.duration'):
-                self.client.configure(candidate)
+                self.client.configure({**config(), field: {}})
 
-    def test_validation_uses_candidate_geometry_without_applying_it(self):
-        self.client.save_program('sized', program('''from lightvm import profile,setting,init,render,rgb
+    def test_candidate_geometry_is_used_without_changing_live_output(self):
+        self.save_preset('sized', program('''from lightvm import profile,setting,init,render,rgb
 profile("animation")
 @init
 def setup(ctx,runtime):
- ctx.size=setting(1,minimum=1,maximum=runtime.pixel_count)
+ ctx.size=setting(5,minimum=1,maximum=runtime.pixel_count)
 @render
 def draw(ctx,runtime,pixels): pixels.fill(rgb(ctx.size,0,0))
 '''))
-        self.client.configure(config(5))
-        self.client.upload(color(17))
-        candidate = config(5, startup='sized')
-        candidate['outputs'][0]['startup']['settings'] = {'size': 6}
-        with self.assertRaisesRegex(ProtocolError, 'settings.size'):
-            self.client.upload_object('config', json.dumps(candidate).encode())
-            self.client.manage('config_validate')
-        candidate['outputs'][0]['config']['count'] = 7
-        self.client.upload_object('config', json.dumps(candidate).encode())
-        self.client.manage('config_validate')
-        self.assertEqual(self.client.get_config(), config(5))
-        self.client.require_ok(self.client.command(FRAME, bytes(4)))
-        self.assertEqual(self.client.pixel_snapshot, bytes([17, 2, 3]) * 5)
-        self.client.configure(candidate, save=True)
-        self.restart()
-        self.assertEqual(self.client.snapshot()[1], bytes([6, 0, 0]) * 7)
+        candidate = self.policy('preset', 'sized')
+        candidate['outputs'][0]['config']['count'] = 3
+        with self.assertRaises(ProtocolError):
+            self.client.configure(candidate)
+        self.assertEqual(self.client.get_config(), config())
 
-    def test_startup_edits_and_reordering_retain_instances_and_latest_args(self):
-        self.client.save_program('rainbow', sample('rainbow'))
-        candidate = self.outputs([{'program': 'rainbow', 'inputs': {'phase': {'driver': {'kind': 'ramp', 'duration': 3.3, 'mode': 'repeat'}}}}, {'program': 'rainbow'}])
-        self.client.configure(candidate, save=True)
-        self.restart()
-        generations = {d['id']: self.client.program_state(output=d['id'])['generation'] for d in candidate['outputs']}
-        candidate['outputs'][0]['startup']['inputs']['phase']['driver']['duration'] = 8.0
-        candidate['outputs'].reverse()
-        self.client.configure(candidate, save=True)
-        for name, generation in generations.items():
-            self.assertEqual(self.client.program_state(output=name)['generation'], generation)
-        self.assertAlmostEqual(self.client.program_state(output='lights0')['inputs']['phase']['binding']['driver']['duration'], 3.3, places=5)
-        self.assertEqual(self.client.program_state()['output'], 'lights1')
-        self.restart()
-        self.assertEqual(self.client.program_state(output='lights0')['inputs']['phase']['binding']['driver']['duration'], 8.0)
-        self.assertEqual(self.client.program_state(output='lights1')['inputs']['phase']['binding']['driver']['duration'], 60.0)
-
-    def test_one_failed_startup_does_not_block_other_devices(self):
-        for name in ('good', 'bad'):
-            self.client.save_program(name, color(9))
-        candidate = self.outputs([{'program': 'bad'}, {'program': 'good'}, None])
-        self.client.configure(candidate, save=True)
-        self.client.save_program('bad', fault())
-        self.restart()
-        self.assertIn('outputs[lights0].startup', self.client.describe()['boot_error'])
-        self.assertEqual(self.client.status_fields(output='lights0')['mode'], 'idle')
-        self.assertEqual(self.client.snapshot(output='lights1')[1], bytes([9, 2, 3]) * 5)
-        self.assertEqual(self.client.get_config(), candidate)
-        for name in ('good', 'bad'):
-            with self.assertRaisesRegex(ProtocolError, 'referenced'):
-                self.client.delete_program(name)
-        self.client.configure({'schema': 'lightvm.config', 'outputs': []})
-        for name in ('good', 'bad'):
-            with self.assertRaisesRegex(ProtocolError, 'referenced'):
-                self.client.delete_program(name)
+    def test_configured_presets_are_protected_until_active_and_saved_refs_are_removed(self):
+        self.client.configure(self.policy('preset', 'red'), save=True)
+        with self.assertRaisesRegex(ProtocolError, 'referenced'):
+            self.client.delete_preset('red')
+        self.client.configure(config())
+        with self.assertRaisesRegex(ProtocolError, 'referenced'):
+            self.client.delete_preset('red')
         self.client.save_config()
-        for name in ('good', 'bad'):
-            self.client.delete_program(name)
+        self.client.delete_preset('red')
 
+    def test_missing_restore_preset_leaves_output_off_and_management_available(self):
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.client.recall_preset('red')
+        self.client.delete_preset('red')
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.assertIn('outputs[lights].startup', self.client.describe()['boot_error'])
+        self.client.recall_preset('blue')
+        self.restart()
+        self.assertEqual(self.output()['selected_preset'], 'blue')
+
+    def test_full_store_rejects_recall_without_changing_live_animation(self):
+        self.client.configure(self.policy('restore_last'), save=True)
+        self.client.activate('red')
+        before = self.client.program_state()['generation']
+        module = color(5)
+        for n in range(200):
+            try:
+                self.client.save_program(f'fill{n}', module)
+            except ProtocolError:
+                break
+        else:
+            self.fail('test did not fill storage')
+        with self.assertRaisesRegex(ProtocolError, 'persist'):
+            self.client.recall_preset('blue')
+        self.assertEqual(self.client.program_state()['generation'], before)
+        self.assertEqual(self.client.describe()['active_program'], 'red')
+        self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
+        self.assertIsNone(self.client.transition()['recall'])
+        self.restart()
+        self.assertFalse(self.output()['power'])
+
+    def test_one_invalid_startup_does_not_block_other_outputs(self):
+        candidate = self.policy('preset', 'red')
+        candidate['outputs'].append({'id': 'desk', 'type': 'ws2812b', 'config': {'pin': 'GP17', 'count': 8}, 'startup': {'mode': 'preset', 'preset': 'blue'}})
+        self.client.configure(candidate, save=True)
+        # This replacement is valid on desk but cannot initialize on lights.
+        module = program('''from lightvm import profile,setting,init,render,rgb
+profile("animation")
+@init
+def setup(ctx,runtime):
+ ctx.size=setting(7,minimum=1,maximum=runtime.pixel_count)
+@render
+def draw(ctx,runtime,pixels): pixels.fill(rgb(ctx.size,0,0))
+''')
+        self.client.save_program('sized', module)
+        self.client.save_preset('red', [{'id': 'main', 'program': 'sized', 'crc32': zlib.crc32(module)}], output='desk')
+        self.restart()
+        self.assertFalse(self.output()['power'])
+        self.assertEqual(self.output('desk')['selected_preset'], 'blue')
+        self.assertIn('outputs[lights].startup', self.client.describe()['boot_error'])
 
 
 if __name__ == '__main__':

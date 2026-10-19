@@ -159,14 +159,19 @@ entity is named `<output name> Preset` and reports confirmed state.
 Selecting a preset invokes the application's recall operation: it completes the
 previous destination, moves it into A if necessary, prepares the new preset in B,
 and runs its entry transition forward. ON recalls the last identifiable, exposed
-selection or `default_preset`, using the output's on transition when configured.
-OFF transitions to black using the off transition and retains the selection.
-Preset entry and output power transition configuration are described in
+selection or `default_preset`, using that preset's saved transition.
+OFF uses the selected preset's same transition to black and retains the selection.
+Startup uses the same preset-owned transition. A preset with no transition cuts
+immediately; there are no output-level transition overrides.
+Preset transition configuration and power behavior are described in
 [recall transitions](transitions.md#preset-recalls-and-power).
 
 Repeated ON/OFF or selection of the current target does not restart it. Failed
 preparation preserves the old runtime, driver and selection. A reboot starts with
-no selection until a preset is activated; startup remains separately configured.
+no selection until a preset is activated or restored. Each output separately
+configures its power-on behavior as off, restore last state, or a selected preset;
+see [startup configuration](configuration.md#json-configuration-v1). MQTT
+reconnect and HA restart do not reapply the controller’s startup policy.
 
 Power and preset state reflect changes through MQTT, HTTP, WebSocket and serial.
 Recall publishes the accepted preset and logical power target even while the

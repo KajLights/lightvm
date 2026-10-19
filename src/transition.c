@@ -57,6 +57,7 @@ void transition_destroy(Transition *t){
 static void unpin_compositions(Transition *t){for(unsigned n=0;n<2;n++)if(t->compositions[n])t->compositions[n]->front_pinned=false;}
 void transition_invalidate(Transition *t){if(t){unpin_compositions(t);t->composing=false;t->prepared=false;t->dirty=true;}}
 void transition_update(Transition *t,uint64_t now){
+    if(t->start_pending)return;
     if(t->driver==TRANSITION_INPUT){
         if(input_port_capture(t->input_registry,t->input,now)){t->progress=(double)t->input->snapshot.f*100;t->dirty=true;}
         return;
@@ -70,7 +71,7 @@ void transition_update(Transition *t,uint64_t now){
 static bool unassign(Transition *t){
     if(t->assignment==UINT32_MAX)return false;
     demo_free(t->input);t->input=NULL;
-    t->assignment++;t->driver=TRANSITION_MANUAL;t->source[0]=0;return true;
+    t->assignment++;t->driver=TRANSITION_MANUAL;t->source[0]=0;t->start_pending=false;return true;
 }
 bool transition_set(Transition *t,double value){
     if(!transition_percentage(value)||t->assignment==UINT32_MAX)return false;
@@ -201,6 +202,10 @@ static void complete(Transition *t){
 }
 void transition_tick(Transition *t,unsigned budget){
     if(t->ticking)return;
+    if(t->start_pending){
+        if(t->command_active||!t->playing)return;
+        t->started=platform_time_us();t->start_pending=false;
+    }
     t->ticking=true;complete(t);transition_update(t,platform_time_us());
     if(t->command_active||!t->playing){t->ticking=false;return;}
     if(t->composing){

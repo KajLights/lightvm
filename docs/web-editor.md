@@ -128,7 +128,7 @@ load Develop while online before relying on compilation without internet.
 During power-cycle recovery, the panel shows saved network settings while the
 open recovery AP stays active. **Save network for next boot** preserves the
 current connection; restart after the detector has cleared its counter to apply
-those values. Startup programs stay idle during recovery; manual activation remains available.
+those values. Startup playback stays off during recovery; manual activation remains available.
 See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode)
 and [power-cycle recovery](boot-sequence.md#recovery-access-point).
 
@@ -158,11 +158,12 @@ and review its state. Web Serial requires HTTPS or localhost and desktop
 Chrome/Edge. Editing and bytecode downloads still work in browsers without Web Serial.
 
 In **Configure → Output & startup**, select the data pin, count, colour order and
-brightness limit for each output, and optionally select its stored startup program
-and settings. Add or remove outputs independently. Startup settings are a JSON
-object; omitted values use program defaults. Changing a program clears its settings
-draft, and choosing idle removes that output’s startup invocation. An advanced
-JSON editor stays synchronized with the form.
+brightness limit for each output, and choose **Power-on behavior**: **Off**,
+**Restore last state**, or **Selected preset**. The preset selector lists presets
+saved on that controller. Restore last remembers the selected preset and on/off
+state across power loss; temporary previews are not remembered. New outputs
+stay off. Add or remove outputs independently. An advanced JSON editor stays
+synchronized with the form.
 Validate has no hardware side effect; Apply changes RAM; Apply & save persists for
 reboot. Unchanged hardware retains playback, including after startup-only edits. Saves use the revision
 loaded with the draft. If another client changes controller settings, the draft stays
@@ -213,17 +214,20 @@ program versions on the controller, then admits and activates the entire composi
 The controller checks available storage for each upload. The displayed frame
 buffer estimate excludes VM state; controller admission remains authoritative.
 
-**Preset entry transition** chooses a deployed transition, initialization settings
+**Preset transition** supplies the one transition for selection, ON, OFF to black
+and startup. It chooses a deployed transition, initialization settings
 and duration, and pins its program version. **Save preset** stores the recipe in the browser. **Save preset to controller** stores
 the shared compiled programs and compact recipe in flash; it does not change
 playback. Either save replaces a preset of the same name. **Run on output**
-recalls a controller preset using its entry transition on the selected output,
+recalls a controller preset using its saved transition on the selected output,
 even after reconnecting or rebooting. A new recall completes the previous one and
-starts a fresh A-to-B movement. **Turn on** and **Turn off** use the output power
-transitions configured under **Configure → Output & startup**. Manual A/B controls
-retain fixed slots; **Swap A and B** is explicit and available only at endpoints. Startup remains a single stored program configured separately; saved
-presets do not automatically run at boot. Controller presets require `presets: true`.
-**Controller preset entry transition** also edits an existing controller recipe
+starts a fresh A-to-B movement. **Turn on** uses the incoming preset's transition;
+**Turn off** uses the selected preset's same transition to black.
+Manual A/B controls retain fixed slots; **Swap A and B** is explicit and available
+only at endpoints. **Configure → Output & startup** chooses whether reboot stays
+off, restores the last preset and power state, or recalls a selected preset.
+Controller presets require `presets: true`.
+**Controller preset transition** also edits an existing controller recipe
 without requiring its original browser library. **Save preset transition** preserves
 its layers and playback; stale catalogue revisions require **Reload preset**.
 Controller presets and compiled programs share available storage without fixed count

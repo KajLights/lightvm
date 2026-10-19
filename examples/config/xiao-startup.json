@@ -11,16 +11,7 @@
         "brightness_limit": 32
       },
       "startup": {
-        "program": "rainbow",
-        "inputs": {
-          "phase": {
-            "driver": {
-              "kind": "ramp",
-              "duration": 3.3,
-              "mode": "repeat"
-            }
-          }
-        }
+        "mode": "off"
       }
     }
   ]

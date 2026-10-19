@@ -115,10 +115,8 @@ class RecallTests(unittest.TestCase):
         self.assertFalse(self.client.update_transition_source('fader', token, 10, output='lights'))
         self.assertIsNone(swapped['recall'])
 
-    def test_power_uses_its_own_transitions_remembers_preset_and_interrupts_to_black(self):
-        self.save_entry('blue', self.spec('crossfade'))
-        self.config['outputs'][0].update(on_transition=self.spec('wipe'), off_transition=self.spec('crossfade'))
-        self.client.configure(self.config, save=True)
+    def test_power_uses_the_preset_transition_remembers_selection_and_interrupts_to_black(self):
+        self.save_entry('blue', self.spec('wipe'))
         self.client.set_power(True, 'lights', preset='blue')
         state = self.state()
         self.assertEqual(state['program'], 'wipe')
@@ -130,6 +128,8 @@ class RecallTests(unittest.TestCase):
         self.assertEqual(off['A']['preset'], 'blue')
         self.assertFalse(off['B']['active'])
         self.assertTrue(off['playing'])  # Rendering the fade is independent of logical power.
+        self.assertEqual(off['program'], 'wipe')
+        self.assertEqual(off['driver']['duration_ms'], self.spec()['duration_ms'])
         self.assertEqual(off['recall'], {'power': False, 'preset': 'blue'})
         description = self.client.describe()['outputs'][0]
         self.assertFalse(description['power'])
@@ -144,6 +144,15 @@ class RecallTests(unittest.TestCase):
         self.assertEqual(on['program'], 'wipe')
         self.assertEqual(self.frame(), bytes(15))
         self.assertEqual(self.client.get_config(saved=True), self.config)
+
+    def test_preset_without_transition_cuts_on_and_off(self):
+        self.client.set_power(True, 'lights', preset='blue')
+        self.assertEqual(self.state()['progress'], 100)
+        self.assertEqual(self.frame(), bytes([0, 0, 255]) * 5)
+        self.client.set_power(False, 'lights')
+        self.assertEqual(self.state()['progress'], 100)
+        self.assertEqual(self.frame(), bytes(15))
+        self.assertEqual(self.state()['recall'], {'power': False, 'preset': 'blue'})
 
     def test_entry_settings_are_applied_and_manual_takeover_retains_fixed_slots(self):
         self.client.recall_preset('red', 'lights')
@@ -173,16 +182,17 @@ class RecallTests(unittest.TestCase):
         with self.assertRaises(ProtocolError):
             self.client.manage('preset_recall', name='green', output='lights', expected_revision=before['revision'])
         config = copy.deepcopy(self.config)
-        config['outputs'][0]['on_transition'] = {**self.spec(), 'crc32': 1}
-        with self.assertRaises(ProtocolError):
-            self.client.configure(config)
+        for field in ('on_transition', 'off_transition'):
+            config['outputs'][0][field] = self.spec()
+            with self.assertRaises(ProtocolError):
+                self.client.configure(config)
+            del config['outputs'][0][field]
         self.assertEqual(self.client.get_config(), self.config)
 
     def test_transition_references_are_typed_pinned_and_persisted(self):
         spec = self.spec('wipe', 0)
         self.save_entry('blue', spec)
-        self.config['outputs'][0]['off_transition'] = self.spec('crossfade', 0)
-        self.client.configure(self.config, save=True)
+        self.save_entry('red', self.spec('crossfade', 0))
         self.client.close()
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', ROOT / 'build/unified-animation-host/lightvm'), self.storage))
         self.assertEqual(self.client.preset('blue')['entry_transition'], spec)
@@ -198,11 +208,9 @@ class RecallTests(unittest.TestCase):
         self.client.set_power(False, 'lights')
         self.assertEqual(self.frame(), bytes(15))
         self.assertEqual(self.state()['recall'], {'power': False, 'preset': 'blue'})
-        # A saved configuration still protects references after a RAM-only edit.
-        del self.config['outputs'][0]['off_transition']
-        self.client.configure(self.config)
-        with self.assertRaises(ProtocolError):
-            self.client.delete_program('crossfade', program_type='transition')
+        # Only the preset owns the transition reference.
+        self.save_entry('red', None)
+        self.client.delete_program('crossfade', program_type='transition')
 
     def test_repeated_recalls_reuse_slots_without_heap_growth(self):
         self.save_entry('blue', self.spec('wipe', 0))

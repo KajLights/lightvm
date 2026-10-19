@@ -6,10 +6,10 @@ import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
 import type { Manifest, TransitionSpec } from './types';
 
-// Recipes and output power settings use the same pinned transition invocation.
-export function RecallTransition({ id, label, value, onChange, disabled = false, emptyLabel = 'Immediate cut' }: {
+// A preset owns one pinned transition invocation for recall, power and startup.
+export function RecallTransition({ id, label, value, onChange, disabled = false }: {
   id: string; label: string; value?: TransitionSpec; onChange: (value?: TransitionSpec) => void;
-  disabled?: boolean; emptyLabel?: string;
+  disabled?: boolean;
 }) {
   const { controllers } = useRuntime(), client = controllers.client;
   const programs = useAppSelector(state => state.controller.programs).filter(item => (item.type ?? item.profile) === 'transition');
@@ -40,7 +40,7 @@ export function RecallTransition({ id, label, value, onChange, disabled = false,
       const program = programs.find(item => item.name === event.target.value);
       onChange(program ? { program: program.name, crc32: program.crc32, duration_ms: value?.duration_ms ?? 2000, settings: {} } : undefined);
     }}>
-      <option value="">{emptyLabel}</option>
+      <option value="">Immediate cut</option>
       {value && !selected && <option value={value.program}>{value.program + ' (unavailable)'}</option>}
       {programs.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
     </select>

@@ -102,15 +102,17 @@ build/venv/bin/python tools/client.py --port PORT --activate rainbow
 Use the configuration matching the board and actual wiring. For XIAO ESP32-C3,
 use `examples/config/xiao-c3-startup.json` and add `--no-reset` to serial commands;
 S3/C6 use `examples/config/xiao-startup.json`. The controller keeps its configured pin,
-count, order and brightness when changing programs. Reboot runs each output’s
-`startup.program` with its `startup.settings`; omitted settings use program defaults. `STATUS` reports `mode=bytecode` and `code_storage=flash`
+count, order and brightness when changing programs. Under Configure → Output & startup, choose **Off**, **Restore last state**, or
+**Selected preset** per output. The board examples default to off; save a preset
+to the controller before choosing it for startup. Restore last remembers preset
+selection and on/off, including OFF, across power loss. `STATUS` reports `mode=bytecode` and `code_storage=flash`
 for both named and transient programs. Uploads share one 256-byte page buffer;
 there is no package-sized buffer in an animation instance.
 
 Uploading a new version under the same stored name preserves the current running
 version in pinned flash until explicit activation. Activation prepares a separate
 candidate and retains the old instance on failure. Startup resolves the current
-catalogue entry for each configured program name; saving a replacement changes
+definition of its configured or remembered preset; saving a replacement changes
 what runs on the next boot. Root-level `targets` and `startup` are unsupported.
 
 The application version comes from `lightvm/release.json`, initially `1.0.0`.

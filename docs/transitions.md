@@ -10,8 +10,8 @@ A single composition continues to use its existing presenter until B or a transi
 control is used. Enabling A/B retains the running A instances. A direct program
 becomes A's `main` layer with its current state. Subsequent named activation in
 A or B replaces only that composition. Transient preview uploads retain their existing
-whole-output replacement behavior. A/B state is held in RAM; startup remains the
-configured single program.
+whole-output replacement behavior. A/B state is held in RAM; startup uses the
+output’s saved off, restore-last or preset policy.
 
 ## Preset recalls and power
 
@@ -48,17 +48,20 @@ version and frozen initialization settings:
 Use the real CRC32 from `program_list` with `type: "transition"`. `program`,
 `crc32` and finite, nonnegative `duration_ms` are required. `settings` and unsigned
 `seed` are optional. Omission means an immediate cut; duration zero also cuts.
-Saved recipes and active/saved output configuration protect these program versions
-from replacement and deletion, independently of the animation namespace.
+Saved presets protect these transition program versions from replacement and
+deletion, independently of the animation namespace.
 
-Each output in `lightvm.config` accepts `on_transition` and `off_transition` with
-the same invocation format, outside its optional `home_assistant` binding.
+Each preset owns one transition, configured with the preset. Selection, ON and
+startup use the incoming preset's `entry_transition`. OFF uses the selected
+preset's same invocation to transition from the current composition to black;
+its program, version, settings, seed and duration stay the same. Every transition
+runs forward from 0 to 100. There are no output-level on/off overrides. A preset
+without a transition cuts immediately for all these operations.
+
 `output_power` with `action: "off"` recalls black and remembers the selected preset.
 `action: "on"` recalls optional `name`, otherwise the remembered preset, then the
 output's HA default when no selection is known. HA supplies its exposed selection
-or default explicitly. Turning on uses `on_transition` when configured,
-otherwise the recalled preset's entry transition. Selecting a preset while off
-uses the same rule. Turning off uses `off_transition`, or an immediate cut.
+or default explicitly. OFF without an identifiable preset cuts to black.
 Exactly one transition runs for each operation.
 
 Both recall operations require `expected_revision` matching the output's shared
@@ -73,12 +76,13 @@ the presenter continues rendering a fade to black. `selected_preset` remembers
 the accepted selection, including while off; `preset` remains the identity of the
 actual endpoint composition and is null for a mix or black. `transition_get.recall`
 is `{power,preset}` while recall owns the output, otherwise null. Selection and
-power changes are RAM state; reboot retains existing startup behavior.
+power targets are persisted on writable controllers; reboot applies the saved
+[startup policy](configuration.md#json-configuration-v1).
 
 The Python client provides `recall_preset`, `set_power` and `swap_transition`.
 The CLI exposes `--recall-preset NAME`, `--power on|off` and `--swap-transition`.
-The editor provides entry transition settings in the preset composer and on/off
-transition settings under **Configure → Output & startup**. **Run on output** and
+The editor provides **Preset transition** settings in the preset composer and
+**Controller preset transition** for an existing stored preset. **Run on output** and
 HA use recalls; the A/B and Fader panels keep fixed manual slots.
 
 ## Progress and effects

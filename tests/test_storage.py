@@ -43,10 +43,10 @@ class StorageTests(unittest.TestCase):
     def test_same_name_dispatch_and_filtered_listing_survive_reboot(self):
         self.save_both()
         self.client.save_preset('wipe', self.layers, output='lights')
-        self.config['outputs'][0]['startup'] = {'program': 'wipe'}
+        self.config['outputs'][0]['startup'] = {'mode': 'preset', 'preset': 'wipe'}
         self.client.configure(self.config, save=True)
         self.restart()
-        self.assertEqual(self.client.status_fields()['mode'], 'bytecode')
+        self.assertEqual(self.client.status_fields()['mode'], 'transition')
         self.assertEqual(self.client.get_program('wipe', 'animation'), self.animation)
         self.assertEqual(self.client.get_program('wipe', 'transition'), self.transition)
         for kind in ('animation', 'transition'):

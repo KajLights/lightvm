@@ -24,6 +24,8 @@ typedef struct {
     InputPort *input; InputRegistry *input_registry;
     char source[OBJECT_NAME_LIMIT+1], error[100];
     bool playing, composing, prepared, pending, dirty, ticking, command_active;
+    /* Startup waits for the output scheduler, after native initialization. */
+    bool start_pending;
     /* Named transition in [0], or legacy reveal mask [0] and RGBA paint [1]. */
     TransitionProgram *programs[2];
 } Transition;

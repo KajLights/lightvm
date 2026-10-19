@@ -10,7 +10,8 @@ With Wi-Fi and HTTP also enabled, its trigger activates the recovery policy belo
 Count power-ons **1, 2, 3**. Turn the controller off again before five seconds on the
 first two boots; on the third, the detector's flag becomes true. Each power-on
 must reach the durable counter write to register. There is no five-second delay
-in startup. Saved configuration and programs start normally, including during AP recovery.
+in startup. Saved hardware configuration loads normally. Recovery suppresses automatic
+startup playback and preserves the remembered preset and power target.
 
 The counter increments early in application initialization, saturating at three.
 After five seconds from detector initialization, the first application tick at

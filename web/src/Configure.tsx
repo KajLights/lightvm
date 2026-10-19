@@ -1,5 +1,3 @@
-import { RecallTransition } from './RecallTransition';
-import { validTransitionSpec } from './library';
 import { useEffect, useMemo, useState } from 'react';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
 import { useRuntime } from './runtime';
@@ -9,21 +7,14 @@ import { EMPTY_CONFIG } from './types';
 function object(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
-function parseSettings(value: string): Record<string, number | boolean> | null {
-  try {
-    const args = JSON.parse(value);
-    return object(args) && Object.values(args).every(item => typeof item === 'boolean' || (typeof item === 'number' && Number.isFinite(item))) ? args as Record<string, number | boolean> : null;
-  } catch { return null; }
-}
 function parseConfig(value: string): HardwareConfig | null {
   try {
     const result = JSON.parse(value);
     if (!object(result) || result.schema !== 'lightvm.config' || !Array.isArray(result.outputs) || Object.keys(result).some(key => key !== 'schema' && key !== 'outputs' && key !== 'inputs')) return null;
     if (result.inputs !== undefined && (!Array.isArray(result.inputs) || !result.inputs.every(item => object(item) && typeof item.id === 'string' && item.type === 'tca9555' && object(item.config)))) return null;
-    return result.outputs.every(item => object(item) && typeof item.id === 'string' && (item.type === 'ws2812b' || item.type === 'apa102') && object(item.config) && (item.type === 'ws2812b' ? typeof item.config.pin === 'string' : typeof item.config.data_pin === 'string' && typeof item.config.clock_pin === 'string') && typeof item.config.count === 'number' &&
-      (item.on_transition === undefined || object(item.on_transition)) && (item.off_transition === undefined || object(item.off_transition)) &&
+    return result.outputs.every(item => object(item) && Object.keys(item).every(key => ['id', 'type', 'config', 'mode', 'startup', 'home_assistant'].includes(key)) && typeof item.id === 'string' && (item.type === 'ws2812b' || item.type === 'apa102') && object(item.config) && (item.type === 'ws2812b' ? typeof item.config.pin === 'string' : typeof item.config.data_pin === 'string' && typeof item.config.clock_pin === 'string') && typeof item.config.count === 'number' &&
       (item.home_assistant === undefined || (object(item.home_assistant) && typeof item.home_assistant.default_preset === 'string' && Array.isArray(item.home_assistant.presets) && item.home_assistant.presets.every(name => typeof name === 'string') && item.home_assistant.presets.includes(item.home_assistant.default_preset))) &&
-      (item.startup === undefined || (object(item.startup) && typeof item.startup.program === 'string' && (item.startup.settings === undefined || object(item.startup.settings))))) ? result as unknown as HardwareConfig : null;
+      (item.startup === undefined || (object(item.startup) && Object.keys(item.startup).every(key => key === 'mode' || key === 'preset') && (item.startup.mode === 'preset' ? typeof item.startup.preset === 'string' : (item.startup.mode === 'off' || item.startup.mode === 'restore_last') && item.startup.preset === undefined)))) ? result as unknown as HardwareConfig : null;
   } catch { return null; }
 }
 function Hardware() {
@@ -31,18 +22,15 @@ function Hardware() {
   const [text, setText] = useState(() => JSON.stringify(controller.config || EMPTY_CONFIG, null, 2));
   const [base, setBase] = useState(() => ({ active_revision: controller.configRevision, saved_revision: controller.savedRevision, boot_id: controller.description?.boot_id }));
   const [dirty, setDirty] = useState(false);
-  // Keep incomplete argument JSON visible while the configuration retains its last valid value.
-  const [settingDrafts, setSettingDrafts] = useState<Record<number, string>>({});
   useEffect(() => {
     if (!controller.config || dirty) return;
-    setText(JSON.stringify(controller.config, null, 2)); setSettingDrafts({});
+    setText(JSON.stringify(controller.config, null, 2));
     setBase({ active_revision: controller.configRevision, saved_revision: controller.savedRevision, boot_id: controller.description?.boot_id });
   }, [controller.config, controller.configRevision, controller.savedRevision, controller.description?.boot_id, dirty]);
   const draft = useMemo(() => parseConfig(text), [text]);
-  const invalidTransitions = draft?.outputs.some(item => (item.on_transition !== undefined && !validTransitionSpec(item.on_transition)) || (item.off_transition !== undefined && !validTransitionSpec(item.off_transition)));
-  const invalidSettings = Object.values(settingDrafts).some(value => !parseSettings(value));
+  const invalidStartup = draft?.outputs.some(item => item.startup?.mode === 'preset' && !/^[A-Za-z0-9_.-]{1,32}$/.test(item.startup.preset));
   const stale = dirty && (base.active_revision !== controller.configRevision || base.saved_revision !== controller.savedRevision || base.boot_id !== controller.description?.boot_id);
-  const canApply = Boolean(controller.selectedPath && draft && !invalidSettings && !invalidTransitions && !busy && !stale);
+  const canApply = Boolean(controller.selectedPath && draft && !invalidStartup && !busy && !stale);
   function update(config: HardwareConfig) { setText(JSON.stringify(config, null, 2)); setDirty(true); }
   function setOutput(index: number, change: (item: HardwareConfig['outputs'][number]) => void) {
     if (!draft) return;
@@ -71,31 +59,27 @@ function Hardware() {
     if (!draft) return;
     const next = structuredClone(draft), removed = next.outputs[index].id; next.outputs.splice(index, 1);
     next.inputs?.forEach(input => { if (input.home_assistant?.indicators === removed) delete input.home_assistant.indicators; });
-    setSettingDrafts(current => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value])));
     update(next);
   }
-  function selectStartup(index: number, value: string) {
-    setSettingDrafts(current => { const next = { ...current }; delete next[index]; return next; });
-    setOutput(index, item => { if (value) item.startup = { program: value }; else delete item.startup; });
-  }
-  function editSettings(index: number, value: string) {
-    setSettingDrafts(current => ({ ...current, [index]: value })); setDirty(true);
-    const args = parseSettings(value);
-    if (args) setOutput(index, item => { if (item.startup) item.startup.settings = args; });
+  function selectStartup(index: number, mode: 'off' | 'restore_last' | 'preset') {
+    setOutput(index, item => {
+      if (mode === 'preset') item.startup = { mode, preset: item.startup?.mode === 'preset' ? item.startup.preset : controller.presets[0]?.name || '' };
+      else item.startup = { mode };
+    });
   }
   function reload() {
     if (!controller.config) return;
-    setDirty(false); setText(JSON.stringify(controller.config, null, 2)); setSettingDrafts({});
+    setDirty(false); setText(JSON.stringify(controller.config, null, 2));
     setBase({ active_revision: controller.configRevision, saved_revision: controller.savedRevision, boot_id: controller.description?.boot_id });
     dispatch(activityActions.notice(''));
   }
   async function submit(options: { save?: boolean; validate?: boolean }) {
-    if (!draft || invalidSettings || invalidTransitions) { dispatch(activityActions.notice('Enter valid configuration and startup settings before continuing.')); return; }
+    if (!draft || invalidStartup) { dispatch(activityActions.notice('Enter valid configuration before continuing.')); return; }
     const success = await controllers.configure(draft, base, options);
     if (success && !options.validate) setDirty(false);
   }
   return <section className="card config-card"><div className="card-heading"><div><p className="eyebrow">OUTPUT &amp; STARTUP</p><h2>Set up the lights</h2></div><button id="config-refresh" className="quiet small" disabled={!controller.selectedPath || busy} onClick={() => void controllers.run('Refreshing configuration', async client => controllers.readConfig(controllers.require(client)))}>Refresh</button></div>
-    <p className="muted">Configure each output and choose the animation it runs on reboot.</p>
+    <p className="muted">Configure each output and choose its power-on behavior.</p>
     {stale && <div className="stale-banner" role="alert">Controller configuration changed while you were editing. Review the latest values before saving. <button className="quiet small" onClick={reload}>Load controller values</button></div>}
     {!draft && <p role="alert">Enter valid lightvm.config JSON with schema and outputs. Startup belongs inside each output.</p>}
     <fieldset id="config-fields" disabled={!controller.selectedPath || busy}>
@@ -110,15 +94,19 @@ function Hardware() {
         </div>
         {output.type === 'apa102' && <p className="helper">APA102 clock: {output.config.clock_pin}; active-low enable: {output.config.enable_pin || 'none'}. Edit bus wiring in Advanced JSON.</p>}
         {output.mode === 'indicators' && <p className="helper">Home Assistant controls each RGB indicator independently. Configure its button input in Advanced JSON.</p>}
-        {output.mode !== 'indicators' && <><label htmlFor={'startup-program-' + index}>Startup program</label><select id={'startup-program-' + index} value={output.startup?.program || ''} disabled={!controller.description?.storage_available} onChange={event => selectStartup(index, event.target.value)}><option value="">Stay idle on reboot</option>{output.startup && !controller.programs.some(item => (item.type ?? item.profile ?? 'animation') === 'animation' && item.name === output.startup?.program) && <option value={output.startup.program}>{output.startup.program + ' (unavailable)'}</option>}{controller.programs.filter(item => (item.type ?? item.profile ?? 'animation') === 'animation').map(program => <option key={program.name} value={program.name}>{program.name + ' · ' + program.size + ' bytes'}</option>)}</select>
-        {output.startup && <><label htmlFor={'startup-settings-' + index}>Startup settings (JSON)</label><textarea id={'startup-settings-' + index} className="config-code" spellCheck={false} value={settingDrafts[index] ?? JSON.stringify(output.startup.settings || {}, null, 2)} aria-invalid={settingDrafts[index] !== undefined && !parseSettings(settingDrafts[index])} onChange={event => editSettings(index, event.target.value)} />
-          {settingDrafts[index] !== undefined && !parseSettings(settingDrafts[index]) && <p role="alert">Settings must be a JSON object with numeric or boolean values.</p>}
-          <p className="helper">Settings are applied when the animation initializes. Omitted settings use its defaults.</p></>}
-        {controller.description?.power_transitions && <>
-          <RecallTransition id={'on-transition-' + index} label="On transition" value={output.on_transition} disabled={busy} emptyLabel="Use preset entry transition" onChange={value => setOutput(index, item => { if (value) item.on_transition = value; else delete item.on_transition; })} />
-          <RecallTransition id={'off-transition-' + index} label="Off transition" value={output.off_transition} disabled={busy} onChange={value => setOutput(index, item => { if (value) item.off_transition = value; else delete item.off_transition; })} />
-          <p className="helper">On recalls the selected preset from black. Off transitions to black and remembers the selected preset.</p>
+        {output.mode !== 'indicators' && <><label htmlFor={'startup-mode-' + index}>Power-on behavior</label>
+        <select id={'startup-mode-' + index} value={output.startup?.mode || 'off'} disabled={!controller.description?.storage_available} onChange={event => selectStartup(index, event.target.value as 'off' | 'restore_last' | 'preset')}>
+          <option value="off">Off</option><option value="restore_last" disabled={controller.description?.storage_writable === false}>Restore last state</option><option value="preset">Selected preset</option>
+        </select>
+        {output.startup?.mode === 'preset' && <><label htmlFor={'startup-preset-' + index}>Startup preset</label>
+          <select id={'startup-preset-' + index} value={output.startup.preset} onChange={event => setOutput(index, item => { item.startup = { mode: 'preset', preset: event.target.value }; })}>
+            <option value="">Select a saved preset</option>
+            {output.startup.preset && !controller.presets.some(item => item.name === (output.startup?.mode === 'preset' ? output.startup.preset : '')) && <option value={output.startup.preset}>{output.startup.preset + ' (unavailable)'}</option>}
+            {controller.presets.map(preset => <option key={preset.name} value={preset.name}>{preset.name}</option>)}
+          </select>
         </>}
+        <p className="helper">After a restart or power cut, stay off, restore the last selected preset and on/off state, or turn on with a saved preset. New outputs stay off. Temporary previews are not remembered.</p>
+        <p className="helper">Each preset supplies its transition for selection, on/off and startup. Edit the transition with the preset in Develop.</p>
         {controller.description?.mqtt_supported && <>
           <label htmlFor={'ha-preset-' + index}>Home Assistant default preset</label>
           <select id={'ha-preset-' + index} value={output.home_assistant?.default_preset || ''} onChange={event => setOutput(index, item => { if (event.target.value) item.home_assistant = { ...item.home_assistant, default_preset: event.target.value, presets: Array.from(new Set([...(item.home_assistant?.presets || []), event.target.value])) }; else delete item.home_assistant; })}>
@@ -146,7 +134,7 @@ function Hardware() {
       <div className="form-actions"><button id="config-validate" className="quiet" disabled={!canApply} onClick={() => void submit({ validate: true })}>Validate</button><button id="config-apply" className="secondary" disabled={!canApply} onClick={() => void submit({})}>Apply in RAM</button><button id="config-save" className="primary" disabled={!canApply || !controller.description?.storage_available || controller.description?.storage_writable === false} onClick={() => void submit({ save: true })}>Apply &amp; save for reboot</button></div>
     </fieldset>
     <p className="helper">Unchanged hardware keeps playing when configuration is applied. Startup changes take effect after saving and rebooting.</p>
-    <details className="advanced-config"><summary>Advanced JSON configuration</summary><label htmlFor="config-json">Controller configuration JSON</label><textarea id="config-json" className="config-code" spellCheck={false} value={text} onChange={event => { setText(event.target.value); setSettingDrafts({}); setDirty(true); }} /><p className="helper">The form and JSON editor update the same draft. Program arguments are validated on the controller.</p></details>
+    <details className="advanced-config"><summary>Advanced JSON configuration</summary><label htmlFor="config-json">Controller configuration JSON</label><textarea id="config-json" className="config-code" spellCheck={false} value={text} onChange={event => { setText(event.target.value); setDirty(true); }} /><p className="helper">The form and JSON editor update the same draft. Program arguments are validated on the controller.</p></details>
   </section>;
 }
 
@@ -247,7 +235,7 @@ function Network() {
 export function Configure() {
   const controller = useAppSelector(state => state.controller), [section, setSection] = useState<'output' | 'network'>('output');
   const networkSupported = Boolean(controller.description?.wifi_supported || controller.description?.http_supported || controller.description?.mqtt_supported);
-  return <><div className="intro"><div><p className="eyebrow">CONFIGURE</p><h1>Make the controller yours.</h1><p>Set its output, startup program and network access.</p></div></div>
+  return <><div className="intro"><div><p className="eyebrow">CONFIGURE</p><h1>Make the controller yours.</h1><p>Set its outputs, power-on behavior and network access.</p></div></div>
     <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{controller.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}</nav>
     <div hidden={section !== 'output'}><Hardware /></div>
     {networkSupported && <div hidden={section !== 'network'}><Network /></div>}

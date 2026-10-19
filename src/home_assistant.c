@@ -124,8 +124,9 @@ static bool discovery(HomeAssistant *h,HaOutput *l,const AppOutput *d,bool selec
     return mqtt_publish(&h->mqtt,topic,payload,used,true);
 }
 static void reconcile(HomeAssistant *h) {
-    bool catalog_changed=h->catalog_generation!=h->app->store.generation;
-    h->catalog_generation=h->app->store.generation;
+    /* Private remembered targets must not republish discovery on every power command. */
+    bool catalog_changed=h->catalog_generation!=h->app->store.preset_revision;
+    h->catalog_generation=h->app->store.preset_revision;
     for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
         HaOutput *l=&h->outputs[i];if(!l->id[0])continue;
         AppOutput *d=app_output(h->app,l->id);

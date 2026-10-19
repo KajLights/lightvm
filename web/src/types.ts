@@ -11,7 +11,7 @@ export interface Description {
   animation_error?: string;
   ab_transitions?: boolean; transition_sources?: boolean; transition_effects?: string[]; transition_programs?: boolean;
   compositions?: boolean; composition_layer_limit?: number; composition_blend_modes?: string[];
-  presets?: boolean; preset_transitions?: boolean; power_transitions?: boolean; transient_settings?: boolean; typed_storage?: boolean;
+  presets?: boolean; preset_transitions?: boolean; transient_settings?: boolean; typed_storage?: boolean;
   storage_backend?: string; storage_writable?: boolean; storage_bytes?: number; free_bytes?: number;
   largest_free_bytes?: number; storage_allocation_unit?: number;
   boot_sequence_supported?: boolean;
@@ -26,7 +26,7 @@ export interface TransitionSpec {
 export interface HardwareConfig {
   schema: 'lightvm.config';
   inputs?: { id: string; type: 'tca9555'; config: { sda: string; scl: string; address?: number; active_low?: boolean; debounce_ms?: number }; home_assistant?: { indicators?: string; names?: string[] } }[];
-  outputs: { id: string; type: 'ws2812b' | 'apa102'; mode?: 'animation' | 'indicators'; on_transition?: TransitionSpec; off_transition?: TransitionSpec; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { program: string; settings?: Record<string, number | boolean>; inputs?: InputBindings }; config: { pin?: string; data_pin?: string; clock_pin?: string; enable_pin?: string; frequency?: number; count: number; order?: string; brightness_limit?: number } }[];
+  outputs: { id: string; type: 'ws2812b' | 'apa102'; mode?: 'animation' | 'indicators'; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { mode: 'off' | 'restore_last' } | { mode: 'preset'; preset: string }; config: { pin?: string; data_pin?: string; clock_pin?: string; enable_pin?: string; frequency?: number; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {
   schema: 'lightvm.network';

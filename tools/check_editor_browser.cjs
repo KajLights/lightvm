@@ -377,7 +377,8 @@ async function grantLocalNetwork(cdp, page, origin) {
     await page.locator('#network-save').click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Network settings saved') && !document.querySelector('#network-fields')?.disabled);
     await page.getByRole('button', { name: 'Output & startup' }).click();
-    await page.locator('#startup-program-0').selectOption(programName);
+    await page.locator('#startup-mode-0').selectOption('preset');
+    await page.locator('#startup-preset-0').selectOption('browser');
     await page.locator('#config-save').click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Output configuration applied') && !document.querySelector('#config-fields')?.disabled);
     await page.getByRole('link', { name: 'Develop', exact: true }).click();

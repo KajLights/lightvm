@@ -65,21 +65,21 @@ static void versions_and_uploads(void){
     CHECK(!store_find(&s,STORE_TRANSITION,"bad"));CHECK(store_info(&s).free_bytes<free_before);
     store_destroy(&s);free(f.bytes);
 }
-static void failures(void){
-    Flash f=flash_new(64*1024);Store s;mount_flash(&s,&f);CHECK(store_put(&s,STORE_ANIMATION,"wipe","old",3));store_destroy(&s);
+static void failures(StoreType type){
+    Flash f=flash_new(64*1024);Store s;mount_flash(&s,&f);CHECK(store_put(&s,type,"wipe","old",3));store_destroy(&s);
     uint8_t *baseline=malloc(f.size);CHECK(baseline);memcpy(baseline,f.bytes,f.size);unsigned failures=0;
     for(int n=0;n<35;n++){
         memcpy(f.bytes,baseline,f.size);mount_flash(&s,&f);f.failure=n;
-        bool ok=store_put(&s,STORE_ANIMATION,"wipe","new",3);f.failure=-1;store_destroy(&s);mount_flash(&s,&f);
-        const StoreEntry *e=store_find(&s,STORE_ANIMATION,"wipe");char bytes[3];CHECK(e&&store_read(&s,e,0,bytes,3));
+        bool ok=store_put(&s,type,"wipe","new",3);f.failure=-1;store_destroy(&s);mount_flash(&s,&f);
+        const StoreEntry *e=store_find(&s,type,"wipe");char bytes[3];CHECK(e&&store_read(&s,e,0,bytes,3));
         CHECK(!memcmp(bytes,"old",3)||!memcmp(bytes,"new",3));if(ok)CHECK(!memcmp(bytes,"new",3));else failures++;
         store_destroy(&s);
     }
     CHECK(failures>8&&failures<35);
     memcpy(f.bytes,baseline,f.size);mount_flash(&s,&f);
-    unsigned saved=0;for(;;){char name[33];snprintf(name,sizeof(name),"full%u",saved);if(!store_put(&s,STORE_ANIMATION,name,"fill",4))break;saved++;CHECK(saved<32);}
-    CHECK(saved>8);expect(&s,store_find(&s,STORE_ANIMATION,"wipe"),"old");
-    store_destroy(&s);mount_flash(&s,&f);CHECK(count(&s,STORE_ANIMATION)==saved+1);store_destroy(&s);
+    unsigned saved=0;for(;;){char name[33];snprintf(name,sizeof(name),"full%u",saved);if(!store_put(&s,type,name,"fill",4))break;saved++;CHECK(saved<32);}
+    CHECK(saved>8);expect(&s,store_find(&s,type,"wipe"),"old");
+    store_destroy(&s);mount_flash(&s,&f);CHECK(count(&s,type)==saved+1);store_destroy(&s);
     f.deny_reads=true;StoreBlockDevice d=device(&f);CHECK(!store_mount_with(&s,&store_extent_backend,&d)&&!s.available);store_destroy(&s);
     free(baseline);free(f.bytes);
 }
@@ -93,4 +93,4 @@ static void readonly_assets(void){
     CHECK(vm_heap_used()==0);store_destroy(&s);
     assets[1].type=STORE_ANIMATION;CHECK(!store_mount_with(&s,&store_assets_backend,&configuration));store_destroy(&s);
 }
-int main(void){catalogues();versions_and_uploads();failures();readonly_assets();puts("storage backends passed");return 0;}
+int main(void){catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);readonly_assets();puts("storage backends passed");return 0;}

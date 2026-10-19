@@ -28,13 +28,13 @@ it('edits an existing controller recipe without changing layers and retains the 
   render(<Provider store={store}><RuntimeContext.Provider value={{ compiler, controllers }}>
     <PresetTransition name="blue" output="lights" busy={false} />
   </RuntimeContext.Provider></Provider>);
-  const duration = await screen.findByLabelText('Controller preset entry transition duration (ms)');
+  const duration = await screen.findByLabelText('Controller preset transition duration (ms)');
   expect(duration).toHaveValue(500);
   expect(await screen.findByLabelText('reverse')).toHaveValue('true');
   fireEvent.change(duration, { target: { value: '750' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save preset transition' }));
   await waitFor(() => expect(client.savePreset).toHaveBeenCalledWith('blue', layers, 'lights', { ...entry, duration_ms: 750 }, 4));
-  fireEvent.change(screen.getByLabelText('Controller preset entry transition'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Controller preset transition'), { target: { value: '' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save preset transition' }));
   await waitFor(() => expect(client.savePreset).toHaveBeenLastCalledWith('blue', layers, 'lights', undefined, 5));
 });

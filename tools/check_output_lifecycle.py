@@ -17,7 +17,7 @@ def main():
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument('--port')
     target.add_argument('--process')
-    parser.add_argument('--storage', type=Path, help='host store containing the configured startup programs')
+    parser.add_argument('--storage', type=Path, help='host store containing the configured startup presets')
     parser.add_argument('--held', required=True, help='output whose paused frame must remain stable')
     parser.add_argument('--peer', required=True, help='different output whose program is reset')
     args = parser.parse_args()

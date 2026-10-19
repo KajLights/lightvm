@@ -1,5 +1,3 @@
-import { deployedTransition, WIPE_SETTINGS } from '../../tests/web-transitions';
-import type { LightVMClient } from '../protocol.mjs';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -40,7 +38,7 @@ describe('configuration drafts', () => {
     render(<Provider store={store}><Configure /></Provider>);
     fireEvent.click(screen.getByRole('button', { name: 'Add Pico RGB Keypad' }));
     const keypad = within(screen.getByRole('group', { name: 'Output 2' }));
-    expect(keypad.queryByLabelText('Startup program')).toBeNull();
+    expect(keypad.queryByLabelText('Power-on behavior')).toBeNull();
     expect(keypad.queryByLabelText('Home Assistant default preset')).toBeNull();
     fireEvent.change(keypad.getByLabelText('Brightness limit (0–255)'), { target: { value: '48' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
@@ -62,30 +60,17 @@ describe('configuration drafts', () => {
     expect(store.getState().controller.selectedOutput).toBeNull();
   });
 
-  it('edits pinned on/off transitions and preserves their settings in output configuration', async () => {
-    const store = readyStore(), wipe = deployedTransition('wipe', WIPE_SETTINGS);
-    store.dispatch(controllerActions.description({ ...description, power_transitions: true }));
-    store.dispatch(controllerActions.programs([wipe.program]));
-    vi.spyOn(runtime.controllers, 'client', 'get').mockReturnValue({ getProgram: vi.fn(async () => wipe.bytes) } as unknown as LightVMClient);
-    const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
+  it('has one preset-owned transition and rejects obsolete output overrides', () => {
+    const store = readyStore();
     render(<Provider store={store}><Configure /></Provider>);
-    fireEvent.change(screen.getByLabelText('On transition'), { target: { value: 'wipe' } });
-    const on = within(screen.getByRole('group', { name: 'On transition settings' }));
-    fireEvent.click(await on.findByLabelText('Override reverse'));
-    fireEvent.change(on.getByLabelText('reverse'), { target: { value: 'true' } });
-    fireEvent.change(screen.getByLabelText('On transition duration (ms)'), { target: { value: '750' } });
-    fireEvent.change(screen.getByLabelText('Off transition'), { target: { value: 'wipe' } });
-    fireEvent.change(screen.getByLabelText('Off transition duration (ms)'), { target: { value: '1250' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
-    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({ outputs: [expect.objectContaining({
-      on_transition: { program: 'wipe', crc32: wipe.program.crc32, duration_ms: 750, settings: { reverse: true } },
-      off_transition: { program: 'wipe', crc32: wipe.program.crc32, duration_ms: 1250, settings: {} },
-    })] }), expect.anything(), { save: true }));
-    fireEvent.change(screen.getByLabelText('Off transition duration (ms)'), { target: { value: '-1' } });
-    expect(screen.getByLabelText('Off transition duration (ms)')).toHaveValue(-1);
-    expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Off transition'), { target: { value: '' } });
-    expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeEnabled();
+    expect(screen.queryByLabelText('On transition')).toBeNull();
+    expect(screen.queryByLabelText('Off transition')).toBeNull();
+    expect(screen.getByText(/Each preset supplies its transition/)).toBeInTheDocument();
+    for (const field of ['on_transition', 'off_transition']) {
+      const config = hardware(5);
+      fireEvent.change(screen.getByLabelText('Controller configuration JSON'), { target: { value: JSON.stringify({ ...config, outputs: [{ ...config.outputs[0], [field]: {} }] }) } });
+      expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
+    }
   });
 
   it('assigns a default and selectable HA presets per output and preserves them through other edits', async () => {
@@ -140,78 +125,70 @@ describe('configuration drafts', () => {
     expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeEnabled();
   });
 
-  it('edits each startup independently and submits initialization settings', async () => {
+  it('edits power-on behavior and chooses controller presets independently per output', async () => {
     const store = readyStore(), config = hardware(5);
-    config.outputs[0].startup = { program: 'rainbow', settings: { duration: 3.3 } };
-    config.outputs.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { program: 'color', settings: { color: 0x123456, random_color: false } } });
+    config.outputs[0].startup = { mode: 'preset', preset: 'warm' };
+    config.outputs.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { mode: 'restore_last' } });
     store.dispatch(controllerActions.configuration({ config, revision: 1, savedRevision: 1 }));
-    store.dispatch(controllerActions.programs([{ name: 'rainbow', size: 100, crc32: 1 }, { name: 'color', size: 100, crc32: 2 }]));
+    store.dispatch(controllerActions.presets([{ name: 'warm', size: 100, crc32: 1 }, { name: 'stars', size: 100, crc32: 2 }]));
     const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
-    const first = within(screen.getByRole('group', { name: 'Output 1' }));
-    const second = within(screen.getByRole('group', { name: 'Output 2' }));
-    fireEvent.change(first.getByLabelText('Output name'), { target: { value: 'ceiling' } });
-    fireEvent.change(first.getByLabelText('Startup settings (JSON)'), { target: { value: '{"duration": 6.6}' } });
-    expect(second.getByLabelText('Startup program')).toHaveValue('color');
-    expect(JSON.parse((second.getByLabelText('Startup settings (JSON)') as HTMLTextAreaElement).value)).toEqual(config.outputs[1].startup!.settings);
+    const first = within(screen.getByRole('group', { name: 'Output 1' })), second = within(screen.getByRole('group', { name: 'Output 2' }));
+    expect(first.getByLabelText('Power-on behavior')).toHaveValue('preset');
+    expect(second.getByLabelText('Power-on behavior')).toHaveValue('restore_last');
+    expect(second.queryByLabelText('Startup preset')).toBeNull();
+    fireEvent.change(first.getByLabelText('Startup preset'), { target: { value: 'stars' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
     await waitFor(() => expect(configure).toHaveBeenCalledWith({ schema: 'lightvm.config', outputs: [
-      { ...config.outputs[0], id: 'ceiling', startup: { program: 'rainbow', settings: { duration: 6.6 } } }, config.outputs[1],
+      { ...config.outputs[0], startup: { mode: 'preset', preset: 'stars' } }, config.outputs[1],
     ] }, expect.objectContaining({ active_revision: 1, saved_revision: 1 }), { save: true }));
-    fireEvent.change(first.getByLabelText('Startup program'), { target: { value: 'color' } });
-    expect(first.getByLabelText('Startup settings (JSON)')).toHaveValue('{}');
-    fireEvent.change(first.getByLabelText('Startup program'), { target: { value: '' } });
+    fireEvent.change(first.getByLabelText('Power-on behavior'), { target: { value: 'off' } });
+    expect(first.queryByLabelText('Startup preset')).toBeNull();
     const json = JSON.parse((screen.getByLabelText('Controller configuration JSON') as HTMLTextAreaElement).value);
-    expect(json.outputs[0]).not.toHaveProperty('startup');
+    expect(json.outputs[0].startup).toEqual({ mode: 'off' });
     expect(json.outputs[1]).toEqual(config.outputs[1]);
-    expect(screen.queryByLabelText('Bind this output to slot A')).toBeNull();
   });
 
-  it('keeps incomplete arguments visible and blocks submitting them', () => {
+  it('keeps missing presets visible and requires a selection before saving', () => {
     const store = readyStore(), config = hardware(5);
-    config.outputs[0].startup = { program: 'rainbow', settings: { duration: 3.3 } };
+    config.outputs[0].startup = { mode: 'preset', preset: 'missing' };
     store.dispatch(controllerActions.configuration({ config, revision: 1, savedRevision: 1 }));
     render(<Provider store={store}><Configure /></Provider>);
-    const args = screen.getByLabelText('Startup settings (JSON)');
-    for (const value of ['{', 'null', '[]', '{"duration":"fast"}']) {
-      fireEvent.change(args, { target: { value } });
-      expect(args).toHaveValue(value);
-      expect(args).toHaveAttribute('aria-invalid', 'true');
-      expect(screen.getByRole('button', { name: 'Validate' })).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeDisabled();
-    }
-    act(() => { store.dispatch(controllerActions.configuration({ config: hardware(12), revision: 2, savedRevision: 2 })); });
-    expect(args).toHaveValue('{"duration":"fast"}');
-    fireEvent.change(args, { target: { value: '{}' } });
+    expect(screen.getByLabelText('Startup preset')).toHaveValue('missing');
+    expect(screen.getByRole('option', { name: 'missing (unavailable)' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Startup preset'), { target: { value: '' } });
     expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Load controller values' }));
-    expect(screen.queryByLabelText('Startup settings (JSON)')).toBeNull();
+    expect(screen.getByLabelText('Power-on behavior')).toHaveValue('preset');
+    fireEvent.change(screen.getByLabelText('Power-on behavior'), { target: { value: 'restore_last' } });
     expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeEnabled();
   });
 
   it('synchronizes full JSON edits and preserves other outputs when removing an output', () => {
     const store = readyStore(), config = hardware(5);
-    config.outputs[0].startup = { program: 'rainbow', settings: { duration: 3.3 } };
-    config.outputs.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { program: 'rainbow', settings: { duration: 9 } } });
+    config.outputs[0].startup = { mode: 'off' };
+    config.outputs.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { mode: 'restore_last' } });
     render(<Provider store={store}><Configure /></Provider>);
     const editor = screen.getByLabelText('Controller configuration JSON') as HTMLTextAreaElement;
     fireEvent.change(editor, { target: { value: JSON.stringify(config) } });
-    expect(screen.getAllByLabelText('Startup program').map(node => (node as HTMLSelectElement).value)).toEqual(['rainbow', 'rainbow']);
-    const second = within(screen.getByRole('group', { name: 'Output 2' }));
-    fireEvent.change(second.getByLabelText('Startup settings (JSON)'), { target: { value: '{' } });
+    expect(screen.getAllByLabelText('Power-on behavior').map(node => (node as HTMLSelectElement).value)).toEqual(['off', 'restore_last']);
     fireEvent.click(within(screen.getByRole('group', { name: 'Output 1' })).getByRole('button', { name: 'Remove output' }));
     expect(JSON.parse(editor.value).outputs).toEqual([config.outputs[1]]);
-    expect(screen.getByLabelText('Startup settings (JSON)')).toHaveValue('{');
-    fireEvent.change(screen.getByLabelText('Startup settings (JSON)'), { target: { value: '{"duration": 10}' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add WS2812B output' }));
     const next = JSON.parse(editor.value);
-    expect(next.outputs[0].startup.settings).toEqual({ duration: 10 });
+    expect(next.outputs[0].startup).toEqual({ mode: 'restore_last' });
     expect(next.outputs[1].id).toBe('lights');
     expect(next.outputs[1]).not.toHaveProperty('startup');
-    expect(next).not.toHaveProperty('targets');
     fireEvent.change(editor, { target: { value: JSON.stringify({ ...config, targets: {} }) } });
     expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('Startup belongs inside each output');
+  });
+
+  it('rejects abandoned animation startup JSON', () => {
+    const store = readyStore();
+    render(<Provider store={store}><Configure /></Provider>);
+    const config = hardware(5);
+    fireEvent.change(screen.getByLabelText('Controller configuration JSON'), { target: { value: JSON.stringify({ ...config, outputs: [{ ...config.outputs[0], startup: { program: 'old' } }] }) } });
+    expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
   });
 
   it('keeps a network draft and blocks saving when its revision changes', () => {

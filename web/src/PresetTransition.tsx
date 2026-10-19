@@ -28,11 +28,12 @@ export function PresetTransition({ name, output, busy }: { name: string; output:
       const result = await connection.savePreset(name, recipe.layers, output, transition, recipe.revision);
       setRecipe({ ...recipe, revision: result.value >>> 0 });
       await controllers.readPresets(connection);
-      controllers.log('Saved entry transition for ' + name + '. Playback unchanged.', 'success');
+      controllers.log('Saved transition for ' + name + '. Playback unchanged.', 'success');
     });
   }
   return <div>
-    <RecallTransition id="controller-preset-entry" label="Controller preset entry transition" value={transition} onChange={setTransition} disabled={busy || !recipe} />
+    <RecallTransition id="controller-preset-entry" label="Controller preset transition" value={transition} onChange={setTransition} disabled={busy || !recipe} />
+    <p className="helper">This preset’s transition is used when selected, turned on or off, and at startup.</p>
     {error && <p role="alert">{error}</p>}
     <div className="button-pair">
       <button className="secondary" disabled={busy || !recipe || (transition !== undefined && !validTransitionSpec(transition))} onClick={() => void save()}>Save preset transition</button>

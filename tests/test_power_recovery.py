@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import unittest
+import zlib
 from bytecode_fixtures import color, sample, padded_program
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -123,21 +124,51 @@ class PowerRecoveryTests(unittest.TestCase):
         module = color()
         self.http.save_program('startup', module)
         config = {'schema': 'lightvm.config', 'outputs': [
-            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'program': 'startup'}},
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}, 'startup': {'mode': 'preset', 'preset': 'startup'}},
         ]}
+        hardware = {**config, 'outputs': [{k: v for k, v in config['outputs'][0].items() if k != 'startup'}]}
+        self.http.configure(hardware)
+        self.http.save_preset('startup', [{'id': 'main', 'program': 'startup', 'crc32': zlib.crc32(module)}])
         self.http.configure(config, save=True)
         snapshot = self.storage.read_bytes()
         self.restart()
-        self.assertEqual(self.http.describe()['active_program'], 'startup')
+        self.assertEqual(self.http.describe()['outputs'][0]['selected_preset'], 'startup')
         self.restart()
         self.assertTrue(self.http.network_status()['recovery'])
-        self.assertEqual(self.http.describe()['active_program'], '')
+        self.assertIsNone(self.http.describe()['outputs'][0]['selected_preset'])
         self.assertEqual(self.pipe.status_fields()['mode'], 'idle')
         self.assertEqual(self.http.get_config(saved=True), config)
         self.assertEqual(self.storage.read_bytes(), snapshot)
         self.http.activate('startup')
         self.assertEqual(self.pipe.describe()['active_program'], 'startup')
         self.assertTrue(self.http.network_status()['recovery'])
+
+    def test_restore_last_recovery_keeps_the_remembered_target(self):
+        module = color()
+        hardware = {'schema': 'lightvm.config', 'outputs': [
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5}}]}
+        self.http.configure(hardware)
+        self.http.save_program('startup', module)
+        self.http.save_preset('startup', [{'id': 'main', 'program': 'startup', 'crc32': zlib.crc32(module)}])
+        hardware['outputs'][0]['startup'] = {'mode': 'restore_last'}
+        self.http.configure(hardware, save=True)
+        self.http.recall_preset('startup')
+        snapshot = self.storage.read_bytes()
+        self.restart()
+        self.assertTrue(self.http.describe()['outputs'][0]['power'])
+        self.restart()
+        self.assertTrue(self.http.network_status()['recovery'])
+        self.assertFalse(self.http.describe()['outputs'][0]['power'])
+        self.assertEqual(self.storage.read_bytes(), snapshot)
+        deadline = time.monotonic() + 6
+        while self.http.describe()['boot_sequence']['count']:
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(.05)
+        self.restart()
+        self.assertFalse(self.http.network_status()['recovery'])
+        self.assertEqual(self.http.describe()['outputs'][0]['selected_preset'], 'startup')
+        self.assertTrue(self.http.describe()['outputs'][0]['power'])
+        self.assertEqual(self.storage.read_bytes(), snapshot)
 
     def test_counter_clear_retains_recovery_until_next_restart(self):
         self.save_network(self.saved_profile())

@@ -43,9 +43,9 @@ replacing a catalogue name cannot overwrite their code.
 FINISH prepares a transient candidate when a target is configured. Named save
 validates without executing; activation prepares and presents a candidate before
 replacing the old instance. Failed upload, validation or preparation retains the
-old instance and generation. Each output’s `startup` names its boot program and
-optional initialization `settings`. Boot resolves the current catalogue entry for each
-name; activation does not update configuration or select a separate boot revision.
+old instance and generation. Each output’s `startup` selects off, restore last
+state or a saved preset. Presets supply their layers’ settings and input bindings.
+Boot resolves the current preset definition; activation does not update configuration or select a separate boot revision.
 
 Firmware advertising `transient_settings: true` also accepts a FINISH payload
 `{"settings": {...}}` (within the 512-byte frame limit). Overrides are validated

@@ -6,6 +6,7 @@
 #include "digital_inputs.h"
 #define EMPTY_CONFIG "{\"schema\":\"lightvm.config\",\"outputs\":[]}"
 #define HA_PRESET_LIMIT 16u
+typedef enum { STARTUP_OFF, STARTUP_RESTORE_LAST, STARTUP_PRESET } StartupMode;
 typedef struct {
     char program[OBJECT_NAME_LIMIT + 1];
     uint32_t crc, seed, offset, size;
@@ -13,14 +14,12 @@ typedef struct {
 } TransitionSpec;
 typedef struct {
     char id[OBJECT_NAME_LIMIT + 1], type[17];
-    char startup[OBJECT_NAME_LIMIT + 1];
+    StartupMode startup_mode;
+    char startup_preset[OBJECT_NAME_LIMIT + 1];
     char ha_default_preset[OBJECT_NAME_LIMIT + 1], ha_name[65];
     char ha_presets[HA_PRESET_LIMIT][OBJECT_NAME_LIMIT + 1];
     unsigned ha_preset_count;
     bool indicators;
-    /* Byte span in the owning configuration JSON, never an upload pointer. */
-    uint32_t startup_offset, startup_size;
-    TransitionSpec on_transition, off_transition;
     PixelConfig pixels;
 } HardwareOutput;
 typedef struct {

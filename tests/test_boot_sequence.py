@@ -5,6 +5,7 @@ import sys
 import tempfile
 import time
 import unittest
+import zlib
 from bytecode_fixtures import color, sample, padded_program
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,8 +78,11 @@ class BootSequenceTests(unittest.TestCase):
         module = color()
         self.client.save_program("startup", module)
         config = {"schema": "lightvm.config", "outputs": [
-            {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}, "startup": {"program": "startup"}}
+            {"id": "lights", "type": "ws2812b", "config": {"pin": "GP16", "count": 5}, "startup": {"mode": "preset", "preset": "startup"}}
         ]}
+        hardware = {**config, 'outputs': [{k: v for k, v in config['outputs'][0].items() if k != 'startup'}]}
+        self.client.configure(hardware)
+        self.client.save_preset('startup', [{'id': 'main', 'program': 'startup', 'crc32': zlib.crc32(module)}])
         self.client.configure(config, save=True)
         snapshot = self.storage.read_bytes()
         for count in (2, 3, 3):
@@ -86,9 +90,9 @@ class BootSequenceTests(unittest.TestCase):
             description = self.client.describe()
             self.assertEqual(description["boot_sequence"]["count"], count)
             recovery = description.get("recovery_supported", False) and count >= 3
-            self.assertEqual(description["active_program"], "" if recovery else "startup")
+            self.assertEqual(description["outputs"][0]["selected_preset"], None if recovery else "startup")
             self.assertEqual(description["boot_error"], "")
-            self.assertEqual(self.client.status_fields()["mode"], "idle" if recovery else "bytecode")
+            self.assertEqual(self.client.status_fields()["mode"], "idle" if recovery else "transition")
             self.assertEqual(self.client.get_config(saved=True), config)
             self.assertEqual(self.client.get_program("startup"), module)
             self.assertEqual(self.storage.read_bytes(), snapshot)

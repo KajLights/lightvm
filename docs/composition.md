@@ -195,12 +195,13 @@ Running compositions remain in RAM. The browser editor can author compositions a
 as **presets** in its editable library and on the controller. A preset has one or more
 layers, so standalone and composite effects use the same recipe format. Saving
 does not change playback; activation prepares the whole candidate before swapping.
-Saved hardware configuration still uses single-program startup; reboot restores
-that startup, and saved presets can then be activated explicitly.
+Saved hardware configuration selects off, restore-last or a preset at startup.
+Preset selection, ON, OFF and startup all use the preset’s saved transition.
 
 Controller presets use `lightvm.preset` with a `layers` array and optional
 `entry_transition` invocation (program, CRC32, settings, duration and optional seed;
-see [recall transitions](transitions.md#preset-recalls-and-power)), using the same layer fields
+this one invocation is used for selection, ON, OFF to black and startup; see
+[recall transitions](transitions.md#preset-recalls-and-power)), using the same layer fields
 as a composition. Each layer additionally requires `crc32`, matching the stored program.
 Composition documents may also supply `crc32` to check the expected version. The editor
 derives immutable program names from the compiled SHA-256 digest and keeps full

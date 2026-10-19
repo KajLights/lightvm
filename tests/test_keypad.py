@@ -178,7 +178,7 @@ class KeypadTests(unittest.TestCase):
             lambda c: c['inputs'][0]['config'].update(scl='GP7'),
             lambda c: c['inputs'][0]['config'].update(address=40),
             lambda c: c['inputs'][0]['home_assistant'].update(indicators='missing'),
-            lambda c: c['outputs'][0].update(startup={'program': 'nope'}),
+            lambda c: c['outputs'][0].update(startup={'mode': 'restore_last'}),
         ):
             candidate = copy.deepcopy(self.config)
             mutate(candidate)

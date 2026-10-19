@@ -101,8 +101,9 @@ fresh instance with supplied overrides. Reset keeps the old instance if candidat
 preparation fails. `program_state` reports `manifest.settings` and
 `settings_values`. The editor's
 initialization settings panel applies settings through an explicit restart.
-Activation/reset inputs belong to that invocation. Per-output `startup.settings` in
-configuration supplies inputs at boot; omitted arguments use the program defaults.
+Activation/reset inputs belong to that invocation. For boot playback, save the
+settings and input bindings in a preset and select that preset in the output’s
+startup policy; omitted settings use the program defaults.
 
 ## Arrays and standard library subset
 

@@ -158,13 +158,11 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
     if(j.tokens[list].children&&!cfg->outputs)return failure(error,capacity,"outputs: allocation failed");
     for(int t=list+1;t<j.tokens[list].next;t=j.tokens[t].next){
         HardwareOutput *d=&cfg->outputs[cfg->count];
-        static const char *const fields[]={"id","type","config","mode","startup","home_assistant","on_transition","off_transition",NULL};
+        static const char *const fields[]={"id","type","config","mode","startup","home_assistant",NULL};
         if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id))
             return failure(error,capacity,"outputs.id: missing or invalid identifier/fields");
         if(!json_string(&j,json_get(&j,t,"type"),d->type,sizeof(d->type))||!output_type(d->type))
             return failure(error,capacity,"outputs.type: unsupported output type");
-        if(!transition_spec_parse(&j,json_get(&j,t,"on_transition"),&d->on_transition,error,capacity)||
-           !transition_spec_parse(&j,json_get(&j,t,"off_transition"),&d->off_transition,error,capacity))return false;
         int ha=json_get(&j,t,"home_assistant");
         if(ha>=0){
             static const char *const ha_fields[]={"default_preset","presets","name",NULL};
@@ -193,26 +191,22 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
         }
         int startup=json_get(&j,t,"startup");
         if(startup>=0){
-            static const char *const startup_fields[]={"program","settings","inputs",NULL};
-            if(!json_fields(&j,startup,startup_fields)||
-               !json_string(&j,json_get(&j,startup,"program"),d->startup,sizeof(d->startup))||!object_name_valid(d->startup)){
-                snprintf(error,capacity,"outputs[%s].startup.program: expected a named program and optional settings",d->id);return false;
-            }
-            int args=json_get(&j,startup,"settings");
-            if(args>=0){
-                if(j.tokens[args].type!=JSON_OBJECT){
-                    snprintf(error,capacity,"outputs[%s].startup.settings: expected an object",d->id);return false;
-                }
-            }
-            int inputs=json_get(&j,startup,"inputs");
-            if(inputs>=0&&j.tokens[inputs].type!=JSON_OBJECT)return failure(error,capacity,"startup.inputs must be an object");
-            d->startup_offset=(uint32_t)j.tokens[startup].start;
-            d->startup_size=(uint32_t)(j.tokens[startup].end-j.tokens[startup].start);
+            static const char *const startup_fields[]={"mode","preset",NULL};
+            int mode=json_get(&j,startup,"mode"),preset=json_get(&j,startup,"preset");
+            bool valid=json_fields(&j,startup,startup_fields);
+            if(json_equal(&j,mode,"off"))d->startup_mode=STARTUP_OFF;
+            else if(json_equal(&j,mode,"restore_last"))d->startup_mode=STARTUP_RESTORE_LAST;
+            else if(json_equal(&j,mode,"preset"))d->startup_mode=STARTUP_PRESET;
+            else valid=false;
+            if(d->startup_mode==STARTUP_PRESET)
+                valid=valid&&json_string(&j,preset,d->startup_preset,sizeof(d->startup_preset))&&object_name_valid(d->startup_preset);
+            else if(preset>=0)valid=false;
+            if(!valid){snprintf(error,capacity,"outputs[%s].startup: expected mode off, restore_last, or preset with a preset name",d->id);return false;}
         }
         int mode=json_get(&j,t,"mode");
         d->indicators=json_equal(&j,mode,"indicators");
         if(mode>=0&&!d->indicators&&!json_equal(&j,mode,"animation"))return failure(error,capacity,"outputs.mode: expected animation or indicators");
-        if(d->indicators&&(startup>=0||ha>=0||d->on_transition.program[0]||d->off_transition.program[0]))return failure(error,capacity,"indicator outputs cannot have startup, presets or power transitions");
+        if(d->indicators&&(startup>=0||ha>=0))return failure(error,capacity,"indicator outputs cannot have startup or presets");
         d->pixels.pin=-1;d->pixels.clock_pin=-1;d->pixels.enable_pin=-1;d->pixels.brightness=255;memcpy(d->pixels.order,"GRB",4);
         if(!output_type(d->type)->validate(&j,json_get(&j,t,"config"),&d->pixels,error,capacity))return false;
         if(d->indicators&&d->pixels.count>16)return failure(error,capacity,"indicator outputs support at most sixteen pixels");

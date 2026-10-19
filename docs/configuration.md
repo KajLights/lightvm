@@ -9,8 +9,8 @@ with no saved configuration starts idle and remains available over USB.
 
 ## Provisioning
 
-Build the independent samples with `python tools/build_examples.py`, then store a
-program before referring to it in saved configuration:
+Build the independent samples with `python tools/build_examples.py`, then
+configure the output and store a program for manual playback:
 
 ```sh
 python tools/client.py --port PORT --describe
@@ -34,8 +34,8 @@ Configuration apply takes effect in RAM. Entries with unchanged IDs, types and
 hardware configuration retain their drivers and running instances, including when
 reordered. Changed or removed outputs are stopped and unloaded. Startup-only
 edits do not restart an animation. Saving is a separate operation and does not
-start playback. After reboot, each output's optional startup invocation loads a
-fresh instance with its own settings. An output without startup stays idle.
+start playback. After reboot, each output applies its saved power-on behavior.
+An output without startup configuration stays off.
 Remove `--save` for temporary wiring experiments; `--save-config` explicitly saves
 the current active configuration.
 
@@ -69,30 +69,69 @@ including empty or null forms. Previously saved configurations using those field
 report a boot error and start with empty active configuration; replace them through
 the normal configuration interface. Stored programs remain available.
 
-Each output requires `id`, `type` and `config`, and may provide one startup object:
+Each output requires `id`, `type` and `config`. Its optional `startup` object
+sets **Power-on behavior**, independently of its Home Assistant default preset:
 
 ```json
-"startup": {
-  "program": "rainbow",
-  "settings": {"duration": 3.3}
-}
+"startup": {"mode": "off"}
 ```
 
-`program` names a stored program. Optional `settings` is an object of named
-initialization settings: supplied values are passed before initialization and
-omitted values use program defaults. Omitted `settings` and `{}` are equivalent.
-Settings are checked against the program's names, types and bounds using that
-output's configured pixel count. There is no separate settings store or remembered
-last-used value. The current compiler syntax for declaring defaults is unchanged.
-Omit `startup` to leave the output idle; `startup: null` is invalid.
+```json
+"startup": {"mode": "restore_last"}
+```
 
-Validation, application and saving prepare isolated startup candidates without
-opening hardware or replacing running instances. Errors identify the output and,
-for invalid settings, the setting name. Startup resolves each name through the
-current program catalogue. A failed or missing program at boot is reported
-without clearing configuration or preventing other startups. Referenced programs
-cannot be deleted. Power-cycle network recovery keeps startup playback idle;
-manual activation remains available.
+```json
+"startup": {"mode": "preset", "preset": "evening"}
+```
+
+- `off` keeps the output black. This is also the default when `startup` is omitted.
+- `restore_last` restores the last selected preset and logical on/off state.
+  With no remembered state, it stays off. An output remembered as off retains its
+  preset selection for the next ON command.
+- `preset` turns on with the named controller preset, including all layers,
+  initialization settings and input bindings. Startup uses that preset's saved
+  transition, exactly like preset selection and ON.
+
+The startup transition clock starts when the output scheduler begins rendering,
+after native initialization. Time spent initializing Wi-Fi or other services
+does not consume the visible transition duration.
+
+The same policy applies to power cuts and software restarts, without waiting for
+HA or MQTT. Applying or saving a policy does not change current playback; save
+and restart to use it. The editor offers these controls under **Configure →
+Output & startup**. Presets must already be saved on the controller.
+
+On writable controllers, successful `preset_recall` and `output_power` commands
+save their desired preset and power immediately, before starting the transition.
+This happens in every startup mode, so switching to `restore_last` can use the
+last command. Saving restore-last while a startup preset is running also captures
+that current target. An OFF accepted during a fade remains OFF after power loss.
+Repeated targets and booting do not write again. State is keyed by output ID,
+so reordering outputs preserves it; renaming an output gives it a new identity.
+Records use the store's atomic publication, survive abrupt power loss after an
+acknowledged command, and consume flash space. A persistence failure rejects
+the command without changing playback. Read-only controllers can use off or a
+fixed preset; `restore_last` requires writable storage.
+
+Restore restarts the current saved definition of the selected preset. It does
+not checkpoint animation time, random state, live input samples, temporary
+editor previews or manual A/B mixing. Save edits as a preset and recall it to
+make them part of the remembered state.
+
+Validation, application and saving prepare isolated preset candidates against
+the candidate pixel count without opening hardware or replacing running
+instances. A missing or invalid preset at boot leaves that output off and reports
+`outputs[ID].startup` in `boot_error`; other outputs and management remain
+available. Active and saved fixed-preset startup references prevent deleting that
+preset. A deleted restore-last selection leaves the output off with a boot error.
+Power-cycle network recovery suppresses all startup playback and leaves the
+remembered target intact; manual control remains available.
+
+The abandoned `startup.program`, `startup.settings` and `startup.inputs` format
+is rejected. Re-save startup through the current editor using off, restore last,
+or a preset; put settings and input bindings in the preset's layers. For a clean
+PoC install, wipe/reprovision controller storage, upload programs and presets,
+and save the new configuration. There is no migration or compatibility path.
 
 A pixel config requires a permitted string `pin` and positive integer `count`
 within `pixel_capacity` for that controller. Runtime memory and native resources bound
@@ -111,8 +150,8 @@ be distinct. ESP32 currently rejects APA102 and TCA9555 configurations; its
 WS2812 outputs remain supported.
 
 An output with `mode: "indicators"` reserves up to sixteen pixels for independent
-RGB control through HA or the management API. It cannot have startup programs,
-HA preset bindings or power transitions. Animation commands and transient uploads
+RGB control through HA or the management API. It cannot have startup policies,
+HA preset bindings. Animation commands and transient uploads
 to it are rejected. Its normal submit/poll presenter owns one shared frame;
 each indicator has on/off, brightness and RGB state, without per-pixel VMs.
 Omitted mode means `animation`, including ordinary animated APA102 strips.
@@ -164,7 +203,7 @@ failed preparation retains its prior program.
 configured output; `slot` selects composition A or B on that output. The selection is explicit per request, so clients
 never share a mutable current-output setting. The only activation action is `play`.
 Initialization defaults live in the package. Activation/reset settings belong to
-that invocation and do not alter `outputs[].startup.settings`.
+that invocation and do not alter saved presets or startup policies.
 Activation replacement resets prior guest state. Storage/configuration remain
 available if loading or initialization fails.
 
@@ -217,7 +256,7 @@ status are not part of this protocol.
 | `indicator_get` | `output`, zero-based `pixel`; JSON light state, including colour while off. |
 | `indicator_snapshot` | `output`; RGB bytes in PIXELS replies, after per-indicator brightness and before physical brightness limit/wire conversion. |
 | `config_get`, `config_saved` | Active or persisted JSON; absent persisted config reads as empty |
-| `config_validate` | Validate staged configuration, including startup program preparation and argument validation |
+| `config_validate` | Validate staged configuration, including startup preset preparation and layer argument validation |
 | `config_apply` | `expected_revision` (active); apply staged config |
 | `config_save` | `expected_revision` (active), `expected_saved_revision` |
 | `program_list` | Optional `type` filter (`animation` or `transition`); array of `{name,type,profile,size,crc32}` |
@@ -258,10 +297,9 @@ Only the first-release `LVS2` format 1 is implemented; experimental earlier stor
 must be erased. See [internal storage](storage.md) for backend integration,
 configuration, format and recovery details.
 
-Saving configuration validates every startup invocation using its supplied
-settings before committing the configuration. Replacing a stored program leaves
-running instances on their original bytes, while the next boot uses the current
-catalogue entry with each output's configured settings. Activation does not
+Saving configuration validates each fixed startup preset before committing it.
+Replacing a preset leaves running instances on their original bytes; the next
+boot resolves the current preset definition and its pinned program versions. Activation does not
 promote or save a boot revision. Hardware health still requires controller testing.
 
 Pico reserves the configured region at the end of its board's flash; the linker
@@ -279,6 +317,27 @@ erase intentionally removes it. A bad startup reference, initialization failure,
 load error or trap leaves management available for repair.
 
 ## Verification record
+
+On 2026-10-19, the preset startup firmware was built for Pico W with Wi-Fi,
+HTTP, WebSocket, MQTT, boot-sequence detection and a 1 MiB store. The UF2 passed
+the storage-boundary check and was flashed with readback verification. On the
+attached 200-pixel GP16 output, real reboots verified selected-preset startup,
+off startup, and restore-last with both ON and OFF while retaining the Stars
+selection. The controller was left configured to start its Rainbow preset.
+One final software reboot lost USB enumeration; a USB unplug/reconnect recovered
+it. That cold boot confirmed advancing Rainbow frames, no boot/animation errors,
+and connected Wi-Fi and MQTT. Existing programs, presets and network settings
+remained available. Full power-removal during a flash write was not tested.
+
+The preset-only transition firmware rejects the abandoned output override fields.
+A native regression test delays output scheduling by five seconds and verifies
+that the full startup transition still renders from black. The firmware was
+flashed with readback verification on the Pico W. Rainbow and Stars are configured
+with a saved 1.5-second `crossfade`. Selection, OFF and ON were verified for both
+presets, followed by Rainbow startup after reboot. Pixel samples confirmed the
+whole strip fades in brightness, reaching black on OFF and full output on ON and
+startup. Wi-Fi and MQTT reconnected after the reboot. Host recall, startup, MQTT
+and recovery tests and browser acceptance checks passed.
 
 The October 15 architecture correction adds fault-injected page/directory commits,
 unsupported-directory rejection from both banks, pinned old revisions through repeated
@@ -337,10 +396,11 @@ output has composition slots A and B; global B–H output bindings are unsupport
 
 ## Home Assistant bindings
 
-Each output may include `on_transition` and `off_transition` invocations with
-`program`, `crc32`, `duration_ms`, optional `settings` and `seed`. These apply to
-application power recalls through every transport, independently of HA exposure.
-See [recall transitions](transitions.md#preset-recalls-and-power).
+Transition settings belong to each preset. The same saved invocation supplies
+preset selection, ON, OFF to black and startup. Output-level `on_transition` and
+`off_transition` fields are rejected. Remove those abandoned fields and edit the
+preset transition in the current editor; there is no migration or compatibility
+path. See [recall transitions](transitions.md#preset-recalls-and-power).
 
 Each output may include a `home_assistant` object with `default_preset`, an
 explicit `presets` list and an optional `name`. It exposes one on/off light and

@@ -17,7 +17,7 @@ StoreType store_type(const char *name) {
 }
 static bool valid(const StoreEntry *e) {
     bool system=e->type==STORE_CONFIGURATION||e->type==STORE_NETWORK_SETTINGS;
-    return e->type>=STORE_ANIMATION&&e->type<=STORE_NETWORK_SETTINGS&&
+    return e->type>=STORE_ANIMATION&&e->type<=STORE_OUTPUT_STATE&&
         (system? !strcmp(e->name,e->type==STORE_CONFIGURATION?STORE_CONFIG:STORE_NETWORK):object_name_valid(e->name))&&
         e->size&&e->size<=(e->type==STORE_ANIMATION||e->type==STORE_TRANSITION?MODULE_LIMIT:CONFIG_LIMIT);
 }
@@ -25,7 +25,7 @@ bool store_mount_with(Store *s,const StoreBackend *backend,const void *configura
     memset(s,0,sizeof(*s));s->backend=backend;
     if(!backend||!backend->name||!backend->mount||!backend->entry||!backend->read||!backend->info)return false;
     if(backend->begin&&(!backend->chunk||!backend->finish||!backend->cancel||!backend->publish))return false;
-    if(backend->mount(s,configuration))return true;
+    if(backend->mount(s,configuration)){s->preset_revision=s->generation;return true;}
     if(backend->destroy)backend->destroy(s);
     s->available=false;return false;
 }
@@ -102,7 +102,9 @@ bool store_upload_finish(StoreUpload *u) {
 bool store_publish(Store *s,const StoreEntry *e) {
     if(!s->available||!valid(e)||!s->backend->publish)return false;
     int pin=store_pin(s,e);if(pin<0)return false;
-    bool ok=s->backend->publish(s,e);store_unpin(s,pin);return ok;
+    StoreType type=e->type;
+    bool ok=s->backend->publish(s,e);if(ok&&type==STORE_PRESET)++s->preset_revision;
+    store_unpin(s,pin);return ok;
 }
 bool store_put(Store *s,StoreType type,const char *name,const void *bytes,uint32_t size) {
     StoreUpload u={.pin=-1};bool ok=store_upload_begin(s,&u,type,name,size,crc32_bytes(bytes,size));
@@ -112,5 +114,8 @@ bool store_put(Store *s,StoreType type,const char *name,const void *bytes,uint32
 bool store_put_config(Store *s,const void *bytes,uint32_t size) { return store_put(s,STORE_CONFIGURATION,STORE_CONFIG,bytes,size); }
 bool store_delete(Store *s,StoreType type,const char *name) {
     const StoreEntry *e=store_find(s,type,name);
-    return e&&s->backend->remove&&s->backend->remove(s,e);
+    if(e)type=e->type;
+    bool ok=e&&s->backend->remove&&s->backend->remove(s,e);
+    if(ok&&type==STORE_PRESET)++s->preset_revision;
+    return ok;
 }

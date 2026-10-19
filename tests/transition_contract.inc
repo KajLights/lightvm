@@ -1,6 +1,34 @@
 /* The monotonic driver and output ownership are independent of guest clocks. */
 #include "transition.h"
 #include <math.h>
+static void startup_transition_clock(void){
+    CHECK(vm_heap_used()==0);clock_now=0;clock_step=0;storage_available=true;
+    deny_allocation=false;deny_show=false;memset(flash,255,sizeof(flash));
+    Store store;CHECK(store_mount(&store));
+    CHECK(store_put(&store,STORE_ANIMATION,"paint",library_lbc,sizeof(library_lbc)));
+    CHECK(store_put(&store,STORE_TRANSITION,"fade",transition_lbc,sizeof(transition_lbc)));
+    char preset[512],config[512];
+    int size=snprintf(preset,sizeof(preset),"{\"schema\":\"lightvm.preset\",\"layers\":[{\"id\":\"main\",\"program\":\"paint\",\"crc32\":%lu}],\"entry_transition\":{\"program\":\"fade\",\"crc32\":%lu,\"duration_ms\":1500}}",
+        (unsigned long)crc32_bytes(library_lbc,sizeof(library_lbc)),(unsigned long)crc32_bytes(transition_lbc,sizeof(transition_lbc)));
+    CHECK(size>0&&(size_t)size<sizeof(preset));CHECK(store_put(&store,STORE_PRESET,"scene",preset,(uint32_t)size));
+    size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config\",\"outputs\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":5},\"startup\":{\"mode\":\"preset\",\"preset\":\"scene\"}}]}");
+    CHECK(size>0&&(size_t)size<sizeof(config));CHECK(store_put_config(&store,config,(uint32_t)size));store_destroy(&store);
+    static App app;Capture reply={.marker=0x12345678u};app_init(&app,capture,&reply);
+    CHECK(!app.boot_error[0]&&app.output_count==1);Transition *t=app.outputs[0]->transition;CHECK(t&&t->driver==TRANSITION_TIMED);
+    /* CYW43/network setup can take longer than the entire configured fade.
+       Neither that gap nor cooperative ingress work may consume startup time. */
+    clock_now=5000000;runtime_checkpoint();transition_update(t,clock_now);
+    CHECK(t->progress==0&&t->frames==0);
+    app_tick(&app);CHECK(t->progress==0&&t->driver==TRANSITION_TIMED);
+    for(unsigned n=0;n<30&&t->frames<1;n++)app_tick(&app);
+    CHECK(t->frames>=1&&app.outputs[0]->pixels.rgb[2]==0);
+    clock_now+=750000;for(unsigned n=0;n<30;n++)app_tick(&app);
+    CHECK(t->progress==50&&t->driver==TRANSITION_TIMED);
+    CHECK(app.outputs[0]->pixels.rgb[2]>0);
+    clock_now+=750000;for(unsigned n=0;n<30;n++)app_tick(&app);
+    CHECK(t->progress==100&&t->driver==TRANSITION_MANUAL);
+    app_destroy(&app);storage_available=false;CHECK(vm_heap_used()==0);
+}
 static void transition_contract(void){
     clock_now=0;clock_step=0;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);

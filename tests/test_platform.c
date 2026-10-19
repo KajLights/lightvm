@@ -539,6 +539,7 @@ int main(void) {
     inputs_contract();
     composition_contract();
     transition_contract();
+    startup_transition_clock();
     indicator_contract();
     return 0;
 }

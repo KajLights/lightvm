@@ -135,3 +135,15 @@ context. The Python client supports `programs(program_type)`,
 `get_program(name, program_type)` and `delete_program(name, program_type)`;
 the CLI exposes `--program-type`. The browser client and editor preserve the type
 when selecting, retrieving and deleting stored programs.
+
+## Remembered output targets
+
+The private `STORE_OUTPUT_STATE` type (6) uses the output ID as its key and stores
+one power byte followed by a zero-terminated, zero-padded 33-byte preset name.
+These targets are separate from hardware/network configuration and never appear
+in program or preset lists. Accepted preset/power commands atomically replace a
+changed target before playback changes. Saving restore-last can capture the
+current recalled target; repeated targets and boot do not write.
+The next restore-last startup resolves the current named preset. Records do not
+pin deleted presets or contain live VM state. They share normal store capacity
+and advance the catalogue generation, without changing configuration revisions.

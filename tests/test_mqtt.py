@@ -202,6 +202,30 @@ def draw(ctx, runtime, pixels):
                 return value
         self.fail(f'no preset options {expected}')
 
+    def test_power_on_policy_restores_mqtt_commands_and_republishes_actual_state(self):
+        self.config['outputs'][0]['startup'] = {'mode': 'restore_last'}
+        self.client.configure(self.config, save=True)
+        self.broker.publish(f'{self.root}/desk/preset/set', 'blue')
+        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.client.close()
+        self.client = Client(ProcessTransport(self.receiver, self.storage))
+        self.broker.wait(f'{self.root}/availability', b'online')
+        self.assertEqual(self.broker.latest[f'{self.root}/desk/state'], b'ON')
+        self.assertEqual(self.broker.latest[f'{self.root}/desk/preset/state'], b'blue')
+        self.broker.publish(f'{self.root}/desk/set', 'OFF')
+        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.client.close()
+        self.client = Client(ProcessTransport(self.receiver, self.storage))
+        self.broker.wait(f'{self.root}/availability', b'online')
+        self.assertEqual(self.broker.latest[f'{self.root}/desk/state'], b'OFF')
+        self.assertEqual(self.broker.latest[f'{self.root}/desk/preset/state'], b'blue')
+        self.assertFalse(self.client.describe()['outputs'][0]['power'])
+        # Broker reconnection does not reapply startup or replay retained commands.
+        self.broker.publish('homeassistant/status', 'online')
+        self.broker.wait(f'{self.root}/availability', b'online')
+        self.assertFalse(self.client.describe()['outputs'][0]['power'])
+
     def test_preset_selector_discovery_selection_and_power_recall(self):
         selector = json.loads(self.broker.latest[self.selector])
         self.assertEqual(selector['name'], 'Desk "light" 🌈 Preset')
@@ -312,8 +336,6 @@ def draw(ctx, runtime, pixels):
         self.client.save_program('fade', program)
         spec = {'program': 'fade', 'crc32': zlib.crc32(program), 'duration_ms': 100000}
         self.client.save_preset('blue', self.client.preset('blue')['layers'], output='desk', entry_transition=spec)
-        self.config['outputs'][0].update(on_transition=spec, off_transition=spec)
-        self.client.configure(self.config)
         self.broker.publish(f'{self.root}/desk/set', 'ON')
         self.broker.wait(f'{self.root}/desk/state', b'ON')
         self.broker.wait(f'{self.root}/desk/preset/state', b'blue')

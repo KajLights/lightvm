@@ -22,7 +22,7 @@ def config(count=5, pin="GP16", startup=None):
             "pin": pin, "count": count, "order": "GRB", "brightness_limit": 32}}
     ]}
     if startup:
-        result["outputs"][0]["startup"] = {"program": startup}
+        result["outputs"][0]["startup"] = {"mode": "preset", "preset": startup}
     return result
 
 
@@ -114,52 +114,14 @@ class ConfigurationTests(unittest.TestCase):
         self.client.save_config()
         self.assertEqual(self.raw_manage("config_save", expected_revision=1, expected_saved_revision=0).code, 7)
 
-    def test_save_and_reboot_startup_without_host(self):
-        data = sample("rainbow")
-        self.client.save_program("rainbow", data)
-        self.client.configure(config(startup="rainbow"), save=True)
-        self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.assertEqual(self.client.get_config(saved=True), config(startup="rainbow"))
-        self.restart()
-        fields = self.client.status_fields()
-        self.assertEqual((fields["mode"], fields["pixels"]), ("bytecode", "5"))
-        self.assertEqual(self.client.describe()["active_program"], "rainbow")
-        self.assertEqual(self.client.status_fields()["code_storage"],"flash")
-        self.assertEqual(self.client.describe()["boot_error"], "")
-        self.assertEqual(self.client.get_program("rainbow"), data)
-        self.client.command(RESET)
-        self.assertEqual(self.client.status_fields()["heap"], "0")
-        self.assertEqual(len(self.client.programs()), 1)
-        self.restart()
-        self.assertEqual(self.client.status_fields()["mode"], "bytecode")
 
     def test_missing_startup_reference_rejected(self):
         self.client.upload_object("config", json.dumps(config(startup="missing")).encode())
         self.assertEqual(self.raw_manage("config_validate").code, 7)
-        self.assertIn("startup.program", self.client.data_reply.decode())
+        self.assertIn("startup", self.client.data_reply.decode())
         self.assertEqual(self.client.status_fields()["pixels"], "0")
 
-    def test_incompatible_startup_is_idle_and_repairable(self):
-        self.client.save_program("bad", fault())
-        with self.assertRaises(ProtocolError):self.client.configure(config(startup="bad"), save=True)
-        self.restart()
-        self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.assertEqual(self.client.describe()["boot_error"], "")
-        self.assertEqual(self.client.status_fields()["heap"], "0")
-        self.client.configure(config())
-        self.assertEqual(self.client.describe()["boot_error"], "")
-        self.client.save_config()
-        self.restart()
-        self.assertEqual(self.client.status_fields()["pixels"], "5")
 
-    def test_startup_render_trap(self):
-        for data in (fault(),):
-            self.client.save_program("bad", data)
-            with self.assertRaises(ProtocolError):self.client.configure(config(startup="bad"), save=True)
-            self.restart()
-            self.assertEqual(self.client.status_fields()["mode"], "idle")
-            self.assertFalse(self.client.describe()["boot_error"])
-            self.assertEqual(self.client.command(RESET).code, 0)
 
     def test_library_replacement_preserves_resident_instance(self):
         self.client.configure(config())
@@ -186,66 +148,8 @@ class ConfigurationTests(unittest.TestCase):
         self.client.command(FRAME, bytes(4))
         self.assertEqual(self.client.pixel_snapshot[0], 77)
 
-    def test_references_block_deletion(self):
-        data = sample("rainbow")
-        self.client.save_program("effect", data)
-        self.client.configure(config(startup="effect"), save=True)
-        with self.assertRaisesRegex(ProtocolError, "referenced"):
-            self.client.delete_program("effect")
-        self.client.configure({"schema": "lightvm.config", "outputs": []})
-        with self.assertRaisesRegex(ProtocolError, "referenced"):
-            self.client.delete_program("effect")
-        self.client.save_config()
-        self.client.delete_program("effect")
-        self.assertEqual(self.client.programs(), [])
-
-    def test_startup_uses_current_catalogue_without_activation_promotion(self):
-        self.client.save_program("effect", color(7))
-        self.client.configure(config(startup="effect"), save=True)
-        self.restart()
-        self.client.save_program("effect", color(77))
-        self.assertEqual(self.client.describe()["active_crc32"], zlib.crc32(color(7)))
-        self.restart()
-        description = self.client.describe()
-        self.assertNotIn("boot_crc32", description)
-        self.assertNotIn("boot_program", description)
-        self.assertEqual(description["active_crc32"], zlib.crc32(color(77)))
-        self.client.save_program("effect", fault())
-        self.restart()
-        self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.assertIn("outputs[lights].startup", self.client.describe()["boot_error"])
-        self.client.save_program("effect", color(9))
-        self.restart()
-        self.client.command(FRAME, bytes(4))
-        self.assertEqual(self.client.pixel_snapshot[0], 9)
 
 
-    def test_startup_arguments_are_used_during_validation_and_initialization(self):
-        self.client.save_program("effect", color(7))
-        self.client.configure(config(startup="effect"), save=True)
-        candidate = program('''from lightvm import profile,setting,init,render,rgb
-profile("animation")
-@init
-def setup(ctx, runtime):
- divisor=setting(0,minimum=0,maximum=10)
- ctx.intensity=10//divisor
-@render
-def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
-''')
-        self.client.save_program("effect", candidate)
-        supplied = config(startup="effect")
-        supplied['outputs'][0]['startup']['settings'] = {'divisor': 1}
-        self.client.configure(supplied, save=True)
-        self.restart()
-        self.client.command(FRAME, bytes(4))
-        self.assertEqual(self.client.pixel_snapshot[0], 10)
-        self.client.activate("effect", settings={"divisor": 2})
-        self.client.command(FRAME, bytes(4))
-        self.assertEqual(self.client.pixel_snapshot[0], 5)
-        self.assertEqual(self.client.get_config(), supplied)
-        self.restart()
-        self.client.command(FRAME, bytes(4))
-        self.assertEqual(self.client.pixel_snapshot[0], 10)
 
     def test_active_runtime_blocks_deletion(self):
         self.client.save_program("one", color())
@@ -352,32 +256,6 @@ def draw(ctx, runtime, pixels): pixels.fill(rgb(ctx.intensity,0,0))
         self.client.save_program("repair",color())
         self.assertEqual(self.client.get_program("repair"),color())
 
-    def test_missing_startup_catalog_name_is_idle_and_repairable(self):
-        data = sample("rainbow")
-        self.client.save_program("p", data)
-        self.client.configure(config(startup="p"), save=True)
-        # Replace only the catalog identifier, recomputing directory/commit CRCs,
-        # to model a missing startup program in an otherwise valid store.
-        self.transport.close()
-        self.transport = None
-        raw = bytearray(self.storage.read_bytes())
-        base = max((0,256*1024),key=lambda at: struct.unpack_from("<I",raw,at+8)[0])
-        catalog, catalog_size = struct.unpack_from("<II", raw, base+28)
-        raw[catalog:catalog+33] = b"q" + bytes(32)
-        struct.pack_into("<I", raw, base+36, zlib.crc32(raw[catalog:catalog+catalog_size]))
-        crc = zlib.crc32(raw[base:base+1020])
-        struct.pack_into("<I", raw, base+1020, crc)
-        struct.pack_into("<I", raw, base+1024+8, crc)
-        struct.pack_into("<I", raw, base+1024+12, zlib.crc32(raw[base+1024:base+1024+12]))
-        self.storage.write_bytes(raw)
-        self.restart()
-        self.assertEqual(self.client.status_fields()["mode"], "idle")
-        self.assertIn("outputs[lights].startup", self.client.describe()["boot_error"])
-        self.assertIn("program", self.client.describe()["boot_error"])
-        self.assertEqual(self.client.get_config(), config(startup="p"))
-        self.client.configure(config(startup="q"), save=True)
-        self.restart()
-        self.assertEqual(self.client.describe()["active_crc32"], zlib.crc32(data))
 
     def test_multi_frame_readback_and_configuration_size_limit(self):
         data = padded_program(2000)
