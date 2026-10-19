@@ -141,7 +141,7 @@ documented defaults. Plain `assert condition` faults the invocation when false.
 User helpers are positional, nonrecursive, statically inlined and must return a value
 on every path. Scalar arguments are copied; ctx/runtime/pixels arguments retain
 access to the caller objects. The subset supports scalar arithmetic, comparisons,
-conditionals, `range(bound)` loops, break/continue, int/float and two-argument
+conditionals, `range(bound)` and `while` loops, break/continue, int/float and two-argument
 min/max. Numbers use signed wrapping i32, binary32 floats, bool and packed RGB8.
 General Python objects, arbitrary imports, exceptions and dynamic allocation are
 unsupported. Input, Ramp, Sprite, PixelArray, Transform and ColorTransform are statically

@@ -363,3 +363,17 @@ input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid
 
 .audio-master .audio-meters { grid-template-columns: 1fr; }.audio-master .audio-meters > div { grid-template-columns: 68px minmax(0, 1fr) 32px; }.fader-animation > strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sidebar input[type=checkbox], .preset-layout input[type=checkbox] { accent-color: var(--accent); }
+
+/* Language tools share the same compile/preview/deploy workflow. */
+.editor-toolbar .toolbar-actions { flex-wrap: wrap; }
+#editor-language { width: auto; min-width: 120px; }
+.block-workspace { height: 560px; width: 100%; min-width: 0; position: relative; }
+.blocks-editor { min-width: 0; }
+.blocks-hint, .blocks-code, .language-guide { padding: 12px 16px; margin: 0; }
+.blocks-code, .language-guide { border-top: 1px solid var(--line, #34434a); font-size: 13px; }
+.blocks-code summary, .language-guide summary { cursor: pointer; }
+.blocks-code pre { max-height: 300px; overflow: auto; padding: 12px; background: #101820; color: #d7e5dc; }
+.blocklyToolbox { font-family: inherit; }
+@media (max-width: 700px) { .block-workspace { height: 480px; } .editor-toolbar { align-items: flex-start; gap: 8px; flex-wrap: wrap; } }
+
+.blocks-tools { display: flex; gap: 10px; padding: 0 16px 12px; }

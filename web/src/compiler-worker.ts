@@ -1,14 +1,21 @@
-import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs";
+import { lowerSource } from './languages/lower';
+import { sourceDiagnostic, type LoweredSource } from './languages/source';
 
-let pyodide;
-const status = message => self.postMessage({ type: "status", message });
+const pyodideUrl = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs";
+let initialize: (base: string) => void;
+const initialized = new Promise<string>(resolve => { initialize = resolve; });
+
+let pyodide: any;
+const status = (message: string) => self.postMessage({ type: "status", message });
 const ready = (async () => {
-  status("Loading Python…");
+  const baseUrl = await initialized;
+  const { loadPyodide } = await import(/* @vite-ignore */ pyodideUrl);
+  status("Loading the shared compiler…");
   pyodide = await loadPyodide();
   status("Loading the LightVM compiler…");
   pyodide.FS.mkdirTree("/editor/lightvm");
   await Promise.all(["__init__.py", "compiler.py", "compiler_core.py", "portable.py", "input_compiler.py", "sprite_compiler.py", "easing.py", "motion.py", "transitions.py", "release.py", "release.json"].map(async name => {
-    const response = await fetch(new URL(`./python/lightvm/${name}`, import.meta.url));
+    const response = await fetch(new URL(`./python/lightvm/${name}`, baseUrl));
     if (!response.ok) throw new Error(`Could not load ${name} (${response.status}). Rebuild the static editor assets.`);
     pyodide.FS.writeFile(`/editor/lightvm/${name}`, await response.text());
   }));
@@ -44,7 +51,7 @@ def editor_compile(source, target_json):
 `);
   self.postMessage({ type: "ready" });
 })().catch(error => {
-  self.postMessage({ type: "fatal", message: error.message || String(error) });
+  self.postMessage({ type: "fatal", message: error instanceof Error ? error.message : String(error) });
   throw error;
 });
 // Avoid an unhandled initialization rejection if no compile request is pending.
@@ -52,17 +59,24 @@ void ready.catch(() => {});
 
 let queue = Promise.resolve();
 self.onmessage = ({ data }) => {
+  if (data.type === 'initialize') { initialize(data.baseUrl); return; }
   queue = queue.then(async () => {
     try {
       await ready;
-      if (data.source.length > 65536) throw new Error("Keep source below 64 KiB for this prototype.");
-      pyodide.globals.set("editor_source", data.source);
+      let lowered: LoweredSource;
+      try { lowered = lowerSource(data.source, data.language ?? 'python'); }
+      catch (error) { self.postMessage({ type: 'compiled', id: data.id, diagnostics: [sourceDiagnostic(error)], bytecode: new Uint8Array(), manifest: {} }); return; }
+      pyodide.globals.set("editor_source", lowered.python);
       pyodide.globals.set("editor_target", JSON.stringify(data.target ?? null));
       const result = JSON.parse(pyodide.runPython("editor_compile(editor_source, editor_target)"));
+      if (data.language !== 'python') result.diagnostics = result.diagnostics.map((item: any) => ({
+        ...item, ...lowered.locations[item.line - 1], filename: data.filename,
+        message: item.message.replaceAll('@init', 'init').replaceAll('@render', 'render'),
+      }));
       result.bytecode = new Uint8Array(result.bytecode || []);
-      self.postMessage({ type: "compiled", id: data.id, ...result }, [result.bytecode.buffer]);
+      self.postMessage({ type: "compiled", id: data.id, ...result });
     } catch (error) {
-      self.postMessage({ type: "failed", id: data.id, message: error.message || String(error) });
+      self.postMessage({ type: "failed", id: data.id, message: error instanceof Error ? error.message : String(error) });
     }
   });
 };

@@ -41,3 +41,5 @@ current contract. Superseded implementations are available through Git history.
 - [A/B transition design](design/feature-proposal-ab-transitions.md) (implemented; see the guide above)
 
 [Versioning](versioning.md) defines the shared application release and minimum program requirements.
+
+- [JavaScript and blocks authoring](javascript-and-blocks.md): editor modes, APIs, language coverage and compiler design.

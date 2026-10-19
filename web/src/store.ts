@@ -2,7 +2,8 @@ import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolki
 import { useDispatch, useSelector } from 'react-redux';
 import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyController, NetworkConfig, NetworkStatus, ProgramState, Path, Program } from './types';
 import { DEFAULT_SOURCE } from './types';
-import { DEFAULT_EXAMPLE } from './examples';
+import { DEFAULT_EXAMPLE, defaultExample } from './examples';
+import { languageForFilename, type Language } from './languages/source';
 
 interface ControllerState {
   description: Description | null;
@@ -54,20 +55,30 @@ const controllerSlice = createSlice({
   },
 });
 interface EditorState {
-  source: string; filename: string; revision: number;
+  source: string; filename: string; language: Language; drafts: Partial<Record<Language, { source: string; filename: string }>>; revision: number;
   compiler: 'idle' | 'loading' | 'ready' | 'error'; message: string; checking: boolean;
   diagnostics: Diagnostic[]; artifact: { revision: number; bytes: number; manifest: Manifest } | null;
 }
 const initialEditor: EditorState = {
-  source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename, revision: 0, compiler: 'idle', message: 'Open Editor to load the compiler.',
+  source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename, language: 'python', drafts: {}, revision: 0, compiler: 'idle', message: 'Open Editor to load the compiler.',
   checking: false, diagnostics: [], artifact: null,
 };
 const editorSlice = createSlice({
   name: 'editor', initialState: initialEditor,
   reducers: {
     edited(state, action: PayloadAction<{ source: string; filename?: string }>) {
+      if (action.payload.filename) {
+        state.drafts[state.language] = { source: state.source, filename: state.filename };
+        state.filename = action.payload.filename; state.language = languageForFilename(state.filename);
+      }
       state.source = action.payload.source;
-      if (action.payload.filename) state.filename = action.payload.filename;
+      state.revision++; state.artifact = null; state.diagnostics = []; state.checking = true;
+    },
+    languageChanged(state, action: PayloadAction<Language>) {
+      if (state.language === action.payload) return;
+      state.drafts[state.language] = { source: state.source, filename: state.filename };
+      const next = state.drafts[action.payload] ?? defaultExample(action.payload);
+      state.language = action.payload; state.source = next.source; state.filename = next.filename;
       state.revision++; state.artifact = null; state.diagnostics = []; state.checking = true;
     },
     targetChanged(state) { state.revision++; state.artifact = null; state.diagnostics = []; state.checking = true; },

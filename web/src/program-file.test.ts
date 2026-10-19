@@ -11,3 +11,13 @@ it('rejects malformed files and oversized source', () => {
   for (const data of [null, {}, { schema: 'lightvm.library' }, { schema: 'lightvm.source', source: 1 }]) expect(() => parseProgramFile(JSON.stringify(data), 'file.json')).toThrow();
   expect(() => parseProgramFile('x'.repeat(65537), 'file.py')).toThrow(/64 KiB/);
 });
+
+it('imports native JavaScript and complete blocks workspaces', async () => {
+  const { blockExample } = await import('./languages/blocks');
+  expect(parseProgramFile('animation({ render(s,r,p) {} });', 'first.js').filename).toBe('first.js');
+  const source = blockExample();
+  const blocks = parseProgramFile(source, 'first.blocks.json');
+  expect(blocks.name).toBe('first'); expect(blocks.source).toBe(source);
+  expect(parseProgramFile(JSON.stringify(blocks), 'first.lightvm.json')).toEqual(blocks);
+  expect(() => parseProgramFile('{"blocks":{"blocks":[{"type":"unknown"}]}}', 'bad.blocks.json')).toThrow(/Unknown block/);
+});

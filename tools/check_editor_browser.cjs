@@ -80,7 +80,7 @@ async function grantLocalNetwork(cdp, page, origin) {
       socket.on('framesent', ({ payload }) => sent.feed(new Uint8Array(payload)));
       socket.on('framereceived', ({ payload }) => received.feed(new Uint8Array(payload)));
     });
-    const errors = []; page.on('pageerror', error => errors.push(error.message)); page.on("console", m => { if (m.type()==="error") console.log(m.text()); }); page.on("requestfailed", r => console.log("REQUEST FAILED", r.url(), r.failure()));
+    const errors = []; page.on('pageerror', error => { errors.push(error.message); console.error('BROWSER ERROR', error.stack); }); page.on("console", m => { if (m.type()==="error") console.log(m.text()); }); page.on("requestfailed", r => console.log("REQUEST FAILED", r.url(), r.failure()));
     // The serial API is simulated over a second logical HTTP session. Native
     // pipe/HTTP concurrency is covered independently by tests/test_http.py.
     await page.addInitScript(controller => {
@@ -119,6 +119,42 @@ async function grantLocalNetwork(cdp, page, origin) {
     await page.waitForFunction(() => document.querySelector('#path-health')?.textContent.includes('USB: connected'));
     await page.locator('#command-path').selectOption('http');
     await tab('Editor').click(); await ready();
+    // Both new frontends use the same real worker, host admission and exports.
+    await page.getByLabel('Language', { exact: true }).selectOption('javascript'); await ready();
+    for (const example of ['js_rainbow', 'js_pulse', 'js_trail', 'js_wipe']) {
+      await page.getByLabel('Load example').selectOption(example); await ready();
+    }
+    await page.getByLabel('Load example').selectOption('js_trail'); await ready();
+    await page.locator('#upload').click(); await page.getByText('Preview sent to lights.').waitFor();
+    await page.getByLabel('Language', { exact: true }).selectOption('blocks'); await ready();
+    await page.locator('.blocklySvg').first().waitFor();
+    await page.getByLabel('Load example').selectOption('blocks_pulse'); await ready();
+    await page.getByText('0.08', { exact: true }).click();
+    await page.locator('.blocklyHtmlInput').fill('0.25');
+    await page.locator('.blocklyHtmlInput').press('Enter');
+    await page.getByText('0.25', { exact: true }).waitFor(); await ready();
+    await page.locator('#upload').click(); await page.getByText('Preview sent to lights.').waitFor();
+    const blocksDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: /Save locally/ }).click();
+    const blockFile = await blocksDownload, blockPath = path.join(directory, 'pulse.lightvm.json');
+    await blockFile.saveAs(blockPath);
+    const blockData = JSON.parse(fs.readFileSync(blockPath, 'utf8'));
+    assert.equal(blockData.filename, 'pulse.blocks.json'); assert.ok(JSON.parse(blockData.source).blocks); assert.ok(blockData.source.includes('0.25'));
+    await page.screenshot({ path: path.join(root, 'build/editor-blocks-desktop.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'Show toolbox', exact: true }).waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Blocks must fit the mobile viewport');
+    await page.screenshot({ path: path.join(root, 'build/editor-blocks-mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1200 });
+    await page.getByLabel('Load example').selectOption('blocks_wipe'); await ready();
+    await page.locator('#source-file').setInputFiles(blockPath); await ready();
+    assert.equal(await page.locator('#filename').innerText(), 'pulse.blocks.json');
+    await page.getByLabel('Language', { exact: true }).selectOption('javascript'); await ready();
+    assert.equal(await page.locator('#filename').innerText(), 'trail.js');
+    await page.getByLabel('Language', { exact: true }).selectOption('python'); await ready();
+    assert.equal(await page.locator('#filename').innerText(), 'rainbow.py');
+    console.log('JavaScript and independent blocks: worker compilation, device preview, editable file round trips and draft switching passed');
+
     await page.locator('#upload').click();
     await page.getByText('Preview sent to lights.').waitFor();
     const downloading = page.waitForEvent('download');

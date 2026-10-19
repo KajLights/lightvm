@@ -8,8 +8,8 @@ controller. Drafts survive tab changes within the session.
 
 ## Editor: edit → preview → save locally → deploy
 
-Editor handles both Python animations and transitions. Choose a canonical example
-or **Import file** (`.py` or `.lightvm.json`), edit the source, then:
+Editor handles animations and transitions in Python, JavaScript and Blocks. Choose a canonical example
+or **Import file** (`.py`, `.js`, `.blocks.json` or `.lightvm.json`), edit the source, then:
 
 1. **Preview on device** runs the current compilation on the selected physical
    output. Animation preview replaces playback there. For transitions, first cue
@@ -17,14 +17,14 @@ or **Import file** (`.py` or `.lightvm.json`), edit the source, then:
    two-second fade towards the opposite endpoint. Firmware requires a stored name
    for transitions, so this single scratch entry remains in flash until replaced
    or deleted. It does not overwrite the named deployment.
-2. **Save locally** downloads a `.lightvm.json` file containing the Python source,
+2. **Save locally** downloads a `.lightvm.json` file containing the original editable source,
    filename, program name, preview settings and input bindings. It works offline
    from a controller and even while code has errors. Import that file to resume.
-   **Code & exports** also offers raw `.py` and compiled `.lbc` downloads.
+   **Code & exports** also offers raw `.py`, `.js` or `.blocks.json` and compiled `.lbc` downloads.
 3. **Deploy to device** stores the current compiled animation or transition under
    its program name, without selecting it or changing playback. Configure preset
    layer settings and input bindings under Configuration. Source remains in the
-   external file; compiled device programs cannot restore editable Python.
+   external file; compiled device programs cannot restore editable source.
 
 Preview settings and input recipes are collapsed by default. Deployment and
 preview require the current successful compilation, compatible firmware and
@@ -58,6 +58,15 @@ in the form and are cleared after attempted saves. A blank existing password kee
 its saved value; explicit open-network/clear-password controls remove it. Background
 polling retains focused fields and unsaved drafts. See [networking](networking.md)
 and [MQTT](mqtt.md).
+
+## JavaScript and blocks
+
+Editor now has Python, JavaScript and Blocks modes with separate session drafts.
+All modes share code checks, settings, inputs, device preview and deployment.
+Import/export supports `.py`, `.js`, `.blocks.json` and complete `.lightvm.json`
+source documents. Blocks compile through their own frontend into the shared
+LightVM compiler. See [JavaScript and blocks](javascript-and-blocks.md) for the
+language contracts, examples and visual toolbox.
 
 ## Mixer
 
@@ -128,7 +137,7 @@ CodeMirror editor uses a pinned CDN asset. Internet access is initially needed;
 offline operation is not guaranteed. Source is checked 220 ms after an edit. Only
 the current successful compilation can be uploaded or downloaded. Errors link
 back to the affected line. The canonical examples and compiler
-sources are packaged with the static build. Python source is parsed and never run by the
+sources are packaged with the static build. Source is parsed and never run by the
 compiler. Only the compiled bytecode is sent to a controller.
 
 The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
@@ -183,7 +192,7 @@ and [power-cycle recovery](boot-sequence.md#recovery-access-point).
     python3 tools/build_editor.py --output /tmp/lightvm-web
 
 The Vite output is build/web, with relative asset paths for GitHub Pages under
-/lightvm. The build packages the worker, three canonical LightVM Python modules
+/lightvm. The build packages the worker, canonical LightVM compiler modules and both additional language frontends
 and examples. The [Pages workflow](../.github/workflows/pages.yml) installs
 locked npm dependencies and publishes this directory on public main pushes
 after Pages is enabled with GitHub Actions as its source.

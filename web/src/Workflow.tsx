@@ -1,3 +1,4 @@
+import { EXTENSIONS, LANGUAGE_LABELS } from './languages/source';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { SettingFields } from './SettingFields';
@@ -19,6 +20,8 @@ export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode })
   const [saved, setSaved] = useState(''), [previewed, setPreviewed] = useState(''), [deployed, setDeployed] = useState('');
   const [stored, setStored] = useState('');
   const picker = useRef<HTMLInputElement>(null), filename = useRef(editor.filename);
+  const recipes = useRef(new Map<string, { name: string; settings: SettingsValues; inputs: InputBindings; validInputs: boolean; saved: string }>());
+  const savedSources = useRef(new Map<string, string>());
   const draft: ProgramFile = { schema: 'lightvm.source', filename: editor.filename, name, source: editor.source, settings, inputs };
   const signature = JSON.stringify(draft);
   const busy = Boolean(activity.operation), artifact = editor.artifact;
@@ -31,14 +34,18 @@ export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode })
   const selected = controller.programs.find(item => (item.type ?? item.profile) + ':' + item.name === stored);
   useEffect(() => {
     if (filename.current === editor.filename) return;
-    filename.current = editor.filename; setName(sourceName(editor.filename)); setSettings({}); setInputs({}); setValidInputs(true);
+    recipes.current.set(filename.current, { name, settings, inputs, validInputs, saved });
+    filename.current = editor.filename;
+    const previous = recipes.current.get(editor.filename);
+    setName(previous?.name ?? sourceName(editor.filename)); setSettings(previous?.settings ?? {});
+    setInputs(previous?.inputs ?? {}); setValidInputs(previous?.validInputs ?? true); setSaved(previous?.saved ?? '');
   }, [editor.filename]);
   useEffect(() => { setDeployed(''); setPreviewed(''); setStored(''); }, [controller.description?.controller_id, controller.description?.boot_id]);
   useEffect(() => {
-    const unload = (event: BeforeUnloadEvent) => { if (signature !== saved) { event.preventDefault(); event.returnValue = ''; } };
+    const unload = (event: BeforeUnloadEvent) => { if (signature !== saved || Object.entries(editor.drafts).some(([language, draft]) => language !== editor.language && savedSources.current.get(draft.filename) !== draft.source)) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', unload);
     return () => window.removeEventListener('beforeunload', unload);
-  }, [signature, saved]);
+  }, [signature, saved, editor.drafts, editor.language]);
   async function open(file?: File) {
     if (!file) return;
     const revision = controllers.snapshot.editor.revision;
@@ -48,6 +55,7 @@ export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode })
       if (revision !== controllers.snapshot.editor.revision) throw new Error('The draft changed while importing. Import the file again.');
       filename.current = document.filename;
       compiler.edit(document.source, document.filename); setName(document.name); setSettings(document.settings); setInputs(document.inputs); setValidInputs(true);
+      savedSources.current.set(document.filename, document.source);
       setSaved(JSON.stringify(document)); setPreviewed(''); setDeployed('');
       controllers.log('Imported ' + file.name + '.', 'success');
     });
@@ -93,13 +101,13 @@ export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode })
     await controllers.run('Saving source file', async () => {
       if (!validInputs) throw new Error('Fix the input recipe before saving the file.');
       if (Object.values(settings).some(value => typeof value !== 'boolean' && !Number.isFinite(value))) throw new Error('Enter a value for each enabled setting before saving the file.');
-      download(JSON.stringify(draft, null, 2), name + '.lightvm.json', 'application/json'); setSaved(signature);
+      download(JSON.stringify(draft, null, 2), name + '.lightvm.json', 'application/json'); savedSources.current.set(editor.filename, editor.source); setSaved(signature);
     });
   }
   return <>
-    <div className="file-actions"><div><span className="badge">{transition ? 'Transition' : artifact ? 'Animation' : 'Python program'}</span><span className="helper" role="status">{signature === saved ? 'File up to date' : 'Unsaved file changes'}</span></div>
+    <div className="file-actions"><div><span className="badge">{transition ? 'Transition' : artifact ? 'Animation' : LANGUAGE_LABELS[editor.language] + ' program'}</span><span className="helper" role="status">{signature === saved ? 'File up to date' : 'Unsaved file changes'}</span></div>
       <button id="open-source" className="secondary" disabled={busy} onClick={() => picker.current?.click()}>Import file</button>
-      <input ref={picker} id="source-file" type="file" hidden accept=".py,.json" aria-label="Import source file" onChange={event => void open(event.target.files?.[0])} />
+      <input ref={picker} id="source-file" type="file" hidden accept=".py,.js,.json" aria-label="Import source file" onChange={event => void open(event.target.files?.[0])} />
     </div>
     <div className="workspace editor-workspace">{editorPanel}<aside className="sidebar">
       <section className="card"><h2>Program</h2><label htmlFor="program-name">Program name</label><input id="program-name" value={name} maxLength={32} onChange={event => setName(event.target.value)} />
@@ -120,7 +128,7 @@ export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode })
       {artifact && <details className="card"><summary>Preview settings &amp; inputs</summary><fieldset disabled={busy}><SettingFields manifest={artifact.manifest} values={settings} onChange={setSettings} prefix="draft" />
         <InputRecipeFields key={editor.filename} manifest={artifact.manifest} values={inputs} onChange={setInputs} onValidity={setValidInputs} prefix="draft" /></fieldset></details>}
       <details className="card"><summary>Code &amp; exports</summary><p id="artifact-size" className="helper">{artifact ? artifact.bytes.toLocaleString() + ' bytes · ' + artifact.manifest.profile : editor.message}</p>
-        <div className="button-pair"><button className="quiet" onClick={() => download(editor.source, editor.filename, 'text/x-python')}>Export .py</button><button id="download" className="quiet" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), name + '.lbc', 'application/octet-stream'); }}>Download .lbc</button></div>
+        <div className="button-pair"><button className="quiet" onClick={() => download(editor.source, editor.filename, editor.language === 'blocks' ? 'application/json' : 'text/plain')}>Export {EXTENSIONS[editor.language]}</button><button id="download" className="quiet" disabled={!artifact} onClick={() => { if (compiler.artifact) download(new Uint8Array(compiler.artifact.bytecode), name + '.lbc', 'application/octet-stream'); }}>Download .lbc</button></div>
         {editor.compiler === 'error' && <button onClick={() => compiler.retry()}>Retry compiler</button>}
       </details>
     </aside></div>

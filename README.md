@@ -2,7 +2,7 @@
 
 LightVM is a [Kajlights](https://kajlights.com/) runtime for programmable lighting
 on microcontrollers and native hosts. The browser or a computer compiles supported
-Python source into a portable `.lbc` program. Controller firmware executes the
+Python, JavaScript and visual blocks into portable `.lbc` programs. Controller firmware executes the
 program and sends data to the LEDs.
 
 Start with [controllers and the development workflow](docs/architecture.md) for
@@ -235,3 +235,5 @@ The current vocabulary and breaking API names are defined in
 [Controller concepts](docs/architecture.md#controller-concepts). Earlier
 experimental installs require the documented
 [clean installation](docs/architecture.md#clean-installation-after-the-naming-change).
+
+See [JavaScript and blocks](docs/javascript-and-blocks.md) for the editor modes, language contracts and visual toolbox.

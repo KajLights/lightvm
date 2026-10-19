@@ -7,13 +7,13 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const staticAssets = resolve(root, 'build/editor-assets');
 
-// Package the canonical compiler and leave the worker's remote imports intact.
+// Package the canonical compiler; Vite bundles the language frontends in the worker.
 rmSync(resolve(staticAssets, 'python'), { recursive: true, force: true });
 mkdirSync(resolve(staticAssets, 'python/lightvm'), { recursive: true });
 // Remove generated examples from both the previous and current layouts.
 rmSync(resolve(staticAssets, 'samples'), { recursive: true, force: true });
 rmSync(resolve(staticAssets, 'examples'), { recursive: true, force: true });
-cpSync(resolve(root, 'web/compiler-worker.mjs'), resolve(staticAssets, 'compiler-worker.mjs'));
+rmSync(resolve(staticAssets, 'compiler-worker.mjs'), { force: true });
 for (const name of ['__init__.py', 'compiler.py', 'compiler_core.py', 'portable.py', 'input_compiler.py', 'sprite_compiler.py', 'easing.py', 'motion.py', 'transitions.py', 'release.py', 'release.json']) {
   cpSync(resolve(root, 'lightvm', name), resolve(staticAssets, 'python/lightvm', name));
 }

@@ -89,3 +89,18 @@ it('keeps source downloads available with code errors', () => {
   expect(screen.getByRole('button', { name: /Preview on device/ })).toBeDisabled();
   expect(screen.getByRole('button', { name: /Deploy to device/ })).toBeDisabled();
 });
+
+it('keeps separate language drafts and invalidates compiled artifacts on switching', () => {
+  const { store } = workspace();
+  fireEvent.change(screen.getByLabelText('Python source'), { target: { value: '# keep me' } });
+  fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'javascript' } });
+  expect((screen.getByLabelText('JavaScript source') as HTMLTextAreaElement).value).toContain('export function render');
+  fireEvent.change(screen.getByLabelText('JavaScript source'), { target: { value: '// keep this too' } });
+  expect(screen.getByRole('button', { name: /Export .js/ })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'python' } });
+  expect(screen.getByLabelText('Python source')).toHaveValue('# keep me');
+  fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'javascript' } });
+  expect(screen.getByLabelText('JavaScript source')).toHaveValue('// keep this too');
+  expect(store.getState().editor.artifact).toBeNull();
+  expect(screen.getByRole('button', { name: /Deploy to device/ })).toBeDisabled();
+});

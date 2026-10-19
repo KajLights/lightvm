@@ -1,12 +1,13 @@
 import { releaseError } from './release';
 import type { AppStore } from './store';
 import { activityActions, editorActions } from './store';
+import type { Language } from './languages/source';
 import type { Compilation, Description, Manifest } from './types';
 
 export function programCompatibility(target: Description, manifest: Manifest): string | null {
   if (manifest.schema !== 'lightvm.program' || !['animation', 'transition'].includes(manifest.profile) || manifest.pixels?.format !== 'rgba8-premul')
     return 'Recompile this program with the release-based compiler.';
-  if (manifest.profile === 'transition' && !target.transition_programs) return 'Install firmware with Python transition support.';
+  if (manifest.profile === 'transition' && !target.transition_programs) return 'Install firmware with transition program support.';
   if (manifest.inputs?.length && !target.live_inputs) return 'Install firmware with live input support.';
   return releaseError(target.version, manifest.requires);
 }
@@ -27,10 +28,11 @@ export class Compiler {
   constructor(private store: AppStore) {}
   start() {
     if (this.worker) return;
-    this.store.dispatch(editorActions.compiler({ status: 'loading', message: 'Loading Python…' }));
+    this.store.dispatch(editorActions.compiler({ status: 'loading', message: 'Loading the LightVM compiler…' }));
     try {
-      this.worker = new Worker(assetUrl('compiler-worker.mjs'), { type: 'module' });
+      this.worker = new Worker(new URL('./compiler-worker.ts', import.meta.url), { type: 'module' });
       this.initializationDeadline = setTimeout(() => this.fail('Compiler download timed out. Check your internet connection and retry.'), 60000);
+      this.worker.postMessage({ type: 'initialize', baseUrl: assetUrl('./') });
       this.worker.onerror = event => this.fail(event.message || 'The compiler could not load. Check your internet connection and retry.');
       this.worker.onmessage = ({ data }) => {
         if (data.type === 'status') this.store.dispatch(editorActions.compiler({ status: 'loading', message: data.message }));
@@ -38,7 +40,7 @@ export class Compiler {
         else if (data.type === 'ready') {
           clearTimeout(this.initializationDeadline);
           this.store.dispatch(editorActions.compiler({ status: 'ready', message: 'Compiler ready' }));
-          this.store.dispatch(activityActions.log({ text: 'Python compiler ready. Compilation stays in this browser.', kind: 'success' }));
+          this.store.dispatch(activityActions.log({ text: 'LightVM compiler ready. Compilation stays in this browser.', kind: 'success' }));
           this.check();
         } else if (data.id === this.store.getState().editor.revision) {
           clearTimeout(this.compilationDeadline);
@@ -63,11 +65,12 @@ export class Compiler {
     if (editor.compiler !== 'ready' || !this.worker) return;
     clearTimeout(this.compilationDeadline);
     this.compilationDeadline = setTimeout(() => this.fail('Compilation timed out. Retry the compiler or simplify the source.'), 10000);
-    this.worker.postMessage({ id: editor.revision, source: editor.source, target: null });
+    this.worker.postMessage({ id: editor.revision, source: editor.source, language: editor.language, filename: editor.filename, target: null });
   }
   edit(source: string, filename?: string) {
     this.store.dispatch(editorActions.edited({ source, filename }));
   }
+  language(language: Language) { this.store.dispatch(editorActions.languageChanged(language)); }
   fail(message: string) {
     this.stop();
     this.store.dispatch(editorActions.compiler({ status: 'error', message }));

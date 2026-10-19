@@ -500,6 +500,18 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     if self.typ(start) != I or self.typ(stop) != I: self.fail(n, 'fill range must be i32')
                     self.emit('RESOURCE_FILL', ref, val, start, stop)
                 else: self.expr(call)
+            elif isinstance(n, ast.While) and not n.orelse:
+                # Shared frontend loop primitive. Like for loops, execution is
+                # resumable under the VM instruction budget, never run at compile time.
+                head = len(self.code)
+                cond = self.truth(self.expr(n.test)); end = self.emit('JZ', cond)
+                before = dict(self.env)
+                breaks, continues = [], []; self.loop_stack.append((breaks, continues))
+                self.depth += 1; self.statements(n.body); self.depth -= 1; self.loop_stack.pop()
+                for jump in continues: self.code[jump][4] = head
+                self.emit('JMP', imm=head)
+                for jump in breaks + [end]: self.code[jump][4] = len(self.code)
+                self.env = before
             elif isinstance(n, ast.For) and isinstance(n.target, ast.Name) and isinstance(n.iter, ast.Call) and getattr(n.iter.func, 'id', '') == 'range' and len(n.iter.args) == 1 and not n.iter.keywords and not n.orelse:
                 if n.target.id in self.names or n.target.id in self.caps or n.target.id in self.imports: self.fail(n, 'loop variable shadows a binding')
                 stop = self.expr(n.iter.args[0])

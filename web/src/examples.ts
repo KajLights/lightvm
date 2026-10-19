@@ -1,3 +1,9 @@
+import { blockExample } from './languages/blocks';
+import type { Language } from './languages/source';
+import jsRainbow from '../../examples/javascript/rainbow.js?raw';
+import jsPulse from '../../examples/javascript/pulse.js?raw';
+import jsWipe from '../../examples/javascript/wipe.js?raw';
+import jsTrail from '../../examples/javascript/trail.js?raw';
 import rainbow from '../../examples/animations/rainbow.py?raw';
 import stars from '../../examples/animations/stars.py?raw';
 import color from '../../examples/animations/color.py?raw';
@@ -8,7 +14,8 @@ import eye from '../../examples/animations/eye.py?raw';
 import crossfade from '../../examples/transitions/crossfade.py?raw';
 import wipe from '../../examples/transitions/wipe.py?raw';
 
-export const EXAMPLES = [
+export interface Example { id: string; filename: string; label: string; source: string; description: string; language: Language }
+const PYTHON_EXAMPLES = [
   { id: 'transition_crossfade', filename: 'crossfade.py', label: 'crossfade.py · transition', source: crossfade,
     description: 'A Python transition that blends the prepared A and B compositions at the supplied progress.' },
   { id: 'transition_wipe', filename: 'wipe.py', label: 'wipe.py · transition', source: wipe,
@@ -29,6 +36,15 @@ export const EXAMPLES = [
     description: 'Configurable eyes: loop, bounce, chase or inward wipe. Retain swept paint, or add timed trails with trail_seconds and samples. One eye can also run in its own composition layer.' },
 ];
 
+export const EXAMPLES: Example[] = [
+  ...PYTHON_EXAMPLES.map(example => ({ ...example, language: 'python' as const })),
+  { id: 'js_rainbow', filename: 'rainbow.js', label: 'Rainbow · live inputs', source: jsRainbow, language: 'javascript', description: 'Start with a loop and a colour wheel. Try changing the timer duration or brightness.' },
+  { id: 'js_pulse', filename: 'pulse.js', label: 'Breathe · helpers & callbacks', source: jsPulse, language: 'javascript', description: 'An arrow function and an animation object make a gentle breathing light.' },
+  { id: 'js_trail', filename: 'trail.js', label: 'Comet · retained drawing', source: jsTrail, language: 'javascript', description: 'A PixelArray remembers a fading trail. Change its speed or colour.' },
+  { id: 'js_wipe', filename: 'wipe.js', label: 'Wipe · transition', source: jsWipe, language: 'javascript', description: 'Reveal composition B with smooth motion. Try reversing the direction.' },
+  ...(['rainbow', 'pulse', 'wipe'] as const).map(kind => ({ id: 'blocks_' + kind, filename: kind + '.blocks.json', label: kind === 'rainbow' ? 'Rainbow · first loop' : kind === 'pulse' ? 'Breathe · motion' : 'Wipe · transition', source: blockExample(kind), language: 'blocks' as const, description: kind === 'wipe' ? 'Mix two compositions with the progress block. Try another transition block.' : 'Change a number, try another colour, or open a category to discover more blocks.' })),
+];
+export function defaultExample(language: Language) { return EXAMPLES.find(example => example.language === language && (language !== 'python' || example.id === 'rainbow'))!; }
 export const DEFAULT_EXAMPLE = EXAMPLES.find(example => example.id === 'rainbow')!;
 export function exampleForSource(source: string) {
   return EXAMPLES.find(example => example.source === source);
