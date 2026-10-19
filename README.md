@@ -175,11 +175,13 @@ npm ci
 python3 tools/serve_editor.py
 ```
 
-The [browser workspace](docs/web-editor.md) follows Edit → physical Preview → Save
-animation → optional Compose → Save preset. It keeps editable animation versions
-and exportable presets in a browser library, and saves shared compiled programs
-and compact preset recipes on the controller. Preview addresses the selected output
-over HTTP/USB. The editor and example dropdown share the canonical sources.
+The [browser workspace](docs/web-editor.md) has Editor, Configuration, Mixer and
+Audio Playground tabs. Editor follows Edit → physical Preview → Save locally →
+Deploy to device for animations and transitions. Editable source and settings are
+imported/exported as external files; there is no browser library or filesystem
+integration. Configuration manages device presets, outputs, Wi-Fi and MQTT. Mixer
+cues presets on A/B buses with transition selection, manual mixing, cuts, timed fades
+and swaps. Audio Playground tunes signal input windows and output ranges.
 [MQTT control and Home Assistant lights](docs/mqtt.md) provide optional power and preset selection
 through an existing broker, with one light and one Preset selector per output.
 Pico W also supports the [Pico RGB Keypad](docs/mqtt.md#keypad-and-rgb-indicators):

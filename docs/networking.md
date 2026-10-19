@@ -116,7 +116,7 @@ the discovery-only listener on port 80, as in station mode.
 AP mode provides local controller access without internet routing or a captive
 portal. Open the hosted editor before joining the AP, or build and serve it on
 localhost following [the editor instructions](web-editor.md#run-locally).
-Visit Develop while online if source compilation will be needed: its external
+Visit Editor while online if source compilation will be needed: its external
 compiler/editor assets must already be loaded, and offline caching is not
 guaranteed. Stored programs and precompiled bytecode can be managed through the API
 without those compiler assets. The optional [power-cycle recovery policy](boot-sequence.md#recovery-access-point)

@@ -83,7 +83,7 @@ The Python client provides `recall_preset`, `set_power` and `swap_transition`.
 The CLI exposes `--recall-preset NAME`, `--power on|off` and `--swap-transition`.
 The editor provides **Preset transition** settings in the preset composer and
 **Controller preset transition** for an existing stored preset. **Run on output** and
-HA use recalls; the A/B and Fader panels keep fixed manual slots.
+HA use recalls; the Mixer buses keep fixed manual slots.
 
 ## Progress and effects
 
@@ -209,12 +209,11 @@ client.update_transition_source("sensor", state["driver"]["assignment"], 42,
 The CLI supports `--slot B --composition FILE`, `--get-transition`, `--progress 35`,
 `--run-to 100 --duration-ms 2000` (add `--interval-ms 10000` to alternate), `--hold-transition`, `--transition wipe --settings '{"reverse": true}'`,
 `--assign-source NAME`, and `--source-value P --source-name NAME --assignment TOKEN`.
-The browser's A/B panel loads saved controller presets into either slot, selects a
-stored transition program, sets progress, cuts to endpoints and starts timed
-movements. The separate **Fader** workspace tab supplies continuous external
-input through USB or HTTP, with explicit takeover and Hold, and can start the
-repeating timed demo. See [fader controls](web-editor.md#fader-and-timed-transitions).
-The preset composer can preview into A or B.
+The browser's **Mixer** loads saved controller presets into either slot, selects a
+stored transition program, cuts to endpoints, swaps A/B at endpoints and starts
+timed movement or a repeating loop. Its crossfader supplies continuous external
+input through the selected USB, HTTP or WebSocket connection, with explicit takeover
+and Hold. See [Mixer controls](web-editor.md#mixer).
 
 ## Legacy custom mask and paint programs
 

@@ -63,18 +63,17 @@ schema, profile, drawing API or interpreter revision for such additions.
 
 Firmware `describe` and `STATUS` report `version`. Target-aware Python compilation
 checks that version and the module limit. The editor compiles independently of
-the connected controller, so source editing, download and browser saves remain
+the connected controller, so source editing, download and external file saves remain
 available. Preview/upload checks the controller release; firmware independently checks
 admission before activation. A rejected package leaves the running animation and
 its generation intact. Optional services use capability booleans such as `compositions`,
 `presets`, and `connections`, with resource limits reported separately.
 
-Browser library reads validate structure and embedded metadata without requiring
-execution support. Saved source, settings, presets and export remain available
-when a program requires newer firmware or belongs to a pre-baseline experiment.
-Such programs receive a compatibility diagnostic at execution time. Invalid JSON,
-corrupted metadata and checksum failures still require recovery from an intact
-backup; unreadable local data is preserved.
+Editor imports `.py` and `lightvm.source` files without requiring a controller.
+Source remains editable and exportable when the connected firmware cannot execute
+it. Preview and deployment check current compilation and release compatibility.
+The abandoned browser library and its compiled versions are no longer loaded or
+migrated; recover Python from external backups and recompile.
 
 ## Development and releases
 
@@ -87,7 +86,7 @@ and minimum release documented here or in release notes. No legacy interpreter,
 automatic runtime adapter or per-release execution switch is implied.
 
 Document kinds (`lightvm.program`, `lightvm.config`, `lightvm.network`,
-`lightvm.composition`, `lightvm.preset`, `lightvm.library`, `lightvm.discovery`) identify
+`lightvm.composition`, `lightvm.preset`, `lightvm.source`, `lightvm.discovery`) identify
 the kind of data, without independent version counters. The `animation` source
 profile is a fixed authoring name.
 

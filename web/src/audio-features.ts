@@ -7,18 +7,23 @@ export const DEFAULT_RESPONSE: AudioResponse = { gainDb: 0, floorDb: -50, releas
 export const EYE_INPUTS = ['position', 'width', 'hue', 'brightness'] as const;
 export type EyeInput = typeof EYE_INPUTS[number];
 export type EyeValues = Record<EyeInput, number>;
-export interface AudioMapping { signal: AudioSignal; minimum: number; maximum: number }
+export interface AudioMapping { signal: AudioSignal; inputMinimum: number; inputMaximum: number; minimum: number; maximum: number }
 export type EyeMappings = Record<EyeInput, AudioMapping>;
 export const DEFAULT_MAPPINGS: EyeMappings = {
-  position: { signal: 'centroid', minimum: 0.05, maximum: 0.95 },
-  width: { signal: 'bass', minimum: 0.04, maximum: 0.4 },
-  hue: { signal: 'treble', minimum: 0, maximum: 0.85 },
-  brightness: { signal: 'level', minimum: 0, maximum: 1 },
+  position: { signal: 'centroid', inputMinimum: 0, inputMaximum: 1, minimum: 0.05, maximum: 0.95 },
+  width: { signal: 'bass', inputMinimum: 0, inputMaximum: 1, minimum: 0.04, maximum: 0.4 },
+  hue: { signal: 'treble', inputMinimum: 0, inputMaximum: 1, minimum: 0, maximum: 0.85 },
+  brightness: { signal: 'level', inputMinimum: 0, inputMaximum: 1, minimum: 0, maximum: 1 },
 };
 const clamp = (value: number) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+export function normalizeAudioSignal(value: number, mapping: AudioMapping) {
+  const span = mapping.inputMaximum - mapping.inputMinimum;
+  if (!Number.isFinite(span) || span <= 0 || !Number.isFinite(value)) return 0;
+  return clamp((value - mapping.inputMinimum) / span);
+}
 export function mapAudioToEye(features: AudioFeatures, mappings: EyeMappings): EyeValues {
   return Object.fromEntries(EYE_INPUTS.map(name => {
-    const mapping = mappings[name], amount = clamp(features[mapping.signal]);
+    const mapping = mappings[name], amount = normalizeAudioSignal(features[mapping.signal], mapping);
     return [name, clamp(mapping.minimum + amount * (mapping.maximum - mapping.minimum))];
   })) as EyeValues;
 }

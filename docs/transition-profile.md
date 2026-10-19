@@ -111,9 +111,9 @@ version pinned until selected again. Referenced programs cannot be deleted.
 
 `program_list` includes `profile: "animation"` or `"transition"` for supported
 packages. Firmware advertises `transition_programs: true`. The browser compiles
-these same examples, saves editable versions in its library, saves and selects
-named output programs, and lists stored transitions with their settings in the
-Fader and A/B selectors. Program
+these same examples, saves editable source to external files, deploys
+named programs, and lists stored transitions with their settings in
+Mixer and Configuration presets. Program
 storage is limited by available capacity. Animations and transitions have separate
 name namespaces; `animation/wipe` and `transition/wipe` can coexist.
 `program_list` accepts a `type` filter; get/delete use the type to disambiguate names.

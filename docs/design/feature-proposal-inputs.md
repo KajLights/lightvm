@@ -8,7 +8,7 @@ below include future behaviour and should not be treated as the current API.
 Date: 17 October 2026
 
 Implemented slice, 18 October 2026: the controller workspace's
-[Fader tab](../web-editor.md#fader-and-timed-transitions) supplies a virtual slider
+[Mixer tab](../web-editor.md#mixer) supplies a virtual slider
 through the existing external transition source API and supports switching to
 native timed transitions. General signal registries, hardware adapters and live
 animation-variable bindings below were proposed at that point.

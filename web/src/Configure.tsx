@@ -1,3 +1,4 @@
+import { Presets } from './Presets';
 import { useEffect, useMemo, useState } from 'react';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
 import { useRuntime } from './runtime';
@@ -106,7 +107,7 @@ function Hardware() {
           </select>
         </>}
         <p className="helper">After a restart or power cut, stay off, restore the last selected preset and on/off state, or turn on with a saved preset. New outputs stay off. Temporary previews are not remembered.</p>
-        <p className="helper">Each preset supplies its transition for selection, on/off and startup. Edit the transition with the preset in Develop.</p>
+        <p className="helper">Each preset supplies its transition for selection, on/off and startup. Edit the transition under Presets.</p>
         {controller.description?.mqtt_supported && <>
           <label htmlFor={'ha-preset-' + index}>Home Assistant default preset</label>
           <select id={'ha-preset-' + index} value={output.home_assistant?.default_preset || ''} onChange={event => setOutput(index, item => { if (event.target.value) item.home_assistant = { ...item.home_assistant, default_preset: event.target.value, presets: Array.from(new Set([...(item.home_assistant?.presets || []), event.target.value])) }; else delete item.home_assistant; })}>
@@ -233,10 +234,11 @@ function Network() {
 }
 
 export function Configure() {
-  const controller = useAppSelector(state => state.controller), [section, setSection] = useState<'output' | 'network'>('output');
+  const controller = useAppSelector(state => state.controller), [section, setSection] = useState<'presets' | 'output' | 'network'>('presets');
   const networkSupported = Boolean(controller.description?.wifi_supported || controller.description?.http_supported || controller.description?.mqtt_supported);
-  return <><div className="intro"><div><p className="eyebrow">CONFIGURE</p><h1>Make the controller yours.</h1><p>Set its outputs, power-on behavior and network access.</p></div></div>
-    <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{controller.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}</nav>
+  return <><div className="intro"><div><p className="eyebrow">02 / CONFIGURATION</p><h1>Make the controller yours.</h1><p>Build presets, configure outputs, and connect Wi-Fi and MQTT.</p></div></div>
+    <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'presets' ? 'page' : undefined} onClick={() => setSection('presets')}>Presets</button><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{controller.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}</nav>
+    <div hidden={section !== 'presets'}><Presets /></div>
     <div hidden={section !== 'output'}><Hardware /></div>
     {networkSupported && <div hidden={section !== 'network'}><Network /></div>}
   </>;

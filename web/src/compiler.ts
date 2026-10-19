@@ -1,6 +1,6 @@
 import { releaseError } from './release';
 import type { AppStore } from './store';
-import { activityActions, DRAFT_KEY, editorActions } from './store';
+import { activityActions, editorActions } from './store';
 import type { Compilation, Description, Manifest } from './types';
 
 export function programCompatibility(target: Description, manifest: Manifest): string | null {
@@ -67,11 +67,6 @@ export class Compiler {
   }
   edit(source: string, filename?: string) {
     this.store.dispatch(editorActions.edited({ source, filename }));
-    try {
-      const editor = this.store.getState().editor;
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ source, filename: editor.filename }));
-      this.store.dispatch(editorActions.draftSaved(true));
-    } catch { this.store.dispatch(editorActions.draftSaved(false)); }
   }
   fail(message: string) {
     this.stop();

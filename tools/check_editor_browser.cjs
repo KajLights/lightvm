@@ -99,255 +99,106 @@ async function grantLocalNetwork(cdp, page, origin) {
       }
       Object.defineProperty(navigator, 'serial', { value: { requestPort: async () => new Port() } });
     }, url);
-    await page.goto(editorUrl);
-    await page.waitForFunction(() => document.querySelector('#discovery-state')?.textContent.includes('1 controller found'));
-    assert.equal(await page.locator('#http-address').inputValue(), url);
-    assert.equal(await page.locator('#nearby-controllers option').count(), 2);
+
+    await page.goto(editorUrl + '/#/controllers');
+    await page.locator('#http-address').fill(url);
     await page.locator('#connect-http').click();
-    await page.waitForFunction(() => location.hash.endsWith('/configure') && document.querySelector('#output-add'));
+    await page.waitForURL('**/configuration');
+    await page.getByRole('button', { name: 'Output & startup', exact: true }).click();
+    await page.locator('#output-add').click();
+    await page.locator('#config-count-0').fill('24');
+    await page.locator('#config-save').click();
+    await page.waitForFunction(() => document.querySelector('#output-binding')?.textContent.includes('24 pixels') && !document.querySelector('#config-fields')?.disabled);
     const controllerInfo = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--describe'], { encoding: 'utf8' }));
     assert.match(await page.locator('#path-health').innerText(), controllerInfo.websocket_supported ? /WebSocket: connected/ : /HTTP: connected/);
-    assert.equal(counts.sockets, controllerInfo.websocket_supported ? 1 : 0);
-    console.log('Controller picker selected ' + (controllerInfo.websocket_supported ? 'WebSocket' : 'HTTP') + ' and opened configuration: passed');
-
-    await page.locator('#output-add').click();
-    await page.locator('#config-count-0').fill('5');
-    await page.locator('#output-add').click();
-    await page.locator('#config-pin-1').selectOption('GP17');
-    await page.locator('#config-count-1').fill('7');
-    await page.locator('#config-save').click();
-    await page.waitForFunction(() => document.querySelector('#output-binding')?.textContent.includes('5 pixels') && !document.querySelector('#config-fields')?.disabled);
-    const activeConfig = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--get-config'], { encoding: 'utf8' }));
-    assert.equal(activeConfig.outputs[0].config.count, 5);
-    console.log('Output form saved hardware configuration: passed');
-
+    console.log('Connected current simulator and configured output: passed');
+    const tab = name => page.getByRole('navigation', { name: 'Workspace', exact: true }).getByRole('link', { name, exact: true });
+    const ready = () => page.waitForFunction(() => document.querySelector('#check-state')?.textContent === 'All checks passed' && !document.querySelector('#deploy')?.disabled, null, { timeout: 90000 });
     await page.getByRole('link', { name: 'Connections & controllers' }).click();
     await page.locator('#connect').click();
-    await page.waitForFunction(() => location.hash.endsWith('/develop') && document.querySelector('#path-health')?.textContent.includes('USB: connected'));
+    await page.waitForFunction(() => document.querySelector('#path-health')?.textContent.includes('USB: connected'));
     await page.locator('#command-path').selectOption('http');
-    await page.waitForFunction(() => !document.querySelector('#command-path')?.disabled);
-    await page.waitForFunction(() => ['Compiler ready', 'Compiler unavailable'].includes(document.querySelector('#compiler-state')?.textContent), null, { timeout: 70000 });
-    const compiler = await page.locator('#compiler-state').innerText();
-    assert.equal(compiler, 'Compiler ready', 'This check requires the pinned browser compiler assets');
-
-    await page.locator('#preview-output').selectOption('lights2');
-    await page.waitForFunction(() => !document.querySelector('#preview-output')?.disabled);
+    await tab('Editor').click(); await ready();
     await page.locator('#upload').click();
-    await page.waitForFunction(() => document.querySelector('#playback-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
-    // Exercise the actual live-input path before saving the reusable Rainbow.
-    await page.getByLabel('Load example').selectOption('eye');
-    await page.waitForFunction(() => document.querySelector('#filename')?.textContent === 'eye.py' && !document.querySelector('#upload')?.disabled);
-    await page.locator('#upload').click();
-    await page.getByRole('heading', { name: 'Live inputs', exact: true }).waitFor();
-    await page.waitForFunction(() => !document.querySelector('#upload')?.disabled && document.querySelector('[aria-label="hue value"]'));
-    const eyeBefore = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--program-state'], { encoding: 'utf8' }));
-    for (const [name, value] of [['position', 0.75], ['width', 0.3], ['hue', 0.5], ['brightness', 0.4]]) {
-      const applied = waitForCommand('program_inputs');
-      await page.getByLabel(name + ' value', { exact: true }).evaluate((input, value) => {
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(value));
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }, value);
-      await applied;
+    await page.getByText('Preview sent to lights.').waitFor();
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('button', { name: /Save locally/ }).click();
+    const downloaded = await downloading, file = path.join(directory, downloaded.suggestedFilename());
+    await downloaded.saveAs(file);
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).schema, 'lightvm.source');
+    await page.locator('#deploy').click(); await page.getByText('rainbow deployed.').waitFor();
+    for (const example of ['stars', 'transition_crossfade']) {
+      await page.getByLabel('Load example').selectOption(example); await ready();
+      await page.locator('#deploy').click(); await page.getByText(example.replace('transition_', '') + ' deployed.').waitFor();
     }
-    const eyeAfter = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--program-state'], { encoding: 'utf8' }));
-    assert.equal(eyeAfter.generation, eyeBefore.generation);
-    assert.equal(eyeAfter.inputs.position.binding.value, 0.75);
-    assert.equal(eyeAfter.inputs.hue.binding.value, 0.5);
-    assert.ok(Math.abs(eyeAfter.inputs.brightness.binding.value - 0.4) < 0.000001);
-    const live = page.getByRole('region', { name: 'Live animation inputs' });
-    await live.screenshot({ path: path.join(root, 'build/inputs-eye-desktop.png') });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await live.screenshot({ path: path.join(root, 'build/inputs-eye-mobile.png') });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-    await page.setViewportSize({ width: 1440, height: 1200 });
-    const restored = waitForCommand('program_inputs');
-    await live.getByRole('button', { name: 'Restore default' }).first().click();await restored;
-    console.log('Eye position, width, hue and brightness changed live without restarting; default timer and desktop/mobile controls: passed');
-    await page.getByLabel('Load example').selectOption('rainbow');
-    await page.waitForFunction(() => document.querySelector('#filename')?.textContent === 'rainbow.py' && !document.querySelector('#upload')?.disabled);
-    await page.locator('.input-recipe').first().locator('summary').click();
-    await page.locator('#draft-inputs').fill(JSON.stringify({ phase: { driver: { kind: 'ramp', duration: 30, mode: 'repeat' } } }));
-    await page.locator('#upload').click();
-    await page.waitForFunction(() => !document.querySelector('#upload')?.disabled);
-    await page.locator('#animation-name').fill('Browser rainbow');
-    await page.getByRole('button', { name: 'Save animation', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#saved-animation')?.value && document.querySelector('#activity')?.textContent.includes('Browser rainbow v1'));
-    await page.getByRole('button', { name: 'Add as layer', exact: true }).click();
-    await page.locator('.layer-card').nth(1).locator('.input-recipe summary').click();
-    await page.locator('#layer2-inputs').fill(JSON.stringify({ phase: { driver: { kind: 'ramp', duration: 5, mode: 'repeat' } } }));
-    await page.locator('.layer-card').nth(1).locator('.layer-controls select').selectOption('screen');
-    await page.getByRole('button', { name: 'Move layer 2 down', exact: true }).click();
-    await page.getByRole('button', { name: 'Preview preset →', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Preset preview running'));
-    await page.locator('#preset-name').fill('browser');
-    await page.getByRole('button', { name: 'Save preset', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#saved-preset')?.value);
-    await page.getByRole('button', { name: 'Save preset to controller', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#controller-preset')?.value === 'browser');
-    const savedLibrary = await page.evaluate(() => JSON.parse(localStorage.getItem('lightvm.library.v1')));
-    assert.equal(savedLibrary.animations.length, 1);
-    assert.equal(savedLibrary.presets[0].layers.length, 2);
-    assert.equal(savedLibrary.presets[0].layers[0].inputs.phase.driver.duration, 5);
-    assert.equal(savedLibrary.presets[0].layers[0].blend, 'screen');
-    assert.equal(savedLibrary.presets[0].layers[1].inputs.phase.driver.duration, 30);
-    const programName = (await page.locator('#stored-program option').nth(1).getAttribute('value')).slice('animation:'.length);
-    await page.locator('#command-path').selectOption('usb');
-    await page.waitForFunction(() => !document.querySelector('#command-path')?.disabled);
-    await page.getByRole('button', { name: 'Run on output', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Preset running on'));
-    console.log('Selected second output, previewed settings, saved source, composed two layers, saved and ran controller preset: passed');
-    await page.locator('#transition-slot-B').selectOption('browser');
-    await page.getByRole('button', { name: 'Load B', exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
-    const transitionApplied = waitForCommand('transition_set');
-    await page.locator('#transition-progress').evaluate(input => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, '35');
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    await transitionApplied;
-    await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
-    const transition = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    assert.equal(transition.progress, 35); assert.equal(transition.A.layers.length, 2); assert.equal(transition.B.layers.length, 2);
-    await page.locator('#transition-duration').fill('100');
-    await page.getByRole('button', { name: 'Run to A', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('label[for="transition-progress"]')?.textContent.includes('0.0%'));
-    console.log('Prepared B, set absolute slider progress, and completed a native timed transition: passed');
+    await page.locator('#source-file').setInputFiles(file); await ready();
+    assert.equal(await page.locator('#filename').innerText(), 'rainbow.py');
+    assert.equal(await page.evaluate(() => localStorage.getItem('lightvm.library.v1')), null);
+    await page.screenshot({ path: path.join(root, 'build/editor-workflow-desktop.png'), fullPage: true });
+    console.log('Editor preview, external file round trip, and separate animation/transition deployment: passed');
 
-    for (const name of ['crossfade', 'wipe']) {
-      await page.getByLabel('Load example').selectOption('transition_' + name);
-      await page.getByRole('button', { name: 'Save and select transition →', exact: true }).waitFor();
-      await page.waitForFunction(() => !document.querySelector('#upload')?.disabled);
-      await page.getByLabel('Stored transition name').fill(name);
-      await page.getByRole('button', { name: 'Save and select transition →', exact: true }).click();
-      await page.waitForFunction(name => document.querySelector('#transition-program')?.value === name, name);
+    await tab('Configuration').click(); await page.getByRole('button', { name: 'Presets', exact: true }).click();
+    for (const [name, program] of [['Rainbow', 'rainbow'], ['Stars', 'stars']]) {
+      await page.getByRole('button', { name: 'New preset', exact: true }).click();
+      await page.getByLabel('Preset name', { exact: true }).fill(name);
+      await page.getByRole('button', { name: '+ Add layer', exact: true }).click();
+      await page.locator('#preset-animation-layer1').selectOption(program);
+      await page.getByLabel('Preset transition', { exact: true }).selectOption('crossfade');
+      await page.getByRole('button', { name: 'Save preset to device', exact: true }).click();
+      await page.waitForFunction(name => document.querySelector('#activity')?.textContent.includes('Saved preset ' + name) && !document.querySelector('#preset-name')?.disabled, name);
     }
-    await page.getByLabel('Transition program').selectOption('crossfade');
-    await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
-    await page.waitForFunction(() => !document.querySelector('#transition-progress')?.disabled);
-    const pythonTransition = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    assert.equal(pythonTransition.program, 'crossfade');
-    const programs = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--programs'], { encoding: 'utf8' }));
-    assert.deepEqual(programs.filter(program => ['crossfade', 'wipe'].includes(program.name)).map(program => program.profile), ['transition', 'transition']);
-    console.log('Compiled both Python transition examples in the browser, stored them by name, and recalled crossfade: passed');
+    await page.getByRole('button', { name: 'Output & startup', exact: true }).click();
+    await page.locator('#startup-mode-0').selectOption('preset');
+    await page.locator('#startup-preset-0').selectOption('Rainbow');
+    await page.locator('#config-save').click();
+    await page.waitForFunction(() => !document.querySelector('#config-fields')?.disabled);
+    await page.screenshot({ path: path.join(root, 'build/configuration-desktop.png'), fullPage: true });
+    console.log('Device preset creation and startup configuration: passed');
 
-    await page.getByLabel('Load example').selectOption('color');
-    await page.waitForFunction(() => document.querySelector('#check-state')?.textContent === 'All checks passed' && !document.querySelector('#upload')?.disabled);
-    await page.locator('#animation-name').fill('Browser color');
-    await page.getByRole('button', { name: 'Save animation', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Browser color v1'));
-    const faderLibrary = await page.evaluate(() => JSON.parse(localStorage.getItem('lightvm.library.v1')));
-    assert.equal(faderLibrary.animations.length, 2);
-
-    await page.locator('#command-path').selectOption('http');
-    await page.waitForFunction(() => !document.querySelector('#command-path')?.disabled);
-    await page.getByRole('link', { name: 'Fader', exact: true }).click();
-    await page.getByRole('button', { name: 'Use fader', exact: true }).waitFor();
-    const transitionPicker = page.getByRole('region', { name: 'Deployed transitions' });
-    await transitionPicker.getByLabel('Transition program').selectOption('wipe');
-    await transitionPicker.getByLabel('Override separator', { exact: true }).check();
-    await transitionPicker.getByLabel('separator', { exact: true }).selectOption('true');
-    await transitionPicker.getByLabel('Override color', { exact: true }).check();
-    await transitionPicker.getByLabel('color', { exact: true }).fill('#ff6600');
+    await tab('Mixer').click();
+    await page.getByRole('button', { name: 'Load Rainbow into A', exact: true }).click();
+    await page.getByRole('region', { name: 'Composition A', exact: true }).getByText('Rainbow', { exact: true }).first().waitFor();
+    await page.getByRole('button', { name: 'Load Stars into B', exact: true }).click();
+    await page.getByLabel('Transition program', { exact: true }).selectOption('crossfade');
     await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
-    await transitionPicker.getByText('Active transition: wipe', { exact: true }).waitFor();
-    await page.screenshot({ path: path.join(root, 'build/fader-settings-desktop.png'), fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Fader mobile layout overflows');
-    await page.screenshot({ path: path.join(root, 'build/fader-settings-mobile.png'), fullPage: true });
-    await page.setViewportSize({ width: 1440, height: 1200 });
-    await page.waitForFunction(() => !document.querySelector('#fader-duration')?.disabled && document.querySelector('#transition-fader')?.disabled);
-    await page.locator('#fader-duration').fill('50');
-    await page.locator('#fader-interval').fill('100');
-    await page.getByRole('button', { name: 'Start timed demo' }).click();
-    await page.getByText('Timed transition running', { exact: true }).waitFor();
-    const timed = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    assert.equal(timed.driver.kind, 'timed'); assert.equal(timed.driver.interval_ms, 100);
     await page.getByRole('button', { name: 'Use fader', exact: true }).click();
     await page.getByText('Fader controls the transition', { exact: true }).waitFor();
-    const identity = composition => composition.layers.map(layer => ({ id: layer.id, program: layer.program, generation: layer.generation }));
-    const beforeSelect = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    await transitionPicker.getByLabel('Transition program').selectOption('crossfade');
-    await page.getByRole('button', { name: 'Apply transition', exact: true }).click();
-    await transitionPicker.getByText('Active transition: crossfade', { exact: true }).waitFor();
-    await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);
-    const afterSelect = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    assert.equal(afterSelect.program, 'crossfade'); assert.deepEqual(afterSelect.driver, beforeSelect.driver);
-    assert.equal(afterSelect.progress, beforeSelect.progress);
-    assert.deepEqual(identity(afterSelect.A), identity(beforeSelect.A)); assert.deepEqual(identity(afterSelect.B), identity(beforeSelect.B));
-    console.log('Selected deployed wipe with colour settings and switched programs while retaining fader control: passed');
-    const beforeFader = { ...counts };
-    for (const progress of [0, 35, 100]) {
-      if (Number(await page.locator('#transition-fader').inputValue()) !== progress) {
-        const applied = waitForCommand('transition_update');
-        await page.locator('#transition-fader').evaluate((input, progress) => {
-          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(progress));
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-        }, progress);
-        await applied;
+    const update = waitForCommand('transition_update');
+    await page.locator('#transition-fader').fill('65'); await update;
+    if (controllerInfo.websocket_supported) { assert.ok(counts.socketFader > 0); assert.equal(counts.httpFader, 0); }
+    const keyboard = waitForCommand('transition_update'); await page.locator('#transition-fader').focus(); await page.keyboard.press('Home'); await keyboard;
+    const move = waitForCommand('transition_update'); await page.locator('#transition-fader').fill('65'); await move;
+    await page.screenshot({ path: path.join(root, 'build/mixer-desktop.png'), fullPage: true });
+    assert.equal(await page.getByRole('button', { name: 'Swap A and B', exact: true }).isEnabled(), false);
+    await page.getByRole('button', { name: 'Cut to B', exact: true }).click();
+    await page.getByRole('button', { name: 'Swap A and B', exact: true }).click();
+    await page.getByLabel('Fade duration (ms)').fill('100');
+    await page.getByRole('button', { name: 'Run to B', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('#transition-fader')?.value === '100');
+    console.log('Mixer preset buses, transition selection, live fader, cut, swap and timed movement: passed');
+    await tab('Editor').click(); await page.getByLabel('Load example').selectOption('transition_crossfade'); await ready();
+    await page.locator('#upload').click(); await page.getByText('Preview sent to lights.').waitFor();
+    await tab('Mixer').click(); await page.getByText('Active transition: _preview_transition', { exact: true }).waitFor();
+    console.log('Transition scratch preview runs against the prepared A/B buses: passed');
+
+    for (const name of ['Editor', 'Configuration', 'Mixer', 'Audio Playground']) {
+      await tab(name).click();
+      if (name === 'Audio Playground') {
+        await page.getByLabel('brightness input minimum', { exact: true }).fill('40');
+        await page.getByLabel('brightness input maximum', { exact: true }).fill('60');
+        await page.screenshot({ path: path.join(root, 'build/audio-playground-desktop.png'), fullPage: true });
       }
-      const manual = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-      assert.equal(manual.driver.kind, 'source'); assert.equal(manual.driver.source, 'desktop.fader');
-      assert.equal(manual.progress, progress); assert.equal(manual.A.layers.length, 2); assert.equal(manual.B.layers.length, 2);
-    }
-    await page.locator('#transition-fader').focus();
-    const keyboard = waitForCommand('transition_update');
-    await page.keyboard.press('Home'); await keyboard;
-    if (controllerInfo.websocket_supported) {
-      assert.ok(counts.socketFader > beforeFader.socketFader);
-      assert.equal(counts.httpFader, beforeFader.httpFader);
-      console.log('Manual fader updates used WebSocket with no HTTP fader requests: passed');
-    }
-
-    const beforeDrops = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    await page.getByRole('article', { name: 'Browser color v1' }).dragTo(page.getByRole('region', { name: 'Composition B' }));
-    await page.getByRole('region', { name: 'Composition B' }).getByText('Browser color v1', { exact: true }).waitFor();
-    await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);
-    const loadedB = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    const colorAnimation = faderLibrary.animations.find(animation => animation.name === 'Browser color');
-    assert.equal(loadedB.B.layers.length, 1); assert.equal(loadedB.B.layers[0].program, 'a' + colorAnimation.digest.slice(0, 31));
-    assert.deepEqual(identity(loadedB.A), identity(beforeDrops.A));
-    assert.deepEqual(loadedB.driver, beforeDrops.driver); assert.equal(loadedB.progress, 0);
-    await page.getByRole('article', { name: 'Browser rainbow v1' }).dragTo(page.getByRole('region', { name: 'Composition A' }));
-    await page.getByRole('region', { name: 'Composition A' }).getByText('Browser rainbow v1', { exact: true }).waitFor();
-    await page.waitForFunction(() => !document.querySelector('#transition-fader')?.disabled);
-    const loadedA = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    assert.equal(loadedA.A.layers.length, 1); assert.equal(loadedA.A.layers[0].program, programName);
-    assert.deepEqual(identity(loadedA.B), identity(loadedB.B));
-    assert.deepEqual(loadedA.driver, beforeDrops.driver); assert.equal(loadedA.progress, 0);
-    console.log('Dragged different saved browser animations into A and B while preserving the other composition, progress, and external-source assignment: passed');
-
-    await page.screenshot({ path: path.join(root, 'build/fader-desktop.png'), fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Fader mobile layout overflows');
-    await page.screenshot({ path: path.join(root, 'build/fader-mobile.png'), fullPage: true });
-    await page.setViewportSize({ width: 1440, height: 1200 });
-    await page.getByRole('button', { name: 'Hold', exact: true }).click();
-    await page.getByText('Holding current position', { exact: true }).waitFor();
-    const held = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--output', 'lights2', '--get-transition'], { encoding: 'utf8' }));
-    assert.equal(held.driver.kind, 'manual'); assert.equal(held.progress, 0);
-    await page.getByRole('link', { name: 'Develop', exact: true }).click();
-    await page.locator('#saved-animation').selectOption(savedLibrary.animations[0].id);
-    console.log('Fader tab took over the repeating timed demo, supplied external input at 0/35/100%, accepted keyboard input, and held without replacing compositions: passed');
-
-    await page.evaluate(() => {
-      const editor = document.querySelector('.CodeMirror')?.CodeMirror;
-      editor.replaceRange('\n# draft survives tab changes', { line: editor.lineCount() });
-    });
-    await page.getByRole('link', { name: 'Configure', exact: true }).click();
-    if (controllerInfo.mqtt_supported) {
-      await page.locator('#ha-preset-1').selectOption('browser');
-      await page.locator('#ha-name-1').fill('Desk lamp');
-      await page.locator('#config-save').click();
-      await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Output configuration applied') && !document.querySelector('#config-fields')?.disabled);
-      const configured = JSON.parse(execFileSync(python, [path.join(root, 'tools/client.py'), '--url', url, '--get-config'], { encoding: 'utf8' }));
-      assert.deepEqual(configured.outputs[1].home_assistant, { default_preset: 'browser', presets: ['browser'], name: 'Desk lamp' });
-      await page.screenshot({ path: path.join(root, 'build/ha-output-selector-desktop.png'), fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'HA output controls overflow on mobile');
-      await page.screenshot({ path: path.join(root, 'build/ha-output-selector-mobile.png'), fullPage: true });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, name + ' overflows on mobile');
+      // Paint the whole mobile document in one viewport; this avoids tiled
+      // full-page captures racing the Mixer's live status repaint.
+      const height = await page.evaluate(() => document.documentElement.scrollHeight);
+      await page.setViewportSize({ width: 390, height });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.screenshot({ path: path.join(root, 'build/' + name.toLowerCase().replace(/ /g, '-') + '-mobile.png') });
       await page.setViewportSize({ width: 1440, height: 1200 });
-      console.log('Configured per-output Home Assistant preset selector and checked desktop/mobile layout: passed');
     }
+    await tab('Configuration').click();
     await page.getByRole('button', { name: /Wi-Fi.*HTTP/ }).click();
     // Host simulator has HTTP but no Wi-Fi. Check the available network form
     // while background polls run; radio-specific credential checks need hardware.
@@ -376,33 +227,12 @@ async function grantLocalNetwork(cdp, page, origin) {
     await page.locator('#http-port').fill('8080');
     await page.locator('#network-save').click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Network settings saved') && !document.querySelector('#network-fields')?.disabled);
-    await page.getByRole('button', { name: 'Output & startup' }).click();
-    await page.locator('#startup-mode-0').selectOption('preset');
-    await page.locator('#startup-preset-0').selectOption('browser');
-    await page.locator('#config-save').click();
-    await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Output configuration applied') && !document.querySelector('#config-fields')?.disabled);
-    await page.getByRole('link', { name: 'Develop', exact: true }).click();
-    assert.equal(await page.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue().includes('# draft survives tab changes')), true);
-    await page.getByRole('button', { name: 'Run on output', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#playback-state')?.textContent.includes('Running') && !document.querySelector('#upload')?.disabled);
-    await page.waitForFunction(() => document.querySelector('#check-state')?.textContent === 'All checks passed');
-    await page.screenshot({ path: path.join(root, 'build/network-editor-desktop.png'), fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
-    await page.screenshot({ path: path.join(root, 'build/network-editor-mobile.png'), fullPage: true });
-    assert.equal(overflow, false, 'Mobile layout overflows');
-    await page.getByRole('button', { name: 'Delete animation version', exact: true }).click();
-    await page.getByRole('alert').filter({ hasText: 'A saved browser preset uses this version' }).waitFor();
-    assert.equal(await page.locator('#saved-animation option').count(), 3);
-    await page.getByRole('button', { name: 'Delete browser preset', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#saved-preset')?.options.length === 1);
-    await page.getByRole('button', { name: 'Delete animation version', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#saved-animation')?.options.length === 2);
-    assert.equal(await page.locator('#controller-preset option').count(), 2);
-    console.log('Browser deletion protects referenced versions and leaves controller presets intact: passed');
-    await page.getByRole('navigation', { name: 'Controller workspace' }).getByRole('link', { name: /Firmware/ }).click();
+    await tab('Mixer').click(); await tab('Audio Playground').click();
+    assert.equal(await page.getByLabel('brightness input minimum', { exact: true }).inputValue(), '40');
+    assert.equal(await page.getByLabel('brightness input maximum', { exact: true }).inputValue(), '60');
+    await page.getByRole('link', { name: 'Firmware', exact: true }).click();
     await page.getByRole('heading', { name: 'Firmware installation' }).waitFor();
-    assert.equal(new URL(page.url()).hash.endsWith('/firmware'), true);
+    await page.goBack();
     if (controllerInfo.websocket_supported) {
       // Exercise the hosted editor's secure-context rules with a plain local
       // socket. Fulfil only the editor's HTTPS assets from the local server;
@@ -433,6 +263,7 @@ async function grantLocalNetwork(cdp, page, origin) {
       console.log('Socket loss detached the selected path without automatic failover: passed');
     }
     assert.deepEqual(errors, []);
-    console.log('Program, configuration and network tabs persisted; firmware route and mobile layout: passed');
-  } catch (error) { if (page) { console.log(await page.locator("body").innerText()); await page.screenshot({ path: path.join(root, "build/network-editor-failure.png"), fullPage: true }); } throw error; } finally { await browser?.close(); receiver?.kill(); server?.kill(); fs.rmSync(directory, { recursive: true, force: true }); }
+    console.log('All four workspaces: desktop/mobile layout, audio tuning retained across navigation, no browser errors: passed');
+  } catch (error) { if (page) { console.log(await page.locator('body').innerText()); await page.screenshot({ path: path.join(root, 'build/network-editor-failure.png'), fullPage: true }); } throw error; }
+  finally { await browser?.close(); receiver?.kill(); server?.kill(); fs.rmSync(directory, { recursive: true, force: true }); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

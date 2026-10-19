@@ -191,8 +191,8 @@ use generic PixelArray kernels. Removed resource kind 13 and native bindings
 Typed calls enforce stage permissions, resource kind, bounds and generation.
 There are no guest pointers or per-frame allocations.
 
-Running compositions remain in RAM. The browser editor can author compositions and save them
-as **presets** in its editable library and on the controller. A preset has one or more
+Running compositions remain in RAM. The browser Configuration tab authors compositions and saves them
+as **presets** on the controller. A preset has one or more
 layers, so standalone and composite effects use the same recipe format. Saving
 does not change playback; activation prepares the whole candidate before swapping.
 Saved hardware configuration selects off, restore-last or a preset at startup.
@@ -204,8 +204,8 @@ this one invocation is used for selection, ON, OFF to black and startup; see
 [recall transitions](transitions.md#preset-recalls-and-power)), using the same layer fields
 as a composition. Each layer additionally requires `crc32`, matching the stored program.
 Composition documents may also supply `crc32` to check the expected version. The editor
-derives immutable program names from the compiled SHA-256 digest and keeps full
-digests and editable source in its browser library. Multiple presets/layers share
+deploys programs under user-selected names; source remains in external files.
+Preset layers pin each deployed program by name and CRC32. Multiple presets/layers share
 one stored program; active instances retain independent settings and state.
 
 Firmware advertises `presets: true`. Presets share available storage with compiled

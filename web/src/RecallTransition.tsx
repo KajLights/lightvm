@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { crc32 } from '../protocol.mjs';
-import { programManifest } from './library';
+import { programManifest } from './program';
 import { SettingFields } from './SettingFields';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';

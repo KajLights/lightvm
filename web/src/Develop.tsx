@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppSelector } from './store';
 import { useRuntime } from './runtime';
 import { EXAMPLES, exampleForSource } from './examples';
-import { download } from './controller-service';
 import { DevelopmentWorkflow } from './Workflow';
 import type { Diagnostic } from './types';
 
@@ -11,7 +10,6 @@ function Editor() {
   const textarea = useRef<HTMLTextAreaElement>(null), cm = useRef<any>(null), marks = useRef<any[]>([]);
   const [cursor, setCursor] = useState('Ln 1, Col 1');
   const example = exampleForSource(editor.source);
-  const picker = useRef<HTMLInputElement>(null);
   useEffect(() => {
     compiler.start();
     if (!window.CodeMirror || !textarea.current) return;
@@ -26,7 +24,7 @@ function Editor() {
         'Cmd-Enter': () => document.getElementById('upload')?.click(),
       },
     });
-    cm.current = instance; instance.getInputField().setAttribute('aria-label', 'Animation Python source');
+    cm.current = instance; instance.getInputField().setAttribute('aria-label', 'Python source');
     instance.on('change', () => compiler.edit(instance.getValue()));
     instance.on('cursorActivity', () => { const pos = instance.getCursor(); setCursor('Ln ' + (pos.line + 1) + ', Col ' + (pos.ch + 1)); });
     return () => { marks.current.forEach(mark => mark.clear()); marks.current = []; cm.current = null; instance.toTextArea(); };
@@ -44,16 +42,6 @@ function Editor() {
       instance.setGutterMarker(line, 'error-gutter', marker);
     }
   }, [editor.diagnostics]);
-  async function open(file?: File) {
-    if (!file) return;
-    try {
-      if (file.size > 65536) throw new Error('Choose a Python file smaller than 64 KiB.');
-      const revision = controllers.snapshot.editor.revision;
-      const source = await file.text();
-      if (revision === controllers.snapshot.editor.revision) compiler.edit(source, file.name);
-    } catch (error) { void controllers.run('Opening source', async () => { throw error; }); }
-    if (picker.current) picker.current.value = '';
-  }
   function loadExample(name: string) {
     const selected = EXAMPLES.find(item => item.id === name);
     if (selected) compiler.edit(selected.source, selected.filename);
@@ -63,39 +51,21 @@ function Editor() {
     else textarea.current?.focus();
   }
   return <section className="editor-panel" aria-label="Python source editor">
-    <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example?.id ?? ''} onChange={event => loadExample(event.target.value)}><option value="">Examples…</option>{EXAMPLES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select><button id="open-source" className="quiet" onClick={() => picker.current?.click()}>Open .py</button><button id="save-source" className="quiet" onClick={() => download(editor.source, editor.filename, 'text/x-python')}>Export .py</button></div></div>
+    <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example?.id ?? ''} onChange={event => loadExample(event.target.value)}><option value="">Examples…</option>{EXAMPLES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div></div>
     {example && <p id="example-description" className="helper">{example.description}</p>}
-    <label className="sr-only" htmlFor="source">Animation Python source</label><textarea ref={textarea} id="source" value={editor.source} spellCheck={false} autoCapitalize="off" autoComplete="off" onChange={event => compiler.edit(event.target.value)} />
-    <input ref={picker} id="source-file" type="file" accept=".py,text/x-python,text/plain" hidden onChange={event => void open(event.target.files?.[0])} />
-    <div className="editor-footer"><span id="cursor-position">{cursor}</span><span>Python subset · Portable bytecode</span><span id="draft-state">{editor.draftSaved ? 'Draft saved in this browser' : 'Draft available for this session'}</span></div>
+    <label className="sr-only" htmlFor="source">Python source</label><textarea ref={textarea} id="source" value={editor.source} spellCheck={false} autoCapitalize="off" autoComplete="off" onChange={event => compiler.edit(event.target.value)} />
+
+    <div className="editor-footer"><span id="cursor-position">{cursor}</span><span>Python subset · Portable bytecode</span><span id="draft-state">Session draft</span></div>
     <div className="diagnostics-header"><h2>Code checks</h2><span id="check-state">{editor.compiler === 'error' ? 'Compiler unavailable' : editor.checking ? 'Checking…' : editor.diagnostics.length ? 'Code needs attention' : editor.artifact ? 'All checks passed' : 'Waiting for Python…'}</span></div>
-    <div id="diagnostics" className="diagnostics" role="status" aria-live="polite">{editor.diagnostics.length ? editor.diagnostics.map((item, index) => <button key={index} className="diagnostic" onClick={() => focusDiagnostic(item)}><strong>Line {item.line}:{item.column}</strong><span>{item.message}</span></button>) : <p className={editor.artifact ? 'check-ok' : 'muted'}>{editor.compiler === 'error' ? editor.message : editor.artifact ? '✓ Code checks passed. The compiled animation is ready.' : editor.message}</p>}</div>
+    <div id="diagnostics" className="diagnostics" role="status" aria-live="polite">{editor.diagnostics.length ? editor.diagnostics.map((item, index) => <button key={index} className="diagnostic" onClick={() => focusDiagnostic(item)}><strong>Line {item.line}:{item.column}</strong><span>{item.message}</span></button>) : <p className={editor.artifact ? 'check-ok' : 'muted'}>{editor.compiler === 'error' ? editor.message : editor.artifact ? '✓ Code checks passed. The compiled program is ready.' : editor.message}</p>}</div>
   </section>;
 }
 
-function Playback() {
-  const { controllers } = useRuntime();
-  const { programState: state, selectedPath } = useAppSelector(state => state.controller);
-  const busy = useAppSelector(state => state.activity.operation !== null);
-  async function playback(verb: 'pause' | 'resume') {
-    if (!state) return;
-    await controllers.run(verb === 'pause' ? 'Pausing program' : 'Resuming program', async client => {
-      const connection = controllers.require(client);
-      await connection.manage('program_' + verb, { output: state.output, slot: state.slot, layer: state.layer, expected_generation: state.generation });
-      await controllers.readProgramState(connection);
-    });
-  }
-  return <section className="card"><div className="card-heading"><h2>Playback</h2><button className="quiet small" disabled={!selectedPath || busy} onClick={() => void controllers.run('Refreshing playback', async client => controllers.readProgramState(controllers.require(client)))}>Refresh</button></div>
-    <p id="playback-state" className="helper">{state ? (state.faulted ? 'Faulted' : state.paused ? 'Paused' : 'Running') : 'Load an animation to control playback.'}</p>
-    <fieldset disabled={!state || !selectedPath || busy}><div className="button-pair"><button id="program-pause" className="quiet" disabled={!state || state.paused} onClick={() => void playback('pause')}>Pause</button><button id="program-resume" className="quiet" disabled={!state || !state.paused} onClick={() => void playback('resume')}>Resume</button></div></fieldset>
-  </section>;
-}
 export function Develop({ active }: { active: boolean }) {
-  const description = useAppSelector(state => state.controller.description), connected = useAppSelector(state => Boolean(state.controller.selectedPath));
   const { compiler } = useRuntime();
   useEffect(() => { if (active) compiler.start(); }, [active, compiler]);
-  return <><div className="intro"><div><p className="eyebrow">DEVELOP</p><h1>Make something glow.</h1><p>Edit, preview on your lights, save an animation, then compose and save a preset.</p></div><div className="pipeline" aria-label="Development workflow"><span>Edit</span><span>→</span><span>Preview</span><span>→</span><span>Save</span><span>→</span><span>Compose</span><span>→</span><span>Preset</span></div></div>
-    {description && !connected && <p className="connection-banner">Connect the controller to upload. The editor and downloads remain available.</p>}
-    <DevelopmentWorkflow editorPanel={<Editor />} playback={<Playback />} active={active} />
+  return <><div className="intro"><div><p className="eyebrow">01 / EDITOR</p><h1>A little code. A lot of light.</h1><p>Create animations and transitions, one file at a time.</p></div>
+    <ol className="workflow-steps" aria-label="Editor workflow"><li>Edit</li><li>Preview</li><li>Save locally</li><li>Deploy to device</li></ol></div>
+    <DevelopmentWorkflow editorPanel={<Editor />} />
   </>;
 }

@@ -2,19 +2,8 @@ import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolki
 import { useDispatch, useSelector } from 'react-redux';
 import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyController, NetworkConfig, NetworkStatus, ProgramState, Path, Program } from './types';
 import { DEFAULT_SOURCE } from './types';
-import { DEFAULT_EXAMPLE, exampleForSource } from './examples';
+import { DEFAULT_EXAMPLE } from './examples';
 
-export const DRAFT_KEY = 'lightvm.editor.draft.v1';
-function readDraft() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
-    if (typeof saved?.source === 'string') {
-      const filename = typeof saved.filename === 'string' ? saved.filename : 'animation.py';
-      return { source: saved.source, filename: filename === 'animation.py' ? exampleForSource(saved.source)?.filename ?? filename : filename };
-    }
-  } catch { /* Browser storage is optional. */ }
-  return { source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename };
-}
 interface ControllerState {
   description: Description | null;
   paths: { key: Path; label: string; protocol?: string }[]; selectedPath: Path | null;
@@ -68,11 +57,10 @@ interface EditorState {
   source: string; filename: string; revision: number;
   compiler: 'idle' | 'loading' | 'ready' | 'error'; message: string; checking: boolean;
   diagnostics: Diagnostic[]; artifact: { revision: number; bytes: number; manifest: Manifest } | null;
-  draftSaved: boolean;
 }
 const initialEditor: EditorState = {
-  ...readDraft(), revision: 0, compiler: 'idle', message: 'Open Develop to load the compiler.',
-  checking: false, diagnostics: [], artifact: null, draftSaved: true,
+  source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename, revision: 0, compiler: 'idle', message: 'Open Editor to load the compiler.',
+  checking: false, diagnostics: [], artifact: null,
 };
 const editorSlice = createSlice({
   name: 'editor', initialState: initialEditor,
@@ -93,7 +81,6 @@ const editorSlice = createSlice({
       state.checking = false; state.diagnostics = action.payload.diagnostics;
       state.artifact = action.payload.diagnostics.length ? null : { revision: action.payload.revision, bytes: action.payload.bytes, manifest: action.payload.manifest };
     },
-    draftSaved(state, action: PayloadAction<boolean>) { state.draftSaved = action.payload; },
   },
 });
 const activitySlice = createSlice({

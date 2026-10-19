@@ -8,16 +8,16 @@ Frozen `setting(...)` declarations still control initialization and allocations.
 ## Try the capability demo
 
 1. Build/install the current firmware and open the matching editor.
-2. In Develop, select **eye.py · live inputs**, then **Preview animation**.
-3. In **Live inputs**, drag position, width, hue and brightness. Dragging takes
+2. In Editor, select **eye.py · live inputs**, then **Preview on device**.
+3. In **Mixer → Live animation inputs**, drag position, width, hue and brightness. Dragging takes
    manual control of that input. The other inputs retain their selected drivers.
 4. Restore position's default to resume its two-second eased bounce. The Timer
    controls can change its duration and select Once, Repeat or Bounce.
-5. **Use these inputs in draft** copies the selected wiring to the draft's
-   **Input recipe**. Save an animation version and use it in a preset to keep it.
+5. Set persistent input recipes in **Configuration → Presets**, under each layer's
+   **Settings & inputs**. Editor's preview input recipe is saved in its external file.
 
 For a composition, choose the animation under **Animation to control**, including
-layers in A or B. Named transition programs have their own live input panel.
+layers in A or B. Named transition programs have their own live input panel in Mixer.
 Sweep remains the separate, unchanged example for retained paint and timed trails.
 
 ## Authoring
@@ -162,7 +162,7 @@ One source can feed several animation instances and transition progress.
 `transition_bind` accepts a binding for native progress and requires the current
 `expected_assignment`. Values are normalized 0..1; transition state/UI continue
 to display percentages. Source loss holds progress by default. Manual progress,
-Run, Hold and the existing Fader replace this driver and invalidate its ownership.
+Run, Hold and the Mixer fader replace this driver and invalidate its ownership.
 Transition-program inputs are captured alongside progress and completed A/B
 frames, outside restored guest state. Endpoints still bypass the callback.
 

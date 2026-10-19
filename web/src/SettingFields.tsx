@@ -1,5 +1,5 @@
 import type { Manifest } from './types';
-import type { SettingsValues } from './library';
+import type { SettingsValues } from './program';
 
 export function SettingFields({ manifest, values, onChange, prefix }: { manifest: Manifest; values: SettingsValues; onChange: (values: SettingsValues) => void; prefix: string }) {
   return <div className="setting-list">{(manifest.settings ?? []).map(setting => {

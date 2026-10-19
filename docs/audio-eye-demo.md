@@ -1,6 +1,6 @@
-# Live audio Eye demo
+# Audio Playground
 
-Open **Audio demo** in the browser workspace, or visit `/#/audio`. It works
+Open **Audio Playground** in the browser workspace, or visit `/#/audio`. It works
 without a controller: **Start listening**, grant microphone access, and watch
 the meters and schematic strip preview. Choose a microphone, line-in audio
 interface or OS loopback device. Available device names appear after the first
@@ -20,8 +20,19 @@ The default mapping is:
 | Hue | Treble energy | 0–0.85 turns |
 | Brightness | RMS level | 0–1 |
 
-Each input can select any of the six signals and its own output range. Reverse
-the range ends to invert the response; equal ends provide a constant value.
+Each channel selects one of six signals and has **Input window (%)** Low/High
+and **Output range (%)** From/To controls. Values below Low clamp to 0%; values
+above High clamp to 100%. Values within the window are scaled linearly before
+mapping to the output range. For example, input 40–60% maps 40% to 0%, 50% to 50%
+and 60% to 100%. This expands small movements into the full output range. Low
+must stay below High; the controls enforce at least one percentage point.
+
+**Invert** swaps the output ends; equal output ends provide a constant value.
+TRIM meters show the normalized signal, and OUT meters show the mapped control.
+All UI ranges use percentages; published values remain normalized 0–1.
+**Reset tuning** restores the mappings, input windows and master response defaults.
+Tuning survives tab navigation for this session; it is not saved across reloads.
+
 Sensitivity adds gain before normalization. Raise the noise floor if the room
 noise keeps the Eye bright. Release sets the decay time; attacks use a 30 ms
 envelope. These are visual control levels, not calibrated loudness measurements.
@@ -38,8 +49,8 @@ changing the Eye's declared input contract.
 To drive physical lights:
 
 1. Install firmware implementing live animation inputs and compile the matching
-   `eye.py` example from **Develop**. Preview it on the selected output.
-2. Return to **Audio demo**, start listening, and select **Drive running Eye**.
+   `eye.py` example from **Editor**. Preview it on the selected output.
+2. Return to **Audio Playground**, start listening, and select **Drive running Eye**.
 3. Adjust the mappings while sound plays. **Release Eye** restores its previous
    input bindings if they have not been changed elsewhere.
 

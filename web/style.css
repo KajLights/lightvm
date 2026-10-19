@@ -25,8 +25,6 @@ main { max-width: 1560px; padding: 35px 4.5% 20px; margin: auto; }
 .eyebrow { color: var(--accent); font-size: 10px; letter-spacing: 2px; font-weight: 700; margin: 0 0 10px; }
 h1 { font-size: clamp(26px, 3vw, 36px); line-height: 1.2; letter-spacing: -1px; font-weight: 500; margin: 0 0 9px; }
 .intro p:not(.eyebrow) { margin: 0; color: var(--muted); }
-.pipeline { display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--muted); }
-.pipeline span:nth-child(odd) { padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; }
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 22px; align-items: start; }
 .editor-panel { background: #121c25; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .editor-toolbar { min-height: 57px; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
@@ -193,14 +191,6 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .activity-panel summary { cursor: pointer; font-size: 12px; font-weight: 600; }
 .activity-panel summary span { font-weight: 400; margin-left: 10px; }
 .activity-panel #activity { margin-top: 10px; }
-.workflow-grid { display: grid; grid-template-columns: minmax(210px, 1fr) minmax(320px, 2fr) minmax(210px, 1fr); gap: 20px; margin-top: 24px; align-items: start; }
-.workflow-grid .card { min-width: 0; }
-.workflow-grid fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.workflow-grid label { display: block; margin: 14px 0 7px; color: var(--muted); font-size: 12px; font-weight: 600; }
-.workflow-grid input:not([type=checkbox]):not([type=range]) { width: 100%; min-width: 0; padding: 9px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
-.workflow-grid input[type=color] { height: 38px; padding: 4px; }
-.workflow-grid input:focus-visible, .sidebar input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.workflow-grid input[type=checkbox], .workflow-grid input[type=range], .sidebar input[type=checkbox] { accent-color: var(--accent); }
 .setting-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr); gap: 12px; align-items: center; margin: 8px 0; }
 .setting-row .setting-toggle { display: flex; gap: 8px; align-items: center; margin: 0; overflow-wrap: anywhere; }
 .setting-toggle input { width: auto; margin: 0; }
@@ -217,9 +207,6 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .layer-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .layer-card h3 { margin: 0; }
 .layer-card small { color: var(--muted); font-weight: normal; }
-.pipeline { flex-wrap: wrap; }
-@media (max-width: 1100px) { .workflow-grid { grid-template-columns: 1fr 2fr; } .workflow-grid > :last-child { grid-column: 1 / -1; } }
-@media (max-width: 750px) { .workflow-grid { grid-template-columns: 1fr; } .workflow-grid > :last-child { grid-column: auto; } }
 #notice { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 0 0 20px; }
 #notice button { padding: 0; font-size: 20px; }
 @media (max-width: 750px) { .controller-picker-grid { grid-template-columns: 1fr; } .controller-picker-grid .card { min-height: 0; } .controller-bar { display: block; } .connection-tools { justify-content: flex-start; margin-top: 12px; } .connection-tools .helper { text-align: left; } .global-nav { margin-left: 0; } }
@@ -231,47 +218,27 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .transition-panel input[type=range] { width: 100%; margin: 8px 0; }
 @media (max-width: 750px) { .transition-controls-grid { grid-template-columns: 1fr; gap: 8px; } }
 .fader-output { max-width: 300px; margin-bottom: 22px; }
-.fader-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 22px; align-items: start; }
-.audio-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 22px; align-items: start; }
-.audio-results { display: grid; gap: 22px; min-width: 0; }
 .audio-demo h2 { font-size: 18px; margin-bottom: 12px; }
 .audio-demo .card-heading h2 { margin-bottom: 0; }
 .audio-demo .card-heading .badge { margin-left: auto; }
 .audio-demo p { line-height: 1.65; }
-.audio-demo input[type=range] { width: 100%; accent-color: var(--accent); }
+.audio-demo input[type=range] { accent-color: var(--accent); }
 .audio-buttons { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
 .audio-eye-strip { height: 100px; border-radius: 9px; background: repeating-linear-gradient(90deg, #0c131a 0, #0c131a 11px, #1c2934 12px, #0c131a 13px); position: relative; overflow: hidden; border: 1px solid var(--line); }
-.audio-eye-brush { position: absolute; top: 34px; height: 32px; border-radius: 5px; }
+.audio-eye-brush { position: absolute; top: 16px; height: 32px; border-radius: 5px; }
 .audio-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 24px; }
 .audio-meters > div { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr 32px; align-items: center; gap: 8px; }
 .audio-meters label { margin: 0; }
 .audio-meters meter { width: 100%; accent-color: var(--accent); }
-.audio-demo output { font: 11px 'JetBrains Mono', monospace; color: var(--accent); }
-.audio-mappings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
-.audio-mappings fieldset { padding: 12px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; margin: 0; }
-.audio-mappings legend { padding: 0 5px; }
-.audio-mappings legend output { margin-left: 8px; }
-.audio-mappings label { font-size: 10px; margin-top: 6px; }
-.audio-mappings select { padding: 8px 4px; font-size: 12px; }
+.audio-meters output { font: 11px 'JetBrains Mono', monospace; color: var(--accent); }
 .audio-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .audio-range input { display: block; width: 100%; margin-top: 6px; padding: 7px 4px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
 .audio-controller { border-top: 1px solid var(--line); margin-top: 18px; }
-@media (max-width: 1150px) { .audio-mappings { grid-template-columns: 1fr 1fr; } .audio-meters { grid-template-columns: 1fr; } }
-@media (max-width: 750px) { .audio-layout { grid-template-columns: 1fr; } }
-@media (max-width: 400px) { .audio-mappings { grid-template-columns: 1fr; } }
-.fader-card { padding: 28px; }
-.fader-card .badge { margin-left: auto; }
 .fader-endpoints { display: flex; justify-content: space-between; gap: 20px; }
-.fader-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
-.fader-slot { min-width: 0; min-height: 160px; border: 2px dashed #405362; border-radius: 10px; padding: 18px; background: #111c25; }
+.fader-slot { min-width: 0; min-height: 160px; border: 1px solid #405362; border-radius: 10px; padding: 18px; background: #111c25; }
 .fader-slot.drag-over { border-color: var(--accent); background: #c4f46a12; }
-.fader-slot h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 14px; }
-.fader-slot h3 span { display: grid; place-items: center; width: 30px; height: 30px; background: #293c49; border-radius: 6px; color: var(--accent); }
 .fader-slot-name { overflow-wrap: anywhere; font-size: 16px; margin: 18px 0 8px; }
 .fader-slot .helper { margin-bottom: 0; }
-.fader-sidebar { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
-.fader-library .card-heading { justify-content: space-between; }
-.fader-library .card-heading .muted { margin: 0; }
 .fader-animation-list { max-height: 310px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .fader-animation { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; cursor: grab; }
 .fader-animation:active { cursor: grabbing; }
@@ -279,7 +246,6 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .fader-animation > div:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .fader-animation .helper { margin: 4px 0 0; }
 .fader-animation .button-pair { grid-template-columns: 1fr 1fr; margin: 0; flex-shrink: 0; }
-.fader-card > label { margin-top: 32px; }
 .fader-value { display: block; font-size: 64px; font-variant-numeric: tabular-nums; letter-spacing: -3px; }
 .fader-value span { font-size: 26px; color: var(--muted); margin-left: 6px; }
 .fader-range { width: 100%; height: 64px; margin: 20px 0 8px; appearance: none; background: transparent; cursor: ew-resize; touch-action: pan-y; }
@@ -292,12 +258,6 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .fader-range:disabled { opacity: .4; cursor: not-allowed; }
 .fader-endpoints { color: var(--muted); font-size: 12px; }
 .fader-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 16px; }
-.fader-timed .button-pair { grid-template-columns: 1fr 1fr; }
-.fader-timed input { width: 100%; min-width: 0; padding: 10px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
-.fader-timed input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.fader-timed > .primary { margin-top: 20px; }
-@media (max-width: 750px) { .fader-layout { grid-template-columns: 1fr; } .fader-card { padding: 22px; } }
-@media (max-width: 420px) { .fader-slots { gap: 10px; } .fader-slot { padding: 12px; } }
 /* Live inputs remain compact enough for the editor sidebar. */
 .live-input-control { border-top: 1px solid var(--line, #29323b); padding: 12px 0; }
 .live-input-heading, .live-input-actions { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
@@ -306,3 +266,100 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .live-inputs details, .input-recipe { margin: 10px 0; }
 .live-inputs summary, .input-recipe summary { cursor: pointer; font-size: .85rem; }
 .input-recipe textarea { min-height: 7rem; font: .8rem/1.5 monospace; }
+
+/* Four workspaces share one quiet shell; performance tools use a physical desk. */
+:root { --bus-a: #6cddcf; --bus-b: #f4ae78; }
+.workspace-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: #0d151c; padding: 6px; border-radius: 10px; margin-bottom: 28px; }
+.workspace-tabs a { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 14px 10px; border: 1px solid transparent; border-radius: 6px; }
+.workspace-tabs a span { font-family: 'JetBrains Mono', monospace; color: #718896; font-size: 10px; }
+.workspace-tabs a[aria-current=page] { background: #26343d; border-color: #3a4b56; color: var(--accent); }
+.workflow-steps { list-style: none; display: flex; gap: 8px; padding: 0; margin: 0; counter-reset: step; }
+.workflow-steps li { font-size: 11px; padding: 8px 10px; white-space: nowrap; color: var(--muted); }
+.workflow-steps li::before { counter-increment: step; content: counter(step); margin-right: 7px; color: var(--accent); font-family: monospace; }
+.file-actions { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 14px; }
+.file-actions > div { display: flex; align-items: center; gap: 14px; }
+.file-actions .helper { margin: 0; }
+.editor-workspace .sidebar > .card > .full { margin-top: 10px; }
+.editor-workspace input:not([type=checkbox]):not([type=range]), .preset-layout input:not([type=checkbox]):not([type=range]) { width: 100%; }
+.editor-workspace details summary, .preset-layout details summary, .device-programs summary { color: #c8d6df; font-size: 12px; cursor: pointer; }
+.device-programs { margin-top: 20px; }
+.preset-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+.preset-layout fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.layer-options { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.layer-options input { width: 100%; }
+.mixing-desk { background: linear-gradient(135deg, #202a32, #151d24); border: 1px solid #46515a; border-radius: 14px; padding: 24px; box-shadow: 0 16px 40px #0005, inset 0 1px #ffffff12; }
+.desk-heading, .desk-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.desk-heading { margin-bottom: 22px; }
+.desk-label, .desk-footer > span { color: #9aadb9; font: 10px 'JetBrains Mono', monospace; letter-spacing: 2px; }
+.bus-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.bus { --channel: var(--bus-a); padding: 20px; border-top: 3px solid var(--channel); background: #0e171e; }
+.bus-b { --channel: var(--bus-b); }
+.bus-title { display: flex; justify-content: space-between; align-items: center; }
+.bus-title h2 { display: flex; align-items: center; gap: 12px; }
+.bus-title h2 > span { font-size: 22px; color: var(--channel); }
+.bus-tally { font: 9px 'JetBrains Mono', monospace; letter-spacing: 1px; color: #70838e; padding: 5px 8px; border: 1px solid #30404a; border-radius: 3px; }
+.bus-tally.on-air { color: var(--channel); border-color: var(--channel); background: color-mix(in srgb, var(--channel) 12%, transparent); }
+.bus .fader-slot-name { font-size: 23px; font-weight: 500; margin: 20px 0 18px; overflow-wrap: anywhere; }
+.bus-level { display: flex; align-items: center; gap: 16px; }
+.bus-level meter { width: 100%; height: 9px; }
+.bus-level output { font: 12px 'JetBrains Mono', monospace; color: var(--channel); }
+.bus-level meter::-webkit-meter-bar { background: #27313a; border: 0; }
+.bus-level meter::-webkit-meter-optimum-value { background: var(--channel); }
+.preset-bank { display: grid; grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); gap: 8px; }
+.cue-key { display: flex; flex-direction: column; gap: 7px; min-height: 65px; text-align: left; border-radius: 5px; box-shadow: 0 3px #080d12, inset 0 1px #ffffff16; overflow-wrap: anywhere; }
+.cue-key small { color: #798d9b; font: 9px monospace; }
+.cue-key.selected { color: var(--channel); border-color: var(--channel); background: color-mix(in srgb, var(--channel) 12%, #111a20); }
+.desk-main { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr); margin-top: 24px; border: 1px solid #35434d; border-radius: 8px; overflow: hidden; }
+.crossfader-module, .transition-module { padding: 24px; min-width: 0; }
+.transition-module { border-left: 1px solid #35434d; background: #10192055; }
+.fader-value { font-size: 50px; text-align: center; margin: 10px 0 14px; }
+.fader-value span { font-size: 12px; color: #7e93a1; }
+.fader-range { width: 100%; }
+.transport-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 26px 0 16px; }
+.transport-keys button { min-height: 56px; text-transform: uppercase; font: 11px 'JetBrains Mono', monospace; box-shadow: 0 3px #0a1117, inset 0 1px #ffffff17; }
+.cut-key { background: #44403a; color: #ffe5ca; border-color: #76604a; }
+.auto-key { background: #263e3b; color: #b8f1d9; border-color: #4e7064; }
+.desk-footer { margin-top: 24px; border-top: 1px solid #34424c; padding-top: 18px; }
+.desk-footer > div { display: flex; gap: 8px; }
+.blackout-key { background: #0a1117; color: #c7d5df; }
+.audio-monitor { margin-bottom: 20px; }
+.audio-eye-strip { height: 64px; box-shadow: inset 0 0 25px #000; }
+.audio-console { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; }
+.audio-master { min-width: 0; }
+.audio-channels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #152029; border: 1px solid #3e4d58; border-radius: 10px; padding: 18px 0 0; box-shadow: 0 8px 24px #0003; min-width: 0; }
+.audio-channel { --channel: #6cddcf; min-width: 0; margin: 0; padding: 0 18px 16px; border: 0; border-right: 1px solid #34424c; }
+.channel-width { --channel: #9bbdff; }.channel-hue { --channel: #dca1ed; }.channel-brightness { --channel: #f1ce79; border-right: 0; }
+.audio-channel legend { width: 100%; color: var(--channel); font-size: 14px; font-weight: 600; padding: 0 0 16px; border-bottom: 3px solid var(--channel); }
+.audio-channel legend span { display: block; font: 10px 'JetBrains Mono', monospace; color: #7b919f; margin-bottom: 8px; }
+.audio-channel select { font-size: 12px; padding: 9px 6px; }
+.channel-readout { margin: 20px 0; display: flex; align-items: center; justify-content: space-between; }
+.channel-readout > span, .channel-meter-pair span { color: #8095a3; font: 9px 'JetBrains Mono', monospace; letter-spacing: 1px; }
+.channel-readout output { font: 19px 'JetBrains Mono', monospace; }
+.channel-readout small, .channel-output small { color: #879ca9; font-size: 10px; margin-left: 4px; }
+.audio-channel .audio-range { grid-template-columns: 1fr 1fr; gap: 8px; }
+.audio-channel .audio-range label { margin-top: 0; font-size: 10px; }
+.audio-channel .audio-range input { width: 100%; min-width: 0; padding: 9px 6px; font-family: 'JetBrains Mono', monospace; }
+.audio-channel .range-caption { color: #c1cdd5; margin: 14px 0 8px; font-size: 11px; }
+.channel-meter-pair { display: flex; gap: 18px; justify-content: center; margin: 20px 0 8px; }
+.channel-meter-pair > div { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.channel-meter-pair meter { writing-mode: vertical-lr; direction: rtl; width: 18px; height: 130px; }
+.channel-meter-pair meter::-webkit-meter-bar { background: #091219; border: 1px solid #35424c; border-radius: 3px; }
+.channel-meter-pair meter::-webkit-meter-optimum-value { background: repeating-linear-gradient(0deg, transparent 0 7px, #111a2088 7px 9px), linear-gradient(to top, var(--channel), #c4f46a); }
+.channel-output { display: block; text-align: center; font: 30px 'JetBrains Mono', monospace; color: var(--channel); }
+.master-faders { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0 22px; border-bottom: 1px solid #34424c; margin-bottom: 18px; }
+.master-fader { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; }
+.master-fader label { font-size: 10px; }
+.vertical-fader { writing-mode: vertical-lr; direction: rtl; height: 170px; width: 28px; accent-color: #b6c9d5; }
+.master-fader output { font: 10px 'JetBrains Mono', monospace; color: #c2d2dd; }
+.audio-tuning-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 14px 0; }
+.audio-controller.card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 0; padding: 20px; }
+.audio-controller.card > .helper { width: 100%; margin: 0; }
+input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (max-width: 1100px) { .workflow-steps { display: none; } .audio-console { grid-template-columns: 1fr; }.audio-master { display: block; }.master-faders { max-width: 360px; }.audio-master .audio-buttons { margin-top: 12px; } }
+@media (max-width: 760px) { .workspace-tabs a { font-size: 11px; gap: 6px; }.workspace-tabs a span { display: none; }.bus-grid, .desk-main, .preset-layout { grid-template-columns: 1fr; }.transition-module { border-left: 0; border-top: 1px solid #35434d; }.mixing-desk { padding: 14px; }.audio-channels { grid-template-columns: 1fr 1fr; row-gap: 26px; }.channel-width { border-right: 0; }.intro { align-items: start; }.desk-heading .badge { font-size: 8px; }.desk-label { font-size: 9px; }.crossfader-module, .transition-module { padding: 18px; }.transport-keys { grid-template-columns: 1fr 1fr; }.editor-workspace .sidebar { display: flex; }.fader-output { min-width: 120px; }.desk-footer { flex-wrap: wrap; } }
+@media (max-width: 400px) { .audio-channel { padding-left: 12px; padding-right: 12px; }.workspace-tabs a { font-size: 10px; padding-left: 5px; padding-right: 5px; }.desk-heading { flex-wrap: wrap; } }
+.preset-layout input:not([type=checkbox]):not([type=range]), .transition-module > input { min-width: 0; padding: 10px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
+.transition-module > input { width: 100%; margin-bottom: 16px; }
+
+.audio-master .audio-meters { grid-template-columns: 1fr; }.audio-master .audio-meters > div { grid-template-columns: 68px minmax(0, 1fr) 32px; }.fader-animation > strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sidebar input[type=checkbox], .preset-layout input[type=checkbox] { accent-color: var(--accent); }

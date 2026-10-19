@@ -36,6 +36,7 @@ describe('configuration drafts', () => {
     store.dispatch(controllerActions.description({ ...description, mqtt_supported: true, pins: ['GPIO2', 'GP4', 'GP5', 'GP17', 'GP18', 'GP19'] }));
     const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add Pico RGB Keypad' }));
     const keypad = within(screen.getByRole('group', { name: 'Output 2' }));
     expect(keypad.queryByLabelText('Power-on behavior')).toBeNull();
@@ -63,6 +64,7 @@ describe('configuration drafts', () => {
   it('has one preset-owned transition and rejects obsolete output overrides', () => {
     const store = readyStore();
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     expect(screen.queryByLabelText('On transition')).toBeNull();
     expect(screen.queryByLabelText('Off transition')).toBeNull();
     expect(screen.getByText(/Each preset supplies its transition/)).toBeInTheDocument();
@@ -79,6 +81,7 @@ describe('configuration drafts', () => {
     store.dispatch(controllerActions.presets([{ name: 'warm', size: 100, crc32: 1 }, { name: 'stars', size: 100, crc32: 2 }]));
     const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.change(screen.getByLabelText('Home Assistant default preset'), { target: { value: 'warm' } });
     expect(screen.getByLabelText('Expose preset warm')).toBeDisabled();
     fireEvent.click(screen.getByLabelText('Expose preset stars'));
@@ -95,6 +98,7 @@ describe('configuration drafts', () => {
     store.dispatch(controllerActions.description({ ...description, wifi_supported: false, http_supported: false, mqtt_supported: true }));
     const save = vi.spyOn(runtime.controllers, 'configureNetwork').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi, HTTP & MQTT' }));
     fireEvent.click(screen.getByLabelText('Enable MQTT control'));
     fireEvent.change(screen.getByLabelText('Broker hostname or IPv4 address'), { target: { value: '192.168.1.10' } });
@@ -114,6 +118,7 @@ describe('configuration drafts', () => {
   it('keeps a hardware draft and blocks saving when controller revisions change', () => {
     const store = readyStore();
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     const count = screen.getByLabelText('Pixel count') as HTMLInputElement;
     fireEvent.change(count, { target: { value: '7' } });
     act(() => { store.dispatch(controllerActions.configuration({ config: hardware(12), revision: 2, savedRevision: 2 })); });
@@ -133,6 +138,7 @@ describe('configuration drafts', () => {
     store.dispatch(controllerActions.presets([{ name: 'warm', size: 100, crc32: 1 }, { name: 'stars', size: 100, crc32: 2 }]));
     const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     const first = within(screen.getByRole('group', { name: 'Output 1' })), second = within(screen.getByRole('group', { name: 'Output 2' }));
     expect(first.getByLabelText('Power-on behavior')).toHaveValue('preset');
     expect(second.getByLabelText('Power-on behavior')).toHaveValue('restore_last');
@@ -154,6 +160,7 @@ describe('configuration drafts', () => {
     config.outputs[0].startup = { mode: 'preset', preset: 'missing' };
     store.dispatch(controllerActions.configuration({ config, revision: 1, savedRevision: 1 }));
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     expect(screen.getByLabelText('Startup preset')).toHaveValue('missing');
     expect(screen.getByRole('option', { name: 'missing (unavailable)' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Startup preset'), { target: { value: '' } });
@@ -168,6 +175,7 @@ describe('configuration drafts', () => {
     config.outputs[0].startup = { mode: 'off' };
     config.outputs.push({ id: 'desk', type: 'ws2812b', config: { pin: 'GPIO3', count: 8 }, startup: { mode: 'restore_last' } });
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     const editor = screen.getByLabelText('Controller configuration JSON') as HTMLTextAreaElement;
     fireEvent.change(editor, { target: { value: JSON.stringify(config) } });
     expect(screen.getAllByLabelText('Power-on behavior').map(node => (node as HTMLSelectElement).value)).toEqual(['off', 'restore_last']);
@@ -186,6 +194,7 @@ describe('configuration drafts', () => {
   it('rejects abandoned animation startup JSON', () => {
     const store = readyStore();
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     const config = hardware(5);
     fireEvent.change(screen.getByLabelText('Controller configuration JSON'), { target: { value: JSON.stringify({ ...config, outputs: [{ ...config.outputs[0], startup: { program: 'old' } }] }) } });
     expect(screen.getByRole('button', { name: 'Apply in RAM' })).toBeDisabled();
@@ -194,6 +203,7 @@ describe('configuration drafts', () => {
   it('keeps a network draft and blocks saving when its revision changes', () => {
     const store = readyStore();
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi & HTTP' }));
     const port = screen.getByLabelText('HTTP port') as HTMLInputElement;
     fireEvent.change(port, { target: { value: '8080' } });
@@ -212,6 +222,7 @@ describe('configuration drafts', () => {
     store.dispatch(controllerActions.network({ config, revision: 1 }));
     const save = vi.spyOn(runtime.controllers, 'configureNetwork').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi & HTTP' }));
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'station-secret' } });
     const mode = screen.getByLabelText('Wi-Fi mode');
@@ -235,6 +246,7 @@ describe('configuration drafts', () => {
     const store = readyStore();
     store.dispatch(controllerActions.description({ ...description, wifi_ap_supported: undefined }));
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi & HTTP' }));
     expect(screen.queryByLabelText('Wi-Fi mode')).toBeNull();
     expect(screen.queryByLabelText('Access point SSID')).toBeNull();
@@ -243,6 +255,7 @@ describe('configuration drafts', () => {
     const store = readyStore();
     store.dispatch(controllerActions.networkStatus({ state: 'ap_active', mode: 'ap', recovery: true, ssid: 'lightvm-123456', ip: '192.168.4.1', http_port: 80, revision: 1 }));
     render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.click(screen.getByRole('button', { name: 'Wi-Fi & HTTP' }));
     expect(screen.getByRole('status')).toHaveTextContent('saved network settings');
     expect(screen.getByRole('button', { name: 'Save network for next boot' })).toBeEnabled();

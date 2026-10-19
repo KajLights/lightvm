@@ -36,39 +36,16 @@ program.
 
 Before you start, connect the controller. Configure at least one output.
 
-The development workflow has five main steps:
+The Editor workflow is **Edit → Preview → Save locally → Deploy to device**.
+Edit an animation or transition and preview it on a configured output. Save its
+editable source and preview settings to an external `.lightvm.json` file. Deploy
+the compiled program to the device under a chosen name. Deployment alone does not
+change playback.
 
-1. **Edit.**
-   Write or change the animation source. Set the required animation settings.
-   The browser checks and compiles the source.
-
-2. **Preview.**
-   Select a configured output, such as the output connected to GP16.
-   Click **Preview animation**.
-
-   The controller replaces playback on that output. Other outputs continue
-   playback. Change the source or settings as necessary. Repeat the preview.
-
-3. **Save animation.**
-   Enter an animation name. Click **Save animation**.
-
-   The browser saves the source, compiled program and selected default settings.
-   Each save creates an animation version. Existing presets keep their saved
-   versions.
-
-4. **Compose, if necessary.**
-   Select saved animation versions. Add the required layers. Set the layer order,
-   settings, opacity and blend modes. Click **Preview preset**.
-
-   A preset can contain one or more layers.
-
-5. **Save preset.**
-   Enter a preset name. Click **Save preset** to save the definition in the browser.
-   Click **Save preset to controller** to save the compiled programs and preset
-   definition on the controller.
-
-Select a saved controller preset. Click **Run on output**.
-Saving a preset does not start playback.
+Use **Configuration → Presets** to combine deployed animations, layer settings,
+opacity and blend modes, and a preset transition. Save the recipe to the device.
+Use **Mixer** to cue presets on A/B buses, choose a transition, mix manually or run
+a timed fade. Saving a preset does not start playback.
 
 ## Storage and memory
 
@@ -76,7 +53,7 @@ The system uses three storage locations:
 
 | Location | Contents |
 | --- | --- |
-| **Browser storage** | Editable animation versions and presets. **Export library** creates a backup file. |
+| **External files** | Editable Python source and preview settings, downloaded/imported in Editor. Browser drafts remain session-only. |
 | **Controller flash memory** | Compiled programs, controller presets and saved controller configuration. |
 | **Controller RAM** | Active animation state and image data. |
 
@@ -91,12 +68,12 @@ A composition supports up to eight layers, subject to available memory.
 
 ## Startup
 
-Startup is a separate setting. Each output can start one stored program when the
-controller starts. Saved presets currently require an explicit run command.
+Startup is configured per output: off, restore the last preset and power state,
+or select a saved preset. The preset supplies the startup transition.
 
 ## Reference guides
 
-- [Browser workspace](web-editor.md): editor controls, library storage and connections.
+- [Browser workspace](web-editor.md): editor files, device presets, mixing and connections.
 - [Controller configuration](configuration.md): output configuration, startup and flash storage.
 - [Animation profile](animation-profile.md): Python source, initialization and rendering.
 - [Transition profile](transition-profile.md): named Python programs combining A/B compositions by progress.
@@ -137,6 +114,6 @@ aliases, fallback readers or automatic data migrations.
    changed, or if the old binding was removed while offline. Current bindings
    publish both the light and Preset selector automatically.
 
-A firmware-only update does not rewrite old saved configuration. Browser library
-exports containing older compiled source APIs must be recreated from source;
+A firmware-only update does not rewrite old saved configuration. Source files
+using older experimental APIs must be updated and recompiled;
 there is no import conversion.

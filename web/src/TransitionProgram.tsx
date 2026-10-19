@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { crc32 } from '../protocol.mjs';
-import { programManifest, settingsFor, type SettingsValues } from './library';
+import { programManifest, settingsFor, type SettingsValues } from './program';
 import { useRuntime } from './runtime';
 import { useAppSelector } from './store';
 import { SettingFields } from './SettingFields';
@@ -69,7 +69,7 @@ export function TransitionProgram({ state, busy, onApply, id = 'transition-progr
     {error && <button className="quiet" disabled={busy} onClick={() => setRetry(value => value + 1)}>Retry settings</button>}
     <button className="secondary full" disabled={busy || !selected || !manifest || Boolean(validation) || !controller.description?.transition_programs}
       onClick={() => { if (manifest) void onApply(program, settingsFor(manifest, settings)); }}>Apply transition</button>
-    {!programs.length && <p className="helper">Save a transition to the controller in Develop to choose it here.</p>}
+    {!programs.length && <p className="helper">Deploy a transition in Editor to choose it here.</p>}
     {state && <p className="helper">Active transition: {state.program || state.effect}</p>}
   </div>;
 }

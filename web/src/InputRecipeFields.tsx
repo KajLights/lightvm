@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { inputsFor } from './library';
+import { inputsFor } from './program';
 import type { InputBindings, Manifest } from './types';
 
 export function InputRecipeFields({ manifest, values, onChange, onValidity, prefix }: {

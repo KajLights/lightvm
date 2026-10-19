@@ -4,7 +4,7 @@ import { Connections } from '../connections.mjs';
 import { ControllerDiscovery } from '../discovery.mjs';
 import { activityActions, controllerActions, editorActions, type AppStore } from './store';
 import type { Description, HardwareConfig, InputBindings, NetworkConfig, Path } from './types';
-import type { SettingsValues } from './library';
+import type { SettingsValues } from './program';
 
 export function download(bytes: BlobPart, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([bytes], { type }));

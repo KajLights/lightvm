@@ -17,24 +17,26 @@ export function App() {
   const activity = useAppSelector(state => state.activity), dispatch = useAppDispatch();
   const { controllers } = useRuntime();
   const route = matchPath('/controllers/:controllerId/:view', location.pathname);
-  const offline = location.pathname === '/develop';
+  const offline = location.pathname === '/editor';
   const validController = route?.params.controllerId === controller.description?.controller_id;
-  const develop = offline || (validController && route?.params.view === 'develop');
-  const configure = validController && route?.params.view === 'configure';
-  const fader = validController && route?.params.view === 'fader';
+  const develop = offline || (validController && route?.params.view === 'editor');
+  const configure = location.pathname === '/configuration' || (validController && route?.params.view === 'configuration');
+  const fader = location.pathname === '/mixer' || (validController && route?.params.view === 'mixer');
   const audio = location.pathname === '/audio' || (validController && route?.params.view === 'audio');
   const firmware = location.pathname === '/firmware' || (validController && route?.params.view === 'firmware');
   const [openedDevelop, setOpenedDevelop] = useState(false), [openedConfigure, setOpenedConfigure] = useState(false);
+  const [openedAudio, setOpenedAudio] = useState(false);
+  useEffect(() => { if (audio) setOpenedAudio(true); }, [audio]);
   useEffect(() => { if (develop) setOpenedDevelop(true); if (configure) setOpenedConfigure(true); }, [develop, configure]);
   const workspace = Boolean(validController && route);
   const busy = Boolean(activity.operation), description = controller.description;
 
-  if (location.pathname === '/') return <Navigate to="/controllers" replace />;
-  const knownRoute = location.pathname === '/controllers' || offline || firmware || audio || (workspace && ['develop', 'fader', 'configure'].includes(route!.params.view || ''));
+  if (location.pathname === '/') return <Navigate to="/editor" replace />;
+  const knownRoute = location.pathname === '/controllers' || offline || firmware || audio || configure || fader || (workspace && ['editor', 'mixer', 'configuration'].includes(route!.params.view || ''));
   return <>
     <header className="site-header">
       <Link className="brand" to="/controllers"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span className="version">{VERSION}</span></Link>
-      <nav className="global-nav" aria-label="Application"><Link to="/controllers" aria-current={location.pathname === '/controllers' ? 'page' : undefined}>Controllers</Link><Link to="/audio" aria-current={audio ? 'page' : undefined}>Audio demo</Link><Link to="/firmware" aria-current={location.pathname === '/firmware' ? 'page' : undefined}>Firmware</Link></nav>
+      <nav className="global-nav" aria-label="Application"><Link to="/controllers" aria-current={location.pathname === '/controllers' ? 'page' : undefined}>Controllers</Link><Link to="/firmware" aria-current={location.pathname === '/firmware' ? 'page' : undefined}>Firmware</Link></nav>
       <span className={'badge ' + (controller.selectedPath ? 'ready' : '')}><span className="status-dot" /><span>{controller.selectedPath && description ? description.board : 'No controller connected'}</span></span>
     </header>
     <main>
@@ -55,23 +57,21 @@ export function App() {
             }).join(' · ')}</p>
           </div>
         </section>
-        <nav className="workspace-tabs" aria-label="Controller workspace">
-          <Link to={controllerRoute(description.controller_id, 'develop')} aria-current={develop ? 'page' : undefined}>Develop</Link>
-          <Link to={controllerRoute(description.controller_id, 'fader')} aria-current={fader ? 'page' : undefined}>Fader</Link>
-          <Link to={controllerRoute(description.controller_id, 'audio')} aria-current={audio ? 'page' : undefined}>Audio demo</Link>
-          <Link to={controllerRoute(description.controller_id, 'configure')} aria-current={configure ? 'page' : undefined}>Configure</Link>
-          <Link to={controllerRoute(description.controller_id, 'firmware')} aria-current={firmware ? 'page' : undefined}>Firmware</Link>
-        </nav>
         {!controller.selectedPath && <p className="connection-banner" role="status">{controller.paths.length ? 'Select a remaining connection to continue. Commands stay on the path you choose.' : 'Controller disconnected. Your drafts are still here.'} <Link to="/controllers">Reconnect</Link></p>}
       </>}
+      {!firmware && location.pathname !== '/controllers' && <nav className="workspace-tabs" aria-label="Workspace">
+        {([['editor', '01', 'Editor', develop], ['configuration', '02', 'Configuration', configure], ['mixer', '03', 'Mixer', fader], ['audio', '04', 'Audio Playground', audio]] as const).map(([view, number, label, selected]) =>
+          <Link key={view} to={description ? controllerRoute(description.controller_id, view) : '/' + view} aria-current={selected ? 'page' : undefined}><span aria-hidden="true">{number}</span>{label}</Link>)}
+      </nav>}
       {location.pathname === '/controllers' && <Controllers onConnected={() => {
         const state = controllers.snapshot;
-        if (state.controller.description) navigate(controllerRoute(state.controller.description.controller_id, outputFor(state.controller.config) ? 'develop' : 'configure'));
+        if (state.controller.description) navigate(controllerRoute(state.controller.description.controller_id, outputFor(state.controller.config) ? 'editor' : 'configuration'));
       }} />}
       {openedDevelop && <div hidden={!develop}><Develop active={develop} /></div>}
-      {openedConfigure && <div hidden={!configure}><Configure key={description?.controller_id || 'none'} /></div>}
+      {openedConfigure && description && <div hidden={!configure}><Configure key={description?.controller_id || 'none'} /></div>}
+      {configure && !description && <section className="empty-state"><h1>Configure your device.</h1><p>Connect a controller to manage presets, outputs, Wi-Fi and MQTT.</p><Link className="button primary" to="/controllers">Connect a device</Link></section>}
       {fader && <Fader />}
-      {audio && <AudioEye />}
+      {openedAudio && <div hidden={!audio}><AudioEye active={audio} /></div>}
       {firmware && <Firmware usbConnected={controller.paths.some(path => path.key === 'usb')} />}
       {!knownRoute && <section className="empty-state"><h1>Select a controller to continue.</h1><p>Connect to a controller to open its workspace.</p><Link className="button primary" to="/controllers">Choose a controller</Link></section>}
       {develop && <span id="compiler-state" className="sr-only">{editor.compiler === 'ready' ? 'Compiler ready' : editor.compiler === 'error' ? 'Compiler unavailable' : 'Loading compiler'}</span>}
@@ -94,8 +94,8 @@ function Controllers({ onConnected }: { onConnected: () => void }) {
   }, [address, state.nearby, state.networkStatus, controllers]);
   async function connect(path: Path) { if (await controllers.connect(path, address)) onConnected(); }
   return <>
-    <div className="intro"><div><p className="eyebrow">START WITH YOUR CONTROLLER</p><h1>Find your lights.</h1><p>Connect once, then move between programming and configuration.</p></div><Link className="quiet-link" to="/develop">Open the editor without a controller →</Link></div>
-    {state.paths.length > 0 && <section className="connected-card"><div><span className="status-dot connected" /> <strong>{state.description?.board}</strong><p className="helper">Your controller is connected. You can add another path to the same controller.</p></div><Link className="button secondary" to={controllerRoute(state.description!.controller_id, 'develop')}>Open workspace</Link><button className="quiet" disabled={busy} onClick={() => void controllers.disconnectAll()}>Disconnect controller</button></section>}
+    <div className="intro"><div><p className="eyebrow">START WITH YOUR CONTROLLER</p><h1>Find your lights.</h1><p>Connect once, then move between programming and configuration.</p></div><Link className="quiet-link" to="/editor">Open the editor without a controller →</Link></div>
+    {state.paths.length > 0 && <section className="connected-card"><div><span className="status-dot connected" /> <strong>{state.description?.board}</strong><p className="helper">Your controller is connected. You can add another path to the same controller.</p></div><Link className="button secondary" to={controllerRoute(state.description!.controller_id, 'editor')}>Open workspace</Link><button className="quiet" disabled={busy} onClick={() => void controllers.disconnectAll()}>Disconnect controller</button></section>}
     <div className="controller-picker-grid">
       <section className="card controller-card"><div className="card-heading"><h2>On your network</h2><button id="discover-controllers" className="quiet small" disabled={busy || state.discovering} onClick={() => void controllers.find([address])}>Refresh</button></div>
         <p className="muted">Choose a LightVM controller on the same local network.</p>

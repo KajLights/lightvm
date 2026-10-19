@@ -1,9 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
-import { webcrypto } from 'node:crypto';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import fixtures from '../../tests/portable_fixtures.h?raw';
+import { afterEach, expect, it, vi } from 'vitest';
 import type { LightVMClient } from '../protocol.mjs';
 import { crc32 } from '../protocol.mjs';
 import { App } from './App';
@@ -13,24 +11,11 @@ import { RuntimeContext } from './runtime';
 import { createAppStore, controllerActions } from './store';
 import { FADER_SOURCE } from './transition-fader';
 import { ANIMATION_DRAG_TYPE } from './Fader';
-import { emptyLibrary, programName, saveAnimation, writeLibrary, type CompositionLayer } from './library';
-import type { Compilation, Description, Program, TransitionState } from './types';
+import { type CompositionLayer } from './program';
+import type { Description, Program, TransitionState } from './types';
 import { deployedTransition, WIPE_SETTINGS } from '../../tests/web-transitions';
 
-beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => { cleanup(); localStorage.clear(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-
-async function savedAnimations() {
-  const raw = fixtures.split('library_lbc[] = {')[1].split('};')[0];
-  const bytecode = Uint8Array.from(raw.match(/0x[0-9a-f]{2}/g)!, value => parseInt(value.slice(2), 16));
-  const size = new DataView(bytecode.buffer).getUint32(76, true);
-  const manifest = JSON.parse(new TextDecoder().decode(bytecode.subarray(bytecode.length - size)));
-  const compiled: Compilation = { id: 1, source: '# saved animation', bytecode, diagnostics: [], manifest };
-  const first = await saveAnimation(emptyLibrary(), compiled, 'ember.py', 'Ember', { duration: 2 });
-  const second = await saveAnimation(first.library, compiled, 'aurora.py', 'Aurora', { duration: 4 });
-  writeLibrary(second.library);
-  return { first: first.animation, second: second.animation, library: second.library, bytecode };
-}
 
 function drag(animation: HTMLElement, slot: HTMLElement) {
   const values = new Map<string, string>();
@@ -64,6 +49,9 @@ function setup(initialDriver: TransitionState['driver'] = { kind: 'timed', assig
       state = { ...state, revision: state.revision + 1, [slot]: { active: true, layers: layers.map(layer => ({ id: layer.id, program: layer.program, generation: ++generation })) } };
       return { value: state.revision };
     }),
+    activatePreset: vi.fn(async (name: string, _output: string, slot: 'A' | 'B') => { state = { ...state, revision: state.revision + 1, [slot]: { active: true, preset: name, layers: [{ id: 'main', program: 'rainbow', generation: ++generation }] } }; return { value: state.revision }; }),
+    swapTransition: vi.fn(async () => { state = { ...state, A: state.B, B: state.A, progress: 100 - state.progress }; return state; }),
+    setPower: vi.fn(async () => state),
     setProgress: vi.fn(async (progress: number) => { state = { ...state, progress, driver: { kind: 'manual', assignment: ++sequence } }; return state; }),
     runTransition: vi.fn(async () => { state = { ...state, driver: { kind: 'timed', assignment: ++sequence } }; return state; }),
     holdTransition: vi.fn(async () => { state = { ...state, driver: { kind: 'manual', assignment: ++sequence } }; return state; }),
@@ -77,9 +65,10 @@ function setup(initialDriver: TransitionState['driver'] = { kind: 'timed', assig
   ] }, revision: 1, savedRevision: 0 }));
   store.dispatch(controllerActions.programs(programs));
   vi.spyOn(controllers, 'readProgramState').mockResolvedValue();
-  const view = render(<Provider store={store}><MemoryRouter initialEntries={['/controllers/controller/fader']}>
+  const view = render(<Provider store={store}><MemoryRouter initialEntries={['/controllers/controller/mixer']}>
     <RuntimeContext.Provider value={{ compiler, controllers }}><App /></RuntimeContext.Provider>
   </MemoryRouter></Provider>);
+  document.querySelectorAll('details').forEach(element => { element.open = true; });
   return { client, store, view, setState: (next: TransitionState) => { state = next; }, getState: () => state,
     setPrograms: (next: Program[]) => { programs = next; store.dispatch(controllerActions.programs(next)); } };
 }
@@ -93,7 +82,7 @@ async function claim() {
 it('opens the workspace Fader tab without interrupting the timed driver', async () => {
   const { client } = setup();
   await screen.findByText('Timed transition running');
-  expect(screen.getByRole('link', { name: 'Fader' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByRole('link', { name: 'Mixer' })).toHaveAttribute('aria-current', 'page');
   expect(screen.getByRole('slider', { name: 'Transition fader' })).toHaveValue('35');
   expect(screen.getByRole('slider')).toBeDisabled();
   expect(client.assignTransitionSource).not.toHaveBeenCalled(); expect(client.runTransition).not.toHaveBeenCalled();
@@ -119,7 +108,7 @@ it('cancels unsent fader data before Hold or a timed demo', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Hold' }));
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
   expect(client.updateTransitionSource).not.toHaveBeenCalled(); expect(client.holdTransition).toHaveBeenCalledWith('lights');
-  fireEvent.click(screen.getByRole('button', { name: 'Start timed demo' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Start timed loop' }));
   await act(async () => {});
   expect(client.setProgress).toHaveBeenCalledWith(0, 'lights');
   expect(client.runTransition).toHaveBeenCalledWith(100, 2000, 'lights', 10000);
@@ -130,7 +119,7 @@ it('runs to an endpoint from the current position and validates timed intervals'
   const { client } = setup(); await screen.findByText('Timed transition running');
   fireEvent.change(screen.getByLabelText('Fade duration (ms)'), { target: { value: '1200' } });
   fireEvent.change(screen.getByLabelText('Repeat every (ms)'), { target: { value: '1000' } });
-  expect(screen.getByRole('button', { name: 'Start timed demo' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Start timed loop' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Run to B' }));
   await waitFor(() => expect(client.runTransition).toHaveBeenCalledWith(100, 1200, 'lights'));
   expect(client.setProgress).not.toHaveBeenCalled();
@@ -167,38 +156,6 @@ it('drops pending input on output changes and unmount without stopping playback'
   expect(client.updateTransitionSource).not.toHaveBeenCalled();
 });
 
-it('loads a dragged browser animation with saved settings while retaining the fader and the other composition', async () => {
-  const { first, bytecode } = await savedAnimations();
-  const workspace = setup(); await claim();
-  const before = workspace.getState();
-  drag(screen.getByRole('article', { name: 'Ember v1' }), screen.getByRole('region', { name: 'Composition B' }));
-  await waitFor(() => expect(workspace.client.configureComposition).toHaveBeenCalledWith([
-    { id: 'main', program: programName(first), crc32: crc32(bytecode), settings: { duration: 2 }, opacity: 255, blend: 'over' },
-  ], 'lights', 'B'));
-  await waitFor(() => expect(screen.getByRole('slider')).toBeEnabled());
-  expect(workspace.client.saveProgram).toHaveBeenCalledExactlyOnceWith(programName(first), bytecode);
-  expect(workspace.getState().A).toEqual(before.A);
-  expect(workspace.getState().driver).toEqual(before.driver);
-  expect(workspace.getState().progress).toBe(35);
-  expect(workspace.client.holdTransition).not.toHaveBeenCalled();
-  expect(screen.getByRole('region', { name: 'Composition B' })).toHaveTextContent('Ember v1');
-});
-
-it('loads the same compiled program with independent saved settings in A and B without uploading it twice', async () => {
-  await savedAnimations(); const workspace = setup();
-  await screen.findByText('Timed transition running');
-  fireEvent.click(screen.getByRole('button', { name: 'Load Ember v1 into A' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Load Aurora v1 into B' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Load Aurora v1 into B' }));
-  await waitFor(() => expect(workspace.client.configureComposition).toHaveBeenCalledTimes(2));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Use fader' })).toBeEnabled());
-  expect(workspace.client.configureComposition.mock.calls.map(call => [call[0][0].settings, call[2]])).toEqual([[{ duration: 2 }, 'A'], [{ duration: 4 }, 'B']]);
-  expect(workspace.client.saveProgram).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole('region', { name: 'Composition A' })).toHaveTextContent('Ember v1');
-  expect(screen.getByRole('region', { name: 'Composition B' })).toHaveTextContent('Aurora v1');
-  expect(workspace.getState().driver.kind).toBe('timed');
-});
-
 it('loads an existing controller animation with its defaults and excludes stored transitions', async () => {
   const workspace = setup();
   await act(async () => workspace.setPrograms([
@@ -214,32 +171,12 @@ it('loads an existing controller animation with its defaults and excludes stored
   expect(workspace.client.saveProgram).not.toHaveBeenCalled();
 });
 
-it('preserves both loaded compositions and fader ownership when candidate preparation fails', async () => {
-  await savedAnimations(); const workspace = setup(); await claim();
-  const before = workspace.getState();
-  workspace.client.configureComposition.mockRejectedValueOnce(new Error('Animation exceeds memory budget'));
-  fireEvent.click(screen.getByRole('button', { name: 'Load Ember v1 into B' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Animation exceeds memory budget');
-  await waitFor(() => expect(screen.getByRole('slider')).toBeEnabled());
-  expect(workspace.getState()).toEqual(before);
-  expect(screen.getByText('Fader controls the transition')).toBeInTheDocument();
-});
-
 it('ignores unrecognized drop data and does not send a composition mutation', async () => {
   const { client } = setup(); await screen.findByText('Timed transition running');
   fireEvent.drop(screen.getByRole('region', { name: 'Composition A' }), { dataTransfer: {
     types: [ANIMATION_DRAG_TYPE], getData: () => 'browser:missing',
   } });
   expect(client.configureComposition).not.toHaveBeenCalled(); expect(client.saveProgram).not.toHaveBeenCalled();
-});
-
-it('does not label a replacement instance with the previously selected saved version', async () => {
-  await savedAnimations(); const workspace = setup(); await screen.findByText('Timed transition running');
-  fireEvent.click(screen.getByRole('button', { name: 'Load Ember v1 into A' }));
-  await waitFor(() => expect(screen.getByRole('region', { name: 'Composition A' })).toHaveTextContent('Ember v1'));
-  const state = workspace.getState();
-  workspace.setState({ ...state, A: { ...state.A, layers: state.A.layers!.map(layer => ({ ...layer, generation: 99 })) } });
-  await waitFor(() => expect(screen.getByRole('region', { name: 'Composition A' })).not.toHaveTextContent('Ember v1'));
 });
 
 it('chooses deployed transitions without interrupting playback until Apply', async () => {
@@ -340,7 +277,52 @@ it('ignores stale settings reads and refuses a package that differs from the dep
 it('explains when no transitions have been deployed and disables Apply', async () => {
   const workspace = setup(); await screen.findByText('Timed transition running');
   await act(async () => workspace.setPrograms([]));
-  expect(screen.getByText('Save a transition to the controller in Develop to choose it here.')).toBeInTheDocument();
+  expect(screen.getByText('Deploy a transition in Editor to choose it here.')).toBeInTheDocument();
   expect(screen.getByLabelText('Transition program')).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Apply transition' })).toBeDisabled();
+});
+
+
+it('cues a device preset into B without moving the fader or disturbing A', async () => {
+  const workspace = setup(); await claim();
+  act(() => workspace.store.dispatch(controllerActions.presets([{ name: 'Evening', size: 100, crc32: 1 }])));
+  const before = workspace.getState();
+  fireEvent.click(screen.getByRole('button', { name: 'Load Evening into B' }));
+  await waitFor(() => expect(workspace.client.activatePreset).toHaveBeenCalledWith('Evening', 'lights', 'B'));
+  expect(workspace.getState()).toMatchObject({ A: before.A, progress: before.progress, driver: before.driver });
+  expect(screen.getByRole('slider', { name: 'Transition fader' })).toBeEnabled();
+});
+
+it('keeps both buses intact when preset loading fails', async () => {
+  const workspace = setup(); await claim();
+  act(() => workspace.store.dispatch(controllerActions.presets([{ name: 'TooBig', size: 100, crc32: 1 }])));
+  const before = workspace.getState(); workspace.client.activatePreset.mockRejectedValueOnce(new Error('Memory budget exceeded'));
+  fireEvent.click(screen.getByRole('button', { name: 'Load TooBig into B' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Memory budget exceeded');
+  expect(workspace.getState()).toEqual(before);
+  expect(screen.getByRole('slider', { name: 'Transition fader' })).toBeEnabled();
+});
+
+it('cuts and swaps only at endpoints and routes power to the selected output', async () => {
+  const workspace = setup(); await screen.findByText('Timed transition running');
+  expect(screen.getByRole('button', { name: 'Swap A and B' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cut to B' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Swap A and B' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Swap A and B' }));
+  await waitFor(() => expect(workspace.client.swapTransition).toHaveBeenCalledWith('lights'));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Fade to black' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Fade to black' }));
+  await waitFor(() => expect(workspace.client.setPower).toHaveBeenCalledWith(false, 'lights'));
+});
+
+it('loads a dragged device animation while retaining the other bus and manual assignment', async () => {
+  const workspace = setup(); await claim();
+  act(() => workspace.setPrograms([{ name: 'color', crc32: 123, size: 100, type: 'animation' }]));
+  const before = workspace.getState();
+  drag(screen.getByRole('article', { name: 'color' }), screen.getByRole('region', { name: 'Composition B' }));
+  await waitFor(() => expect(workspace.client.configureComposition).toHaveBeenCalledWith([
+    { id: 'main', program: 'color', crc32: 123, settings: {}, opacity: 255, blend: 'over' },
+  ], 'lights', 'B'));
+  expect(workspace.getState()).toMatchObject({ A: before.A, progress: before.progress, driver: before.driver });
+  expect(workspace.client.saveProgram).not.toHaveBeenCalled();
 });

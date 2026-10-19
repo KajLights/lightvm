@@ -44,13 +44,13 @@ describe('audio Eye workspace', () => {
     workspace();
     expect(screen.getByRole('button', { name: 'Drive running Eye' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Start listening' }));
-    await screen.findByText(/Listening · about 30/);
+    await screen.findByText(/Listening · local audio/);
     act(() => microphone.frame({ ...SILENCE, level: 0.7, bass: 1 }));
     expect(screen.getByRole('img')).toHaveAccessibleName(/width 0.40, brightness 0.70/);
     fireEvent.change(screen.getByLabelText('Signal for brightness'), { target: { value: 'bass' } });
     expect(screen.getByRole('img')).toHaveAccessibleName(/brightness 1.00/);
     fireEvent.click(screen.getByRole('button', { name: 'Stop listening' }));
-    expect(microphone.stop).toHaveBeenCalled(); expect(screen.getByText('Microphone off')).toBeInTheDocument();
+    expect(microphone.stop).toHaveBeenCalled(); expect(screen.getByText(/Microphone off/)).toBeInTheDocument();
   });
   it('reports denied microphone permission without getting stuck in startup', async () => {
     microphone.start.mockRejectedValueOnce(new Error('Permission denied'));
@@ -60,7 +60,7 @@ describe('audio Eye workspace', () => {
   });
   it('drives the running Eye instance and restores its original wiring on release', async () => {
     const { client } = workspace(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · about 30/);
+    fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · local audio/);
     act(() => microphone.frame({ ...SILENCE, level: 0.7, bass: 1 }));
     fireEvent.click(screen.getByRole('button', { name: 'Drive running Eye' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Release Eye' })).toBeEnabled());
@@ -72,10 +72,25 @@ describe('audio Eye workspace', () => {
   });
   it('stops capture and restores wiring when the demo unmounts', async () => {
     const { client, unmount } = workspace(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · about 30/);
+    fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · local audio/);
     fireEvent.click(screen.getByRole('button', { name: 'Drive running Eye' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Release Eye' })).toBeEnabled());
     unmount();
     await waitFor(() => expect(client.json).toHaveBeenCalledTimes(3)); expect(microphone.stop).toHaveBeenCalled();
   });
+});
+
+it('tunes a narrow input window and sends the remapped value to the device', async () => {
+  const { client } = workspace(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Start listening' })); await screen.findByText(/Listening · local audio/);
+  fireEvent.change(screen.getByLabelText('brightness input minimum'), { target: { value: '40' } });
+  fireEvent.change(screen.getByLabelText('brightness input maximum'), { target: { value: '60' } });
+  act(() => microphone.frame({ ...SILENCE, level: 0.5 }));
+  expect(screen.getByRole('img')).toHaveAccessibleName(/brightness 0.50/);
+  act(() => microphone.frame({ ...SILENCE, level: 0.8 }));
+  expect(screen.getByRole('img')).toHaveAccessibleName(/brightness 1.00/);
+  fireEvent.click(screen.getByRole('button', { name: 'Drive running Eye' }));
+  await waitFor(() => expect(client.manage).toHaveBeenCalledWith('input_publish', expect.objectContaining({ values: expect.objectContaining({ 'audio.eye.brightness': 1 }) })));
+  fireEvent.change(screen.getByLabelText('brightness input maximum'), { target: { value: '20' } });
+  expect(screen.getByLabelText('brightness input maximum')).toHaveValue(41);
 });

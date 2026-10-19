@@ -34,7 +34,7 @@ describe('audio features and Eye mapping', () => {
     expect(extractor.extract(wave(), spectrum(100), 48000, 1033, DEFAULT_RESPONSE).onset).toBeLessThan(1);
   });
   it('maps all four values, supports inversion and clamps malformed signals', () => {
-    const mappings = { ...DEFAULT_MAPPINGS, position: { signal: 'centroid' as const, minimum: 1, maximum: 0 } };
+    const mappings = { ...DEFAULT_MAPPINGS, position: { ...DEFAULT_MAPPINGS.position, minimum: 1, maximum: 0 } };
     const values = mapAudioToEye({ ...SILENCE, bass: 1, level: 0.5, centroid: 0.25, treble: NaN }, mappings);
     expect(values).toEqual({ position: 0.75, width: 0.4, hue: 0, brightness: 0.5 });
   });
@@ -85,4 +85,20 @@ describe('microphone lifecycle', () => {
     expect(failed).toHaveBeenCalledWith(expect.objectContaining({ message: 'Audio input failed' }));
     expect(mock.stop).toHaveBeenCalled(); expect(mock.close).toHaveBeenCalled(); expect(vi.getTimerCount()).toBe(0);
   });
+});
+
+it('stretches a narrow input window, clamps both ends, and supports inverted output', () => {
+  const mappings = { ...DEFAULT_MAPPINGS, brightness: { ...DEFAULT_MAPPINGS.brightness, inputMinimum: 0.4, inputMaximum: 0.6 } };
+  for (const [input, expected] of [[0.1, 0], [0.4, 0], [0.5, 0.5], [0.6, 1], [1, 1]]) {
+    expect(mapAudioToEye({ ...SILENCE, level: input }, mappings).brightness).toBeCloseTo(expected);
+  }
+  mappings.brightness.minimum = 1; mappings.brightness.maximum = 0;
+  expect(mapAudioToEye({ ...SILENCE, level: 0.4 }, mappings).brightness).toBe(1);
+  expect(mapAudioToEye({ ...SILENCE, level: 0.6 }, mappings).brightness).toBe(0);
+});
+it('does not produce NaN for an invalid input window', () => {
+  for (const inputMaximum of [0.4, 0.2, NaN, Infinity]) {
+    const mappings = { ...DEFAULT_MAPPINGS, brightness: { ...DEFAULT_MAPPINGS.brightness, inputMinimum: 0.4, inputMaximum } };
+    expect(mapAudioToEye({ ...SILENCE, level: 0.5 }, mappings).brightness).toBe(0);
+  }
 });
