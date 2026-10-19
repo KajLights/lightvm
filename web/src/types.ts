@@ -25,7 +25,7 @@ export interface TransitionSpec {
 }
 export interface HardwareConfig {
   schema: 'lightvm.config';
-  inputs?: { id: string; type: 'tca9555'; config: { sda: string; scl: string; address?: number; active_low?: boolean; debounce_ms?: number }; home_assistant?: { indicators?: string; names?: string[] } }[];
+  inputs?: { id: string; type: 'tca9555'; config: { sda: string; scl: string; address?: number; active_low?: boolean; debounce_ms?: number; long_press_ms?: number; multi_press_ms?: number }; home_assistant?: { indicators?: string; names?: string[] } }[];
   outputs: { id: string; type: 'ws2812b' | 'apa102'; mode?: 'animation' | 'indicators'; home_assistant?: { default_preset: string; presets: string[]; name?: string }; startup?: { mode: 'off' | 'restore_last' } | { mode: 'preset'; preset: string }; config: { pin?: string; data_pin?: string; clock_pin?: string; enable_pin?: string; frequency?: number; count: number; order?: string; brightness_limit?: number } }[];
 }
 export interface NetworkConfig {

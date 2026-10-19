@@ -158,10 +158,11 @@ Omitted mode means `animation`, including ordinary animated APA102 strips.
 
 The optional `inputs` array accepts up to four generic `tca9555` adapters. Each
 has an `id` and `config` with advertised I2C `sda` and `scl` pins, optional
-`address` (32..39, default 32), `active_low` (default true), and `debounce_ms`
-(5..100, default 20). All sixteen channels are configured as inputs. Pico bus
-routing is checked; adapters on the same bus share its pin pair and require
-distinct addresses. Bus pins cannot overlap outputs, and bus ownership is
+`address` (32..39, default 32), `active_low` (default true), `debounce_ms`
+(5..100, default 20), `long_press_ms` (100..5000, default 500), and
+`multi_press_ms` (100..1000, default 300). All sixteen channels are configured as
+inputs. Pico bus routing is checked; adapters on the same bus share its pin pair
+and require distinct addresses. Bus pins cannot overlap outputs, and bus ownership is
 reference counted. The driver uses 400 kHz transactions with a 1 ms deadline.
 Missing hardware remains configured but unavailable, retries every second, and
 does not stop other outputs. Inputs are sampled every 5 ms during normal service
@@ -169,12 +170,12 @@ and runtime checkpoints, independently of animation pause/stop. Flash operations
 and other service stalls can interrupt sampling. Debounce establishes an initial
 level without emitting events, including when recovering from a bus failure.
 
-An input's optional `home_assistant` object enables sixteen press/release triggers.
+An input's optional `home_assistant` object enables sixteen HA button event entities.
 Its optional `indicators` names a sixteen-pixel output in indicator mode: channel
 0 pairs with pixel 0, through channel 15/pixel 15. An output may be bound once.
 Optional `names` supplies exactly sixteen labels of 1..32 UTF-8 bytes for the
-indicator lights; defaults are Key 1 through Key 16. IDs determine discovery
-identity and trigger subtypes; labels can change without changing those IDs.
+button events and indicator lights; defaults are Key 1 through Key 16. IDs determine
+discovery identity; labels can change without changing those IDs.
 See [the keypad example](../examples/config/pico-rgb-keypad.json) and
 [HA keypad setup](mqtt.md#keypad-and-rgb-indicators).
 

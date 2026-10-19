@@ -170,7 +170,7 @@ Python clients expose `set_inputs`, `claim_inputs` and `publish_inputs`, with
 optional activation/upload/reset `inputs`. Hardware acquisition, events,
 filtering and buffered history remain separate extensions to this scalar core.
 The native [TCA9555/APA102 keypad path](mqtt.md#keypad-and-rgb-indicators) supplies
-press/release events to HA and independently controlled RGB indicators. Its
+HA/Matter-style tap, multi-press and hold events to HA and independently controlled RGB indicators. Its
 hardware adapters live in `src/digital_inputs.[ch]`; animation input declarations
 and the scalar signal registry live in `src/inputs.[ch]`.
 

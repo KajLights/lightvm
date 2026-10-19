@@ -24,7 +24,9 @@
         "scl": "GP5",
         "address": 32,
         "active_low": true,
-        "debounce_ms": 20
+        "debounce_ms": 20,
+        "long_press_ms": 500,
+        "multi_press_ms": 300
       },
       "home_assistant": {"indicators": "key_lights"}
     }

@@ -52,7 +52,7 @@ function Hardware() {
     const id = 'keypad', output = 'key_lights';
     if (next.inputs?.some(item => item.id === id) || next.outputs.some(item => item.id === output)) return;
     next.outputs.push({ id: output, type: 'apa102', mode: 'indicators', config: { data_pin: 'GP19', clock_pin: 'GP18', enable_pin: 'GP17', count: 16, order: 'BGR', brightness_limit: 64 } });
-    next.inputs = [...(next.inputs || []), { id, type: 'tca9555', config: { sda: 'GP4', scl: 'GP5', address: 32, active_low: true, debounce_ms: 20 }, home_assistant: { indicators: output } }];
+    next.inputs = [...(next.inputs || []), { id, type: 'tca9555', config: { sda: 'GP4', scl: 'GP5', address: 32, active_low: true, debounce_ms: 20, long_press_ms: 500, multi_press_ms: 300 }, home_assistant: { indicators: output } }];
     update(next);
   }
   function removeOutput(index: number) {

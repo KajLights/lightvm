@@ -286,11 +286,11 @@ static void indicator_contract(void) {
 #if LIGHTVM_MQTT
     // Exercise expiry and queue backpressure without clocks or real sockets.
     HomeAssistant *ha=calloc(1,sizeof(*ha));CHECK(ha);ha->app=&app;strcpy(ha->root,"homeassistant/lightvm/test");ha->mqtt.state=MQTT_ONLINE;
-    strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=3;
+    strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=2;ha->keys[0].input_known=true;
     app.digital_inputs.count=1;strcpy(app.digital_inputs.devices[0].config.id,"buttons");
-    app.digital_inputs.queued=1;app.digital_inputs.events[0]=(DigitalInputEvent){.time=0,.input=0,.channel=0,.pressed=true};
+    app.digital_inputs.queued=1;app.digital_inputs.events[0]=(DigitalInputEvent){.time=0,.input=0,.channel=0,.type=DIGITAL_PRESS_START};
     CHECK(!ha_keys_tick(ha,DIGITAL_INPUT_EVENT_TTL_US+1)&&!app.digital_inputs.queued&&!ha->mqtt.queued);
-    app.digital_inputs.queued=1;app.digital_inputs.events[app.digital_inputs.head]=(DigitalInputEvent){.time=1000000,.input=0,.channel=0,.pressed=true};
+    app.digital_inputs.queued=1;app.digital_inputs.events[app.digital_inputs.head]=(DigitalInputEvent){.time=1000000,.input=0,.channel=0,.type=DIGITAL_PRESS_START};
     ha->mqtt.queued=MQTT_BUFFER_SIZE;CHECK(ha_keys_tick(ha,1000000)&&app.digital_inputs.queued==1);
     ha->mqtt.queued=0;CHECK(ha_keys_tick(ha,1000000)&&!app.digital_inputs.queued&&ha->mqtt.tx[0]==0x30);
     free(ha);

@@ -232,19 +232,19 @@ keypad example replaces the active output configuration; combine its `outputs`
 and `inputs` with existing outputs when keeping other lights. An original Pico
 supports the peripherals over USB, but standalone MQTT needs Pico W networking.
 
-HA discovers **one controller device**, containing sixteen RGB light entities and
-32 device triggers (press and release for each key). Existing HA output lights
-and preset selectors also belong to that same controller device. The RGB lights
-support on/off, brightness and RGB colour through the MQTT JSON light schema;
-transition and flash capabilities are explicitly disabled in discovery.
-Pressing a key does not locally toggle its indicator: HA automations decide both
-what the press does and what the indicator should display. For example, choose
-the `keypad_key_1` short-press trigger to toggle a kitchen lamp, then use another
-automation on that lamp's reported state to set Key 1 indicator green or dim.
+HA discovers **one controller device**, containing sixteen button event entities
+and sixteen RGB light entities. Existing HA output lights and preset selectors
+also belong to that same controller device. The RGB lights support on/off,
+brightness and RGB colour through the MQTT JSON light schema; transition and
+flash are disabled in discovery. Pressing a key does not locally toggle its
+indicator: HA automations decide what the gesture does and what the indicator
+should display. For example, use Key 1's `press_start` event to toggle a kitchen
+lamp immediately, then use the lamp's reported state to set the Key 1 indicator.
 Use explicit light entities when targeting an automation action; targeting the
 whole keypad device would affect all its lights. No custom HA integration or
 manual discovery YAML is needed. These follow HA's official
-[device trigger](https://www.home-assistant.io/integrations/device_trigger.mqtt/)
+[MQTT event](https://www.home-assistant.io/integrations/event.mqtt/),
+[standard button event](https://contributors.home-assistant.io/core/entities/event/#standard-event-types)
 and [JSON RGB light](https://www.home-assistant.io/integrations/light.mqtt/#json-schema)
 contracts.
 
@@ -258,35 +258,82 @@ For input ID `keypad` and one-based key number `n` (1..16):
 
 | Topic | Payload / behavior |
 | --- | --- |
-| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/event` | Non-retained `press` or `release`. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/event` | Non-retained JSON, e.g. `{"event_type":"press_start"}` or `{"event_type":"multi_press_end","multi_press_count":2}`. |
+| `homeassistant/lightvm/<controller_id>/input/keypad/<n>/event/availability` | Retained input acquisition health, combined with controller availability by the event entity. |
 | `homeassistant/lightvm/<controller_id>/input/keypad/<n>/set` | JSON light command, e.g. `{"state":"ON","brightness":128,"color":{"r":0,"g":255,"b":0}}`. Publish without retain. |
 | `homeassistant/lightvm/<controller_id>/input/keypad/<n>/state` | Retained accepted light target, including state, brightness, RGB and `color_mode:"rgb"`. |
 | `homeassistant/lightvm/<controller_id>/input/keypad/<n>/availability` | Retained indicator output health, combined with controller availability. |
 | `homeassistant/light/<controller_id>/i_<hex_input_id>_<n>/config` | Retained RGB-light discovery. |
-| `homeassistant/device_automation/<controller_id>/i_<hex_input_id>_<n>_press/config` | Retained press-trigger discovery; release uses `_release/config`. |
+| `homeassistant/event/<controller_id>/i_<hex_input_id>_<n>/config` | Retained button event discovery, with `device_class:"button"`. |
 
-The input's `home_assistant` may omit `indicators` for press/release triggers
-without lights. Each trigger's subtype is `<input_id>_key_<n>` and its type is
-`button_short_press` or `button_short_release`; long/double press recognition is
-not implemented. Physical held state and expander availability are reported by
-`describe.inputs`; loss/recovery does not manufacture presses. Triggers have no
-availability field in HA's MQTT device-trigger contract.
+The input's `home_assistant` may omit `indicators` for events without lights.
+Each channel has its own stable event identity and independent gesture state.
+Labels can change without changing identity. Physical held state and expander
+availability are also reported by `describe.inputs`.
+
+### Gesture semantics and timing
+
+Recognition runs in firmware on debounced edges and a monotonic clock, following
+the Matter momentary switch model with release, long-press and multi-press
+support (MS/MSR/MSL/MSM, without ActionSwitch), as described in the
+[Matter Switch cluster specification, sections 1.13.7–1.13.9](https://csa-iot.org/wp-content/uploads/2025/08/3-27350_matter-1-4-2-adopted-application-cluster-specification.pdf).
+This is an MQTT interface using
+HA's standard vocabulary; it does not add a Matter transport or certification.
+
+| Event type | Emitted when |
+| --- | --- |
+| `press_start` | Each accepted down edge, immediately after debounce. |
+| `press_end` | Each up edge in a short/multi-press cycle. |
+| `long_press_start` | The first press reaches `long_press_ms`, once while held. |
+| `long_press_end` | That standalone long hold is released. |
+| `multi_press_ongoing` | The second or subsequent down edge, after `press_start`, with `multi_press_count`. |
+| `multi_press_end` | The input stays released for `multi_press_ms`, with the completed `multi_press_count` (including 1). |
+
+Defaults are `long_press_ms:500` and `multi_press_ms:300`, configurable per input
+adapter in `config`. Timing starts at accepted debounced edges; the multi-press
+window runs from the last release to the next accepted down edge. At the exact
+idle deadline the old sequence completes before a new press starts. Timing
+recognition has the 5 ms sampling resolution and is subject to service stalls.
+Timer events retain their actual deadline for the publication expiry check.
+
+A single tap emits `press_start`, `press_end`, then `multi_press_end` with count 1
+after the idle window. Two taps emit `press_start`, `press_end`, `press_start`,
+`multi_press_ongoing` with count 2, `press_end`, then `multi_press_end` with count 2.
+A standalone hold emits `press_start`, `long_press_start`, `long_press_end`, with
+no short release or completed single-tap event. As required by the Matter model,
+a hold on a later press in an existing multi-press cycle remains part of that
+cycle: it ends with `press_end`, without long-press events. Up to 255 presses are
+counted. Longer sequences suppress further start/ongoing events and end with
+count 0 (aborted), rather than wrapping to a misleading single or double press.
+
+Choose `press_start` for an immediate action; it also occurs on holds and on each
+tap of a double press. Choose `press_end` for an action on each release without
+the multi-press delay. For mutually exclusive single/double/triple actions, use
+`multi_press_end` and filter `multi_press_count` to 1/2/3. Use `long_press_start`
+and `long_press_end` to start and stop a hold action such as dimming. Short-release
+and ongoing events describe progress and can coexist with a later completed
+gesture; they are not exclusive single-click results.
 
 There are 64 ordered events across all inputs, with a 250 ms publication lifetime
-and a cumulative `describe.input_event_overflow` counter. Offline, reconnected and
-HA-restarted sessions discard pending events. Publications use QoS0; this is not
-guaranteed or exactly-once automation execution. Native queue expiry precedes
-MQTT queueing; an already queued network packet cannot be recalled. Retained
-commands and malformed/unsupported light fields are rejected without partial
-state changes. Rendering continues while MQTT is unavailable.
+and a cumulative `describe.input_event_overflow` counter. Offline, reconnected,
+HA-restarted and reconfigured sessions discard queued events and cancel unfinished
+gestures. Hardware loss does the same for the affected adapter. Boot/recovery
+establishes the current level silently; a key already held must be released and
+pressed again before it can generate a gesture. This also avoids orphaned release
+or hold events after a session reset.
+
+Publications use QoS0; this is not guaranteed or exactly-once automation execution.
+Native queue expiry precedes MQTT queueing; an already queued network packet
+cannot be recalled. Retained commands and malformed/unsupported light fields are
+rejected without partial state changes. Rendering continues while MQTT is unavailable.
 
 RGB state survives MQTT reconnects and HA restarts in controller RAM. Reboot
 starts indicators off; transient light values are not written to flash. HA
 automations can restore desired indications when the controller becomes available.
 Changing unrelated configuration preserves unchanged indicator hardware and state.
-Removing an HA input binding clears its light and trigger discovery and retained
-light state/availability, including retries across reconnects during the same
-firmware run. The existing limitation on offline removal followed by reboot
+Removing an HA input binding clears its light and event discovery and retained
+light state and input/output availability, including retries across reconnects
+during the same firmware run. The existing limitation on offline removal followed by reboot
 applies here too.
 
 Host replay uses `LIGHTVM_I2C_INPUTS=/absolute/path/inputs.bin`: eight little-endian
@@ -298,6 +345,17 @@ This is a host test adapter; Pico uses the physical I2C bus.
 ```sh
 LIGHTVM_RECEIVER="$PWD/build/mqtt-host/lightvm" python -m unittest discover -s tests -p test_keypad.py -v
 ```
+
+### Replacing the earlier experimental keypad interface
+
+The former plain `press`/`release` payloads and MQTT device triggers are removed.
+Before provisioning the new firmware, stop the old publisher and clear its
+retained `homeassistant/device_automation/<controller_id>/i_<hex_input_id>_<n>_press/config`
+and corresponding `_release/config` topics for each key (publish an empty retained
+payload). Remove or recreate automations that reference those old triggers, using
+the new event entities. The example input ID `keypad` is hex `6b6579706164` in these
+discovery paths. No storage migration is provided or needed; reapply/save the
+current configuration for a clean reprovision.
 
 ## Separation and verification
 

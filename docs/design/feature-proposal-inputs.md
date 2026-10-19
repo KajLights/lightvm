@@ -18,8 +18,8 @@ snapshots inherited by sprites, constant/timed/source bindings, generation-check
 atomic publication, persisted invocation recipes, native progress bindings and
 editor controls. Rainbow exposes phase and scale; the new Eye exposes position,
 width, hue and brightness. Sweep retains its existing history and settings.
-The separate native TCA9555 adapter supplies debounced press/release events for
-MQTT HA triggers, paired with APA102 RGB indicators; see [keypad setup](../mqtt.md#keypad-and-rgb-indicators).
+The separate native TCA9555 adapter supplies debounced tap, multi-press and hold events for
+MQTT HA event entities, paired with APA102 RGB indicators; see [keypad setup](../mqtt.md#keypad-and-rgb-indicators).
 Other hardware adapters, conditioning, guest events and streams remain proposed.
 
 ## Recommendation

@@ -59,16 +59,21 @@ static bool parse_inputs(const Json *j,HardwareConfig *cfg,char *error,size_t ca
     for(int t=list+1;t<j->tokens[list].next;t=j->tokens[t].next){
         DigitalInputConfig *d=&cfg->inputs[cfg->input_count];
         static const char *const fields[]={"id","type","config","home_assistant",NULL};
-        static const char *const config_fields[]={"sda","scl","address","active_low","debounce_ms",NULL};
+        static const char *const config_fields[]={"sda","scl","address","active_low","debounce_ms","long_press_ms","multi_press_ms",NULL};
         int c=json_get(j,t,"config");
         if(!json_fields(j,t,fields)||!json_equal(j,json_get(j,t,"type"),"tca9555")||
            !json_string(j,json_get(j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id)||!json_fields(j,c,config_fields))
             return failure(error,capacity,"inputs: expected named tca9555 with config");
         d->sda=pin(j,c,"sda");d->scl=pin(j,c,"scl");d->address=32;d->active_low=true;d->debounce_ms=20;
+        d->long_press_ms=DIGITAL_INPUT_LONG_PRESS_MS;d->multi_press_ms=DIGITAL_INPUT_MULTI_PRESS_MS;
         int a=json_get(j,c,"address"),b=json_get(j,c,"debounce_ms"),low=json_get(j,c,"active_low");
         if(!platform_i2c_valid(d->sda,d->scl)||(a>=0&&(!json_u32(j,a,&d->address)||d->address<32||d->address>39))||
            (b>=0&&(!json_u32(j,b,&d->debounce_ms)||d->debounce_ms<5||d->debounce_ms>100))||
            (low>=0&&!json_bool(j,low,&d->active_low)))return failure(error,capacity,"tca9555: unsupported I2C pins, address (32..39), debounce_ms (5..100) or polarity");
+        int hold=json_get(j,c,"long_press_ms"),multi=json_get(j,c,"multi_press_ms");
+        if((hold>=0&&(!json_u32(j,hold,&d->long_press_ms)||d->long_press_ms<100||d->long_press_ms>5000))||
+           (multi>=0&&(!json_u32(j,multi,&d->multi_press_ms)||d->multi_press_ms<100||d->multi_press_ms>1000)))
+            return failure(error,capacity,"tca9555: long_press_ms (100..5000), multi_press_ms (100..1000)");
         for(unsigned n=0;n<cfg->count;n++){
             const PixelConfig *p=&cfg->outputs[n].pixels;const int32_t pins[]={p->pin,p->clock_pin,p->enable_pin};
             for(unsigned k=0;k<3;k++)if(pins[k]==d->sda||pins[k]==d->scl)return failure(error,capacity,"inputs: I2C pin conflicts with output");

@@ -13,7 +13,7 @@ typedef struct {
     char input[OBJECT_NAME_LIMIT+1],output[OBJECT_NAME_LIMIT+1],name[33];
     uint32_t state_crc;
     unsigned char channel,phase,remove_phase;
-    bool removing,known,availability_known,available;
+    bool removing,known,availability_known,available,input_known,input_available;
 } HaKey;
 typedef struct {
     App *app;

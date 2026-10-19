@@ -13,28 +13,29 @@ static void object_id(const HaKey *k,char *out,size_t capacity) {
 }
 static void config_topic(const HomeAssistant *h,const HaKey *k,unsigned kind,char *out,size_t capacity) {
     char object[80];object_id(k,object,sizeof(object));
-    snprintf(out,capacity,"homeassistant/%s/%s/%s%s/config",kind==2?"light":"device_automation",h->app->controller_id,object,kind==0?"_press":kind==1?"_release":"");
+    snprintf(out,capacity,"homeassistant/%s/%s/%s/config",kind?"light":"event",h->app->controller_id,object);
 }
 static void quote(char *out,const char *in) {
     *out++='"';while(*in){unsigned char c=(unsigned char)*in++;if(c=='"'||c=='\\'){*out++='\\';*out++=(char)c;}else if(c<32){snprintf(out,7,"\\u%04x",c);out+=6;}else *out++=(char)c;}*out++='"';*out=0;
 }
 static bool discover(HomeAssistant *h,HaKey *k,unsigned kind) {
-    char topic[MQTT_TOPIC_SIZE],root[160],object[80],payload[1600],name[256],label[48];
+    char topic[MQTT_TOPIC_SIZE],root[160],object[80],payload[1600],name[6*48+3],label[48];
     config_topic(h,k,kind,topic,sizeof(topic));key_root(h,k,root,sizeof(root));object_id(k,object,sizeof(object));
-    snprintf(label,sizeof(label),"%s indicator",k->name);quote(name,label);
+    snprintf(label,sizeof(label),"%s%s",k->name,kind?" indicator":"");quote(name,label);
     int n;
-    if(kind==2)n=snprintf(payload,sizeof(payload),
+    if(kind)n=snprintf(payload,sizeof(payload),
         "{\"name\":%s,\"unique_id\":\"lightvm_input_%s_%s\",\"schema\":\"json\",\"brightness\":true,\"supported_color_modes\":[\"rgb\"],\"transition\":false,\"flash\":false,"
         "\"command_topic\":\"%s/set\",\"state_topic\":\"%s/state\",\"qos\":0,\"retain\":false,"
         "\"availability_mode\":\"all\",\"availability\":[{\"topic\":\"%s/availability\"},{\"topic\":\"%s/availability\"}],"
         "\"device\":{\"identifiers\":[\"%s\"],\"name\":\"LightVM %s\",\"manufacturer\":\"Kajlights\",\"model\":\"LightVM\"}}",
         name,h->app->controller_id,object,root,root,h->root,root,h->app->controller_id,h->app->controller_id);
     else {
-        char subtype[80];snprintf(subtype,sizeof(subtype),"%s_key_%u",k->input,k->channel+1);
         n=snprintf(payload,sizeof(payload),
-        "{\"automation_type\":\"trigger\",\"type\":\"button_short_%s\",\"subtype\":\"%s\",\"topic\":\"%s/event\",\"payload\":\"%s\",\"qos\":0,"
+        "{\"name\":%s,\"unique_id\":\"lightvm_input_%s_%s_event\",\"device_class\":\"button\",\"state_topic\":\"%s/event\",\"qos\":0,"
+        "\"event_types\":[\"press_start\",\"press_end\",\"long_press_start\",\"long_press_end\",\"multi_press_ongoing\",\"multi_press_end\"],"
+        "\"availability_mode\":\"all\",\"availability\":[{\"topic\":\"%s/availability\"},{\"topic\":\"%s/event/availability\"}],"
         "\"device\":{\"identifiers\":[\"%s\"],\"name\":\"LightVM %s\",\"manufacturer\":\"Kajlights\",\"model\":\"LightVM\"}}",
-        kind?"release":"press",subtype,root,kind?"release":"press",h->app->controller_id,h->app->controller_id);
+        name,h->app->controller_id,object,root,h->root,root,h->app->controller_id,h->app->controller_id);
     }
     return n>0&&(size_t)n<sizeof(payload)&&mqtt_publish(&h->mqtt,topic,payload,(size_t)n,true);
 }
@@ -46,7 +47,7 @@ static const DigitalInputConfig *find(const HomeAssistant *h,const char *id) {
     return NULL;
 }
 void ha_keys_refresh(HomeAssistant *h) {
-    for(unsigned i=0;i<KEY_LIMIT;i++){h->keys[i].phase=0;h->keys[i].known=false;h->keys[i].availability_known=false;h->keys[i].remove_phase=0;}
+    for(unsigned i=0;i<KEY_LIMIT;i++){h->keys[i].phase=0;h->keys[i].known=false;h->keys[i].availability_known=false;h->keys[i].input_known=false;h->keys[i].remove_phase=0;}
     digital_inputs_discard_events(&h->app->digital_inputs);
 }
 void ha_keys_reconcile(HomeAssistant *h) {
@@ -62,7 +63,7 @@ void ha_keys_reconcile(HomeAssistant *h) {
             // Clear obsolete light discovery before dropping an indicator binding.
             if(k->output[0]&&!c->indicators[0]){k->removing=true;h->keys_pending=true;continue;}
             snprintf(k->name,sizeof(k->name),"%s",name);snprintf(k->output,sizeof(k->output),"%s",c->indicators);
-            k->removing=false;k->phase=0;k->known=false;k->availability_known=false;k->remove_phase=0;
+            k->removing=false;k->phase=0;k->known=false;k->availability_known=false;k->input_known=false;k->remove_phase=0;
         }
     }
     for(unsigned i=0;i<h->app->digital_inputs.count;i++){
@@ -97,14 +98,27 @@ bool ha_keys_tick(HomeAssistant *h,uint64_t now) {
         HaKey *k=&h->keys[i];if(!k->input[0])continue;
         char topic[MQTT_TOPIC_SIZE],root[160];key_root(h,k,root,sizeof(root));
         if(k->removing){
-            if(k->remove_phase<3)config_topic(h,k,k->remove_phase,topic,sizeof(topic));
-            else snprintf(topic,sizeof(topic),"%s/%s",root,k->remove_phase==3?"state":"availability");
+            if(k->remove_phase<2)config_topic(h,k,k->remove_phase,topic,sizeof(topic));
+            else snprintf(topic,sizeof(topic),"%s/%s",root,k->remove_phase==2?"state":k->remove_phase==3?"availability":"event/availability");
             if(mqtt_publish(&h->mqtt,topic,NULL,0,true)&&++k->remove_phase==5)memset(k,0,sizeof(*k));
             return true;
         }
-        if(k->phase<3){
-            if(k->phase==2&&!k->output[0]){k->phase++;continue;}
+        if(k->phase<2){
+            if(k->phase==1&&!k->output[0]){k->phase++;continue;}
             if(discover(h,k,k->phase))k->phase++;
+            return true;
+        }
+    }
+    for(unsigned i=0;i<KEY_LIMIT;i++){
+        HaKey *k=&h->keys[i];if(!k->input[0]||k->removing)continue;
+        bool available=false;
+        for(unsigned n=0;n<h->app->digital_inputs.count;n++){
+            const DigitalInput *d=&h->app->digital_inputs.devices[n];
+            if(!strcmp(d->config.id,k->input)){available=d->available;break;}
+        }
+        if(!k->input_known||k->input_available!=available){
+            char topic[MQTT_TOPIC_SIZE],root[160];key_root(h,k,root,sizeof(root));snprintf(topic,sizeof(topic),"%s/event/availability",root);
+            if(mqtt_publish(&h->mqtt,topic,available?"online":"offline",available?6:7,true)){k->input_available=available;k->input_known=true;}
             return true;
         }
     }
@@ -116,8 +130,13 @@ bool ha_keys_tick(HomeAssistant *h,uint64_t now) {
         HaKey *k=NULL;for(unsigned i=0;i<KEY_LIMIT;i++)if(h->keys[i].input[0]&&!h->keys[i].removing&&h->keys[i].channel==e.channel&&!strcmp(h->keys[i].input,id)){k=&h->keys[i];break;}
         if(!k||now-e.time>DIGITAL_INPUT_EVENT_TTL_US){digital_inputs_event(&h->app->digital_inputs,&e);continue;}
         char root[160],topic[MQTT_TOPIC_SIZE];key_root(h,k,root,sizeof(root));snprintf(topic,sizeof(topic),"%s/event",root);
-        const char *value=e.pressed?"press":"release";
-        if(mqtt_publish(&h->mqtt,topic,value,strlen(value),false))digital_inputs_event(&h->app->digital_inputs,&e);
+        char value[96];const char *type=digital_input_event_name(e.type);
+        if(!type){digital_inputs_event(&h->app->digital_inputs,&e);continue;}
+        int size;
+        if(e.type==DIGITAL_MULTI_PRESS_ONGOING||e.type==DIGITAL_MULTI_PRESS_END)
+            size=snprintf(value,sizeof(value),"{\"event_type\":\"%s\",\"multi_press_count\":%u}",type,e.multi_press_count);
+        else size=snprintf(value,sizeof(value),"{\"event_type\":\"%s\"}",type);
+        if(mqtt_publish(&h->mqtt,topic,value,(size_t)size,false))digital_inputs_event(&h->app->digital_inputs,&e);
         return true;
     }
     for(unsigned i=0;i<KEY_LIMIT;i++){

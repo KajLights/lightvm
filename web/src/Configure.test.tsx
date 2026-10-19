@@ -44,7 +44,7 @@ describe('configuration drafts', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
     await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({
       outputs: [expect.anything(), expect.objectContaining({ type: 'apa102', mode: 'indicators', config: expect.objectContaining({ data_pin: 'GP19', clock_pin: 'GP18', enable_pin: 'GP17', count: 16, brightness_limit: 48 }) })],
-      inputs: [{ id: 'keypad', type: 'tca9555', config: { sda: 'GP4', scl: 'GP5', address: 32, active_low: true, debounce_ms: 20 }, home_assistant: { indicators: 'key_lights' } }],
+      inputs: [{ id: 'keypad', type: 'tca9555', config: { sda: 'GP4', scl: 'GP5', address: 32, active_low: true, debounce_ms: 20, long_press_ms: 500, multi_press_ms: 300 }, home_assistant: { indicators: 'key_lights' } }],
     }), expect.anything(), { save: true }));
   });
 

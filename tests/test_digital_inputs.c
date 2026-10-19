@@ -16,26 +16,98 @@ bool platform_i2c_transfer(void *p,uint8_t address,const uint8_t *w,size_t wn,ui
     else CHECK(wn==3&&((w[0]==4&&w[1]==0&&w[2]==0)||(w[0]==6&&w[1]==255&&w[2]==255)));
     return true;
 }
+static DigitalInputs inputs;
+static uint64_t now;
+static DigitalInputConfig config={.id="keys",.sda=4,.scl=5,.address=32,.active_low=true,
+    .debounce_ms=20,.long_press_ms=500,.multi_press_ms=300,.home_assistant=true};
+static void boot(uint16_t held) {
+    digital_inputs_destroy(&inputs);connected=true;now=0;raw=(uint16_t)~held;
+    digital_inputs_apply(&inputs,&config,1);digital_inputs_tick(&inputs,now);
+    CHECK(inputs.devices[0].available&&!inputs.queued);
+}
+static void step(uint64_t elapsed) { now+=elapsed;digital_inputs_tick(&inputs,now); }
+static void edge(uint16_t held) { raw=(uint16_t)~held;step(5000);step(20000); }
+static DigitalInputEvent expect(DigitalInputEventType type,unsigned channel,unsigned count) {
+    DigitalInputEvent event;CHECK(digital_inputs_event(&inputs,&event));
+    CHECK(event.type==type&&event.channel==channel&&event.multi_press_count==count);
+    return event;
+}
+static void drain(void) { DigitalInputEvent event;while(digital_inputs_event(&inputs,&event)){} }
+static void gestures(void) {
+    // Boot/recovery baselines never synthesize a gesture, including a later release.
+    boot(65535);step(1000000);edge(0);CHECK(!inputs.queued);
+    edge(1);expect(DIGITAL_PRESS_START,0,0);
+    edge(0);expect(DIGITAL_PRESS_END,0,0);uint64_t up=now;
+    step(295000);CHECK(!inputs.queued);step(5000);
+    CHECK(expect(DIGITAL_MULTI_PRESS_END,0,1).time==up+300000);
+    // Two complete short taps, including immediate edges and intermediate count.
+    edge(1);expect(DIGITAL_PRESS_START,0,0);edge(0);expect(DIGITAL_PRESS_END,0,0);
+    edge(1);expect(DIGITAL_PRESS_START,0,0);expect(DIGITAL_MULTI_PRESS_ONGOING,0,2);
+    // Matter: a hold inside an existing multi-press cycle stays in that cycle.
+    step(600000);CHECK(!inputs.queued);edge(0);expect(DIGITAL_PRESS_END,0,0);
+    step(300000);expect(DIGITAL_MULTI_PRESS_END,0,2);CHECK(!inputs.queued);
+    // A standalone hold emits its start exactly once, including after a service stall.
+    edge(1);expect(DIGITAL_PRESS_START,0,0);uint64_t down=now;step(600000);
+    CHECK(expect(DIGITAL_LONG_PRESS_START,0,0).time==down+500000);
+    step(1000000);CHECK(!inputs.queued);edge(0);expect(DIGITAL_LONG_PRESS_END,0,0);
+    step(300000);CHECK(!inputs.queued);
+    // An idle gap exactly at the deadline completes the previous single tap first.
+    edge(1);expect(DIGITAL_PRESS_START,0,0);edge(0);expect(DIGITAL_PRESS_END,0,0);
+    raw=65534;step(280000);step(20000);
+    expect(DIGITAL_MULTI_PRESS_END,0,1);expect(DIGITAL_PRESS_START,0,0);CHECK(!inputs.queued);
+    // Independent per-key hold clocks, even with simultaneous keys.
+    boot(0);edge(1);expect(DIGITAL_PRESS_START,0,0);step(100000);
+    edge(3);expect(DIGITAL_PRESS_START,1,0);step(375000);expect(DIGITAL_LONG_PRESS_START,0,0);
+    step(125000);expect(DIGITAL_LONG_PRESS_START,1,0);edge(0);
+    expect(DIGITAL_LONG_PRESS_END,0,0);expect(DIGITAL_LONG_PRESS_END,1,0);CHECK(!inputs.queued);
+    // Mechanical bounce produces only one debounced press.
+    boot(0);raw=65534;step(5000);raw=65535;step(5000);raw=65534;step(5000);
+    step(15000);CHECK(!inputs.queued);step(5000);expect(DIGITAL_PRESS_START,0,0);CHECK(!inputs.queued);
+    // Metadata/configuration changes retain bus ownership but cancel incomplete gestures.
+    unsigned before=opened;digital_inputs_apply(&inputs,&config,1);step(600000);CHECK(!inputs.queued&&opened==before);
+    edge(0);CHECK(!inputs.queued);
+    // An outage discards queued and unfinished gestures; reconnect while held is silent.
+    edge(1);connected=false;step(5000);CHECK(!inputs.devices[0].available&&!inputs.queued);
+    connected=true;step(1000000);step(600000);edge(0);CHECK(!inputs.queued);
+    // HA/MQTT session reset cancels both a pending single and an in-progress hold.
+    edge(1);drain();edge(0);drain();digital_inputs_discard_events(&inputs);step(300000);CHECK(!inputs.queued);
+    edge(1);drain();digital_inputs_discard_events(&inputs);step(600000);edge(0);CHECK(!inputs.queued);
+    // Configurable thresholds use accepted edges, not an earlier raw transition.
+    config.long_press_ms=150;config.multi_press_ms=100;boot(0);
+    edge(1);expect(DIGITAL_PRESS_START,0,0);step(145000);CHECK(!inputs.queued);
+    step(5000);expect(DIGITAL_LONG_PRESS_START,0,0);edge(0);expect(DIGITAL_LONG_PRESS_END,0,0);
+    edge(1);expect(DIGITAL_PRESS_START,0,0);edge(0);expect(DIGITAL_PRESS_END,0,0);
+    step(95000);CHECK(!inputs.queued);step(5000);expect(DIGITAL_MULTI_PRESS_END,0,1);
+    config.long_press_ms=500;config.multi_press_ms=300;
+    // Triple press and a bounded count: overflow aborts rather than wrapping to single.
+    boot(0);
+    for(unsigned n=1;n<=3;n++){
+        edge(1);expect(DIGITAL_PRESS_START,0,0);if(n>1)expect(DIGITAL_MULTI_PRESS_ONGOING,0,n);
+        edge(0);expect(DIGITAL_PRESS_END,0,0);
+    }
+    step(300000);expect(DIGITAL_MULTI_PRESS_END,0,3);
+    for(unsigned n=1;n<=DIGITAL_INPUT_MULTI_PRESS_MAX+2;n++){
+        edge(1);
+        if(n<=DIGITAL_INPUT_MULTI_PRESS_MAX){expect(DIGITAL_PRESS_START,0,0);if(n>1)expect(DIGITAL_MULTI_PRESS_ONGOING,0,n);}
+        else CHECK(!inputs.queued);
+        edge(0);expect(DIGITAL_PRESS_END,0,0);
+    }
+    step(300000);expect(DIGITAL_MULTI_PRESS_END,0,0);CHECK(!inputs.queued);
+    edge(1);expect(DIGITAL_PRESS_START,0,0);
+    // Fixed queue preserves order and reports loss without overwriting history.
+    boot(0);uint32_t overflow=inputs.overflow;
+    for(unsigned n=0;n<6;n++)edge(n&1?0:65535);
+    CHECK(inputs.queued==64&&inputs.overflow==overflow+64);
+    for(unsigned n=0;n<16;n++)expect(DIGITAL_PRESS_START,n,0);
+    for(unsigned n=0;n<16;n++)expect(DIGITAL_PRESS_END,n,0);
+    for(unsigned n=0;n<16;n++){expect(DIGITAL_PRESS_START,n,0);expect(DIGITAL_MULTI_PRESS_ONGOING,n,2);}
+    CHECK(!inputs.queued);
+    digital_inputs_destroy(&inputs);CHECK(opened==closed);
+    CHECK(!strcmp(digital_input_event_name(DIGITAL_MULTI_PRESS_END),"multi_press_end"));
+    CHECK(!digital_input_event_name((DigitalInputEventType)99));
+}
 int main(void) {
-    DigitalInputs s={0};DigitalInputConfig config={.id="keys",.sda=4,.scl=5,.address=32,.active_low=true,.debounce_ms=20,.home_assistant=true};
-    digital_inputs_apply(&s,&config,1);
-    // Held at boot establishes a baseline, including simultaneous keys.
-    raw=0;digital_inputs_tick(&s,0);CHECK(s.devices[0].stable==65535&&!s.queued);
-    // All releases survive independently of animation frame cadence.
-    raw=65535;digital_inputs_tick(&s,5000);digital_inputs_tick(&s,25000);CHECK(s.queued==16);
-    DigitalInputEvent e;
-    for(unsigned n=0;n<16;n++){CHECK(digital_inputs_event(&s,&e));CHECK(e.channel==n&&!e.pressed&&e.time==25000);}
-    // Bouncing press: only the final 20 ms stable interval generates one event.
-    raw=65534;digital_inputs_tick(&s,30000);raw=65535;digital_inputs_tick(&s,35000);raw=65534;digital_inputs_tick(&s,40000);
-    digital_inputs_tick(&s,55000);CHECK(!s.queued);digital_inputs_tick(&s,60000);CHECK(digital_inputs_event(&s,&e)&&e.channel==0&&e.pressed&&!s.queued);
-    // Metadata-only apply retains the baseline and bus ownership.
-    digital_inputs_apply(&s,&config,1);digital_inputs_tick(&s,65000);CHECK(!s.queued&&opened==1&&closed==0);
-    connected=false;digital_inputs_tick(&s,70000);CHECK(!s.devices[0].available);
-    connected=true;raw=0;digital_inputs_tick(&s,1070000);CHECK(s.devices[0].available&&!s.queued);
-    // A fixed queue preserves order and reports overflow, never overwrites history.
-    for(unsigned n=0;n<6;n++){raw=(n&1)?0:65535;digital_inputs_tick(&s,1100000+n*30000);digital_inputs_tick(&s,1120000+n*30000);}
-    CHECK(s.queued==64&&s.overflow==32);digital_inputs_discard_events(&s);CHECK(!s.queued);
-    digital_inputs_destroy(&s);CHECK(opened==closed);
+    gestures();
     // APA102 wire format: start frame, BGR, brightness multiplier, and enough
     // trailing clocks for strips longer than this keypad.
     PixelConfig pixels={.count=33,.brightness=128,.order="BGR"};uint8_t rgb[99],wire[139];memset(rgb,0,sizeof(rgb));
