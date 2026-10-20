@@ -39,8 +39,8 @@ static void composition_contract(void){
     composition_destroy(s);CHECK(!borrowed_output&&cancelled_outputs==cancelled+1);
     delayed_output=false;pixels_destroy(&physical);CHECK(vm_heap_used()==0);
 
-    /* A completed back buffer blocks further writers until it can publish.
-       This must not discard a suspended call or lose elapsed animation time. */
+    /* A completed back buffer stops new layer frames, but an unfinished slow
+       layer must keep progressing independently of source publication. */
     PixelBuffer offscreen={.count=131};s=composition_create(&offscreen,1);CHECK(s);
     portable_load(&s->layers[0].vm,&s->layers[0].target,&reply,counter_lbc,sizeof(counter_lbc));
     s->layers[0].vm.playing=true;composition_prepare(s);composition_publish(s);s->front_pinned=true;
@@ -49,8 +49,12 @@ static void composition_contract(void){
     uint64_t rendered=s->layers[0].vm.portable->render_count,program_us=s->layers[0].vm.control.program_us;
     uint32_t front_crc=crc32_bytes(s->front,131*3),back_crc=crc32_bytes(s->working,131*3),published=s->frames;
     allocation_count=allocations;deny_allocation=true;
+    bool ready=false;
+    CHECK(!animation_poll_budget(&s->layers[0].vm,20000,&ready,1)&&!ready);
+    CHECK(s->layers[0].vm.control.in_step);
     for(unsigned n=0;n<20;n++){clock_now+=20000;composition_tick(s,64);}
-    CHECK(s->layers[0].vm.portable->render_count==rendered&&s->frames==published);
+    CHECK(s->layers[0].vm.portable->render_count==rendered+1&&s->frames==published);
+    CHECK(!s->layers[0].vm.control.in_step);
     CHECK(crc32_bytes(s->front,131*3)==front_crc&&crc32_bytes(s->working,131*3)==back_crc);
     s->front_pinned=false;composition_tick(s,64);CHECK(s->frames==published+1);
     CHECK(crc32_bytes(s->front,131*3)==back_crc);

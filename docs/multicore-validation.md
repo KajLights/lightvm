@@ -126,3 +126,7 @@ Wi-Fi/WebSocket/MQTT load, and long-duration endurance remain outside this
 attached-board run. SRAM code placement, a shared module cache, extra PIO
 allocation and hardware interpolators remain profiling candidates; they were
 not needed for the measured gains and are not enabled speculatively.
+
+The subsequent [original Pico W validation](multicore-rp2040-validation.md)
+covers RP2040 hardware with a connected GP16 strip, a simulated GP17 output,
+and direct performance comparisons against these Pico 2 W results.

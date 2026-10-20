@@ -7,9 +7,10 @@ data independently of the CPUs.
 
 There is no default refresh cap. A renderer advances when its input buffers and
 an output queue slot are available. The output driver decides when transmission
-has completed, including the LED reset interval. A completed frame can wait
-behind one transmission; rendering then stops until that frame can be used.
-Animation time uses elapsed time, including time spent waiting for output.
+has completed, including the LED reset interval. Each stage can hold one complete
+waiting frame. Backpressure protects that stage's buffers; it does not stop
+independent child compositions or unfinished layer renders. Animation time uses
+elapsed time, including time spent waiting for output.
 
 For WS2812 RGB, wire time is approximately 30 microseconds per pixel plus the
 driver's 330-microsecond drain/reset guard. A 200-pixel chain has a theoretical
@@ -24,6 +25,13 @@ slots. `vm.c` prepares pairs: input/time capture happens first on core 0, one
 slice runs on core 1, and core 0 runs the other. The coordinator joins both
 before publishing contributions or continuing application work. Odd jobs run
 locally and can use the worker for eligible pixel ranges.
+
+Once a preset recall reaches B, its hidden A scene stops autonomous rendering.
+The instance remains available: taking over with manual A/B controls resumes
+both slots without resetting their generations or state. A completed composition
+may finish an already-started slow layer while its front is pinned, but does not
+start more fast-layer frames until it can publish. Composition slices still pin
+the committed layer contributions they are reading.
 
 These execution epochs are deliberately synchronous and bounded. No job survives
 the return to command processing. This supplies the lifetime fence for reset,
@@ -47,6 +55,10 @@ remain ordered, preserving their partial-write behavior on faults. Failed
 transient output is never committed.
 
 Kernels execute serially when too small or when both CPUs already have work.
+Native draw/map operations use smaller chunks in that case, so a large serial
+operation does not monopolize a paired VM slice. Solid fills pack their colour
+once, and pointwise colour transforms reuse the exact result for adjacent equal
+pixels within each worker's chunk.
 Workers never wait for child jobs. This avoids nested dispatch deadlocks and
 keeps all allocation outside parallel execution.
 
@@ -85,7 +97,7 @@ the serial executor; this change does not introduce an ESP32 worker task.
 | `LIGHTVM_WORKER_STACK_BYTES` | Pico core-1 stack, 4096–32768 bytes in multiples of 32; default 8192 |
 | `LIGHTVM_RENDER_WORKERS` | 1 or 2; default 2 where a concurrent executor exists |
 | `LIGHTVM_MAX_REFRESH_HZ` | 0 for readiness-driven output; optional 1–1000 Hz cap |
-| `LIGHTVM_RENDER_SLICE_US` | Target yield interval at VM operation boundaries; default 500 µs |
+| `LIGHTVM_RENDER_SLICE_US` | Target yield interval at VM operation boundaries; Pico W defaults to 2000 µs, other profiles to 500 µs |
 | `LIGHTVM_INVOCATION_LIMIT` | Total dispatch limit per initialization/render; default 10,000,000 |
 
 For example, append these options to the normal Pico 2 W configuration command:
@@ -105,6 +117,12 @@ Instruction caches are charged within the VM ceiling, not reserved twice.
 Headroom is a reservation, not an enforced malloc partition; stack and native
 allocation peaks still need workload testing. Changing storage size remains a
 separate flash-layout choice documented in the board guide.
+
+MQTT-enabled Pico builds also emit `ha-stack-report.json` and bound the HA
+callback frames using compiler stack-usage data. The large HA JSON parser must
+return before preset activation loads program manifests; retaining both parser
+frames can overflow the 16 KiB main stack. These checks cover that regression,
+not the complete application call graph.
 
 ## Pico 2 W math and measurement
 

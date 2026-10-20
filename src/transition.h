@@ -26,6 +26,8 @@ typedef struct {
     bool playing, composing, prepared, pending, dirty, ticking, command_active;
     /* Startup waits for the output scheduler, after native initialization. */
     bool start_pending;
+    /* Completed preset recalls need only B. Interactive A/B keeps both live. */
+    bool destination_only;
     /* Named transition in [0], or legacy reveal mask [0] and RGBA paint [1]. */
     TransitionProgram *programs[2];
 } Transition;

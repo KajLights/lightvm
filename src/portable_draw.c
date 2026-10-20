@@ -114,10 +114,40 @@ typedef struct {
     Portable *p;PbcResource *r,*src,*style,*palette;const PbcValue *a;
     unsigned id;double period,wrapped_translate,wrapped_origin;
 } DrawKernel;
+/* Keep solid-span scratch out of the transformed-image loop's register/stack
+   allocation. These operations have no position-dependent sampling. */
+static __attribute__((noinline)) void fill_pixels(PbcResource *r,const PbcValue *a,unsigned first,unsigned end){
+    uint8_t v[5]={(uint8_t)(a[1].u>>16),(uint8_t)(a[1].u>>8),(uint8_t)a[1].u,0,(uint8_t)a[2].u},packed[5];
+    if(r->kind==DRAW_RGBA)to_premul(DRAW_IMAGE_RGBA,v);
+    unsigned stride=draw_stride(r->kind);
+    for(unsigned c=0;c<5;c++){int at=draw_channel(r->kind,c);if(at>=0)packed[at]=v[c];}
+    uint8_t *out=r->data+(size_t)first*stride;
+    for(unsigned i=first;i<end;i++,out+=stride)memcpy(out,packed,stride);
+}
+static __attribute__((noinline)) bool transform_pixels(Portable *p,PbcResource *r,const DrawStyle *style,unsigned first,unsigned end){
+    uint8_t previous[5],transformed[5];
+    for(unsigned i=first;i<end;i++){
+        uint8_t v[5];if(!pbc_image_read(p,r,i,v))return false;
+        /* Reuse the exact floating-point/premultiplication result only for
+           identical input pixels under this chunk's immutable style. */
+        if(i==first||memcmp(v,previous,sizeof(v))){
+            memcpy(previous,v,sizeof(v));color_transform(v,style,r->kind==DRAW_RGBA);
+            memcpy(transformed,v,sizeof(v));
+        }else memcpy(v,transformed,sizeof(v));
+        if(!write_pixel(r,i,v))return false;
+    }
+    return true;
+}
 static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
     Portable *p=k->p;PbcResource *r=k->r,*src=k->src,*style=k->style,*palette=k->palette;
     const PbcValue *a=k->a;unsigned id=k->id;
     double period=k->period,wrapped_translate=k->wrapped_translate,wrapped_origin=k->wrapped_origin;
+    if(id==34){
+        /* Fill overwrites every channel. Pack once, without reading pixels or
+           repeating colour conversion for each destination. */
+        fill_pixels(r,a,first,end);return true;
+    }
+    if(id==36)return transform_pixels(p,r,(DrawStyle *)style->data,first,end);
     for(unsigned i=first;i<end;i++) {
         uint8_t v[5];if(!pbc_image_read(p,r,i,v))return false;
         if(id==28||id==29||id==30) {
@@ -125,9 +155,6 @@ static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
             unsigned value=id==28?a[2].u:byte((id==29?255:v[4])*a[1].f);
             if(r->kind==DRAW_RGBA){from_premul(DRAW_IMAGE_RGBA,v);v[channel]=(uint8_t)value;to_premul(DRAW_IMAGE_RGBA,v);}
             else v[channel]=(uint8_t)value;
-        }else if(id==34) {
-            v[0]=(uint8_t)(a[1].u>>16);v[1]=(uint8_t)(a[1].u>>8);v[2]=(uint8_t)a[1].u;v[3]=0;v[4]=(uint8_t)a[2].u;
-            if(r->kind==DRAW_RGBA)to_premul(DRAW_IMAGE_RGBA,v);
         }else if(id>=48&&id<=50){
             uint32_t color;
             if(id==49){float hue=a[1].f+i*a[2].f;if(!isfinite(hue))return false;color=draw_colorwheel(hue);}
@@ -149,7 +176,6 @@ static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
             draw_over_channels(v,point,4,DRAW_OPACITY_ONE);
             from_premul(r->kind,v);
         }else if(id==35){if(!pbc_image_read(p,src,i,v))return false;}
-        else if(id==36)color_transform(v,(DrawStyle *)style->data,r->kind==DRAW_RGBA);
         else if(id==31||id==52) {
             DrawStyle *s=(DrawStyle *)style->data;
             uint8_t left[5],right[5];
@@ -295,7 +321,9 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
     if(id==49&&(!isfinite(a[1].f)||!isfinite(a[2].f)))return false;
     PbcResource *palette=id==50?resource(p,a[1].u):NULL;
     if(id==50&&(!palette||!palette->data||!palette->count||!isfinite(a[2].f)||!isfinite(a[3].f)))return false;
-    bool parallel=p->output&&r->data==p->output->data&&(!src||src->data);
+    /* Large chunks are worthwhile only when they actually split. Two busy
+       VM workers need small serial chunks to keep their time slices balanced. */
+    bool parallel=p->output&&r->data==p->output->data&&(!src||src->data)&&render_executor_can_split();
     unsigned cursor=p->bulk?p->bulk:start,end=cursor+(parallel?128u:32u);if(end>stop)end=stop;
     DrawKernel kernel={p,r,src,style,palette,a,id,period,wrapped_translate,wrapped_origin};
     unsigned middle=parallel&&end-cursor>=64?cursor+(end-cursor)/2:end;

@@ -10,6 +10,9 @@ void render_executor_init(void){render_platform_init(LIGHTVM_RENDER_WORKERS);}
 void render_executor_shutdown(void){assert(!occupied);render_platform_shutdown();}
 unsigned render_executor_workers(void){return render_platform_workers();}
 bool render_executor_is_worker(void){return render_platform_is_worker();}
+bool render_executor_can_split(void){
+    return !render_platform_is_worker()&&!occupied&&render_platform_workers()>1;
+}
 RenderStats render_executor_stats(void){
     assert(!render_platform_is_worker()&&!occupied);
     RenderStats result=stats;result.worker_stack_peak=render_platform_stack_peak();return result;
@@ -41,7 +44,7 @@ typedef struct { RenderRange fn;void *context;unsigned first,end; } Range;
 static void range_run(void *context){Range *r=context;r->fn(r->context,r->first,r->end);}
 void render_ranges(RenderRange fn,void *context,unsigned first,unsigned end,unsigned minimum){
     if(end<=first)return;
-    if(render_platform_is_worker()||occupied||render_platform_workers()<2||end-first<minimum){
+    if(!render_executor_can_split()||end-first<minimum){
         fn(context,first,end);return;
     }
     unsigned middle=first+(end-first)/2;

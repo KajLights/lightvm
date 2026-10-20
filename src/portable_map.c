@@ -124,7 +124,7 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     if(image->sealed||!image->data||(unsigned)stop>image->count)return false;
     /* Failed transient output is discarded. Persistent resources stay serial so
        their partial writes on a fault keep the defined instruction order. */
-    bool parallel=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA;
+    bool parallel=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA&&render_executor_can_split();
     unsigned start=p->bulk,limit=start+(parallel?128u:32u);if(limit>(unsigned)stop)limit=(unsigned)stop;
     MapKernel kernel={0};Instruction *code=kernel.code;Value *values=kernel.initial;
     uint8_t flags[128]={0},*cached=kernel.cached;flags[index]=1;

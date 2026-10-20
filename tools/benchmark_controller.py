@@ -33,10 +33,9 @@ def percentile95(values):
 
 
 def measure(client, board, pin, pixels, samples, seconds):
-    initial = client.status_fields()
     capabilities = client.describe()
-    if initial.get("board") != board:
-        raise ProtocolError(f"expected board {board}, got {initial.get('board')}")
+    if capabilities.get("board") != board:
+        raise ProtocolError(f"expected board {board}, got {capabilities.get('board')}")
     original_config = client.get_config()
     config = {
         "schema": "lightvm.config",

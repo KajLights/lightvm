@@ -81,10 +81,14 @@ static void composition_tick_impl(Composition *s,unsigned budget) {
     /* A composite pins every committed layer. Autonomous writers are deferred
        until the bounded composite finishes; management invalidates it first. */
     if(s->composing){compose_slice(s);return;}
-    /* The back buffer is complete. Publish it before spending more work on
-       layers; if a reader/driver still owns the front, apply backpressure.
-       VM clocks catch up from actual elapsed time when rendering resumes. */
+    /* The completed composite no longer reads the layer contributions. Let
+       suspended renders finish while it waits, without starting another frame
+       on fast layers. Both composite buffers remain stable for their readers. */
     if(s->prepared){
+        for(unsigned i=0;i<s->layer_count;i++){
+            VmInstance *vm=&s->layers[i].vm;
+            if(vm->control.in_step&&!runtime_owns(vm))vm_tick_budget(vm,budget);
+        }
         if(s->pending||platform_time_us()<s->next_present)return;
         if(!s->output->type){if(!s->front_pinned)composition_publish(s);return;}
         uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;

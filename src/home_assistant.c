@@ -27,6 +27,52 @@ static void response(void *context,uint8_t type,uint16_t id,const uint8_t *paylo
         else h->app->mqtt_error[0]=0;
     }
 }
+/* Release the large JSON-parser frame before activation loads manifests and
+ * services rendering/network callbacks on the bounded Pico main stack. */
+__attribute__((noinline)) static size_t light_command(HomeAssistant *h,const AppOutput *d,
+        const uint8_t *payload,size_t size,char *command,size_t capacity) {
+    Json j;
+    static const char *const fields[]={"state","brightness","color","color_mode","effect",NULL};
+    if(!json_parse(&j,payload,size)||!json_fields(&j,0,fields)){
+        snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"invalid light JSON command");return 0;
+    }
+    int state=json_get(&j,0,"state"),brightness=json_get(&j,0,"brightness"),color=json_get(&j,0,"color"),effect=json_get(&j,0,"effect");
+    if(state<0&&brightness<0&&color<0&&effect<0)return 0;
+    char preset[OBJECT_NAME_LIMIT+1];
+    int used=snprintf(command,capacity,"{\"op\":\"output_light_set\",\"output\":\"%s\",\"expected_revision\":%lu,\"expected_composition_revision\":%lu",
+        d->hardware.id,(unsigned long)d->light_revision,(unsigned long)d->composition_revision);
+    bool on=true,has_power=state>=0;uint32_t level=0;
+    if(state>=0){
+        if(json_equal(&j,state,"OFF"))on=false;
+        else if(!json_equal(&j,state,"ON"))goto invalid;
+    }
+    if(brightness>=0){
+        if(!json_u32(&j,brightness,&level)||level>255)goto invalid;
+        if(!level){has_power=true;on=false;}
+        else used+=snprintf(command+used,capacity-(size_t)used,",\"brightness\":%.9g",level/255.0);
+    }
+    if(has_power)used+=snprintf(command+used,capacity-(size_t)used,",\"power\":%s",on?"true":"false");
+    if(color>=0){
+        static const char *const rgb_fields[]={"r","g","b",NULL};uint32_t r,g,b;
+        if(!json_fields(&j,color,rgb_fields)||!json_u32(&j,json_get(&j,color,"r"),&r)||r>255||
+           !json_u32(&j,json_get(&j,color,"g"),&g)||g>255||!json_u32(&j,json_get(&j,color,"b"),&b)||b>255)goto invalid;
+        used+=snprintf(command+used,capacity-(size_t)used,",\"color\":%u",(unsigned)((r<<16)|(g<<8)|b));
+    }
+    if(json_get(&j,0,"color_mode")>=0&&!json_equal(&j,json_get(&j,0,"color_mode"),"rgb"))goto invalid;
+    if(effect>=0){
+        if(!json_string(&j,effect,preset,sizeof(preset))||!object_name_valid(preset)||!exposed(&d->hardware,preset))goto invalid;
+        used+=snprintf(command+used,capacity-(size_t)used,",\"preset\":\"%s\"",preset);
+    }else if(has_power&&on&&!playing(d)){
+        const char *current=selected(h,d);
+        used+=snprintf(command+used,capacity-(size_t)used,",\"preset\":\"%s\"",current[0]?current:d->hardware.ha_default_preset);
+    }
+    used+=snprintf(command+used,capacity-(size_t)used,"}");
+    if(used<0||(size_t)used>=capacity)goto invalid;
+    return (size_t)used;
+invalid:
+    snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"invalid light command value");
+    return 0;
+}
 static void message(void *context,const char *topic,const uint8_t *payload,size_t size,bool retained) {
     HomeAssistant *h=context;
     if(!strcmp(topic,"homeassistant/status")){
@@ -35,9 +81,9 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
     }
     /* Retained commands must never start playback on boot/reconnect. */
     if(retained || h->app->command_active)return;
-    char indicator_command[512];
-    if(ha_keys_command(h,topic,payload,size,indicator_command,sizeof(indicator_command))){
-        app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)indicator_command,strlen(indicator_command));return;
+    char command[512];
+    if(ha_keys_command(h,topic,payload,size,command,sizeof(command))){
+        app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)command,strlen(command));return;
     }
     size_t prefix=strlen(h->root);
     if(strncmp(topic,h->root,prefix) || topic[prefix]!='/')return;
@@ -47,48 +93,10 @@ static void message(void *context,const char *topic,const uint8_t *payload,size_
     AppOutput *d=app_output(h->app,output);
     if(!output[0] || !d || !d->hardware.ha_default_preset[0])return;
     if(strcmp(slash,"/set"))return;
-    Json j;
-    static const char *const fields[]={"state","brightness","color","color_mode","effect",NULL};
-    if(!json_parse(&j,payload,size)||!json_fields(&j,0,fields)){
-        snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"invalid light JSON command");return;
-    }
-    int state=json_get(&j,0,"state"),brightness=json_get(&j,0,"brightness"),color=json_get(&j,0,"color"),effect=json_get(&j,0,"effect");
-    if(state<0&&brightness<0&&color<0&&effect<0)return;
-    char command[512],preset[OBJECT_NAME_LIMIT+1];
-    int used=snprintf(command,sizeof(command),"{\"op\":\"output_light_set\",\"output\":\"%s\",\"expected_revision\":%lu,\"expected_composition_revision\":%lu",
-        output,(unsigned long)d->light_revision,(unsigned long)d->composition_revision);
-    bool on=true,has_power=state>=0;uint32_t level=0;
-    if(state>=0){
-        if(json_equal(&j,state,"OFF"))on=false;
-        else if(!json_equal(&j,state,"ON"))goto invalid;
-    }
-    if(brightness>=0){
-        if(!json_u32(&j,brightness,&level)||level>255)goto invalid;
-        if(!level){has_power=true;on=false;}
-        else used+=snprintf(command+used,sizeof(command)-(size_t)used,",\"brightness\":%.9g",level/255.0);
-    }
-    if(has_power)used+=snprintf(command+used,sizeof(command)-(size_t)used,",\"power\":%s",on?"true":"false");
-    if(color>=0){
-        static const char *const rgb_fields[]={"r","g","b",NULL};uint32_t r,g,b;
-        if(!json_fields(&j,color,rgb_fields)||!json_u32(&j,json_get(&j,color,"r"),&r)||r>255||
-           !json_u32(&j,json_get(&j,color,"g"),&g)||g>255||!json_u32(&j,json_get(&j,color,"b"),&b)||b>255)goto invalid;
-        used+=snprintf(command+used,sizeof(command)-(size_t)used,",\"color\":%u",(unsigned)((r<<16)|(g<<8)|b));
-    }
-    if(json_get(&j,0,"color_mode")>=0&&!json_equal(&j,json_get(&j,0,"color_mode"),"rgb"))goto invalid;
-    if(effect>=0){
-        if(!json_string(&j,effect,preset,sizeof(preset))||!object_name_valid(preset)||!exposed(&d->hardware,preset))goto invalid;
-        used+=snprintf(command+used,sizeof(command)-(size_t)used,",\"preset\":\"%s\"",preset);
-    }else if(has_power&&on&&!playing(d)){
-        const char *current=selected(h,d);
-        used+=snprintf(command+used,sizeof(command)-(size_t)used,",\"preset\":\"%s\"",current[0]?current:d->hardware.ha_default_preset);
-    }
-    used+=snprintf(command+used,sizeof(command)-(size_t)used,"}");
-    if(used<0||(size_t)used>=sizeof(command))goto invalid;
-    app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)command,(size_t)used);
+    size_t length=light_command(h,d,payload,size,command,sizeof(command));
+    if(!length)return;
+    app_dispatch(h->app,h->source,response,h,CMD_MANAGE,1,(const uint8_t *)command,length);
     for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++)if(!strcmp(h->outputs[i].id,output))h->outputs[i].known=false;
-    return;
-invalid:
-    snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"invalid light command value");
 }
 void ha_init(HomeAssistant *h,App *app,MqttStream stream) {
     memset(h,0,sizeof(*h));h->app=app;h->source=++app->connection_sequence;

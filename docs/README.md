@@ -20,6 +20,7 @@ animation. The guides below describe the current implementation.
 - [Pico 2 W builds, installation and acceptance](pico2-w.md)
 - [Multicore rendering and tunable resource budgets](multicore-rendering.md)
 - [Multicore hardware measurements and validation](multicore-validation.md)
+- [Original Pico W multicore measurements and comparison](multicore-rp2040-validation.md)
 - [Multicore design research and decisions](design/feature-proposal-pico-multicore.md)
 - [MQTT, Home Assistant lights and keypad inputs](mqtt.md)
 - [Boot sequence and power recovery](boot-sequence.md)

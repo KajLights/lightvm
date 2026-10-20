@@ -304,9 +304,12 @@ static bool activate(App *a,const char *name,uint16_t id,const char *action,cons
 static void indicator_tick(App *,AppOutput *,uint64_t);
 static const char *save_output_state(App *,const AppOutput *,bool,const char *,const LightControls *);
 static void collect_composition(Composition *s,unsigned budget){
-    if(!s||!s->playing||s->command_active||s->composing||s->prepared)return;
+    if(!s||!s->playing||s->command_active||s->composing)return;
     unsigned first=s->layer_count?s->cursor%s->layer_count:0;
-    for(unsigned n=0;n<s->layer_count;n++)vm_tick_collect(&s->layers[(first+n)%s->layer_count].vm,budget);
+    for(unsigned n=0;n<s->layer_count;n++){
+        VmInstance *vm=&s->layers[(first+n)%s->layer_count].vm;
+        if(!s->prepared||vm->control.in_step)vm_tick_collect(vm,budget);
+    }
 }
 static void collect_render_jobs(App *a,unsigned first,unsigned budget){
     vm_tick_begin();
@@ -315,9 +318,10 @@ static void collect_render_jobs(App *a,unsigned first,unsigned budget){
         if(!d||d->hardware.indicators)continue;
         if(d->transition){
             Transition *t=d->transition;
-            if(t->start_pending||t->command_active||!t->playing||
-               (t->prepared&&(t->pending||platform_time_us()<t->next_present)))continue;
-            for(unsigned k=0;k<2;k++)collect_composition(t->compositions[k],budget);
+            transition_update(t,platform_time_us());
+            t->destination_only=d->recall_owned&&t->driver==TRANSITION_MANUAL&&t->progress==100;
+            if(t->start_pending||t->command_active||!t->playing)continue;
+            for(unsigned k=t->destination_only?1:0;k<2;k++)collect_composition(t->compositions[k],budget);
         }else if(d->composition)collect_composition(d->composition,budget);
         else vm_tick_collect(&d->vm,budget);
     }

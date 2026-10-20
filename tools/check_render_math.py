@@ -42,7 +42,8 @@ def measure(client):
         client.save_program(name, artifact.bytecode)
         created = True
         client.configure({"schema": "lightvm.config", "outputs": [{
-            "id": "math", "type": "ws2812b", "config": {"pin": "GP16", "count": 200}}]})
+            "id": "math", "type": "ws2812b",
+            "config": {"pin": "GP16", "count": 200, "brightness_limit": 32}}]})
         client.configure_composition([{"id": "image", "program": name}], output="math")
         client.require_ok(client.command(STOP, output="math"))
         results = []

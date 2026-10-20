@@ -115,6 +115,27 @@ class RecallTests(unittest.TestCase):
         self.assertFalse(self.client.update_transition_source('fader', token, 10, output='lights'))
         self.assertIsNone(swapped['recall'])
 
+    def test_completed_recall_stops_hidden_work_and_manual_takeover_resumes_it(self):
+        self.client.recall_preset('red', 'lights')
+        self.save_entry('blue', self.spec('crossfade', 10))
+        self.client.recall_preset('blue', 'lights')
+        time.sleep(.04)
+        before = self.state()
+        self.assertEqual(before['progress'], 100)
+        time.sleep(.04)
+        settled = self.state()
+        self.assertEqual(settled['A']['layers'][0]['frames'], before['A']['layers'][0]['frames'])
+        self.assertGreater(settled['B']['layers'][0]['frames'], before['B']['layers'][0]['frames'])
+        self.client.set_progress(100, output='lights')
+        time.sleep(.04)
+        manual = self.state()
+        self.assertIsNone(manual['recall'])
+        self.assertGreater(manual['A']['layers'][0]['frames'], settled['A']['layers'][0]['frames'])
+        for slot in ('A', 'B'):
+            self.assertEqual(manual[slot]['layers'][0]['generation'], settled[slot]['layers'][0]['generation'])
+        self.client.set_progress(0, output='lights')
+        self.assertEqual(self.frame(), bytes([255, 0, 0]) * 5)
+
     def test_power_uses_the_preset_transition_remembers_selection_and_interrupts_to_black(self):
         self.save_entry('blue', self.spec('wipe'))
         self.client.set_power(True, 'lights', preset='blue')

@@ -214,13 +214,15 @@ void transition_tick(Transition *t,unsigned budget){
     }
     t->ticking=true;complete(t);transition_update(t,platform_time_us());
     if(t->command_active||!t->playing){t->ticking=false;return;}
-    if(t->prepared&&(t->pending||platform_time_us()<t->next_present)){t->ticking=false;return;}
     if(t->composing){
-        for(unsigned n=0;n<2;n++)if(t->compositions[n])composition_tick(t->compositions[n],budget);
+        for(unsigned n=t->destination_only?1:0;n<2;n++)if(t->compositions[n])composition_tick(t->compositions[n],budget);
         slice(t,budget);t->ticking=false;return;
     }
-    for(unsigned n=0;n<2;n++)if(t->compositions[n]){composition_tick(t->compositions[n],budget);if(t->compositions[n]->frames!=t->sampled_frames[n])t->dirty=true;}
-    if(t->effect==TRANSITION_PROGRAM&&t->programs[0]){
+    for(unsigned n=t->destination_only?1:0;n<2;n++)if(t->compositions[n]){composition_tick(t->compositions[n],budget);if(t->compositions[n]->frames!=t->sampled_frames[n])t->dirty=true;}
+    /* The physical transfer owns only the transition front. Its complete back
+       buffer must wait, but child VMs and compositions have independent storage. */
+    if(t->prepared&&(t->pending||platform_time_us()<t->next_present)){t->ticking=false;return;}
+    if(!t->destination_only&&t->effect==TRANSITION_PROGRAM&&t->programs[0]){
         Portable *p=t->programs[0]->vm.portable;uint64_t now=platform_time_us();
         if(inputs_changed(p,now>=p->input_epoch?now-p->input_epoch:0))t->dirty=true;
     }

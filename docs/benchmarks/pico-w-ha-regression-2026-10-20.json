@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-20",
+  "board": "pico_w",
+  "firmware_base_commit": "48b98d0",
+  "fix": "Release the HA JSON parser stack frame before dispatching preset activation",
+  "reproduced_before_fix": true,
+  "original_message_stack_bytes": 6328,
+  "main_stack_reservation_bytes": 16384,
+  "hardware": {
+    "preset_switches": 40,
+    "off_on_cycles": 10,
+    "mqtt_acknowledged_commands": 62,
+    "ack_latency_ms_median": 258.33,
+    "ack_latency_ms_max": 433.95,
+    "idle_checks": [
+      {
+        "seconds": 5.02,
+        "frames": 19860
+      },
+      {
+        "seconds": 10.05,
+        "frames": 20514
+      },
+      {
+        "seconds": 15.07,
+        "frames": 21166
+      },
+      {
+        "seconds": 20.08,
+        "frames": 21819
+      },
+      {
+        "seconds": 25.11,
+        "frames": 22473
+      },
+      {
+        "seconds": 30.13,
+        "frames": 23126
+      },
+      {
+        "seconds": 35.15,
+        "frames": 23780
+      },
+      {
+        "seconds": 40.18,
+        "frames": 24433
+      }
+    ],
+    "boot_id_unchanged": true,
+    "mqtt_connected": true,
+    "offline_publications": 0,
+    "animation_errors": 0,
+    "final_preset": "rainbow",
+    "configuration_programs_presets_network_preserved": true,
+    "firmware_sha256": "32686ed6e33d395dac6d5271ce7ed6ead0ad09d4d9ff385e9fc1fcbe6f249cd8",
+    "ha_stack_frames": {
+      "light_command": 5248,
+      "message": 608,
+      "ha_tick": 2592
+    }
+  },
+  "pico2_build_stack_frames": {
+    "light_command": 5240,
+    "message": 608,
+    "ha_tick": 2592
+  },
+  "host_tests_passed": 47,
+  "original_compiler_stack_report_rejected_by_new_gate": true
+}

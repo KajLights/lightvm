@@ -37,6 +37,33 @@ class PixelArrayTests(unittest.TestCase):
         self.client.require_ok(self.client.command(FRAME, struct.pack('<I', delta), output='lights'))
         return self.client.snapshot(output='lights', layer='fg')[1]
 
+    def test_repeated_colour_transform_matches_individual_pixels(self):
+        self.load('''@init
+def setup(ctx,runtime):
+ ctx.scalar=setting(False)
+ ctx.level=setting(0.047058823529411764)
+ ctx.alpha=setting(0.73)
+ ctx.hue=setting(0.0)
+@render
+def draw(ctx,runtime,pixels):
+ for i in range(pixels.count):
+  pixels[i]=rgb((i//16)*40,87,211)
+ pixels.set_alpha(0.5,start=17,stop=49)
+ style=ColorTransform(brightness=ctx.level,alpha=ctx.alpha,tint=rgb(197,113,251),hue=ctx.hue)
+ if ctx.scalar:
+  for i in range(pixels.count):
+   pixels.transform(style,start=i,stop=i+1)
+ else:
+  pixels.transform(style)
+''')
+        for level, alpha, hue in ((0.047058823529411764, .73, 0), (1, 1, 35), (.617, .31, -95)):
+            frames = []
+            for scalar in (False, True):
+                self.client.reset_program(output='lights', layer='fg', settings={
+                    'scalar': scalar, 'level': level, 'alpha': alpha, 'hue': hue})
+                frames.append(self.frame())
+            self.assertEqual(*frames)
+
     def test_absolute_alpha_ranges_zero_restoration_and_scaling(self):
         self.load('''@init
 def setup(ctx,runtime):

@@ -18,6 +18,7 @@ static void fill(void *context,unsigned first,unsigned end){
 }
 static void nested(void *context){
     Nested *n=context;n->worker=render_executor_is_worker();
+    CHECK(!render_executor_can_split());
     if(n->concurrent){
         atomic_fetch_add(n->arrived,1);
         uint64_t deadline=platform_time_us()+1000000;
@@ -27,6 +28,7 @@ static void nested(void *context){
 }
 static uint32_t exercise(unsigned workers){
     render_platform_init(workers);CHECK(render_executor_workers()==workers);
+    CHECK(render_executor_can_split()==(workers>1));
     atomic_uint arrived=0;
     Nested n[2]={{.arrived=&arrived,.concurrent=workers==2},{.arrived=&arrived,.concurrent=workers==2}};
     RenderJob nested_jobs[2]={{nested,&n[0],0},{nested,&n[1],0}};

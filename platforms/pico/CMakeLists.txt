@@ -67,6 +67,11 @@ endif()
 
 if(LIGHTVM_MQTT)
     target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/mqtt_port.c")
+    set_property(SOURCE "${CMAKE_SOURCE_DIR}/src/home_assistant.c" APPEND PROPERTY COMPILE_OPTIONS "-fstack-usage")
+    add_custom_command(TARGET lightvm POST_BUILD
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/check_pico_ha_stack.py"
+            "${CMAKE_BINARY_DIR}/CMakeFiles/lightvm_core.dir/src/home_assistant.c.su"
+            "${CMAKE_CURRENT_BINARY_DIR}/ha-stack-report.json")
 endif()
 if(LIGHTVM_WIFI)
     target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/network_port.c"

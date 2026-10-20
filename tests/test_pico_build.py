@@ -12,6 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from check_pico_ram import ram_report
+from check_pico_ha_stack import stack_report
 from package_web_firmware import package, validate_pico_uf2
 
 
@@ -83,6 +84,24 @@ class PicoUf2Tests(unittest.TestCase):
                 layout_file.write_text(json.dumps({**layout, key: value}))
                 with self.subTest(key=key), self.assertRaisesRegex(ValueError, "layout"):
                     package(root / "out", {}, {"pico2_w": image})
+
+
+class PicoHaStackTests(unittest.TestCase):
+    def usage(self, message=584, kind="static"):
+        return (f"/src/home_assistant.c:30:13:message\t{message}\t{kind}\n"
+                "/src/home_assistant.c:90:13:light_command.constprop.0\t5400\tstatic\n"
+                "/src/home_assistant.c:166:6:ha_tick\t2592\tstatic\n")
+
+    def test_parser_frame_cannot_remain_live_during_dispatch(self):
+        self.assertEqual(stack_report(self.usage())["message"], 584)
+        with self.assertRaisesRegex(ValueError, "message stack frame"):
+            stack_report(self.usage(message=6328))
+
+    def test_missing_or_unbounded_measurement_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "non-static"):
+            stack_report(self.usage(kind="dynamic"))
+        with self.assertRaisesRegex(ValueError, "missing"):
+            stack_report("")
 
 
 class PicoRamTests(unittest.TestCase):

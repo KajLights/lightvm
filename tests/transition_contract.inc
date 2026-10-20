@@ -136,7 +136,18 @@ static void transition_contract(void){
     for(unsigned n=0;n<100&&t->composing;n++){clock_now+=20000;transition_test_tick(t,64);}
     CHECK(t->prepared&&!s->front_pinned);
     for(unsigned n=0;n<131;n++)CHECK(t->working[n*3]==sampled&&t->working[n*3+1]==0&&t->working[n*3+2]==0);
+    /* A full transition queue must not block the independent scene render
+       queue. Preserve both output buffers while slow child work completes. */
+    delayed_output=true;output_ready=false;
+    for(unsigned n=0;n<100&&!(t->pending&&t->prepared);n++){clock_now+=20000;transition_test_tick(t,64);}
+    CHECK(t->pending&&t->prepared);
+    uint32_t front_crc=crc32_bytes(t->front,131*3),back_crc=crc32_bytes(t->working,131*3);
+    s=t->compositions[1];composition_invalidate(s);s->layers[0].vm.next_frame=0;
+    renders=s->layers[0].vm.portable->render_count;
+    for(unsigned n=0;n<20;n++){clock_now+=20000;transition_test_tick(t,64);}
+    CHECK(s->layers[0].vm.portable->render_count>renders);
+    CHECK(crc32_bytes(t->front,131*3)==front_crc&&crc32_bytes(t->working,131*3)==back_crc);
     CHECK(allocations==allocation_count);deny_allocation=false;
     transition_invalidate(t);composition_destroy(t->compositions[0]);composition_destroy(t->compositions[1]);
-    transition_destroy(t);pixels_destroy(&physical);CHECK(vm_heap_used()==0);
+    transition_destroy(t);delayed_output=false;pixels_destroy(&physical);CHECK(vm_heap_used()==0);
 }

@@ -19,6 +19,8 @@ void render_executor_init(void);
 void render_executor_shutdown(void);
 unsigned render_executor_workers(void);
 bool render_executor_is_worker(void);
+/* True only on the coordinator when a second CPU can accept nested work. */
+bool render_executor_can_split(void);
 void render_execute(RenderJob *jobs,size_t count);
 void render_ranges(RenderRange fn,void *context,unsigned first,unsigned end,unsigned minimum);
 RenderStats render_executor_stats(void);
