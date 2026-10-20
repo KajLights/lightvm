@@ -58,23 +58,30 @@ The build produces `lightvm.uf2`, `lightvm.elf`, `storage-layout.json`,
 
 ## Resources and storage
 
-Network builds retain the 32 KiB module and 64 KiB VM heap limits; USB-only builds
-retain the 128 KiB VM heap. The physical-pixel ceiling remains 1024. Both output
-drivers use PIO0/PIO1. The SDK allocates the radio's state machine starting from
-the highest PIO block: PIO1 on RP2040, PIO2 on RP2350. The RAM gate reserves seven
-output buffers for Pico W networking and eight for Pico 2 W networking. Outputs
-do not use PIO2; multicore execution and larger guest limits are not enabled.
+Pico 2 W defaults to a 192 KiB VM heap with Wi-Fi and HTTP, or 256 KiB
+without HTTP. Its per-instance instruction cache is 1024 bytes. The module and
+physical-pixel ceilings remain 32 KiB and 1024. These budgets, connection limits,
+worker stack and optional refresh cap are tunable through the
+[multicore resource options](multicore-rendering.md).
 
-The single-core linker layout gives core 0 a separate 16 KiB stack at the top of
-SRAM, with the native heap below it. No core-1 scratch area is reserved. Compiler
-math routines and constants execute from XIP flash; explicitly time-critical SDK
-code, including flash programming, stays in SRAM. This also keeps the combined
-network profile buildable on the smaller Pico W. Timing must be measured on the
-physical device when comparing releases.
+Both CPU cores render. Core 0 owns communication, storage and hardware; core 1
+runs bounded VM or pixel jobs. Both output drivers use PIO0/PIO1. The SDK places
+the radio on PIO2, leaving eight output state machines. Output drivers do not
+use PIO2. Rendering can overlap PIO/DMA transmission, with no default FPS cap.
+
+The linker reserves a 16 KiB core-0 stack and an 8 KiB core-1 stack, excluding
+both from the contiguous native heap. Explicitly time-critical SDK code,
+including flash programming, stays in SRAM. Flash operations coordinate both
+cores through the SDK lockout protocol. RP2350 uses its DCP for basic double
+arithmetic while retaining compiler conversions and libm; the M33 hardware FPU
+already handles single precision. Compare timing on hardware, not host clocks.
+The [multicore validation report](multicore-validation.md) records measured
+core-count and DCP comparisons, including the firmware installed on the test board.
 
 The RAM gate reads the ELF's memory geometry, static allocation boundaries,
 stack reservation and compiled VM/pixel limits. It includes RAM code and retains
-16 KiB operating headroom after the VM and output-driver reservations. Every
+the configured operating headroom (16 KiB by default) after VM and output-driver
+reservations. Every
 Pico build emits the report and fails if over budget. It is a reservation check,
 not a measurement of peak native allocation or stack use.
 

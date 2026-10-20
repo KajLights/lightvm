@@ -21,7 +21,7 @@ typedef struct { int fd; HttpInput input; HttpRequest request; uint64_t deadline
     WebSocket websocket;
 #endif
 } Connection;
-static Connection clients[8];
+static Connection clients[LIGHTVM_HTTP_CLIENTS];
 static int output(void *ctx,const uint8_t *bytes,size_t size) {
     Connection *c=ctx; ssize_t n=send(c->fd,bytes,size,0);
     if (n<0 && (errno==EAGAIN || errno==EWOULDBLOCK || errno==EINTR)) return 0;
@@ -38,12 +38,12 @@ static bool close_connection(void *ctx) {
 void host_http_stop(void) {
     if (listener>=0) close(listener);
     listener=-1;
-    for (unsigned i=0;i<8;i++) close_connection(&clients[i]);
+    for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) close_connection(&clients[i]);
     http_disconnect_sessions(&server);
     discovery_stop(&discovery,platform_time_us());
 }
 bool host_http_start(App *app,const char *address,unsigned port) {
-    http_init(&server,app); for (unsigned i=0;i<8;i++) clients[i].fd=-1;
+    http_init(&server,app); for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) clients[i].fd=-1;
     signal(SIGPIPE,SIG_IGN);
     listener=socket(AF_INET,SOCK_STREAM,0); if (listener<0) return false;
     int yes=1; setsockopt(listener,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(yes));
@@ -62,7 +62,7 @@ void host_http_poll(void) {
     uint64_t now=platform_time_us();
     int fd=accept(listener,NULL,NULL);
     if (fd>=0) {
-        Connection *c=NULL; for (unsigned i=0;i<8;i++) if (clients[i].fd<0
+        Connection *c=NULL; for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) if (clients[i].fd<0
 #if LIGHTVM_WEBSOCKET
             && !clients[i].websocket.source
 #endif
@@ -74,7 +74,7 @@ void host_http_poll(void) {
 #endif
         }
     }
-    for (unsigned i=0;i<8;i++) {
+    for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) {
         Connection *c=&clients[i];
 #if LIGHTVM_WEBSOCKET
         websocket_tick(&c->websocket,now);

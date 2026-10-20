@@ -1,6 +1,7 @@
 #include "pixels.h"
 #include "platform.h"
 #include "vm_allocator.h"
+#include "render_executor.h"
 #include <math.h>
 #include <string.h>
 
@@ -61,9 +62,18 @@ bool pixels_show(PixelBuffer *p) {
 }
 /* This admitted buffer is owned by the physical transfer until poll/cancel.
  * Scene frames remain unscaled, including paused frames and A/B endpoints. */
+typedef struct { uint8_t *out;const uint8_t *rgb;float brightness; } Dim;
+static void dim_range(void *context,unsigned first,unsigned end){
+    Dim *d=context;
+    for(unsigned i=first;i<end;i++)d->out[i]=(uint8_t)lroundf(d->rgb[i]*d->brightness);
+}
 static const uint8_t *dim(PixelBuffer *p,const uint8_t *rgb,size_t count){
     if(!p||!p->driver||!p->type||!p->dimmed||count!=p->count||!rgb)return NULL;
-    for(size_t i=0;i<count*3;i++)p->dimmed[i]=(uint8_t)lroundf(rgb[i]*p->light.brightness);
+    if(p->light.brightness==1)memcpy(p->dimmed,rgb,count*3);
+    else{
+        Dim d={p->dimmed,rgb,p->light.brightness};
+        render_ranges(dim_range,&d,0,(unsigned)count*3,384);
+    }
     return p->dimmed;
 }
 bool pixels_show_frame(PixelBuffer *p,const uint8_t *rgb,size_t count){

@@ -90,8 +90,8 @@ static bool read_at(Portable *p,uint32_t offset,void *out,size_t size){
 static bool instruction(Portable *p,unsigned pc,uint8_t out[8]){
     uint32_t offset=p->code_offset+pc*8;
     if(offset<p->cache_offset || offset+8>p->cache_offset+p->cache_size){
-        p->cache_offset=offset&~255u;p->cache_size=p->size-p->cache_offset;
-        if(p->cache_size>256)p->cache_size=256;
+        p->cache_offset=offset&~(LIGHTVM_BYTECODE_CACHE_BYTES-1u);p->cache_size=p->size-p->cache_offset;
+        if(p->cache_size>sizeof(p->cache))p->cache_size=sizeof(p->cache);
         if(!read_at(p,p->cache_offset,p->cache,p->cache_size)){p->cache_size=0;return false;}
     }
     memcpy(out,p->cache+(offset-p->cache_offset),8);return true;
@@ -409,6 +409,9 @@ const char *pbc_prepare(Portable *p,LbcBuffer *output){
         if(!evaluate(p,pbc_spec((Portable*)p,n).fill,count,NULL,&fill))goto fail;
         for(unsigned k=0;k<r->count;k++){if(!store_value(r,k,fill))goto fail;if((k&31u)==31u)runtime_checkpoint();}
     }
+    /* Admission is coordinator-only. Runtime reseeding belongs to this VM. */
+    static uint64_t sequence;
+    p->seed_sequence=++sequence;
     random_default(p);p->initialized=true;return NULL;
 fail:demo_free(p->state);p->state=NULL;p->values=NULL;p->resources=NULL;p->state_bytes=0;return error;
 }
@@ -438,8 +441,7 @@ static void random_seed(Portable *p,uint64_t seed){
     p->random_state=0;random_word(p);p->random_state+=seed;random_word(p);
 }
 static void random_default(Portable *p){
-    static uint64_t sequence;
-    random_seed(p,p->deterministic_random?p->default_seed:platform_time_us()+(++sequence)*UINT64_C(0x9e3779b97f4a7c15));
+    random_seed(p,p->deterministic_random?p->default_seed:platform_time_us()+(++p->seed_sequence)*UINT64_C(0x9e3779b97f4a7c15));
 }
 static bool random_range(Portable *p,int64_t start,int64_t stop,int64_t step,PbcValue *result){
     if(!step||(step>0?start>=stop:start<=stop))return false;
@@ -499,7 +501,11 @@ int pbc_resume(Portable *p,unsigned quota){
     for(unsigned n=0;n<p->nresources;n++)if(p->resources[n].generation!=p->generation){p->status=UINT32_MAX;return -1;}
     if(p->output&&(p->output->sealed||p->output->generation!=p->generation)){p->status=UINT32_MAX;return -1;}
 
+    uint64_t slice_started=platform_time_us();
+    unsigned dispatched=0;
     while(quota--){
+        if(p->used>=LIGHTVM_INVOCATION_LIMIT)goto fault;
+        if(dispatched++&&(p->bulk||!(dispatched&15u))&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
         uint8_t q[8];if(!instruction(p,p->pc,q))goto fault;
         unsigned op=q[0],a=q[1],b=q[2],c=q[3];uint32_t d=lbc_u32(q+4);p->pc++;p->used++;p->dispatch_count++;
         PbcValue r[4]={pbc_value(p,a),pbc_value(p,b),pbc_value(p,c),pbc_value(p,d)};

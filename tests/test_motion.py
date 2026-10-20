@@ -70,6 +70,7 @@ class MotionRuntimeTests(unittest.TestCase):
         self.client.save_program('test', result.bytecode)
         self.client.configure_composition([{'id':'fg','program':'test','settings':settings or {}}], output='lights')
         self.client.require_ok(self.client.command(STOP, output='lights'))
+        self.client.reset_program(output='lights', layer='fg')
         return result
 
     def frame(self, milliseconds=0):

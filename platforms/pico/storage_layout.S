@@ -8,6 +8,10 @@
 .equ __lightvm_sram_end, SRAM_END
 .equ __lightvm_vm_heap, VM_HEAP_LIMIT
 .equ __lightvm_pixel_capacity, PIXEL_CAPACITY
+.global __lightvm_native_headroom
+.equ __lightvm_native_headroom, LIGHTVM_NATIVE_HEADROOM_BYTES
+.global __lightvm_dcp_enabled
+.equ __lightvm_dcp_enabled, LIGHTVM_PICO2_DCP_ENABLED
 /* Output drivers use pio0/pio1. RP2040 networking consumes one of those SMs;
  * RP2350's SDK may place CYW43 on pio2, leaving all eight for outputs. */
 #if LIGHTVM_WIFI && PICO_RP2040

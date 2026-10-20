@@ -4,6 +4,8 @@
 #include "runtime.h"
 #include "pixels.h"
 #include "animation.h"
+#include "render_executor.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -16,7 +18,7 @@ void vm_init(VmInstance *a, PixelBuffer *target, SendMessage send, void *transpo
 }
 void vm_output_cancel(VmInstance *a) {
     if(a->output_pending&&a->output&&a->output->driver)a->output->type->cancel(a->output->driver);
-    a->output_pending=false;a->view.sealed=false;
+    a->output_pending=false;a->frame_ready=false;a->view.sealed=false;a->next_present=0;
 }
 static void stop_animation(VmInstance *a) {
     vm_output_cancel(a);
@@ -78,7 +80,8 @@ static void show_frame(VmInstance *a,bool asynchronous) {
     const uint8_t *frame=control_output_frame(a);
     if(asynchronous){
         if(a->output->driver&&pixels_submit(a->output,frame,a->control.count)){
-            a->output_pending=true;a->view.sealed=true;a->output_started=show_started;return;
+            a->next_present=show_started+FRAME_INTERVAL_US;
+            a->output_pending=true;a->output_started=show_started;return;
         }
         vm_output_cancel(a);
         if(a->output->driver)a->output->type->cancel(a->output->driver);
@@ -107,27 +110,70 @@ static bool complete_output(VmInstance *a) {
     }
     return true;
 }
-void vm_tick_budget(VmInstance *a,unsigned budget) {
-    if(!complete_output(a))return;
-    if (!a->playing) return;
+static uint64_t tick_epoch;
+static bool batching;
+static unsigned queued;
+static AnimationSlice slices[2];
+static RenderJob jobs[2];
+static void tick_error(VmInstance *a,const char *error){
+    a->playing=false;
+    snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
+}
+static bool tick_prepare(VmInstance *a,unsigned budget,AnimationSlice *slice){
+    (void)complete_output(a);
+    if(a->frame_ready){
+        if(a->output_pending||platform_time_us()<a->next_present)return false;
+        a->frame_ready=false;show_frame(a,true);(void)complete_output(a);
+        /* One complete waiting frame is the entire render-ahead queue. */
+        return false;
+    }
+    if (!a->playing) return false;
     uint64_t now=platform_time_us();
     bool continuing=a->control.in_step;
-    if (!continuing&&now<a->next_frame) return;
+    if (!continuing&&now<a->next_frame) return false;
     uint64_t elapsed_us=continuing?0:now-a->last_frame;
-    // Sample actual elapsed microseconds and keep the scheduled frame cadence.
+    // Zero interval is demand driven; an optional cap spaces render starts.
     if(!continuing){
         a->last_frame=now;
         a->next_frame+=FRAME_INTERVAL_US;
         if (a->next_frame<=now) a->next_frame=now+FRAME_INTERVAL_US;
     }
-    bool ready=true;
-    const char * error=animation_poll_budget(a,elapsed_us,&ready,budget);
-    if (error) {
-        a->playing=false;
-        snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
-        return; // Preserve the last complete frame on the physical strip.
+    const char *error=animation_begin(a,elapsed_us);
+    if(error){tick_error(a,error);return false;}
+    *slice=(AnimationSlice){a,budget,0};return true;
+}
+static void tick_commit(AnimationSlice *slice,uint64_t elapsed){
+    VmInstance *a=slice->vm;bool ready=false;
+    const char *error=animation_commit(slice,elapsed,&ready);
+    if(error){tick_error(a,error);return;}
+    if(ready){
+        a->frame_ready=true;
+        if(!a->output_pending&&platform_time_us()>=a->next_present){a->frame_ready=false;show_frame(a,true);(void)complete_output(a);}
     }
-    if(ready){show_frame(a,true);(void)complete_output(a);}
+}
+void vm_tick_begin(void){assert(!batching&&!queued);runtime_defer_begin();batching=true;tick_epoch++;}
+void vm_tick_flush(void){
+    render_execute(jobs,queued);
+    for(unsigned i=0;i<queued;i++)tick_commit(&slices[i],jobs[i].elapsed_us);
+    queued=0;
+}
+void vm_tick_collect(VmInstance *a,unsigned budget){
+    assert(batching);
+    if(a->scheduled_epoch==tick_epoch||runtime_owns(a))return;
+    a->scheduled_epoch=tick_epoch;
+    if(tick_prepare(a,budget,&slices[queued])){
+        jobs[queued]=(RenderJob){animation_execute,&slices[queued],0};
+        if(++queued==2)vm_tick_flush();
+    }
+}
+void vm_tick_end(void){vm_tick_flush();batching=false;runtime_defer_end();}
+void vm_tick_budget(VmInstance *a,unsigned budget) {
+    if(batching&&a->scheduled_epoch==tick_epoch)return;
+    if(batching)a->scheduled_epoch=tick_epoch;
+    AnimationSlice slice;
+    if(!tick_prepare(a,budget,&slice))return;
+    RenderJob job={animation_execute,&slice,0};render_execute(&job,1);
+    tick_commit(&slice,job.elapsed_us);
 }
 void vm_tick(VmInstance *a){vm_tick_budget(a,4096);}
 static void play(VmInstance *a, uint16_t id) {

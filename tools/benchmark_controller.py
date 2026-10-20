@@ -20,6 +20,7 @@ DEFAULT_PINS = {
     "test_175": "GP16",
     "pico": "GP16",
     "pico_w": "GP16",
+    "pico2_w": "GP16",
     "xiao_esp32c3": "D1",
     "xiao_esp32s3": "D0",
     "xiao_esp32c6": "D0",
@@ -33,6 +34,7 @@ def percentile95(values):
 
 def measure(client, board, pin, pixels, samples, seconds):
     initial = client.status_fields()
+    capabilities = client.describe()
     if initial.get("board") != board:
         raise ProtocolError(f"expected board {board}, got {initial.get('board')}")
     original_config = client.get_config()
@@ -41,7 +43,7 @@ def measure(client, board, pin, pixels, samples, seconds):
         "outputs": [{"id": "benchmark", "type": "ws2812b", "config": {
             "pin": pin, "count": pixels, "order": "GRB", "brightness_limit": 32}}],
     }
-    source = (ROOT / "examples/animations/rainbow.py").read_text()
+    source = (ROOT / "examples/animations/rainbow.py").read_text().replace("random.seed()", "random.seed(1)")
     artifact = compile_source(source)
     if not artifact.success:
         raise ValueError(artifact.diagnostics)
@@ -93,6 +95,11 @@ def measure(client, board, pin, pixels, samples, seconds):
             "playback_frames": frames,
             "playback_fps": round(frames / elapsed, 2),
             "heap_peak_bytes": int(end["heap_peak"]),
+            "version": capabilities["version"],
+            "render_workers": capabilities.get("render_workers", 1),
+            "max_refresh_hz": capabilities.get("max_refresh_hz"),
+            "bytecode_cache_bytes": capabilities.get("bytecode_cache_bytes"),
+            "vm_heap_limit": int(end["heap_limit"]),
         }
     finally:
         try:

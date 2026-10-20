@@ -1,6 +1,7 @@
 #include "platform.h"
 #include "config.h"
 #include "runtime.h"
+#include "render_executor.h"
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
@@ -85,26 +86,33 @@ void platform_pixels_cancel(void *driver) {
     while(!platform_pixels_poll(p))tight_loop_contents();
 }
 
-bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
-    Pixels *p=driver;
-    if(!p||!rgb||count!=p->config.count||p->pending)return false;
+typedef struct { uint32_t *words;const uint8_t *rgb;unsigned order[3],brightness; } Pack;
+static void pack_pixels(void *context,unsigned first,unsigned end){
+    Pack *p=context;const uint8_t *rgb=p->rgb;
     /* Full output skips scaling; wire order and DMA packing still apply. */
-    if(p->config.brightness==255)for(size_t i=0;i<count;i++){
+    if(p->brightness==255)for(unsigned i=first;i<end;i++){
         uint32_t word=0;
         for(size_t c=0;c<3;c++){
-            unsigned channel=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;
+            unsigned channel=p->order[c];
             word=(word<<8)|rgb[i*3+channel];
         }
         p->words[i]=word<<8;
     }
-    else for(size_t i=0;i<count;i++){
+    else for(unsigned i=first;i<end;i++){
         uint32_t word=0;
         for(size_t c=0;c<3;c++){
-            unsigned channel=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;
-            word=(word<<8)|((rgb[i*3+channel]*p->config.brightness+127u)/255u);
+            unsigned channel=p->order[c];
+            word=(word<<8)|((rgb[i*3+channel]*p->brightness+127u)/255u);
         }
         p->words[i]=word<<8;
     }
+}
+bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
+    Pixels *p=driver;
+    if(!p||!rgb||count!=p->config.count||p->pending)return false;
+    Pack pack={.words=p->words,.rgb=rgb,.brightness=p->config.brightness};
+    for(unsigned c=0;c<3;c++)pack.order[c]=p->config.order[c]=='R'?0:p->config.order[c]=='G'?1:2;
+    render_ranges(pack_pixels,&pack,0,(unsigned)count,128);
     p->pending=true;p->latch_until=0;p->deadline=time_us_64()+count*30u+100000u;
     dma_channel_transfer_from_buffer_now((uint)p->dma,p->words,(uint32_t)count);
     return true;

@@ -94,6 +94,7 @@ class PicoRamTests(unittest.TestCase):
                 "__scratch_y_end__": top - 16384, "__StackTop": top,
                 "__StackBottom": top - 16384, "__HeapLimit": top - 16384, "__StackOneTop": top - 16384,
                 "__StackOneBottom": top - 16384, "__lightvm_vm_heap": 65536,
+                "__lightvm_native_headroom": 16384,
                 "__lightvm_pixel_capacity": 1024, "__lightvm_output_slots": 7}
 
     def test_target_geometry_and_compiled_limits(self):
@@ -111,6 +112,7 @@ class PicoRamTests(unittest.TestCase):
         symbols["__end__"] += 1024
         symbols["__scratch_x_end__"] += 256
         symbols["__StackOneBottom"] -= 512
+        symbols["__HeapLimit"] -= 512
         self.assertEqual(ram_report(symbols)["remaining_bytes_after_reservations"], expected - 1792)
         symbols["__lightvm_vm_heap"] = 520 * 1024
         self.assertLess(ram_report(symbols)["remaining_bytes_after_reservations"], 0)
@@ -122,6 +124,21 @@ class PicoRamTests(unittest.TestCase):
         symbols["__HeapLimit"] = symbols["__StackBottom"] + 256
         with self.assertRaisesRegex(ValueError, "heap/stack"):
             ram_report(symbols)
+        symbols = self.symbols()
+        symbols["__StackOneBottom"] -= 8192
+        with self.assertRaisesRegex(ValueError, "core-1 heap/stack"):
+            ram_report(symbols)
+        symbols["__HeapLimit"] = symbols["__StackOneBottom"]
+        self.assertEqual(ram_report(symbols)["native_stack"], 24576)
+
+    def test_enabled_dcp_must_survive_linker_garbage_collection(self):
+        symbols = self.symbols()
+        symbols["__lightvm_dcp_enabled"] = 1
+        with self.assertRaisesRegex(ValueError, "wrappers were not linked"):
+            ram_report(symbols)
+        for operation in ("dadd", "dsub", "dmul", "ddiv"):
+            symbols["__wrap___aeabi_" + operation] = 0x10001000
+        self.assertGreater(ram_report(symbols)["remaining_bytes_after_reservations"], 0)
 
 
 @unittest.skipUnless(shutil.which("cmake") or os.environ.get("CMAKE"), "CMake not installed")

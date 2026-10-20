@@ -1,6 +1,10 @@
 /* The monotonic driver and output ownership are independent of guest clocks. */
 #include "transition.h"
 #include <math.h>
+/* Advance the virtual clock between scheduler rounds, also in capped builds. */
+static void transition_test_tick(Transition *t,unsigned budget){
+    clock_now+=FRAME_INTERVAL_US;transition_tick(t,budget);
+}
 static void startup_transition_clock(void){
     CHECK(vm_heap_used()==0);clock_now=0;clock_step=0;storage_available=true;
     deny_allocation=false;deny_show=false;memset(flash,255,sizeof(flash));
@@ -32,7 +36,7 @@ static void startup_transition_clock(void){
 static void transition_contract(void){
     clock_now=0;clock_step=0;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
-    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=67,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
+    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=131,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     Transition *t=transition_create(&physical);CHECK(t);
     CHECK(transition_set(t,35));CHECK(transition_run(t,100,2000));
@@ -66,7 +70,7 @@ static void transition_contract(void){
 
     for(unsigned n=0;n<2;n++){
         t->compositions[n]=composition_create(&t->target,0);CHECK(t->compositions[n]);
-        memset(t->compositions[n]->front,n?200:100,67*3);t->compositions[n]->playing=false;
+        memset(t->compositions[n]->front,n?200:100,131*3);t->compositions[n]->playing=false;
     }
     /* A management mutation can invalidate a suspended custom call. Restoring
        its baseline must also discard that call's interpreter continuation. */
@@ -74,27 +78,27 @@ static void transition_contract(void){
     portable_load(&custom->vm,&t->target,&custom_reply,counter_lbc,sizeof(counter_lbc));
     CHECK(transition_program_capture(custom));t->programs[0]=custom;t->effect=TRANSITION_CUSTOM;
     CHECK(transition_set(t,35));
-    for(unsigned n=0;n<100&&!custom->vm.control.in_step;n++)transition_tick(t,1);
+    for(unsigned n=0;n<100&&!custom->vm.control.in_step;n++)transition_test_tick(t,1);
     CHECK(custom->vm.control.in_step);transition_invalidate(t);
     CHECK(!transition_frame(t,0)&&!custom->vm.control.faulted);
     transition_program_destroy(custom);t->programs[0]=NULL;t->effect=TRANSITION_CROSSFADE;
-    transition_invalidate(t);t->frames=0;memset(physical.rgb,0,67*3);
-    for(unsigned n=0;n<2;n++)memset(t->compositions[n]->front,n?200:100,67*3);
+    transition_invalidate(t);t->frames=0;memset(physical.rgb,0,131*3);
+    for(unsigned n=0;n<2;n++)memset(t->compositions[n]->front,n?200:100,131*3);
     CHECK(transition_set(t,35));
     unsigned allocation_count=allocations;deny_allocation=true;
     delayed_output=true;output_ready=false;output_failed=false;
-    /* First sample spans three slices. Later updates must not tear that frame. */
-    transition_tick(t,64);CHECK(t->composing&&t->sampled_progress==35);
-    CHECK(transition_set(t,90));transition_tick(t,64);transition_tick(t,64);
+    /* First sample spans multiple slices. Later updates must not tear that frame. */
+    transition_test_tick(t,64);CHECK(t->composing&&t->sampled_progress==35);
+    CHECK(transition_set(t,90));while(t->composing)transition_test_tick(t,64);
     CHECK(t->prepared);
-    for(unsigned n=0;n<67*3;n++)CHECK(t->working[n]==135);
-    transition_tick(t,64);CHECK(t->pending&&borrowed_output==physical.dimmed&&t->frames==0);
-    for(unsigned n=0;n<12;n++){CHECK(transition_set(t,n*5));transition_tick(t,64);CHECK(t->pending&&t->frames==0);}
-    output_ready=true;t->command_active=true;transition_tick(t,64);t->command_active=false;CHECK(t->frames==1&&physical.rgb[0]==135);
-    output_ready=false;transition_tick(t,64);transition_tick(t,64);transition_tick(t,64);transition_tick(t,64);
-    CHECK(t->pending);uint32_t frames=t->frames;output_failed=true;transition_tick(t,64);
+    for(unsigned n=0;n<131*3;n++)CHECK(t->working[n]==135);
+    transition_test_tick(t,64);CHECK(t->pending&&borrowed_output==physical.dimmed&&t->frames==0);
+    for(unsigned n=0;n<12;n++){CHECK(transition_set(t,n*5));transition_test_tick(t,64);CHECK(t->pending&&t->frames==0);}
+    output_ready=true;t->command_active=true;transition_test_tick(t,64);t->command_active=false;CHECK(t->frames==1&&physical.rgb[0]==135);
+    output_ready=false;transition_test_tick(t,64);transition_test_tick(t,64);transition_test_tick(t,64);transition_test_tick(t,64);
+    CHECK(t->pending);uint32_t frames=t->frames;output_failed=true;transition_test_tick(t,64);
     CHECK(t->frames==frames&&physical.rgb[0]==135);output_failed=false;
-    for(unsigned n=0;n<8&&!t->pending;n++)transition_tick(t,64);
+    for(unsigned n=0;n<8&&!t->pending;n++)transition_test_tick(t,64);
     CHECK(t->pending);CHECK(allocations==allocation_count);deny_allocation=false;
     composition_destroy(t->compositions[0]);composition_destroy(t->compositions[1]);
     unsigned cancelled=cancelled_outputs;transition_destroy(t);CHECK(!borrowed_output&&cancelled_outputs==cancelled+1);
@@ -113,25 +117,25 @@ static void transition_contract(void){
     portable_load(&custom->vm,&t->target,&custom_reply,transition_lbc,sizeof(transition_lbc));
     CHECK(transition_program_capture(custom));t->programs[0]=custom;
     CHECK(transition_set(t,35));allocation_count=allocations;deny_allocation=true;
-    transition_tick(t,1);CHECK(t->composing&&t->compositions[0]->front_pinned);
+    transition_test_tick(t,1);CHECK(t->composing&&t->compositions[0]->front_pinned);
     uint8_t sampled=t->compositions[0]->front[0];
     for(unsigned n=0;n<100&&t->phase<4;n++){
-        clock_now+=20000;transition_tick(t,1);
+        clock_now+=20000;transition_test_tick(t,1);
         if(t->phase<4)CHECK(t->compositions[0]->front_pinned&&t->compositions[0]->front[0]==sampled);
     }
     CHECK(t->composing&&t->phase==4);
     CHECK(!t->compositions[0]->front_pinned);
     Composition *s=t->compositions[0];composition_invalidate(s);s->layers[0].vm.next_frame=0;
     uint64_t renders=s->layers[0].vm.portable->render_count;
-    clock_now+=20000;transition_tick(t,64);
+    clock_now+=20000;transition_test_tick(t,64);
     CHECK(s->layers[0].vm.portable->render_count>renders);
     CHECK(!s->front_pinned);
     /* Publish a different source while RGB conversion is unfinished. The
        remaining output pixels must still come from the committed program. */
     composition_prepare(s);composition_publish(s);CHECK(s->front[0]!=sampled);
-    for(unsigned n=0;n<100&&t->composing;n++){clock_now+=20000;transition_tick(t,64);}
+    for(unsigned n=0;n<100&&t->composing;n++){clock_now+=20000;transition_test_tick(t,64);}
     CHECK(t->prepared&&!s->front_pinned);
-    for(unsigned n=0;n<67;n++)CHECK(t->working[n*3]==sampled&&t->working[n*3+1]==0&&t->working[n*3+2]==0);
+    for(unsigned n=0;n<131;n++)CHECK(t->working[n*3]==sampled&&t->working[n*3+1]==0&&t->working[n*3+2]==0);
     CHECK(allocations==allocation_count);deny_allocation=false;
     transition_invalidate(t);composition_destroy(t->compositions[0]);composition_destroy(t->compositions[1]);
     transition_destroy(t);pixels_destroy(&physical);CHECK(vm_heap_used()==0);

@@ -9,6 +9,7 @@ function(lightvm_add_core)
     include("${LIGHTVM_ROOT}/cmake/lightvm_storage.cmake")
     configure_file("${LIGHTVM_ROOT}/cmake/lightvm_release.h.in" "${CMAKE_CURRENT_BINARY_DIR}/generated/lightvm_release.h" @ONLY)
     add_library(lightvm_config INTERFACE)
+    include("${LIGHTVM_ROOT}/cmake/lightvm_resources.cmake")
     target_include_directories(lightvm_config INTERFACE "${LIGHTVM_ROOT}/src" "${CMAKE_CURRENT_BINARY_DIR}/generated")
     target_compile_definitions(lightvm_config INTERFACE
         LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
@@ -22,7 +23,7 @@ function(lightvm_add_core)
     endif()
 
     add_library(lightvm_core STATIC
-        "${LIGHTVM_ROOT}/src/release.c" "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
+        "${LIGHTVM_ROOT}/src/release.c" "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/render_executor.c" "${LIGHTVM_ROOT}/src/app.c" "${LIGHTVM_ROOT}/src/protocol.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c"
         "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/inputs.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"

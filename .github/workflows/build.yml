@@ -33,7 +33,7 @@ jobs:
         run: |
           board_args=()
           if [[ '${{ matrix.profile }}' == host-175 ]]; then
-            board_args=(-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h")
+            board_args=(-DLIGHTVM_BOARD_CONFIG="$PWD/tests/boards/host_175.h" -DLIGHTVM_RENDER_WORKERS=1)
           fi
           cmake -S . -B build/${{ matrix.profile }}-${{ matrix.transport }} -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=${{ (matrix.transport == 'http' || matrix.transport == 'websocket') && 'ON' || 'OFF' }} -DLIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -DLIGHTVM_MQTT=${{ (matrix.transport == 'websocket' || matrix.transport == 'mqtt') && 'ON' || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DCMAKE_BUILD_TYPE=Release "${board_args[@]}"
           cmake --build build/${{ matrix.profile }}-${{ matrix.transport }} --parallel 2
@@ -49,6 +49,12 @@ jobs:
           node --test tests/test_editor.mjs
           npm run build
           npm test
+      - name: Check concurrent rendering with ThreadSanitizer
+        if: matrix.profile == 'host' && matrix.transport == 'usb' && matrix.boot_sequence == 'OFF'
+        run: |
+          cmake -S . -B build/tsan -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="-fsanitize=thread -g" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+          cmake --build build/tsan --target test_render_executor --parallel 2
+          build/tsan/test_render_executor
       - name: Power recovery policy and HTTP integration
         if: matrix.profile == 'host' && matrix.transport == 'http' && matrix.boot_sequence == 'ON'
         run: |

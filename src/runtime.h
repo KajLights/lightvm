@@ -10,4 +10,6 @@ const void *runtime_enter(const void *owner);
 void runtime_leave(const void *previous);
 bool runtime_owns(const void *owner);
 uint64_t runtime_service_count(void);
+void runtime_defer_begin(void);
+void runtime_defer_end(void);
 #endif

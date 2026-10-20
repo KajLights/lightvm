@@ -28,7 +28,7 @@ static void *borrowed_driver;
 static size_t borrowed_count;
 static uint32_t borrowed_crc;
 static unsigned cancelled_outputs;
-static uint8_t displayed[PIXEL_BYTES];
+static uint8_t displayed[PIXEL_CAPACITY*3];
 static const PlatformInfo info = {"test", "virtual", "capture"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) {
@@ -418,12 +418,19 @@ int main(void) {
     unsigned playback_shows = shows;
     app_tick(&app);
     CHECK(shows == playback_shows + 1);
+#if FRAME_INTERVAL_US
     clock_now = FRAME_INTERVAL_US - 1;
     app_tick(&app);
     CHECK(shows == playback_shows + 1);
     clock_now = FRAME_INTERVAL_US;
     app_tick(&app);
     CHECK(shows == playback_shows + 2);
+#else
+    /* An immediately ready driver is limited by rendering, not a 60 Hz timer. */
+    clock_now++;
+    app_tick(&app);
+    CHECK(shows == playback_shows + 2);
+#endif
     command(&session, CMD_STOP, NULL, 0);
     CHECK(displayed[0] == 0);
 

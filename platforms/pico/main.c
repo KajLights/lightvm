@@ -47,7 +47,7 @@ int main(void) {
 #if LIGHTVM_MQTT
         pico_mqtt_poll();
 #endif
-        int byte = getchar_timeout_us(1000);
+        int byte = getchar_timeout_us(0);
         if (byte == PICO_ERROR_TIMEOUT)
             continue;
         // Bound ingress work, but do not render every output between individual

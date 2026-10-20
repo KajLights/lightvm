@@ -16,6 +16,10 @@ def read_symbols(nm: str, image: str) -> dict[str, int]:
 
 def ram_report(symbols: dict[str, int]) -> dict:
     s = symbols
+    if s.get("__lightvm_dcp_enabled", 0) and any(
+        "__wrap___aeabi_" + op not in s for op in ("dadd", "dsub", "dmul", "ddiv")
+    ):
+        raise ValueError("Pico DCP enabled but arithmetic wrappers were not linked")
     # __end__ includes the vector table, RAM code/data, BSS, TLS and alignment.
     # Scratch allocations are separate; dummy stack sections reserve no data.
     static = s["__end__"] - s["__lightvm_sram_start"]
@@ -25,10 +29,14 @@ def ram_report(symbols: dict[str, int]) -> dict:
     sram = s["__lightvm_sram_end"] - s["__lightvm_sram_start"]
     if not s["__lightvm_sram_start"] <= s["__end__"] <= s["__HeapLimit"] <= s["__StackBottom"] < s["__StackTop"] <= s["__lightvm_sram_end"]:
         raise ValueError("invalid Pico heap/stack boundaries")
+    if s["__StackOneBottom"] != s["__StackOneTop"] and not (
+        s["__HeapLimit"] <= s["__StackOneBottom"] < s["__StackOneTop"] <= s["__StackBottom"]
+    ):
+        raise ValueError("invalid Pico core-1 heap/stack boundaries")
     # The compiled slot reservation includes CYW43 sharing on the chosen chip.
     budgets = {"static_bytes": static, "vm_heap_ceiling": s["__lightvm_vm_heap"],
                "native_stack": stack, "pixel_driver_max": s["__lightvm_output_slots"] * (s["__lightvm_pixel_capacity"] * 4 + 256),
-               "operating_headroom": 16384}
+               "operating_headroom": s["__lightvm_native_headroom"]}
     if min(sram, *budgets.values()) <= 0:
         raise ValueError("invalid Pico RAM geometry or reservations")
     # Check usable contiguous heap too: unallocated scratch SRAM cannot pay for

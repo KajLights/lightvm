@@ -16,7 +16,7 @@ typedef struct Composition {
     uint8_t *allocation, *working, *front;
     unsigned count, layer_count, cursor, pixel;
     uint32_t revision, frames, composite_frames;
-    uint64_t next_frame, output_started, composite_us, output_us;
+    uint64_t next_frame, next_present, output_started, composite_us, output_us;
     bool playing, composing, prepared, pending, dirty, command_active, ticking, front_pinned;
     char error[100];
     CompositionLayer layers[];

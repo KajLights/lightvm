@@ -1,0 +1,887 @@
+{
+  "date": "2026-10-20",
+  "source_base": "a0cc547",
+  "sdk": "2.3.1",
+  "compiler": "Arm GNU 13.2.Rel1",
+  "configured_system_clock_hz": 150000000,
+  "feature_flags": {
+    "wifi": true,
+    "http": true,
+    "websocket": true,
+    "mqtt": true,
+    "boot_sequence": true
+  },
+  "wiring": "No strips attached; GP16 and GP17 pseudo WS2812 outputs",
+  "transport": "USB; radio in setup AP mode",
+  "final_uf2_sha256": "23f44b712318e555f913adc574910a52ccbfd5be46c3ff749cec322b43f9a7e1",
+  "rainbow": {
+    "original-rainbow": {
+      "timestamp_utc": "2026-10-20T14:49:04.964431+00:00",
+      "board": "pico2_w",
+      "platform": "pico",
+      "output": "ws2812",
+      "pin": "GP16",
+      "pixels": 200,
+      "brightness_limit": 32,
+      "workload": "examples/animations/rainbow.py",
+      "bytecode_sha256": "4e7844aa6ad3424aa32a5adc02aa4f13ae5d60a58b8d6df4e942cd3b58b33f5e",
+      "frame_interval_us": 16667,
+      "samples": 20,
+      "render_us_median": 868.0,
+      "render_us_p95": 888,
+      "show_us_median": 6562.5,
+      "show_us_p95": 6567,
+      "playback_seconds": 4.007,
+      "playback_frames": 240,
+      "playback_fps": 59.9,
+      "heap_peak_bytes": 5776,
+      "version": "1.1.0",
+      "render_workers": 1,
+      "max_refresh_hz": null,
+      "bytecode_cache_bytes": null,
+      "vm_heap_limit": 65536
+    },
+    "final-rainbow-200": {
+      "timestamp_utc": "2026-10-20T15:02:34.805396+00:00",
+      "board": "pico2_w",
+      "platform": "pico",
+      "output": "ws2812",
+      "pin": "GP16",
+      "pixels": 200,
+      "brightness_limit": 32,
+      "workload": "examples/animations/rainbow.py",
+      "bytecode_sha256": "4e7844aa6ad3424aa32a5adc02aa4f13ae5d60a58b8d6df4e942cd3b58b33f5e",
+      "frame_interval_us": 0,
+      "samples": 20,
+      "render_us_median": 573.5,
+      "render_us_p95": 598,
+      "show_us_median": 6410.0,
+      "show_us_p95": 6420,
+      "playback_seconds": 4.007,
+      "playback_frames": 622,
+      "playback_fps": 155.24,
+      "heap_peak_bytes": 31488,
+      "version": "1.1.0",
+      "render_workers": 2,
+      "max_refresh_hz": 0,
+      "bytecode_cache_bytes": 1024,
+      "vm_heap_limit": 196608
+    },
+    "final-rainbow-500": {
+      "timestamp_utc": "2026-10-20T15:02:39.505030+00:00",
+      "board": "pico2_w",
+      "platform": "pico",
+      "output": "ws2812",
+      "pin": "GP16",
+      "pixels": 500,
+      "brightness_limit": 32,
+      "workload": "examples/animations/rainbow.py",
+      "bytecode_sha256": "4e7844aa6ad3424aa32a5adc02aa4f13ae5d60a58b8d6df4e942cd3b58b33f5e",
+      "frame_interval_us": 0,
+      "samples": 20,
+      "render_us_median": 1085.5,
+      "render_us_p95": 1106,
+      "show_us_median": 15477.5,
+      "show_us_p95": 15484,
+      "playback_seconds": 4.003,
+      "playback_frames": 258,
+      "playback_fps": 64.45,
+      "heap_peak_bytes": 31488,
+      "version": "1.1.0",
+      "render_workers": 2,
+      "max_refresh_hz": 0,
+      "bytecode_cache_bytes": 1024,
+      "vm_heap_limit": 196608
+    },
+    "final-rainbow-1024": {
+      "timestamp_utc": "2026-10-20T15:02:44.762029+00:00",
+      "board": "pico2_w",
+      "platform": "pico",
+      "output": "ws2812",
+      "pin": "GP16",
+      "pixels": 1024,
+      "brightness_limit": 32,
+      "workload": "examples/animations/rainbow.py",
+      "bytecode_sha256": "4e7844aa6ad3424aa32a5adc02aa4f13ae5d60a58b8d6df4e942cd3b58b33f5e",
+      "frame_interval_us": 0,
+      "samples": 20,
+      "render_us_median": 1939.0,
+      "render_us_p95": 1951,
+      "show_us_median": 31307.0,
+      "show_us_p95": 31321,
+      "playback_seconds": 4.005,
+      "playback_frames": 127,
+      "playback_fps": 31.71,
+      "heap_peak_bytes": 31488,
+      "version": "1.1.0",
+      "render_workers": 2,
+      "max_refresh_hz": 0,
+      "bytecode_cache_bytes": 1024,
+      "vm_heap_limit": 196608
+    }
+  },
+  "comparisons": {
+    "single-dcp": {
+      "profile": {
+        "board": "pico2_w",
+        "version": "1.1.0",
+        "render_workers": 1,
+        "pico2_dcp_enabled": true,
+        "max_refresh_hz": 0,
+        "bytecode_cache_bytes": 1024,
+        "vm_heap_limit": 196608,
+        "render_slice_us": 500,
+        "worker_stack_peak_bytes": 0,
+        "render_offloads": 0,
+        "render_worker_us": 0
+      },
+      "cases": [
+        {
+          "name": "pure_map",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 1,
+          "slots": 1,
+          "bytecode_sha256": "d514621059f79819640955817100c5986baedda9ca4ef2f2d2c2d3700a05c9d7",
+          "frame_crc32": [
+            1204754083,
+            1204754083,
+            1204754083
+          ],
+          "seconds": 4.028,
+          "manual_layer_render_us_median": 1020,
+          "fps_per_output": {
+            "bench0": 155.65
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 155.65
+          },
+          "status_latency_ms_median": 2.186,
+          "status_latency_ms_p95": 4.281,
+          "worker_stack_peak_bytes": 0
+        },
+        {
+          "name": "transformed_image",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 1,
+          "slots": 1,
+          "bytecode_sha256": "03464001073d36e56be0ea5c94a7ef36919883ed257850ea65ac6f2f22e3dfa5",
+          "frame_crc32": [
+            3661758322,
+            3661758322,
+            3661758322
+          ],
+          "seconds": 4.026,
+          "manual_layer_render_us_median": 2665,
+          "fps_per_output": {
+            "bench0": 156.0
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 156.0
+          },
+          "status_latency_ms_median": 2.27,
+          "status_latency_ms_p95": 5.12,
+          "worker_stack_peak_bytes": 0
+        },
+        {
+          "name": "four_scalar_layers",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 4,
+          "slots": 1,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 4.036,
+          "manual_layer_render_us_median": 42075.0,
+          "fps_per_output": {
+            "bench0": 14.87
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 5.2,
+            "bench0/A/layer1": 5.2,
+            "bench0/A/layer2": 5.2,
+            "bench0/A/layer3": 5.2
+          },
+          "status_latency_ms_median": 5.462,
+          "status_latency_ms_p95": 7.805,
+          "worker_stack_peak_bytes": 0
+        },
+        {
+          "name": "two_outputs",
+          "pixels_per_output": 200,
+          "outputs": 2,
+          "layers_per_slot": 2,
+          "slots": 1,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 4.067,
+          "manual_layer_render_us_median": 42085.5,
+          "fps_per_output": {
+            "bench0": 10.57,
+            "bench1": 10.57
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 5.41,
+            "bench0/A/layer1": 5.16,
+            "bench1/A/layer0": 5.41,
+            "bench1/A/layer1": 5.16
+          },
+          "status_latency_ms_median": 7.437,
+          "status_latency_ms_p95": 10.418,
+          "worker_stack_peak_bytes": 0
+        },
+        {
+          "name": "ab_transition",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 2,
+          "slots": 2,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 4.048,
+          "manual_layer_render_us_median": 42238.5,
+          "fps_per_output": {
+            "bench0": 11.12
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 5.19,
+            "bench0/A/layer1": 5.19,
+            "bench0/B/layer0": 5.43,
+            "bench0/B/layer1": 5.43
+          },
+          "status_latency_ms_median": 5.63,
+          "status_latency_ms_p95": 7.889,
+          "worker_stack_peak_bytes": 0
+        }
+      ],
+      "flash_replacement_and_reset_cycles": 12
+    },
+    "dual-dcp": {
+      "profile": {
+        "board": "pico2_w",
+        "version": "1.1.0",
+        "render_workers": 2,
+        "pico2_dcp_enabled": true,
+        "max_refresh_hz": 0,
+        "bytecode_cache_bytes": 1024,
+        "vm_heap_limit": 196608,
+        "render_slice_us": 500,
+        "worker_stack_peak_bytes": 728,
+        "render_offloads": 49563,
+        "render_worker_us": 18432494
+      },
+      "cases": [
+        {
+          "name": "pure_map",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 1,
+          "slots": 1,
+          "bytecode_sha256": "d514621059f79819640955817100c5986baedda9ca4ef2f2d2c2d3700a05c9d7",
+          "frame_crc32": [
+            1204754083,
+            1204754083,
+            1204754083
+          ],
+          "seconds": 6.05,
+          "manual_layer_render_us_median": 702,
+          "fps_per_output": {
+            "bench0": 156.37
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 156.37
+          },
+          "status_latency_ms_median": 2.316,
+          "status_latency_ms_p95": 3.15,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "transformed_image",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 1,
+          "slots": 1,
+          "bytecode_sha256": "03464001073d36e56be0ea5c94a7ef36919883ed257850ea65ac6f2f22e3dfa5",
+          "frame_crc32": [
+            3661758322,
+            3661758322,
+            3661758322
+          ],
+          "seconds": 6.032,
+          "manual_layer_render_us_median": 1899,
+          "fps_per_output": {
+            "bench0": 154.67
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 154.67
+          },
+          "status_latency_ms_median": 2.319,
+          "status_latency_ms_p95": 4.339,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "four_scalar_layers",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 4,
+          "slots": 1,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 6.054,
+          "manual_layer_render_us_median": 42068.5,
+          "fps_per_output": {
+            "bench0": 19.82
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 9.08,
+            "bench0/A/layer1": 9.08,
+            "bench0/A/layer2": 9.08,
+            "bench0/A/layer3": 9.08
+          },
+          "status_latency_ms_median": 3.913,
+          "status_latency_ms_p95": 4.527,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "two_outputs",
+          "pixels_per_output": 200,
+          "outputs": 2,
+          "layers_per_slot": 2,
+          "slots": 1,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 6.025,
+          "manual_layer_render_us_median": 42112.0,
+          "fps_per_output": {
+            "bench0": 18.42,
+            "bench1": 14.77
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 9.3,
+            "bench0/A/layer1": 9.13,
+            "bench1/A/layer0": 8.8,
+            "bench1/A/layer1": 8.8
+          },
+          "status_latency_ms_median": 4.044,
+          "status_latency_ms_p95": 4.407,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "ab_transition",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 2,
+          "slots": 2,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 6.058,
+          "manual_layer_render_us_median": 42233.5,
+          "fps_per_output": {
+            "bench0": 29.88
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 8.58,
+            "bench0/A/layer1": 8.58,
+            "bench0/B/layer0": 8.91,
+            "bench0/B/layer1": 8.91
+          },
+          "status_latency_ms_median": 3.814,
+          "status_latency_ms_p95": 4.41,
+          "worker_stack_peak_bytes": 728
+        }
+      ],
+      "flash_replacement_and_reset_cycles": 12
+    },
+    "dual-software": {
+      "profile": {
+        "board": "pico2_w",
+        "version": "1.1.0",
+        "render_workers": 2,
+        "max_refresh_hz": 0,
+        "bytecode_cache_bytes": 1024,
+        "vm_heap_limit": 196608,
+        "render_slice_us": 500,
+        "worker_stack_peak_bytes": 728,
+        "render_offloads": 36171,
+        "render_worker_us": 13408237
+      },
+      "cases": [
+        {
+          "name": "pure_map",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 1,
+          "slots": 1,
+          "bytecode_sha256": "d514621059f79819640955817100c5986baedda9ca4ef2f2d2c2d3700a05c9d7",
+          "frame_crc32": [
+            1204754083,
+            1204754083,
+            1204754083
+          ],
+          "seconds": 4.065,
+          "manual_layer_render_us_median": 734,
+          "fps_per_output": {
+            "bench0": 155.96
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 156.21
+          },
+          "status_latency_ms_median": 2.128,
+          "status_latency_ms_p95": 3.039,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "transformed_image",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 1,
+          "slots": 1,
+          "bytecode_sha256": "03464001073d36e56be0ea5c94a7ef36919883ed257850ea65ac6f2f22e3dfa5",
+          "frame_crc32": [
+            3661758322,
+            3661758322,
+            3661758322
+          ],
+          "seconds": 4.047,
+          "manual_layer_render_us_median": 2497,
+          "fps_per_output": {
+            "bench0": 155.92
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 155.92
+          },
+          "status_latency_ms_median": 2.717,
+          "status_latency_ms_p95": 4.869,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "four_scalar_layers",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 4,
+          "slots": 1,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 4.029,
+          "manual_layer_render_us_median": 45537.0,
+          "fps_per_output": {
+            "bench0": 12.91
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 8.19,
+            "bench0/A/layer1": 8.19,
+            "bench0/A/layer2": 8.19,
+            "bench0/A/layer3": 8.19
+          },
+          "status_latency_ms_median": 3.708,
+          "status_latency_ms_p95": 4.61,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "two_outputs",
+          "pixels_per_output": 200,
+          "outputs": 2,
+          "layers_per_slot": 2,
+          "slots": 1,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 4.063,
+          "manual_layer_render_us_median": 45576.5,
+          "fps_per_output": {
+            "bench0": 15.51,
+            "bench1": 13.29
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 7.88,
+            "bench0/A/layer1": 7.88,
+            "bench1/A/layer0": 7.88,
+            "bench1/A/layer1": 7.88
+          },
+          "status_latency_ms_median": 4.046,
+          "status_latency_ms_p95": 4.588,
+          "worker_stack_peak_bytes": 728
+        },
+        {
+          "name": "ab_transition",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 2,
+          "slots": 2,
+          "bytecode_sha256": "3ffa33a5f034256c1e4dfd39ccc0030edea02bbec3408e2d556df8c6094c5925",
+          "frame_crc32": [
+            3112026722,
+            3112026722,
+            3112026722
+          ],
+          "seconds": 4.043,
+          "manual_layer_render_us_median": 45816.0,
+          "fps_per_output": {
+            "bench0": 25.23
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 7.67,
+            "bench0/A/layer1": 7.67,
+            "bench0/B/layer0": 7.91,
+            "bench0/B/layer1": 7.91
+          },
+          "status_latency_ms_median": 3.647,
+          "status_latency_ms_p95": 4.413,
+          "worker_stack_peak_bytes": 728
+        }
+      ],
+      "flash_replacement_and_reset_cycles": 12
+    },
+    "paired-kernels": {
+      "profile": {
+        "board": "pico2_w",
+        "version": "1.1.0",
+        "render_workers": 2,
+        "pico2_dcp_enabled": true,
+        "max_refresh_hz": 0,
+        "bytecode_cache_bytes": 1024,
+        "vm_heap_limit": 196608,
+        "render_slice_us": 500,
+        "worker_stack_peak_bytes": 2544,
+        "render_offloads": 67829,
+        "render_worker_us": 23685001
+      },
+      "cases": [
+        {
+          "name": "two_map_layers",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 2,
+          "slots": 1,
+          "bytecode_sha256": "d514621059f79819640955817100c5986baedda9ca4ef2f2d2c2d3700a05c9d7",
+          "frame_crc32": [
+            1204754083,
+            1204754083,
+            1204754083
+          ],
+          "seconds": 6.023,
+          "manual_layer_render_us_median": 643.5,
+          "fps_per_output": {
+            "bench0": 155.91
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 155.91,
+            "bench0/A/layer1": 155.74
+          },
+          "status_latency_ms_median": 2.37,
+          "status_latency_ms_p95": 3.763,
+          "worker_stack_peak_bytes": 2544
+        },
+        {
+          "name": "two_transformed_layers",
+          "pixels_per_output": 200,
+          "outputs": 1,
+          "layers_per_slot": 2,
+          "slots": 1,
+          "bytecode_sha256": "03464001073d36e56be0ea5c94a7ef36919883ed257850ea65ac6f2f22e3dfa5",
+          "frame_crc32": [
+            3150105979,
+            3150105979,
+            3150105979
+          ],
+          "seconds": 6.036,
+          "manual_layer_render_us_median": 1770.0,
+          "fps_per_output": {
+            "bench0": 155.91
+          },
+          "layer_fps": {
+            "bench0/A/layer0": 155.91,
+            "bench0/A/layer1": 155.91
+          },
+          "status_latency_ms_median": 2.567,
+          "status_latency_ms_p95": 5.804,
+          "worker_stack_peak_bytes": 2544
+        }
+      ],
+      "flash_replacement_and_reset_cycles": 12
+    }
+  },
+  "math_vectors": {
+    "bytecode_sha256": "8830c937a13b00bae4a33376f165d06776febcbdb233b31312ff4c6fd715ec7a",
+    "cases": [
+      {
+        "shift": -1000000000.0,
+        "scale": -3.25,
+        "sha256": "66be22708b60505931a6ac39e8c799b6bbde07971c7d9a5160317470fbafa9a7"
+      },
+      {
+        "shift": -1000000000.0,
+        "scale": -0.25,
+        "sha256": "0be5bc9d4e7a8dbdaaa26aae5fc6e08cc91915446ac5b68eaa8b38813f11f1d9"
+      },
+      {
+        "shift": -1000000000.0,
+        "scale": 0.5,
+        "sha256": "671cc6cc17eec031a8dc7bf8753658d25930c686431bbdd558c036d5b9db95e9"
+      },
+      {
+        "shift": -1000000000.0,
+        "scale": 3.25,
+        "sha256": "14e7e12afa20ed4a675293ed9161e438bb82dc258ceba6f6a9be666a8cb718b8"
+      },
+      {
+        "shift": -6700.5,
+        "scale": -3.25,
+        "sha256": "d47e12f18d6f73c7c6a4cdee29946d7fcf5a10130a6bf7dc0129116a1f25da37"
+      },
+      {
+        "shift": -6700.5,
+        "scale": -0.25,
+        "sha256": "f251036adff1c5968018a66a8f77f31b4d64aeb1e13e317ad12eb7f202a3a1de"
+      },
+      {
+        "shift": -6700.5,
+        "scale": 0.5,
+        "sha256": "808ba02d7829ce5db5e941a3928e242039d36145c4222109e36cecc6d0f24ff2"
+      },
+      {
+        "shift": -6700.5,
+        "scale": 3.25,
+        "sha256": "a08cba2672fbb4c28291f2bcd908a929a35157b4ae8173bbd9027db679806424"
+      },
+      {
+        "shift": -0.375,
+        "scale": -3.25,
+        "sha256": "da6d6db468328cee130b15d524176b4f6bfbf3b471f5bbcd361d396f80785497"
+      },
+      {
+        "shift": -0.375,
+        "scale": -0.25,
+        "sha256": "ca72cf33868bf4994e4fc323ca12f0d20832f67a70964af0cd792663a9fbba0a"
+      },
+      {
+        "shift": -0.375,
+        "scale": 0.5,
+        "sha256": "65b4ca6805e3ada34074bcf0ea62a30d7bbc94c1fc25f6f2324c013a2f17fdbd"
+      },
+      {
+        "shift": -0.375,
+        "scale": 3.25,
+        "sha256": "297999544517fa41fc64e3ac9e99a439d0c594abca9f6dbac171970f750009f7"
+      },
+      {
+        "shift": 0.0,
+        "scale": -3.25,
+        "sha256": "66be22708b60505931a6ac39e8c799b6bbde07971c7d9a5160317470fbafa9a7"
+      },
+      {
+        "shift": 0.0,
+        "scale": -0.25,
+        "sha256": "0be5bc9d4e7a8dbdaaa26aae5fc6e08cc91915446ac5b68eaa8b38813f11f1d9"
+      },
+      {
+        "shift": 0.0,
+        "scale": 0.5,
+        "sha256": "671cc6cc17eec031a8dc7bf8753658d25930c686431bbdd558c036d5b9db95e9"
+      },
+      {
+        "shift": 0.0,
+        "scale": 3.25,
+        "sha256": "14e7e12afa20ed4a675293ed9161e438bb82dc258ceba6f6a9be666a8cb718b8"
+      },
+      {
+        "shift": 0.5,
+        "scale": -3.25,
+        "sha256": "640cfe5ba094249a4dbc7a011a27f6b9f85dcc5436d1d3d554378f61b8ebbcd7"
+      },
+      {
+        "shift": 0.5,
+        "scale": -0.25,
+        "sha256": "d64f8cb1aa82dd9ca0564116284a720a977df03be227c17c1ae3f6f55119d55c"
+      },
+      {
+        "shift": 0.5,
+        "scale": 0.5,
+        "sha256": "8c8166ad5cf51597901340ce44f08cb5ca789ed25d10ef67991f0d1083319f01"
+      },
+      {
+        "shift": 0.5,
+        "scale": 3.25,
+        "sha256": "ae6e81ad1d51206c89c05d3151b1fe7f02c76b5905e76ec760c563e8803b3082"
+      },
+      {
+        "shift": 66.5,
+        "scale": -3.25,
+        "sha256": "89905d9ef9a4a48bad561099a413adc26091de54b2a652cdc6c10a941ab30060"
+      },
+      {
+        "shift": 66.5,
+        "scale": -0.25,
+        "sha256": "6927ae6b9a4212138bde865eb6c05b69a46506fe41844e7d884aa6af1dbddd0f"
+      },
+      {
+        "shift": 66.5,
+        "scale": 0.5,
+        "sha256": "8cebb959be0fc8a20b5f2b72ae8d8965afddf140a2c0cd0f75a01271705fba73"
+      },
+      {
+        "shift": 66.5,
+        "scale": 3.25,
+        "sha256": "3d31ebd5e552184bd6aea5ed8d0c5cd7b213b8c196750b6d2a5208d68a3cb922"
+      },
+      {
+        "shift": 6766.5,
+        "scale": -3.25,
+        "sha256": "f300045c2d11de32d94c2949f906c08f193e20acb4ea29115411bf4f2d493ea7"
+      },
+      {
+        "shift": 6766.5,
+        "scale": -0.25,
+        "sha256": "96a33e0b5ecf2d804a3d7b7843500e050262f38f6fcf8da47f3d7dc8eea21081"
+      },
+      {
+        "shift": 6766.5,
+        "scale": 0.5,
+        "sha256": "07287d0e02a679f41a52b6e6e11d7ecfb515b7ee435eb1c9f8513e6ab3deb067"
+      },
+      {
+        "shift": 6766.5,
+        "scale": 3.25,
+        "sha256": "9216e4b29cb7b0aba970d50a70f7645ae5392550f0b8717c302c3ab1cb8976b6"
+      },
+      {
+        "shift": 1000000000.0,
+        "scale": -3.25,
+        "sha256": "66be22708b60505931a6ac39e8c799b6bbde07971c7d9a5160317470fbafa9a7"
+      },
+      {
+        "shift": 1000000000.0,
+        "scale": -0.25,
+        "sha256": "0be5bc9d4e7a8dbdaaa26aae5fc6e08cc91915446ac5b68eaa8b38813f11f1d9"
+      },
+      {
+        "shift": 1000000000.0,
+        "scale": 0.5,
+        "sha256": "671cc6cc17eec031a8dc7bf8753658d25930c686431bbdd558c036d5b9db95e9"
+      },
+      {
+        "shift": 1000000000.0,
+        "scale": 3.25,
+        "sha256": "14e7e12afa20ed4a675293ed9161e438bb82dc258ceba6f6a9be666a8cb718b8"
+      }
+    ]
+  },
+  "math_vectors_matched": [
+    "host",
+    "pico2_software_double",
+    "pico2_dcp"
+  ],
+  "ram_reports": {
+    "multicore-pico-w": {
+      "sram_bytes": 270336,
+      "static_bytes": 131228,
+      "vm_heap_ceiling": 65536,
+      "native_stack": 24576,
+      "pixel_driver_max": 30464,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 2148,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "multicore-pico2-w": {
+      "sram_bytes": 532480,
+      "static_bytes": 139484,
+      "vm_heap_ceiling": 196608,
+      "native_stack": 24576,
+      "pixel_driver_max": 34816,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 120612,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "multicore-pico_w-wifi-off": {
+      "sram_bytes": 270336,
+      "static_bytes": 40752,
+      "vm_heap_ceiling": 131072,
+      "native_stack": 24576,
+      "pixel_driver_max": 34816,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 22736,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "multicore-pico_w-wifi-on": {
+      "sram_bytes": 270336,
+      "static_bytes": 65556,
+      "vm_heap_ceiling": 98304,
+      "native_stack": 24576,
+      "pixel_driver_max": 30464,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 35052,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "multicore-pico2_w-wifi-off": {
+      "sram_bytes": 532480,
+      "static_bytes": 40436,
+      "vm_heap_ceiling": 262144,
+      "native_stack": 24576,
+      "pixel_driver_max": 34816,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 154124,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "multicore-pico2_w-wifi-on": {
+      "sram_bytes": 532480,
+      "static_bytes": 65320,
+      "vm_heap_ceiling": 262144,
+      "native_stack": 24576,
+      "pixel_driver_max": 34816,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 129240,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "multicore-tuned": {
+      "sram_bytes": 532480,
+      "static_bytes": 130996,
+      "vm_heap_ceiling": 262144,
+      "native_stack": 20480,
+      "pixel_driver_max": 18432,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 84044,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    }
+  }
+}

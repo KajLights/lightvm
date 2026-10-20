@@ -5,6 +5,7 @@
  */
 #include "bytecode_core.h"
 #include "inputs.h"
+#include "config.h"
 typedef InputValue PbcValue;
 typedef struct { uint32_t first,end,rights,result,arg_start,arg_count; } PbcFunction;
 typedef struct { uint32_t kind,length,fill,seed,stream,flags; } PbcResourceSpec;
@@ -40,12 +41,13 @@ typedef struct Portable {
     bool native_pending;
     bool deterministic_random;
     uint64_t default_seed;
+    uint64_t seed_sequence;
     /* Native, read-only RGB views. Never exposed as guest pointers. The owner
        pins these completed composition frames until this evaluation finishes. */
     const uint8_t *composition_frames[2];
     float progress;
     bool initialized;
-    _Alignas(4) uint8_t cache[256]; uint32_t cache_offset,cache_size;
+    _Alignas(4) uint8_t cache[LIGHTVM_BYTECODE_CACHE_BYTES]; uint32_t cache_offset,cache_size;
 } Portable;
 const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size);
 void pbc_destroy(Portable *p);

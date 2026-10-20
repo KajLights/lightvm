@@ -153,7 +153,7 @@ typedef struct { struct tcp_pcb *pcb; HttpInput input; HttpRequest request; uint
     WebSocket websocket;
 #endif
 } Client;
-static Client clients[4];
+static Client clients[LIGHTVM_HTTP_CLIENTS];
 static int output(void *ctx,const uint8_t *bytes,size_t size) {
     Client *c=ctx; if (!c->pcb) return -1;
     if (tcp_sndbuf(c->pcb)<size) return 0;
@@ -208,7 +208,7 @@ static err_t receive(void *ctx,struct tcp_pcb *pcb,struct pbuf *p,err_t error) {
 }
 static err_t accept_client(void *ctx,struct tcp_pcb *pcb,err_t error) {
     (void)ctx; if (error!=ERR_OK) return error;
-    Client *c=NULL; for (unsigned i=0;i<4;i++) if (!clients[i].pcb
+    Client *c=NULL; for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) if (!clients[i].pcb
 #if LIGHTVM_WEBSOCKET
         && !clients[i].websocket.source
 #endif
@@ -224,7 +224,7 @@ static err_t accept_client(void *ctx,struct tcp_pcb *pcb,err_t error) {
 }
 static void stop_http(void) {
     stop_discovery();
-    for (unsigned i=0;i<4;i++) {
+    for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) {
         Client *c=&clients[i]; http_cancel_io(&http,c);
         if (!close_client(c) && c->pcb) { tcp_arg(c->pcb,NULL); tcp_err(c->pcb,NULL); tcp_abort(c->pcb); c->pcb=NULL;
 #if LIGHTVM_WEBSOCKET
@@ -285,7 +285,7 @@ void pico_network_poll(void) {
         if (!discovery.active && now>=discovery_retry) { start_discovery(port); discovery_retry=now+5000000u; }
         discovery_tick(&discovery,now);
     }
-    for (unsigned i=0;i<4;i++) {
+    for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) {
         Client *c=&clients[i];
 #if LIGHTVM_WEBSOCKET
         websocket_tick(&c->websocket,now);

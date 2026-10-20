@@ -53,14 +53,18 @@ is a development listener override, independent of saved radio settings. Without
 that option, an HTTP-enabled saved network configuration starts a loopback
 listener on its saved port at boot; the host has no physical radio.
 
-Pico W and Pico 2 W networking profiles retain the 32 KiB module limit and use a 64 KiB VM heap
-ceiling. Output drivers use PIO0/PIO1. The SDK normally allocates the radio on
-PIO1 for Pico W and PIO2 for Pico 2 W; PIO2 is not used by output drivers. Bounded lwIP pools and the
-reply buffer are included in the linker footprint. The build emits
-`ram-report.json` and rejects reservations that cannot retain 16 KiB operating
-headroom after VM, stack and pixel-driver ceilings. This is a reservation check;
-radio timing, actual native allocations and stack peaks still require hardware
-measurement. USB-only profiles retain their original ceilings.
+With Wi-Fi and HTTP, Pico W defaults to a 64 KiB VM heap and two management
+connections; Pico 2 W defaults to 192 KiB and four connections. Without HTTP the
+Wi-Fi defaults are 96 KiB and 256 KiB respectively. The 32 KiB module ceiling,
+VM budget, connections and operating headroom are independently tunable through
+the [resource options](multicore-rendering.md). Both cores render; all CYW43/lwIP,
+HTTP, WebSocket and MQTT work stays on core 0.
+
+Output drivers use PIO0/PIO1. The SDK normally allocates the radio on PIO1 for
+Pico W and PIO2 for Pico 2 W. Bounded lwIP pools and reply buffers are included
+in the linker footprint. Every Pico build emits `ram-report.json` and rejects
+reservations that exceed SRAM or overlap either CPU stack. Radio timing, native
+allocation and stack peaks still require hardware measurement.
 
 ## Initial setup and standalone AP mode
 

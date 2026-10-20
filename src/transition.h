@@ -17,7 +17,7 @@ typedef struct {
     uint8_t *allocation, *working, *front;
     unsigned pixel, phase, restore_offset;
     uint32_t frames, composite_frames, sampled_frames[2], seed, assignment;
-    uint64_t started, output_started, composite_us, output_us, next_frame;
+    uint64_t started, output_started, composite_us, output_us, next_frame, next_present;
     double progress, sampled_progress, start, target_progress, duration, interval;
     TransitionEffect effect;
     TransitionDriver driver;

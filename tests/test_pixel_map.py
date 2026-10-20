@@ -35,6 +35,7 @@ class PixelMapTests(unittest.TestCase):
         self.client.save_program('map_test',result.bytecode)
         self.client.configure_composition([{'id':'fg','program':'map_test','settings':settings or {}}],output='lights')
         self.client.require_ok(self.client.command(STOP,output='lights'))
+        self.client.reset_program(output='lights',layer='fg')
         return result
 
     def frames(self):

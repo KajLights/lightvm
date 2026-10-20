@@ -2,6 +2,7 @@
 #include "animation.h"
 #include "draw.h"
 #include "runtime.h"
+#include "render_executor.h"
 #include "vm_allocator.h"
 #include <stdio.h>
 #include <string.h>
@@ -43,17 +44,21 @@ static void compose_start(Composition *s) {
     s->pixel=0;s->composing=true;s->dirty=false;
     for(unsigned i=0;i<s->layer_count;i++)s->layers[i].sampled_frame=s->layers[i].vm.control.contribution_frame;
 }
-static void compose_slice(Composition *s) {
-    uint64_t started=platform_time_us();
-    unsigned end=s->pixel+32;if(end>s->count)end=s->count;
-    uint8_t *dst=s->working+(size_t)s->pixel*3;
-    unsigned count=end-s->pixel;memset(dst,0,(size_t)count*3);
+static void compose_pixels(void *context,unsigned first,unsigned end){
+    Composition *s=context;
+    uint8_t *dst=s->working+(size_t)first*3;
+    unsigned count=end-first;memset(dst,0,(size_t)count*3);
     for(unsigned n=0;n<s->layer_count;n++){
         CompositionLayer *layer=&s->layers[n];VmInstance *vm=&layer->vm;
         if(!vm->control.contribution_valid||!layer->opacity)continue;
-        const uint8_t *src=control_frame(vm)+(size_t)s->pixel*4;
+        const uint8_t *src=control_frame(vm)+(size_t)first*4;
         draw_composite(dst,3,dst,3,src,4,count,draw_opacity(layer->opacity),(DrawBlend)layer->blend);
     }
+}
+static void compose_slice(Composition *s) {
+    uint64_t started=platform_time_us();
+    unsigned end=s->pixel+128;if(end>s->count)end=s->count;
+    render_ranges(compose_pixels,s,s->pixel,end,64);
     s->pixel=end;s->composite_us+=platform_time_us()-started;
     if(end==s->count){s->composing=false;s->prepared=true;s->composite_frames++;}
 }
@@ -80,11 +85,11 @@ static void composition_tick_impl(Composition *s,unsigned budget) {
        layers; if a reader/driver still owns the front, apply backpressure.
        VM clocks catch up from actual elapsed time when rendering resumes. */
     if(s->prepared){
-        if(s->pending)return;
+        if(s->pending||platform_time_us()<s->next_present)return;
         if(!s->output->type){if(!s->front_pinned)composition_publish(s);return;}
         uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
         s->output_started=platform_time_us();
-        if(pixels_submit(s->output,s->front,s->count)){s->pending=true;complete_output(s);}
+        if(pixels_submit(s->output,s->front,s->count)){s->pending=true;s->next_present=s->output_started+FRAME_INTERVAL_US;complete_output(s);}
         else{snprintf(s->error,sizeof(s->error),"native composition output failed; retrying");s->dirty=true;}
     }
     unsigned first=s->layer_count?s->cursor++%s->layer_count:0;

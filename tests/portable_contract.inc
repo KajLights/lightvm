@@ -23,7 +23,10 @@ static void portable_contract(void){
     CHECK(!pbc_open(&p,portable_read,&callback,callback.size));CHECK(animation_validate(p));
     PbcValue argument={.i=21};CHECK(!pbc_prepare(p,NULL));
     CHECK(!pbc_invoke(p,0,&argument,0));CHECK(pbc_invoke(p,0,&argument,1));portable_finish(p,1);
-    CHECK(p->result.i==42);pbc_destroy(p);CHECK(vm_heap_used()==0);
+    CHECK(p->result.i==42);
+    CHECK(pbc_invoke(p,0,&argument,1));p->used=LIGHTVM_INVOCATION_LIMIT;
+    CHECK(pbc_resume(p,1)==-1); /* A new slice cannot reset the invocation limit. */
+    pbc_destroy(p);CHECK(vm_heap_used()==0);
     callback=(PortableBytes){array_callback_lbc,sizeof(array_callback_lbc)};
     CHECK(!pbc_open(&p,portable_read,&callback,callback.size));CHECK(!pbc_prepare(p,NULL));
     CHECK(pbc_invoke(p,0,NULL,0));portable_finish(p,1);CHECK(p->result.i==42);
@@ -89,11 +92,15 @@ static void portable_contract(void){
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(reply.code==STATUS_OK);
     delayed_output=true;output_ready=false;output_failed=false;clock_now+=20000;
     uint32_t output_frame=vm.control.output_frame;vm_tick(&vm);
-    CHECK(vm.output_pending&&vm.view.sealed&&borrowed_output==physical.dimmed);
+    CHECK(vm.output_pending&&!vm.view.sealed&&borrowed_output==physical.dimmed);
     CHECK(vm.portable->render_count==2);
     CHECK(vm.control.output_frame==output_frame&&displayed[0]==1);
     uint64_t ticks=vm.portable->render_count;
-    for(unsigned n=0;n<5;n++){clock_now+=20000;vm_tick(&vm);CHECK(vm.portable->render_count==ticks);}
+    for(unsigned n=0;n<5;n++){
+        clock_now+=20000;vm_tick(&vm);
+        CHECK(vm.portable->render_count==ticks+1&&vm.frame_ready);
+        CHECK(crc32_bytes(borrowed_output,borrowed_count*3)==borrowed_crc);
+    }
     output_ready=true;vm_tick(&vm);
     CHECK(!vm.output_pending&&!vm.view.sealed&&!borrowed_output&&vm.portable->render_count==3);
     CHECK(vm.control.output_frame>=output_frame+1&&vm.playing);

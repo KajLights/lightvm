@@ -2,6 +2,7 @@
 #include "animation.h"
 #include "draw.h"
 #include "runtime.h"
+#include "render_executor.h"
 #include "vm_allocator.h"
 #include <math.h>
 #include <stdio.h>
@@ -122,10 +123,10 @@ static void start(Transition *t){
 static uint32_t threshold(uint32_t pixel,uint32_t seed){
     uint32_t x=pixel^seed^0x9e3779b9u;x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;x^=x>>16;return x;
 }
-static void compose(Transition *t){
-    unsigned end=t->pixel+32;if(end>t->target.count)end=t->target.count;
+static void compose_pixels(void *context,unsigned first,unsigned end){
+    Transition *t=context;
     double p=t->sampled_progress/100;
-    for(unsigned pixel=t->pixel;pixel<end;pixel++){
+    for(unsigned pixel=first;pixel<end;pixel++){
         if(p==0||p==1||t->effect==TRANSITION_PROGRAM){
             const uint8_t *src=NULL;
             if(p==0||p==1){Composition *s=t->compositions[p==1];if(s)src=s->front+(size_t)pixel*3;}
@@ -159,6 +160,10 @@ static void compose(Transition *t){
         if(p>0&&p<1&&t->effect==TRANSITION_CUSTOM&&t->programs[1])draw_blend(result,control_frame(&t->programs[1]->vm)+(size_t)pixel*4,255,DRAW_BLEND_OVER);
         memcpy(t->working+(size_t)pixel*3,result,3);
     }
+}
+static void compose(Transition *t){
+    unsigned end=t->pixel+128;if(end>t->target.count)end=t->target.count;
+    render_ranges(compose_pixels,t,t->pixel,end,64);
     t->pixel=end;
     if(end==t->target.count){unpin_compositions(t);t->composing=false;t->prepared=true;t->composite_frames++;}
 }
@@ -190,7 +195,7 @@ static void slice(Transition *t,unsigned budget){
             }
         }
     }
-    /* At most one 256-byte restore, one guest budget and one 32-pixel copy.
+    /* At most one 256-byte restore, one guest budget and one 128-pixel copy.
        Finished phases fall through without another full scheduler round. */
     if(t->phase==4)compose(t);
     t->composite_us+=platform_time_us()-begun;
@@ -209,6 +214,7 @@ void transition_tick(Transition *t,unsigned budget){
     }
     t->ticking=true;complete(t);transition_update(t,platform_time_us());
     if(t->command_active||!t->playing){t->ticking=false;return;}
+    if(t->prepared&&(t->pending||platform_time_us()<t->next_present)){t->ticking=false;return;}
     if(t->composing){
         for(unsigned n=0;n<2;n++)if(t->compositions[n])composition_tick(t->compositions[n],budget);
         slice(t,budget);t->ticking=false;return;
@@ -220,11 +226,11 @@ void transition_tick(Transition *t,unsigned budget){
     }
     if(t->prepared&&!t->pending){
         uint8_t *previous=t->front;t->front=t->working;t->working=previous;t->prepared=false;t->output_started=platform_time_us();
-        if(pixels_submit(t->output,t->front,t->target.count)){t->pending=true;complete(t);}
+        if(pixels_submit(t->output,t->front,t->target.count)){t->pending=true;t->next_present=t->output_started+FRAME_INTERVAL_US;complete(t);}
         else{strcpy(t->error,"native transition output failed; retrying");t->dirty=true;}
     }
     uint64_t now=platform_time_us();
-    if(!t->prepared&&t->dirty&&(t->effect!=TRANSITION_PROGRAM||now>=t->next_frame)){
+    if(!t->prepared&&t->dirty&&now>=t->next_frame){
         t->next_frame=now+FRAME_INTERVAL_US;start(t);slice(t,budget);
     }
     t->ticking=false;

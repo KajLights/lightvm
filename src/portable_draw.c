@@ -2,6 +2,7 @@
  * user callbacks to bytecode; this module contains no animation behaviour. */
 #include "portable_draw.h"
 #include "draw.h"
+#include "render_executor.h"
 #include <math.h>
 #include <string.h>
 
@@ -106,6 +107,81 @@ static bool sample_add(Portable *p,PbcResource *src,double x,bool linear,float s
         for(unsigned c=0;c<5;c++)sum[c]+=left[c]*(1-mix)+right[c]*mix;
     }
     return true;
+}
+/* This view is frozen for one operation. Resource/style/RNG mutation stays
+ * ordered in the interpreter; workers write only their destination pixels. */
+typedef struct {
+    Portable *p;PbcResource *r,*src,*style,*palette;const PbcValue *a;
+    unsigned id;double period,wrapped_translate,wrapped_origin;
+} DrawKernel;
+static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
+    Portable *p=k->p;PbcResource *r=k->r,*src=k->src,*style=k->style,*palette=k->palette;
+    const PbcValue *a=k->a;unsigned id=k->id;
+    double period=k->period,wrapped_translate=k->wrapped_translate,wrapped_origin=k->wrapped_origin;
+    for(unsigned i=first;i<end;i++) {
+        uint8_t v[5];if(!pbc_image_read(p,r,i,v))return false;
+        if(id==28||id==29||id==30) {
+            unsigned channel=id==28?a[1].u:4;
+            unsigned value=id==28?a[2].u:byte((id==29?255:v[4])*a[1].f);
+            if(r->kind==DRAW_RGBA){from_premul(DRAW_IMAGE_RGBA,v);v[channel]=(uint8_t)value;to_premul(DRAW_IMAGE_RGBA,v);}
+            else v[channel]=(uint8_t)value;
+        }else if(id==34) {
+            v[0]=(uint8_t)(a[1].u>>16);v[1]=(uint8_t)(a[1].u>>8);v[2]=(uint8_t)a[1].u;v[3]=0;v[4]=(uint8_t)a[2].u;
+            if(r->kind==DRAW_RGBA)to_premul(DRAW_IMAGE_RGBA,v);
+        }else if(id>=48&&id<=50){
+            uint32_t color;
+            if(id==49){float hue=a[1].f+i*a[2].f;if(!isfinite(hue))return false;color=draw_colorwheel(hue);}
+            else{
+                uint32_t left=a[1].u,right=a[2].u;unsigned mix=r->count>1?(i*255u+(r->count-1)/2)/(r->count-1):0;
+                if(id==50){
+                    float phase=a[2].f+i*a[3].f;if(!isfinite(phase))return false;
+                    phase=fmodf(phase,(float)palette->count);if(phase<0)phase+=palette->count;
+                    unsigned index=(unsigned)phase;mix=(unsigned)((phase-index)*255+0.5f);
+                    memcpy(&left,palette->data+index*4,4);memcpy(&right,palette->data+((index+1)%palette->count)*4,4);
+                    if(left>0xffffff||right>0xffffff)return false;
+                }
+                color=0;for(unsigned c=0;c<3;c++){unsigned shift=16-c*8;unsigned value=(((left>>shift)&255)*(255-mix)+((right>>shift)&255)*mix+127)/255;color=(color<<8)|value;}
+            }
+            v[0]=(uint8_t)(color>>16);v[1]=(uint8_t)(color>>8);v[2]=(uint8_t)color;v[3]=0;v[4]=255;
+        }else if(id==51){
+            uint8_t point[5]={(uint8_t)(a[2].u>>16),(uint8_t)(a[2].u>>8),(uint8_t)a[2].u,0,(uint8_t)a[3].u};
+            to_premul(DRAW_IMAGE_RGBA,point);to_premul(r->kind,v);
+            draw_over_channels(v,point,4,DRAW_OPACITY_ONE);
+            from_premul(r->kind,v);
+        }else if(id==35){if(!pbc_image_read(p,src,i,v))return false;}
+        else if(id==36)color_transform(v,(DrawStyle *)style->data,r->kind==DRAW_RGBA);
+        else if(id==31||id==52) {
+            DrawStyle *s=(DrawStyle *)style->data;
+            uint8_t left[5],right[5];
+            if(id==52){
+                double x=fmod(((double)i-wrapped_translate)/(double)s->scale+wrapped_origin,period);
+                if(x<0)x+=period;
+                float sum[5]={0};
+                if(!sample_add(p,src,x,a[3].u!=0,sum)||!sample_add(p,src,x-period,a[3].u!=0,sum))return false;
+                for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(sum[c]);
+            }else{
+                float x=((float)i-s->translate)/s->scale+s->origin;
+                if(!isfinite(x))return false;
+                if(x < -1 || x > (float)src->count)continue;
+                int base=(int)floorf(x);
+                if(a[3].u==0){if(!sample(p,src,(int)floorf(x+0.5f),left))return false;}
+                else {
+                    if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
+                    float mix=x-floorf(x);
+                    for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(left[c]*(1-mix)+right[c]*mix);
+                }
+            }
+            color_transform(left,s,true);to_premul(r->kind,v);
+            draw_over_channels(v,left,4,DRAW_OPACITY_ONE);
+            from_premul(r->kind,v);
+        }else return false;
+        if(!write_pixel(r,i,v))return false;
+    }
+    return true;
+}
+typedef struct { DrawKernel *kernel;unsigned first,end;bool success; } DrawTask;
+static void draw_task(void *context){
+    DrawTask *task=context;task->success=draw_pixels(task->kernel,task->first,task->end);
 }
 static void more(Portable *p,unsigned end,unsigned stop) { p->bulk=end<stop?end:0;p->native_pending=end<stop; }
 bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue *result) {
@@ -219,65 +295,13 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
     if(id==49&&(!isfinite(a[1].f)||!isfinite(a[2].f)))return false;
     PbcResource *palette=id==50?resource(p,a[1].u):NULL;
     if(id==50&&(!palette||!palette->data||!palette->count||!isfinite(a[2].f)||!isfinite(a[3].f)))return false;
-    unsigned cursor=p->bulk?p->bulk:start,end=cursor+32;if(end>stop)end=stop;
-    for(unsigned i=cursor;i<end;i++) {
-        uint8_t v[5];if(!pbc_image_read(p,r,i,v))return false;
-        if(id==28||id==29||id==30) {
-            unsigned channel=id==28?a[1].u:4;
-            unsigned value=id==28?a[2].u:byte((id==29?255:v[4])*a[1].f);
-            if(r->kind==DRAW_RGBA){from_premul(DRAW_IMAGE_RGBA,v);v[channel]=(uint8_t)value;to_premul(DRAW_IMAGE_RGBA,v);}
-            else v[channel]=(uint8_t)value;
-        }else if(id==34) {
-            v[0]=(uint8_t)(a[1].u>>16);v[1]=(uint8_t)(a[1].u>>8);v[2]=(uint8_t)a[1].u;v[3]=0;v[4]=(uint8_t)a[2].u;
-            if(r->kind==DRAW_RGBA)to_premul(DRAW_IMAGE_RGBA,v);
-        }else if(id>=48&&id<=50){
-            uint32_t color;
-            if(id==49){float hue=a[1].f+i*a[2].f;if(!isfinite(hue))return false;color=draw_colorwheel(hue);}
-            else{
-                uint32_t left=a[1].u,right=a[2].u;unsigned mix=r->count>1?(i*255u+(r->count-1)/2)/(r->count-1):0;
-                if(id==50){
-                    float phase=a[2].f+i*a[3].f;if(!isfinite(phase))return false;
-                    phase=fmodf(phase,(float)palette->count);if(phase<0)phase+=palette->count;
-                    unsigned index=(unsigned)phase;mix=(unsigned)((phase-index)*255+0.5f);
-                    memcpy(&left,palette->data+index*4,4);memcpy(&right,palette->data+((index+1)%palette->count)*4,4);
-                    if(left>0xffffff||right>0xffffff)return false;
-                }
-                color=0;for(unsigned c=0;c<3;c++){unsigned shift=16-c*8;unsigned value=(((left>>shift)&255)*(255-mix)+((right>>shift)&255)*mix+127)/255;color=(color<<8)|value;}
-            }
-            v[0]=(uint8_t)(color>>16);v[1]=(uint8_t)(color>>8);v[2]=(uint8_t)color;v[3]=0;v[4]=255;
-        }else if(id==51){
-            uint8_t point[5]={(uint8_t)(a[2].u>>16),(uint8_t)(a[2].u>>8),(uint8_t)a[2].u,0,(uint8_t)a[3].u};
-            to_premul(DRAW_IMAGE_RGBA,point);to_premul(r->kind,v);
-            draw_over_channels(v,point,4,DRAW_OPACITY_ONE);
-            from_premul(r->kind,v);
-        }else if(id==35){if(!pbc_image_read(p,src,i,v))return false;}
-        else if(id==36)color_transform(v,(DrawStyle *)style->data,r->kind==DRAW_RGBA);
-        else if(id==31||id==52) {
-            DrawStyle *s=(DrawStyle *)style->data;
-            uint8_t left[5],right[5];
-            if(id==52){
-                double x=fmod(((double)i-wrapped_translate)/(double)s->scale+wrapped_origin,period);
-                if(x<0)x+=period;
-                float sum[5]={0};
-                if(!sample_add(p,src,x,a[3].u!=0,sum)||!sample_add(p,src,x-period,a[3].u!=0,sum))return false;
-                for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(sum[c]);
-            }else{
-                float x=((float)i-s->translate)/s->scale+s->origin;
-                if(!isfinite(x))return false;
-                if(x < -1 || x > (float)src->count)continue;
-                int base=(int)floorf(x);
-                if(a[3].u==0){if(!sample(p,src,(int)floorf(x+0.5f),left))return false;}
-                else {
-                    if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
-                    float mix=x-floorf(x);
-                    for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(left[c]*(1-mix)+right[c]*mix);
-                }
-            }
-            color_transform(left,s,true);to_premul(r->kind,v);
-            draw_over_channels(v,left,4,DRAW_OPACITY_ONE);
-            from_premul(r->kind,v);
-        }else return false;
-        if(!write_pixel(r,i,v))return false;
-    }
+    bool parallel=p->output&&r->data==p->output->data&&(!src||src->data);
+    unsigned cursor=p->bulk?p->bulk:start,end=cursor+(parallel?128u:32u);if(end>stop)end=stop;
+    DrawKernel kernel={p,r,src,style,palette,a,id,period,wrapped_translate,wrapped_origin};
+    unsigned middle=parallel&&end-cursor>=64?cursor+(end-cursor)/2:end;
+    DrawTask tasks[2]={{&kernel,cursor,middle,false},{&kernel,middle,end,false}};
+    RenderJob jobs[2]={{draw_task,&tasks[0],0},{draw_task,&tasks[1],0}};
+    unsigned count=middle<end?2:1;render_execute(jobs,count);
+    for(unsigned n=0;n<count;n++)if(!tasks[n].success)return false;
     more(p,end,stop);return true;
 }

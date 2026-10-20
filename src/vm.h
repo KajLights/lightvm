@@ -18,11 +18,12 @@ typedef struct VmInstance {
     size_t received, expected;
     uint32_t expected_crc;
     bool uploading, ready;
-    bool playing, output_pending;
+    bool playing, output_pending, frame_ready;
+    uint64_t scheduled_epoch;
     uint64_t output_started;
     uint32_t frame_count, render_us, show_us;
     uint64_t render_cpu_us, render_total_us;
-    uint64_t next_frame, last_frame;
+    uint64_t next_frame, last_frame, next_present;
     char animation_error[100];
     SendMessage send;
     void *transport;
@@ -44,5 +45,10 @@ void vm_destroy(VmInstance *app);
 void vm_output_cancel(VmInstance *);
 void vm_tick(VmInstance *app);
 void vm_tick_budget(VmInstance *app,unsigned budget);
+/* Collect independent VM slices across outputs, then join before presentation. */
+void vm_tick_begin(void);
+void vm_tick_collect(VmInstance *,unsigned budget);
+void vm_tick_flush(void);
+void vm_tick_end(void);
 void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 #endif

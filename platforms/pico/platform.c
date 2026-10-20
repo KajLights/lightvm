@@ -4,6 +4,7 @@
 #include "pico/stdlib.h"
 #include "pico/unique_id.h"
 #include "pico/rand.h"
+#include "pico/flash.h"
 #include <stdio.h>
 #include "hardware/flash.h"
 #include "hardware/sync.h"
@@ -30,20 +31,34 @@ bool platform_storage_read(uint32_t offset,void *bytes,size_t size) {
     if (!bounds(offset,size)) return false;
     memcpy(bytes,(const void *)(XIP_BASE+STORE_OFFSET+offset),size); return true;
 }
-bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {
-    if (!bounds(offset,size) || offset%FLASH_PAGE_SIZE || size%FLASH_PAGE_SIZE) return false;
-    // Copy each page before disabling XIP: source may itself reside in flash.
-    uint8_t page[FLASH_PAGE_SIZE]; const uint8_t *p=bytes;
-    while (size) {
-        memcpy(page,p,sizeof(page)); uint32_t irq=save_and_disable_interrupts();
-        flash_range_program(STORE_OFFSET+offset,page,sizeof(page)); restore_interrupts(irq);
-        offset+=sizeof(page); p+=sizeof(page); size-=sizeof(page);
+typedef struct { uint32_t offset;size_t size;const uint8_t *page; } FlashOperation;
+static void flash_operation(void *context) {
+    FlashOperation *op=context;
+    if(op->page)flash_range_program(op->offset,op->page,op->size);
+    else flash_range_erase(op->offset,op->size);
+}
+static bool flash_write(uint32_t offset,const void *bytes,size_t size) {
+    uint8_t page[FLASH_PAGE_SIZE];const uint8_t *p=bytes;
+    while(size){
+        /* Copy before the SDK parks the other core and disables XIP. */
+        memcpy(page,p,sizeof(page));
+        FlashOperation op={offset,sizeof(page),page};
+        if(flash_safe_execute(flash_operation,&op,1000)!=PICO_OK)return false;
+        offset+=sizeof(page);p+=sizeof(page);size-=sizeof(page);
     }
     return true;
 }
+static bool flash_erase(uint32_t offset,size_t size) {
+    FlashOperation op={offset,size,NULL};
+    return flash_safe_execute(flash_operation,&op,1000)==PICO_OK;
+}
+bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {
+    if (!bounds(offset,size) || offset%FLASH_PAGE_SIZE || size%FLASH_PAGE_SIZE) return false;
+    return flash_write(STORE_OFFSET+offset,bytes,size);
+}
 bool platform_storage_erase(uint32_t offset,size_t size) {
     if (!bounds(offset,size) || offset%FLASH_SECTOR_SIZE || size%FLASH_SECTOR_SIZE) return false;
-    uint32_t irq=save_and_disable_interrupts(); flash_range_erase(STORE_OFFSET+offset,size); restore_interrupts(irq); return true;
+    return flash_erase(STORE_OFFSET+offset,size);
 }
 bool platform_storage_sync(void) { return true; }
 #if LIGHTVM_BOOT_SEQUENCE
@@ -59,18 +74,11 @@ bool platform_boot_storage_read(uint32_t offset,void *bytes,size_t size) {
 }
 bool platform_boot_storage_write(uint32_t offset,const void *bytes,size_t size) {
     if (!boot_bounds(offset,size) || offset%FLASH_PAGE_SIZE || size%FLASH_PAGE_SIZE) return false;
-    uint8_t page[FLASH_PAGE_SIZE]; const uint8_t *p=bytes;
-    while (size) {
-        memcpy(page,p,sizeof(page)); uint32_t irq=save_and_disable_interrupts();
-        flash_range_program(BOOT_STORE_OFFSET+offset,page,sizeof(page)); restore_interrupts(irq);
-        offset+=sizeof(page); p+=sizeof(page); size-=sizeof(page);
-    }
-    return true;
+    return flash_write(BOOT_STORE_OFFSET+offset,bytes,size);
 }
 bool platform_boot_storage_erase(uint32_t offset,size_t size) {
     if (!boot_bounds(offset,size) || offset%FLASH_SECTOR_SIZE || size%FLASH_SECTOR_SIZE) return false;
-    uint32_t irq=save_and_disable_interrupts();
-    flash_range_erase(BOOT_STORE_OFFSET+offset,size); restore_interrupts(irq); return true;
+    return flash_erase(BOOT_STORE_OFFSET+offset,size);
 }
 bool platform_boot_storage_sync(void) { return true; }
 #endif

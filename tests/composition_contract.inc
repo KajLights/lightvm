@@ -3,7 +3,7 @@
 static void composition_contract(void){
     clock_now=0;clock_step=0;storage_available=false;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
-    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=67,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
+    PixelBuffer physical={0};PixelConfig config={.pin=16,.count=131,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&physical,&config,output_type("ws2812b")));
     Composition *s=composition_create(&physical,2);CHECK(s);
     Capture reply={.marker=0x12345678u};
@@ -41,19 +41,19 @@ static void composition_contract(void){
 
     /* A completed back buffer blocks further writers until it can publish.
        This must not discard a suspended call or lose elapsed animation time. */
-    PixelBuffer offscreen={.count=67};s=composition_create(&offscreen,1);CHECK(s);
+    PixelBuffer offscreen={.count=131};s=composition_create(&offscreen,1);CHECK(s);
     portable_load(&s->layers[0].vm,&s->layers[0].target,&reply,counter_lbc,sizeof(counter_lbc));
     s->layers[0].vm.playing=true;composition_prepare(s);composition_publish(s);s->front_pinned=true;
     for(unsigned n=0;n<40&&!s->prepared;n++){clock_now+=20000;composition_tick(s,64);}
     CHECK(s->prepared&&!s->composing);
     uint64_t rendered=s->layers[0].vm.portable->render_count,program_us=s->layers[0].vm.control.program_us;
-    uint32_t front_crc=crc32_bytes(s->front,67*3),back_crc=crc32_bytes(s->working,67*3),published=s->frames;
+    uint32_t front_crc=crc32_bytes(s->front,131*3),back_crc=crc32_bytes(s->working,131*3),published=s->frames;
     allocation_count=allocations;deny_allocation=true;
     for(unsigned n=0;n<20;n++){clock_now+=20000;composition_tick(s,64);}
     CHECK(s->layers[0].vm.portable->render_count==rendered&&s->frames==published);
-    CHECK(crc32_bytes(s->front,67*3)==front_crc&&crc32_bytes(s->working,67*3)==back_crc);
+    CHECK(crc32_bytes(s->front,131*3)==front_crc&&crc32_bytes(s->working,131*3)==back_crc);
     s->front_pinned=false;composition_tick(s,64);CHECK(s->frames==published+1);
-    CHECK(crc32_bytes(s->front,67*3)==back_crc);
+    CHECK(crc32_bytes(s->front,131*3)==back_crc);
     clock_now+=20000;composition_tick(s,64);
     CHECK(s->layers[0].vm.portable->render_count>rendered);
     CHECK(s->layers[0].vm.control.program_us>=program_us+400000);

@@ -1,6 +1,7 @@
 #include "app.h"
 #include "release.h"
 #include "runtime.h"
+#include "render_executor.h"
 #include "json.h"
 #include "vm_allocator.h"
 #include "draw.h"
@@ -302,10 +303,31 @@ static bool activate(App *a,const char *name,uint16_t id,const char *action,cons
 }
 static void indicator_tick(App *,AppOutput *,uint64_t);
 static const char *save_output_state(App *,const AppOutput *,bool,const char *,const LightControls *);
+static void collect_composition(Composition *s,unsigned budget){
+    if(!s||!s->playing||s->command_active||s->composing||s->prepared)return;
+    unsigned first=s->layer_count?s->cursor%s->layer_count:0;
+    for(unsigned n=0;n<s->layer_count;n++)vm_tick_collect(&s->layers[(first+n)%s->layer_count].vm,budget);
+}
+static void collect_render_jobs(App *a,unsigned first,unsigned budget){
+    vm_tick_begin();
+    for(unsigned n=0;n<a->output_count;n++){
+        AppOutput *d=a->outputs[(first+n)%a->output_count];
+        if(!d||d->hardware.indicators)continue;
+        if(d->transition){
+            Transition *t=d->transition;
+            if(t->start_pending||t->command_active||!t->playing||
+               (t->prepared&&(t->pending||platform_time_us()<t->next_present)))continue;
+            for(unsigned k=0;k<2;k++)collect_composition(t->compositions[k],budget);
+        }else if(d->composition)collect_composition(d->composition,budget);
+        else vm_tick_collect(&d->vm,budget);
+    }
+    vm_tick_flush();
+}
 static void service(void *context) {
     App *a=context;
     if(!a->hardware_changing)digital_inputs_tick(&a->digital_inputs,platform_time_us());
     bool previous=a->command_active;a->command_active=true;
+    collect_render_jobs(a,0,64);
     for(unsigned i=0;i<a->output_count;i++)if(a->outputs[i]){
         if(a->outputs[i]->hardware.indicators){indicator_tick(a,a->outputs[i],platform_time_us());continue;}
         if(a->outputs[i]->transition){
@@ -314,11 +336,13 @@ static void service(void *context) {
         else if(a->outputs[i]->composition)composition_tick(a->outputs[i]->composition,64);
         else if(!runtime_owns(&a->outputs[i]->vm))vm_tick_budget(&a->outputs[i]->vm,64);
     }
+    vm_tick_end();
     if(a->service_io)a->service_io(a->service_context);
     a->command_active=previous;
     if(!previous&&a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
 }
 void app_init(App *a, SendMessage send, void *transport) {
+    render_executor_init();
     memset(a,0,sizeof(*a)); a->connection_sequence=1; a->upload.pin=-1; a->send=send; a->transport=transport;
 #if LIGHTVM_BOOT_SEQUENCE
     (void)boot_sequence_init(&a->boot_sequence);
@@ -358,6 +382,7 @@ void app_destroy(App *a) {
     store_upload_cancel(&a->upload);
     empty_config(a);vm_destroy(&a->fallback.vm);store_destroy(&a->store);
     input_registry_destroy(&a->inputs);
+    render_executor_shutdown();
 }
 bool app_boot_sequence_triggered(const App *a) {
 #if LIGHTVM_BOOT_SEQUENCE
@@ -423,10 +448,15 @@ void app_tick(App *a) {
     }
     if (!a->network_pending) network_tick(&a->network,now);
     unsigned first=a->output_count?a->schedule_cursor++%a->output_count:0;
+    collect_render_jobs(a,first,4096);
     for(unsigned i=0;i<a->output_count;i++){
         AppOutput *d=a->outputs[(first+i)%a->output_count];
         if(d->hardware.indicators){indicator_tick(a,d,platform_time_us());continue;}
         if(d->transition)transition_tick(d->transition,4096);else if(d->composition)composition_tick(d->composition,4096);else vm_tick(&d->vm);
+    }
+    vm_tick_end();
+    for(unsigned i=0;i<a->output_count;i++){
+        AppOutput *d=a->outputs[i];
         if(d->light_save_due&&now>=d->light_save_due&&!a->command_active){
             d->light_save_due=0;
             const char *error=save_output_state(a,d,app_output_power(d),app_output_selected_preset(a,d),&d->pixels.light);
@@ -524,6 +554,18 @@ static void describe(App *a, uint16_t id) {
     literal(&w,"],\"input_event_overflow\":");number(&w,a->digital_inputs.overflow);
     literal(&w,",\"config_limit\":"); number(&w,CONFIG_LIMIT);
     literal(&w,",\"module_limit\":"); number(&w,MODULE_LIMIT);
+    literal(&w,",\"render_workers\":");number(&w,render_executor_workers());
+    literal(&w,",\"pico2_dcp_enabled\":");literal(&w,LIGHTVM_PICO2_DCP_ENABLED?"true":"false");
+    literal(&w,",\"max_refresh_hz\":");number(&w,LIGHTVM_MAX_REFRESH_HZ);
+    literal(&w,",\"render_slice_us\":");number(&w,LIGHTVM_RENDER_SLICE_US);
+    literal(&w,",\"invocation_limit\":");number(&w,LIGHTVM_INVOCATION_LIMIT);
+    literal(&w,",\"bytecode_cache_bytes\":");number(&w,LIGHTVM_BYTECODE_CACHE_BYTES);
+    literal(&w,",\"http_clients\":");number(&w,LIGHTVM_HTTP_CLIENTS);
+    literal(&w,",\"native_headroom_bytes\":");number(&w,LIGHTVM_NATIVE_HEADROOM_BYTES);
+    RenderStats render=render_executor_stats();
+    literal(&w,",\"render_offloads\":");wide(&w,render.offloads);
+    literal(&w,",\"render_worker_us\":");wide(&w,render.worker_us);
+    literal(&w,",\"worker_stack_peak_bytes\":");number(&w,render.worker_stack_peak);
     literal(&w,",\"instance_context_bytes\":"); number(&w,sizeof(VmInstance));
     literal(&w,",\"app_context_bytes\":"); number(&w,sizeof(App));
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));

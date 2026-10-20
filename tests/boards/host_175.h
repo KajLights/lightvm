@@ -4,5 +4,5 @@
 #define LIGHTVM_BOARD_NAME "test_175"
 #define PIXEL_CAPACITY 175u
 #define MODULE_LIMIT (16u * 1024u)
-#define FRAME_INTERVAL_US 10000u
+#define LIGHTVM_MAX_REFRESH_HZ 100u
 #endif

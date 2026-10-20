@@ -1,6 +1,8 @@
 /* Generic execution of compiler-recognized pixel maps. No effect policies. */
 #include "portable_map.h"
 #include "draw.h"
+#include "render_executor.h"
+#include <string.h>
 #include <limits.h>
 #include <math.h>
 
@@ -86,13 +88,46 @@ static bool evaluate(Instruction i,Value *v) {
     }
     return true;
 }
+typedef struct {
+    Instruction code[32];Value initial[128],final[128];uint8_t cached[32];
+    PbcResource *image;unsigned index,length,stride,limit;
+} MapKernel;
+typedef struct { MapKernel *kernel;unsigned first,end;bool success; } MapTask;
+static void map_pixels(void *context){
+    MapTask *task=context;MapKernel *k=task->kernel;
+    Value values[128],invariants[32];memcpy(values,k->initial,sizeof(values));
+    task->success=false;
+    for(unsigned pixel=task->first;pixel<task->end;pixel++){
+        values[k->index].u=pixel;
+        for(unsigned n=0;n<k->length;n++){
+            Instruction i=k->code[n];
+            if(i.op==JMP)continue;
+            if(i.op==MAP_STORE){
+                uint32_t color=values[i.c].u;if(color>0xffffff)return;
+                uint8_t *out=k->image->data+(size_t)pixel*k->stride;
+                out[0]=(uint8_t)(color>>16);out[1]=(uint8_t)(color>>8);out[2]=(uint8_t)color;
+                if(k->stride>3)out[3]=(k->image->kind==DRAW_IMAGE_RGBW||k->image->kind==DRAW_IMAGE_RGBWA)?0:255;
+                if(k->stride>4)out[4]=255;
+            }else if(k->cached[n]&&pixel>task->first)values[i.a]=invariants[n];
+            else{
+                if(!evaluate(i,values))return;
+                if(k->cached[n])invariants[n]=values[i.a];
+            }
+        }
+    }
+    if(task->end==k->limit)memcpy(k->final,values,sizeof(values));
+    task->success=true;
+}
 bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound) {
     PbcResource *image=&p->resources[pbc_value(p,dst).u];int32_t stop=pbc_value(p,bound).i;
     if(stop<=0){pbc_set_value(p,index,(PbcValue){0});p->bulk=0;return true;}
     if(image->sealed||!image->data||(unsigned)stop>image->count)return false;
-    unsigned start=p->bulk,limit=start+32;if(limit>(unsigned)stop)limit=(unsigned)stop;
-    Instruction code[32];Value values[128]={{0}},invariants[32];
-    uint8_t flags[128]={0},cached[32]={0};flags[index]=1;
+    /* Failed transient output is discarded. Persistent resources stay serial so
+       their partial writes on a fault keep the defined instruction order. */
+    bool parallel=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA;
+    unsigned start=p->bulk,limit=start+(parallel?128u:32u);if(limit>(unsigned)stop)limit=(unsigned)stop;
+    MapKernel kernel={0};Instruction *code=kernel.code;Value *values=kernel.initial;
+    uint8_t flags[128]={0},*cached=kernel.cached;flags[index]=1;
     unsigned length=end-first;
     for(unsigned n=0;n<length;n++){
         if(!decode(p,first+n,&code[n]))return false;
@@ -109,25 +144,14 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     }
     for(unsigned r=0;r<p->nregs;r++)if(flags[r]&4u)values[r].u=pbc_value(p,r).u;
     if(p->io_fault)return false;
-    unsigned stride=draw_stride(image->kind);
-    for(unsigned pixel=start;pixel<limit;pixel++){
-        values[index].u=pixel;
-        for(unsigned n=0;n<length;n++){
-            Instruction i=code[n];
-            if(i.op==JMP)continue;
-            if(i.op==MAP_STORE){
-                uint32_t color=values[i.c].u;if(color>0xffffff)return false;
-                uint8_t *out=image->data+(size_t)pixel*stride;
-                out[0]=(uint8_t)(color>>16);out[1]=(uint8_t)(color>>8);out[2]=(uint8_t)color;
-                if(stride>3)out[3]=(image->kind==DRAW_IMAGE_RGBW||image->kind==DRAW_IMAGE_RGBWA)?0:255;
-                if(stride>4)out[4]=255;
-            }else if(cached[n]&&pixel>start)values[i.a]=invariants[n];
-            else{
-                if(!evaluate(i,values))return false;
-                if(cached[n])invariants[n]=values[i.a];
-            }
-        }
-    }
+    kernel.image=image;kernel.index=index;kernel.length=length;
+    kernel.stride=draw_stride(image->kind);kernel.limit=limit;
+    unsigned middle=parallel&&limit-start>=64?start+(limit-start)/2:limit;
+    MapTask tasks[2]={{&kernel,start,middle,false},{&kernel,middle,limit,false}};
+    RenderJob jobs[2]={{map_pixels,&tasks[0],0},{map_pixels,&tasks[1],0}};
+    unsigned count=middle<limit?2:1;render_execute(jobs,count);
+    for(unsigned n=0;n<count;n++)if(!tasks[n].success)return false;
+    values=kernel.final;
     for(unsigned r=0;r<p->nregs;r++)if(flags[r]&2u)pbc_set_value(p,r,(PbcValue){.u=values[r].u});
     pbc_set_value(p,index,(PbcValue){.u=limit});
     p->bulk=limit<(unsigned)stop?limit:0;p->native_pending=limit<(unsigned)stop;return true;

@@ -7,5 +7,10 @@ const char *animation_preflight(VmInstance *vm,uint64_t delta);
 const char *animation_advance(VmInstance *vm,uint64_t delta,bool manual);
 const char *animation_poll(VmInstance *vm,uint64_t delta,bool *ready);
 const char *animation_poll_budget(VmInstance *vm,uint64_t delta,bool *ready,unsigned budget);
+/* Capture/start and commit run on the coordinator; execution is instance-local. */
+typedef struct { VmInstance *vm;unsigned budget;int status; } AnimationSlice;
+const char *animation_begin(VmInstance *,uint64_t delta);
+void animation_execute(void *slice);
+const char *animation_commit(AnimationSlice *,uint64_t elapsed_us,bool *ready);
 const char *animation_quiesce(VmInstance *vm);
 #endif

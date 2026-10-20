@@ -7,24 +7,45 @@ endif()
 pico_sdk_init()
 option(LIGHTVM_OUTPUT_PROBE "Build the Pico hardware output verification image" OFF)
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/peripherals.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S")
-target_compile_definitions(lightvm PRIVATE PICO_STACK_SIZE=16384)
-# This port is single-core. Give the heap all SRAM below the 16 KiB core-0
-# stack, and no unused core-1 scratch region. SDK 2.3 enforces stack region size.
-pico_set_linker_script_var(lightvm RAM_LENGTH "RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384")
-pico_set_linker_script_var(lightvm SCRATCH_X_ORIGIN "RAM_ORIGIN_DEFAULT+RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384")
-pico_set_linker_script_var(lightvm SCRATCH_X_LENGTH "0")
+    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/peripherals.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S"
+    "${CMAKE_CURRENT_LIST_DIR}/render_executor.c")
+set(LIGHTVM_WORKER_STACK_BYTES "8192" CACHE STRING "Core 1 render stack reservation")
+if(NOT LIGHTVM_WORKER_STACK_BYTES MATCHES "^[0-9]+$" OR
+   LIGHTVM_WORKER_STACK_BYTES LESS 4096 OR LIGHTVM_WORKER_STACK_BYTES GREATER 32768)
+    message(FATAL_ERROR "LIGHTVM_WORKER_STACK_BYTES must be 4096..32768")
+endif()
+math(EXPR worker_stack_remainder "${LIGHTVM_WORKER_STACK_BYTES} % 32")
+if(worker_stack_remainder)
+    message(FATAL_ERROR "LIGHTVM_WORKER_STACK_BYTES must be a multiple of 32")
+endif()
+target_compile_definitions(lightvm PRIVATE PICO_STACK_SIZE=16384 PICO_CORE1_STACK_SIZE=${LIGHTVM_WORKER_STACK_BYTES})
+# Both stacks are excluded from the contiguous heap and checked in the RAM gate.
+pico_set_linker_script_var(lightvm RAM_LENGTH "RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384-${LIGHTVM_WORKER_STACK_BYTES}")
+pico_set_linker_script_var(lightvm SCRATCH_X_ORIGIN "RAM_ORIGIN_DEFAULT+RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384-${LIGHTVM_WORKER_STACK_BYTES}")
+pico_set_linker_script_var(lightvm SCRATCH_X_LENGTH "${LIGHTVM_WORKER_STACK_BYTES}")
 pico_set_linker_script_var(lightvm SCRATCH_Y_ORIGIN "RAM_ORIGIN_DEFAULT+RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384")
 pico_set_linker_script_var(lightvm SCRATCH_Y_LENGTH "16384")
 # Compiler math code/constant tables run from XIP flash. Keep SDK functions
 # explicitly marked .time_critical in RAM, including flash program/erase code.
 pico_add_linker_script_override_path(lightvm "${CMAKE_CURRENT_LIST_DIR}/linker"
     FILES default_text_excludes.incl default_rodata_excludes.incl)
-target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand hardware_pio hardware_dma hardware_flash hardware_sync hardware_i2c hardware_clocks)
+target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand pico_multicore pico_flash hardware_pio hardware_dma hardware_flash hardware_sync hardware_i2c hardware_clocks)
 pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/ws2812.pio")
 pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/apa102.pio")
 # Keep using the compiler runtime rather than the SDK's ROM double shims.
 pico_set_double_implementation(lightvm compiler)
+# RP2350's DCP accelerates double arithmetic used in clocks and transformed
+# sprites. Keep compiler conversions and libm, preserving their edge semantics.
+option(LIGHTVM_PICO2_DCP "Use RP2350 Arm double arithmetic coprocessor" ON)
+if(PICO_RP2350 AND NOT PICO_RISCV AND LIGHTVM_PICO2_DCP)
+    target_compile_definitions(lightvm_config INTERFACE LIGHTVM_PICO2_DCP_ENABLED=1)
+    target_sources(lightvm PRIVATE "${PICO_SDK_PATH}/src/rp2_common/pico_double/double_aeabi_dcp.S")
+    foreach(operation dadd dsub drsub dmul ddiv)
+        # pico_wrap_function supplies INTERFACE options for SDK libraries; an
+        # executable needs its own PRIVATE linker options.
+        target_link_options(lightvm PRIVATE "LINKER:--wrap=__aeabi_${operation}")
+    endforeach()
+endif()
 pico_enable_stdio_usb(lightvm 1)
 pico_enable_stdio_uart(lightvm 0)
 pico_add_extra_outputs(lightvm)

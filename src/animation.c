@@ -89,12 +89,24 @@ const char *animation_advance(VmInstance *a,uint64_t delta,bool manual){
 /* A suspended render retains its arguments, context and RNG state. The next
  * slice continues that same call; elapsed time is supplied only at call start. */
 const char *animation_poll_budget(VmInstance *a,uint64_t delta,bool *ready,unsigned budget){
-    *ready=false;
+    const char *error=animation_begin(a,delta);
+    *ready=false;if(error)return error;
+    AnimationSlice slice={a,budget,0};
+    uint64_t started=platform_time_us();animation_execute(&slice);
+    return animation_commit(&slice,platform_time_us()-started,ready);
+}
+const char *animation_begin(VmInstance *a,uint64_t delta){
     if(!a->control.initialized||a->control.faulted)return "animation is not initialized or has faulted";
-    if(!a->control.in_step){const char *error=start(a,delta,false);if(error)return error;}
-    uint64_t started=platform_time_us();
-    int status=pbc_resume(a->portable,budget);
-    a->render_cpu_us+=platform_time_us()-started;
+    return a->control.in_step?NULL:start(a,delta,false);
+}
+void animation_execute(void *context){
+    AnimationSlice *slice=context;
+    slice->status=pbc_resume(slice->vm->portable,slice->budget);
+}
+const char *animation_commit(AnimationSlice *slice,uint64_t elapsed_us,bool *ready){
+    VmInstance *a=slice->vm;int status=slice->status;
+    *ready=false;
+    a->render_cpu_us+=elapsed_us;
     if(status<0)return fault(a,"portable execution fault");
     if(!status)return NULL;
     const char *error=finish(a);*ready=!error;return error;

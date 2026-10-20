@@ -30,6 +30,8 @@ class CompositionTests(unittest.TestCase):
     def composition(self,layers,output='lights'):
         self.client.configure_composition(layers,output=output)
         self.client.require_ok(self.client.command(STOP,output=output))
+        for layer in layers:
+            self.client.reset_program(output=output,layer=layer['id'])
     def frame(self,delta=0,output='lights'):
         self.client.require_ok(self.client.command(FRAME,struct.pack('<I',delta),output=output))
         return bytes(self.client.pixel_snapshot)
