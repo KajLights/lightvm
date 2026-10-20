@@ -23,7 +23,7 @@ const PYTHON_EXAMPLES = [
   { id: 'rainbow', filename: 'rainbow.py', label: 'rainbow.py', source: rainbow,
     description: 'A colour cycle every 60 seconds. Use Live inputs to scrub phase, change spatial scale or adjust the timer.' },
   { id: 'eye', filename: 'eye.py', label: 'eye.py · live inputs', source: eye,
-    description: 'A live-input demo: position, width, hue and brightness. Preview it, then try the controls without restarting its sprite.' },
+    description: 'An eye with live position, width, full RGB colour and local intensity. Follow light colour and bind other inputs to timers, music or sensors.' },
   { id: 'stars', filename: 'stars.py', label: 'stars.py', source: stars,
     description: 'Three-pixel stars appear and fade over a transparent background. Run alone or over another animation.' },
   { id: 'color', filename: 'color.py', label: 'color.py', source: color,

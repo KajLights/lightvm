@@ -7,7 +7,9 @@
 #define INPUT_LIMIT 8u
 #define INPUT_SOURCE_LIMIT 16u
 typedef union { uint32_t u; int32_t i; float f; } InputValue;
-typedef enum { INPUT_CONSTANT, INPUT_RAMP, INPUT_SOURCE } InputKind;
+typedef struct { uint32_t color; float brightness; } LightControls;
+typedef enum { INPUT_CONSTANT, INPUT_RAMP, INPUT_SOURCE, INPUT_CONTROL } InputKind;
+typedef enum { LIGHT_CONTROL_NONE, LIGHT_CONTROL_COLOR, LIGHT_CONTROL_BRIGHTNESS } LightControl;
 typedef struct {
     char name[33];
     unsigned type;
@@ -25,8 +27,8 @@ typedef struct {
     char source[33];
     double input_min, input_max, output_min, output_max;
     uint32_t timeout_ms;
-    uint8_t mode, easing;
-    bool mapped, hold;
+    uint8_t mode, easing, control;
+    bool mapped, palette, hold;
 } InputDriver;
 typedef struct {
     char name[33], unit[17];
@@ -34,14 +36,16 @@ typedef struct {
     InputValue initial, minimum, maximum, snapshot, last;
     uint64_t last_received;
     double default_duration;
-    uint8_t bounds, default_mode, default_easing;
+    uint8_t bounds, default_mode, default_easing, default_control;
     bool fallback, has_last;
+    const LightControls *light;
     InputDriver driver;
 } InputPort;
 struct Portable;
 bool input_value_parse(const Json *,int,unsigned,InputValue *);
 double input_value_number(InputValue,unsigned);
 const char *inputs_load(struct Portable *);
+void inputs_attach(struct Portable *,InputRegistry *,const LightControls *);
 bool inputs_call_valid(struct Portable *,unsigned,unsigned);
 const char *inputs_bind(struct Portable *,const Json *,int,uint64_t);
 void inputs_capture(struct Portable *,uint64_t,bool);

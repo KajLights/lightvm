@@ -632,8 +632,9 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if not marked or 'render' not in self.funcs: raise CompileError('program requires a profile and @render entry')
         for fn in (*self.helpers.values(), *self.funcs.values()):
             if any(arg.arg in self.input_symbols for arg in fn.args.args): self.fail(fn, 'function argument shadows an Input declaration')
-        if minimum_release and release_error(minimum_release, BASELINE):
-            raise CompileError('source requires a release below the supported feature floor ' + BASELINE)
+        feature_floor = '1.1.0' if any('control' in port for port in self.input_manifest) else BASELINE
+        if minimum_release and release_error(minimum_release, feature_floor):
+            raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
         functions = []
         for self.stage, role, self.rights in ((0, 'init', 9), (1, 'render', 13)):
             self.descriptions = {k:v for k,v in self.descriptions.items() if k.startswith('ctx.')}
@@ -651,9 +652,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
-        # All currently released features were introduced in BASELINE. New
-        # features raise their own floor, never every program's compiler floor.
-        manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or BASELINE,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
+        manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or feature_floor,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         if self.input_manifest: manifest['inputs'] = self.input_manifest
         def json_tokens(value):

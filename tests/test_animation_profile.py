@@ -22,7 +22,7 @@ def source(name):
 
 class PortableCompilerTests(unittest.TestCase):
     def test_target_negotiation_and_deterministic_compilation(self):
-        target={'module_limit':32768,'version':'1.0.0','live_inputs':True}
+        target={'module_limit':32768,'version':'1.1.0','live_inputs':True,'light_controls':True}
         for name in NAMES:
             result=compile_source(source(name))
             self.assertTrue(result.success,result.diagnostics)
@@ -251,8 +251,8 @@ def draw(ctx,runtime,pixels):
         self.assertEqual(self.client.status_fields()['code_storage'], 'flash')
 
     def test_stored_activation_settings_and_materialization(self):
-        self.client.save_program('paint',sample('color'))
-        settings={'random_color':False,'color':0x123456}
+        self.client.save_program('paint',program(PREFIX+'@init\ndef setup(ctx,runtime):\n ctx.color=setting(rgb(255,255,255))\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(ctx.color)\n'))
+        settings={'color':0x123456}
         self.client.activate('paint',settings=settings)
         before=self.client.snapshot()[1];self.assertEqual(before,bytes([0x12,0x34,0x56])*5)
         generation=self.client.program_state()['generation']

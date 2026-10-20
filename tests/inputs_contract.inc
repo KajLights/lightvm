@@ -29,6 +29,16 @@ static void inputs_contract(void){
     CHECK(ready);for(unsigned n=0;n<3;n++)CHECK(vm.control.committed[n*4]==80);
     CHECK(!control_step(&vm,0));for(unsigned n=0;n<3;n++)CHECK(vm.control.committed[n*4]==60);
     CHECK(allocations==before);deny_allocation=false;
+    /* Built-in light controls follow the same invocation snapshot boundary. */
+    LightControls light={.brightness=0.3,.color=0xffffff};
+    inputs_attach(vm.portable,&registry,&light);
+    const char *control="{\"level\":{\"control\":\"brightness\"}}";
+    CHECK(json_parse(&j,control,strlen(control)));CHECK(!inputs_bind(vm.portable,&j,0,0));
+    CHECK(!animation_poll_budget(&vm,0,&ready,1)&&!ready);
+    light.brightness=0.9;
+    for(unsigned n=0;!ready&&n<1000;n++)CHECK(!animation_poll_budget(&vm,0,&ready,1));
+    CHECK(ready);for(unsigned n=0;n<3;n++)CHECK(vm.control.committed[n*4]==30);
+    CHECK(!control_step(&vm,0));for(unsigned n=0;n<3;n++)CHECK(vm.control.committed[n*4]==90);
     vm_destroy(&vm);input_registry_destroy(&registry);CHECK(vm_heap_used()==0);
 
     /* Management must not cancel an unfinished transition on every slider update. */

@@ -99,6 +99,7 @@ const char *transition_bind(Transition *t,InputRegistry *registry,const Json *j,
     if(t->assignment==UINT32_MAX)return "driver assignment exhausted";
     InputPort *port=demo_calloc(1,sizeof(*port));if(!port)return "transition input exceeds peak memory budget";
     strcpy(port->name,"progress");port->type=T_FLOAT;port->bounds=3;port->maximum.f=1;
+    port->light=&t->output->light;
     port->initial.f=port->snapshot.f=port->driver.value.f=(float)(t->progress/100);
     const char *error=input_port_bind(registry,port,j,object,platform_time_us());
     if(error){demo_free(port);return error;}
@@ -219,7 +220,7 @@ void transition_tick(Transition *t,unsigned budget){
     }
     if(t->prepared&&!t->pending){
         uint8_t *previous=t->front;t->front=t->working;t->working=previous;t->prepared=false;t->output_started=platform_time_us();
-        if(t->output->type->submit(t->output->driver,t->front,t->target.count)){t->pending=true;complete(t);}
+        if(pixels_submit(t->output,t->front,t->target.count)){t->pending=true;complete(t);}
         else{strcpy(t->error,"native transition output failed; retrying");t->dirty=true;}
     }
     uint64_t now=platform_time_us();
@@ -242,7 +243,7 @@ const char *transition_frame(Transition *t,uint32_t delta_ms){
         if(!t->prepared)error=t->error;
         else{
             if(t->pending){t->output->type->cancel(t->output->driver);t->pending=false;}
-            if(!t->output->type->show(t->output->driver,t->working,t->target.count))error="native transition output failed";
+            if(!pixels_show_frame(t->output,t->working,t->target.count))error="native transition output failed";
             else{memcpy(t->output->rgb,t->working,(size_t)t->target.count*3);t->frames++;t->prepared=false;}
         }
     }

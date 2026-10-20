@@ -20,6 +20,7 @@ class ReceiverTests(unittest.TestCase):
         self.transport.close()
 
     def test_upload_retries_out_of_order_crc_and_reset(self):
+        output_heap = self.client.status_fields()['heap']
         data = color()
         self.assertEqual(self.client.command(BEGIN, struct.pack('<II',len(data),zlib.crc32(data))).code, 0)
         first = bytes(4) + data[:100]
@@ -36,7 +37,7 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(self.client.command(FINISH).code, 2)
         self.assertEqual(self.client.status_fields()['ready'],'1')
         self.client.command(RESET)
-        self.assertEqual(self.client.status_fields()['heap'],'0')
+        self.assertEqual(self.client.status_fields()['heap'],output_heap)
 
     def test_invalid_packages_are_rejected_without_execution(self):
         original = color()

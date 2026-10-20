@@ -1,13 +1,13 @@
-"""A wireable eye: live position, width, hue and brightness.
+"""A wireable eye: live position, width, colour and intensity.
 
 Position is normalized across the range that fits the current eye width.
-Width is a fraction of the strip; zero hides the eye. Hue is in turns and
-brightness is 0..1. The default position driver bounces, taking two seconds
+Width is a fraction of the strip; zero hides the eye. Colour follows the light
+by default; local intensity is 0..1 and can follow music. The default position driver bounces, taking two seconds
 per traversal. Override any input without restarting the existing sprite.
 Sweep remains the separate example for retained paint and historical trails.
 """
 from lightvm import (
-    profile, init, render, Input, Ramp, hsv,
+    profile, init, render, Input, Ramp, rgb,
     PixelArray, Sprite, SpriteBatch, Transform, ColorTransform,
 )
 
@@ -16,8 +16,8 @@ profile("animation")
 POSITION = Input("position", default=0.0, minimum=0.0, maximum=1.0,
                  driver=Ramp(duration=2.0, mode="pingpong", easing="smoothstep"))
 WIDTH = Input("width", default=0.1, minimum=0.0, maximum=1.0, unit="fraction")
-HUE = Input("hue", default=0.0, minimum=0.0, maximum=1.0, unit="turns")
-BRIGHTNESS = Input("brightness", default=1.0, minimum=0.0, maximum=1.0)
+COLOR = Input("color", default=rgb(255, 0, 0), control="color")
+INTENSITY = Input("intensity", default=1.0, minimum=0.0, maximum=1.0)
 
 IMAGE = PixelArray([
      85,  85,  85, 255,
@@ -39,8 +39,8 @@ def eye_render(s, runtime, pixels):
     pixels.draw(IMAGE)
     s.transform = Transform(translate=left + (width - 1.0) / 2.0,
                             scale=width / 3.0, origin=1.0)
-    s.color = ColorTransform(tint=hsv(runtime.input(HUE), 1.0, 1.0),
-                             brightness=runtime.input(BRIGHTNESS))
+    s.color = ColorTransform(tint=runtime.input(COLOR),
+                             brightness=runtime.input(INTENSITY))
 
 
 Eye = Sprite(width=3, init=eye_init, render=eye_render)

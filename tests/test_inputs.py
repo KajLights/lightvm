@@ -166,7 +166,7 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(runtime.input(VALUE)%256,0,0))
     def test_eye_updates_existing_sprite_and_keeps_resources_fixed(self):
         self.client.upload(sample('eye'),inputs={'position':{'value':0.0}})
         start=self.frame();before=self.client.program_state();heap=self.client.status_fields()['heap']
-        self.client.set_inputs({'position':{'value':1.0},'width':{'value':0.3},'hue':{'value':0.5},'brightness':{'value':0.5}})
+        self.client.set_inputs({'position':{'value':1.0},'width':{'value':0.3},'color':{'value':0x00ffff},'intensity':{'value':0.5}})
         end=self.frame()
         self.assertNotEqual(start,end);self.assertTrue(any(end[-18:]));self.assertFalse(any(end[:30]));self.assertFalse(any(end[::3]))
         self.assertEqual(self.client.program_state()['generation'],before['generation'])
@@ -229,12 +229,12 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),in
     def test_preset_recipes_survive_reboot_and_do_not_save_live_samples(self):
         self.client.configure(config(20),save=True)
         self.client.save_program('eye',sample('eye'))
-        wiring={'position':{'value':0.5},'hue':{'source':'future.hue'}}
+        wiring={'position':{'value':0.5},'intensity':{'source':'future.level'}}
         self.client.save_preset('wired',[{'id':'eye','program':'eye','crc32':zlib.crc32(sample('eye')),'inputs':wiring}])
         self.client.close();self.client=Client(ProcessTransport(self.receiver,self.storage))
         self.client.activate_preset('wired');self.client.require_ok(self.client.command(STOP));self.frame()
         state=self.client.program_state(layer='eye')
         self.assertEqual(state['inputs']['position']['binding'],{'value':0.5})
-        self.assertEqual(state['inputs']['hue']['binding']['source'],'future.hue')
-        self.assertTrue(state['inputs']['hue']['fallback'])
+        self.assertEqual(state['inputs']['intensity']['binding']['source'],'future.level')
+        self.assertTrue(state['inputs']['intensity']['fallback'])
         self.client.manage('input_list');self.assertEqual(json.loads(self.client.data_reply),[])

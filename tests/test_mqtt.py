@@ -185,7 +185,6 @@ def draw(ctx, runtime, pixels):
         self.controller_id = self.client.describe()['controller_id']
         self.root = f'homeassistant/lightvm/{self.controller_id}'
         self.discovery = f'homeassistant/light/{self.controller_id}/{b"desk".hex()}/config'
-        self.selector = f'homeassistant/select/{self.controller_id}/{b"desk".hex()}_preset/config'
         self.broker.wait(f'{self.root}/availability', b'online')
 
     def tearDown(self):
@@ -194,69 +193,126 @@ def draw(ctx, runtime, pixels):
         self.assertFalse(self.broker.errors)
         self.directory.cleanup()
 
+    def wait_light(self, output='desk', **expected):
+        deadline = time.monotonic() + 4
+        while time.monotonic() < deadline:
+            value = json.loads(self.broker.wait(f'{self.root}/{output}/state', timeout=max(.01, deadline - time.monotonic())))
+            if all(value.get(key) == item for key, item in expected.items()): return value
+        self.fail(f'no light state {expected}')
+
     def wait_options(self, expected):
         deadline = time.monotonic() + 4
         while time.monotonic() < deadline:
-            value = json.loads(self.broker.wait(self.selector, timeout=max(.01, deadline - time.monotonic())))
-            if value['options'] == expected:
+            value = json.loads(self.broker.wait(self.discovery, timeout=max(.01, deadline - time.monotonic())))
+            if value['effect_list'] == expected:
                 return value
         self.fail(f'no preset options {expected}')
+
+    def test_standard_color_brightness_and_music_share_one_light(self):
+        from test_light_controls import SOURCE
+        bytecode = compile_source(SOURCE).bytecode
+        self.client.save_program('eye', bytecode)
+        self.client.save_preset('eye', [{'id': 'eye', 'program': 'eye', 'crc32': zlib.crc32(bytecode),
+                                      'inputs': {'intensity': {'source': 'music.level'}}}])
+        self.config['outputs'][0]['home_assistant']['presets'].append('eye')
+        self.client.configure(self.config)
+        self.wait_options(['blue', 'eye'])
+        publisher = self.client.claim_inputs({'music.level': 'float'})
+        self.client.publish_inputs(publisher, 1, {'music.level': 0.5})
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({
+            'state': 'ON', 'effect': 'eye', 'brightness': 128, 'color': {'r': 128, 'g': 64, 'b': 32}}))
+        state = self.wait_light(state='ON', effect='eye', brightness=128, color_mode='rgb')
+        self.assertEqual(state['color'], {'r': 128, 'g': 64, 'b': 32})
+        before = self.client.program_state(output='desk', slot='B', layer='eye')
+        self.assertEqual(before['inputs']['intensity']['binding']['source'], 'music.level')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'brightness': 64, 'color': {'r': 255, 'g': 255, 'b': 255}}))
+        self.wait_light(brightness=64, color={'r': 255, 'g': 255, 'b': 255})
+        after = self.client.program_state(output='desk', slot='B', layer='eye')
+        self.assertEqual(after['generation'], before['generation'])
+        self.assertEqual(after['inputs_revision'], before['inputs_revision'])
+        deadline = time.monotonic() + 1
+        while after['inputs']['color']['value'] != 0xffffff and time.monotonic() < deadline:
+            time.sleep(.01)
+            after = self.client.program_state(output='desk', slot='B', layer='eye')
+        self.assertEqual(after['inputs']['color']['value'], 0xffffff)
+        # A signal returning black never changes the logical light power.
+        self.client.publish_inputs(publisher, 2, {'music.level': 0.0})
+        self.assertTrue(self.client.light_state('desk')['power'])
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'brightness': 0}))
+        self.wait_light(state='OFF', brightness=64)
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'color': {'r': 255, 'g': 128, 'b': 192}}))
+        self.wait_light(state='OFF', color={'r': 255, 'g': 128, 'b': 192})
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON', 'effect': 'blue'}))
+        self.wait_light(state='ON', effect='blue', color_mode='brightness', brightness=64)
+
+    def test_invalid_combined_light_commands_preserve_all_properties(self):
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON', 'brightness': 128}))
+        self.wait_light(state='ON', brightness=128)
+        before = self.client.light_state('desk')
+        for value in ({'brightness': 256, 'color': {'r': 255, 'g': 0, 'b': 0}},
+                      {'state': 'OFF', 'color': {'r': 2}},
+                      {'brightness': 32, 'effect': 'missing'},
+                      {'brightness': 32, 'transition': 1}):
+            self.broker.publish(f'{self.root}/desk/set', json.dumps(value))
+            time.sleep(.03)
+            self.assertEqual(self.client.light_state('desk'), before)
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF', 'brightness': 32}), retained=True)
+        time.sleep(.03)
+        self.assertEqual(self.client.light_state('desk'), before)
 
     def test_power_on_policy_restores_mqtt_commands_and_republishes_actual_state(self):
         self.config['outputs'][0]['startup'] = {'mode': 'restore_last'}
         self.client.configure(self.config, save=True)
-        self.broker.publish(f'{self.root}/desk/preset/set', 'blue')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'blue'}))
+        self.wait_light(state='ON', effect='blue')
         self.client.close()
         self.client = Client(ProcessTransport(self.receiver, self.storage))
         self.broker.wait(f'{self.root}/availability', b'online')
-        self.assertEqual(self.broker.latest[f'{self.root}/desk/state'], b'ON')
-        self.assertEqual(self.broker.latest[f'{self.root}/desk/preset/state'], b'blue')
-        self.broker.publish(f'{self.root}/desk/set', 'OFF')
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['state'], 'ON')
+        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['effect'], 'blue')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
+        self.wait_light(output='desk', state='OFF')
         self.client.close()
         self.client = Client(ProcessTransport(self.receiver, self.storage))
         self.broker.wait(f'{self.root}/availability', b'online')
-        self.assertEqual(self.broker.latest[f'{self.root}/desk/state'], b'OFF')
-        self.assertEqual(self.broker.latest[f'{self.root}/desk/preset/state'], b'blue')
+        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['state'], 'OFF')
+        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['effect'], 'blue')
         self.assertFalse(self.client.describe()['outputs'][0]['power'])
         # Broker reconnection does not reapply startup or replay retained commands.
         self.broker.publish('homeassistant/status', 'online')
         self.broker.wait(f'{self.root}/availability', b'online')
         self.assertFalse(self.client.describe()['outputs'][0]['power'])
 
-    def test_preset_selector_discovery_selection_and_power_recall(self):
-        selector = json.loads(self.broker.latest[self.selector])
-        self.assertEqual(selector['name'], 'Desk "light" 🌈 Preset')
-        self.assertEqual(selector['options'], ['blue'])
-        self.assertEqual(selector['command_topic'], f'{self.root}/desk/preset/set')
-        self.assertEqual(selector['state_topic'], f'{self.root}/desk/preset/state')
-        self.assertFalse(selector['retain'])
-        self.assertEqual(selector['device'], json.loads(self.broker.latest[self.discovery])['device'])
+    def test_effect_discovery_selection_and_power_recall(self):
+        light = json.loads(self.broker.latest[self.discovery])
+        self.assertEqual(light['name'], 'Desk "light" 🌈')
+        self.assertEqual(light['effect_list'], ['blue'])
+        self.assertEqual(light['command_topic'], f'{self.root}/desk/set')
+        self.assertEqual(light['state_topic'], f'{self.root}/desk/state')
+        self.assertFalse(light['retain'])
+        other = f"homeassistant/light/{self.controller_id}/{b'other'.hex()}/config"
+        self.assertEqual(light['device'], json.loads(self.broker.latest[other])['device'])
         layers = self.client.preset('blue')['layers']
         layers[0]['opacity'] = 100
         self.client.save_preset('dim', layers, output='desk')
         self.config['outputs'][0]['home_assistant']['presets'].append('dim')
         self.client.configure(self.config)
         self.wait_options(['blue', 'dim'])
-        self.broker.publish(f'{self.root}/desk/preset/set', 'dim', qos=1)
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'dim')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'dim'}), qos=1)
+        self.wait_light(state='ON', effect='dim')
         composition = self.client.composition('desk', slot='B')
         self.assertEqual(composition['preset'], 'dim')
         self.assertFalse(self.client.composition('other')['active'])
-        self.broker.publish(f'{self.root}/desk/preset/set', 'dim', qos=1)
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'dim'}), qos=1)
         time.sleep(.05)
         self.assertEqual(self.client.composition('desk')['revision'], composition['revision'])
-        self.broker.publish(f'{self.root}/desk/set', 'OFF')
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
+        self.wait_light(output='desk', state='OFF')
         self.assertEqual(self.client.describe()['outputs'][0]['selected_preset'], 'dim')
-        self.broker.publish(f'{self.root}/desk/set', 'ON')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'dim')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+        self.wait_light(state='ON', effect='dim')
         self.assertEqual(self.client.describe()['outputs'][0]['selected_preset'], 'dim')
-        self.broker.publish(f'{self.root}/other/preset/set', 'dim')
+        self.broker.publish(f'{self.root}/other/set', json.dumps({'effect': 'dim'}))
         time.sleep(.05)
         self.assertFalse(self.client.composition('other')['active'])
 
@@ -275,47 +331,47 @@ def draw(ctx, runtime, pixels):
 
     def test_preset_state_observes_serial_edits_and_catalog_versions(self):
         self.client.activate_preset('blue', output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.wait_light(effect='blue')
         self.client.layer_opacity('base', 100, output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'None')
+        self.wait_light(effect='Custom')
         self.assertIsNone(self.client.composition('desk')['preset'])
         self.client.activate_preset('blue', output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.wait_light(effect='blue')
         layers = self.client.preset('blue')['layers']
         layers[0]['opacity'] = 200
         self.client.save_preset('blue', layers, output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'None')
+        self.wait_light(effect='Custom')
         self.assertTrue(self.client.composition('desk')['playing'])
         self.assertIsNone(self.client.describe()['outputs'][0]['preset'])
 
     def test_retained_preset_and_failed_selection_preserve_current_runtime(self):
         self.client.activate_preset('blue', output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.wait_light(effect='blue')
         before = self.client.composition('desk')['revision']
         for payload in ('blue', 'unknown', 'bad/name', b'blue\x00junk'):
-            self.broker.publish(f'{self.root}/desk/preset/set', payload, retained=True)
+            self.broker.publish(f'{self.root}/desk/set', payload, retained=True)
         self.config['outputs'][0]['home_assistant']['presets'].append('missing')
         self.client.configure(self.config)
-        self.broker.publish(f'{self.root}/desk/preset/set', 'missing')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'missing'}))
+        self.wait_light(effect='blue')
         self.assertEqual(self.client.composition('desk')['revision'], before)
         self.assertIn('does not exist', self.client.network_status()['mqtt_error'])
 
     def test_preset_identity_across_ab_mix_and_initialization_reset(self):
         self.client.activate_preset('blue', output='desk', slot='A')
         self.client.activate_preset('blue', output='desk', slot='B')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.wait_light(effect='blue')
         self.client.set_progress(50, output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'None')
+        self.wait_light(effect='Custom')
         self.client.set_progress(100, output='desk')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.wait_light(effect='blue')
         with self.assertRaises(ProtocolError):
             self.client.reset_program({'unknown': 1}, output='desk', slot='B', layer='base')
         self.assertEqual(self.client.composition('desk', slot='B')['preset'], 'blue')
         self.client.reset_program(output='desk', slot='B', layer='base')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'None')
+        self.wait_light(effect='Custom')
 
-    def test_maximum_selector_options_and_escaped_name_fit_mqtt(self):
+    def test_maximum_effect_list_and_escaped_name_fit_mqtt(self):
         names = [f'p{i:031d}' for i in range(16)]
         layers = self.client.preset('blue')['layers']
         for name in names:
@@ -324,34 +380,33 @@ def draw(ctx, runtime, pixels):
         output['id'] = 'x' * 32
         output['home_assistant'] = {'name': '\x01' * 64, 'default_preset': names[0], 'presets': names}
         self.client.configure(self.config)
-        topic = f'homeassistant/select/{self.controller_id}/{output["id"].encode().hex()}_preset/config'
+        topic = f'homeassistant/light/{self.controller_id}/{output["id"].encode().hex()}/config'
         payload = json.loads(self.broker.wait(topic))
-        self.assertEqual(payload['options'], names)
-        self.assertEqual(payload['name'], '\x01' * 64 + ' Preset')
-        self.broker.publish(f'{self.root}/{output["id"]}/preset/set', names[-1])
-        self.broker.wait(f'{self.root}/{output["id"]}/preset/state', names[-1].encode())
+        self.assertEqual(payload['effect_list'], names)
+        self.assertEqual(payload['name'], '\x01' * 64)
+        self.broker.publish(f'{self.root}/{output["id"]}/set', json.dumps({"effect": names[-1]}))
+        self.wait_light(output=output["id"], effect=names[-1])
 
     def test_ha_recalls_complete_previous_target_and_publish_power_independently(self):
         program = compile_source((ROOT / 'examples/transitions/crossfade.py').read_text()).bytecode
         self.client.save_program('fade', program)
         spec = {'program': 'fade', 'crc32': zlib.crc32(program), 'duration_ms': 100000}
         self.client.save_preset('blue', self.client.preset('blue')['layers'], output='desk', entry_transition=spec)
-        self.broker.publish(f'{self.root}/desk/set', 'ON')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+        self.wait_light(state='ON', effect='blue')
         on = self.client.transition('desk')
         self.assertEqual(on['program'], 'fade')
         self.assertFalse(on['A']['active'])
         self.assertEqual(on['B']['preset'], 'blue')
-        self.broker.publish(f'{self.root}/desk/set', 'OFF')
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
+        self.wait_light(output='desk', state='OFF')
         off = self.client.transition('desk')
         self.assertTrue(off['playing'])
         self.assertEqual(off['A']['preset'], 'blue')
         self.assertFalse(off['B']['active'])
         self.assertEqual(off['recall'], {'power': False, 'preset': 'blue'})
-        self.broker.publish(f'{self.root}/desk/preset/set', 'blue')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'blue'}))
+        self.wait_light(output='desk', state='ON')
         again = self.client.transition('desk')
         self.assertFalse(again['A']['active'])
         self.assertEqual(again['B']['preset'], 'blue')
@@ -361,15 +416,14 @@ def draw(ctx, runtime, pixels):
         self.client.save_preset('private', self.client.preset('blue')['layers'], output='desk')
         self.client.recall_preset('private', 'desk')
         self.client.set_power(False, 'desk')
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
-        self.broker.publish(f'{self.root}/desk/set', 'ON')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'blue')
+        self.wait_light(output='desk', state='OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+        self.wait_light(state='ON', effect='blue')
         self.assertEqual(self.client.transition('desk')['recall']['preset'], 'blue')
 
     def test_ha_binding_validation(self):
         for changes in ({'presets': []}, {'presets': ['blue', 'blue']}, {'presets': ['other']},
-                        {'presets': ['blue', 'bad/name']}, {'presets': ['blue', 'None']},
+                        {'presets': ['blue', 'bad/name']}, {'presets': ['blue', 'Custom']}, {'presets': ['blue', 'off']},
                         {'presets': ['blue'] + [f'p{i}' for i in range(16)]},
                         {'default_preset': 'x' * 33}):
             config = copy.deepcopy(self.config)
@@ -381,30 +435,34 @@ def draw(ctx, runtime, pixels):
         discovery = json.loads(self.broker.latest[self.discovery])
         self.assertEqual(discovery['name'], 'Desk "light" 🌈')
         self.assertEqual(discovery['command_topic'], f'{self.root}/desk/set')
-        self.assertNotIn('brightness_command_topic', discovery)
+        self.assertEqual(discovery['schema'], 'json')
+        self.assertTrue(discovery['brightness'])
+        self.assertEqual(discovery['supported_color_modes'], ['rgb'])
+        self.assertFalse(discovery['transition'])
+        self.assertFalse(discovery['flash'])
         self.assertNotIn('password', self.client.network_config()['mqtt'])
         connect = self.broker.connects.get(timeout=1)
         self.assertEqual(connect[:7], b'\x00\x04MQTT\x04')
         self.assertEqual(connect[7], 0xe6)
         self.assertIn(b'offline', connect)
         self.assertIn(b'broker-secret', connect)
-        self.broker.publish(f'{self.root}/desk/set', 'ON', qos=1)
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}), qos=1)
+        self.wait_light(output='desk', state='ON')
         composition = self.client.composition('desk', slot='B')
         self.assertTrue(composition['playing'])
         self.assertFalse(self.client.composition('other')['active'])
-        self.broker.publish(f'{self.root}/desk/set', 'ON', qos=1)
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}), qos=1)
         time.sleep(.05)
         self.assertEqual(self.client.composition('desk')['revision'], composition['revision'])
-        self.broker.publish(f'{self.root}/desk/set', 'OFF')
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
+        self.wait_light(output='desk', state='OFF')
         self.assertFalse(self.client.describe()['outputs'][0]['power'])
         self.assertEqual(self.client.composition_snapshot(output='desk')[1], bytes(15))
-        self.broker.publish(f'{self.root}/other/set', 'ON')
-        self.broker.wait(f'{self.root}/other/state', b'ON')
+        self.broker.publish(f'{self.root}/other/set', json.dumps({'state': 'ON'}))
+        self.wait_light(output='other', state='ON')
         self.assertTrue(self.client.transition('other')['playing'])
         self.client.require_ok(self.client.command(STOP, output='other'))
-        self.broker.wait(f'{self.root}/other/state', b'OFF')
+        self.wait_light(output='other', state='OFF')
 
     def test_http_websocket_and_serial_changes_are_published_to_mqtt(self):
         if not self.client.describe()['http_supported']:
@@ -422,11 +480,11 @@ def draw(ctx, runtime, pixels):
                 from test_websocket import Wire
                 peers.append(Client(Wire(url)))
             for peer in peers:
-                self.broker.publish(f'{self.root}/desk/set', 'ON')
-                self.broker.wait(f'{self.root}/desk/state', b'ON')
+                self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+                self.wait_light(output='desk', state='ON')
                 self.assertTrue(peer.transition('desk')['playing'])
                 peer.require_ok(peer.command(STOP, output='desk'))
-                self.broker.wait(f'{self.root}/desk/state', b'OFF')
+                self.wait_light(output='desk', state='OFF')
                 self.assertEqual(self.client.composition_snapshot(output='desk')[1], bytes(15))
         finally:
             for peer in peers:
@@ -449,23 +507,23 @@ def draw(ctx, runtime, pixels):
         self.client.activate_preset('blue', output='desk', slot='B')
         self.client.set_progress(100, output='desk')
         self.client.require_ok(self.client.command(STOP, output='desk'))
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
-        self.broker.publish(f'{self.root}/desk/set', 'ON')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.wait_light(output='desk', state='OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+        self.wait_light(output='desk', state='ON')
         self.assertTrue(self.client.transition(output='desk')['active'])
         self.assertTrue(self.client.transition('desk')['playing'])
         self.assertEqual(self.client.composition_snapshot(output='desk')[1], bytes([0, 0, 255]) * 5)
 
     def test_retained_invalid_unknown_commands_and_failed_preset(self):
         for topic, payload, retained in [('desk', 'ON', True), ('desk', 'TOGGLE', False), ('unknown', 'ON', False)]:
-            self.broker.publish(f'{self.root}/{topic}/set', payload, retained=retained)
+            self.broker.publish(f'{self.root}/{topic}/set', json.dumps({'state':payload}), retained=retained)
         time.sleep(.1)
         self.assertFalse(self.client.composition('desk')['active'])
         self.config['outputs'][0]['home_assistant']['default_preset'] = 'missing'
         self.config['outputs'][0]['home_assistant']['presets'] = ['missing']
         self.client.configure(self.config)
-        self.broker.publish(f'{self.root}/desk/set', 'ON')
-        self.broker.wait(f'{self.root}/desk/state', b'OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+        self.wait_light(output='desk', state='OFF')
         self.assertIn('does not exist', self.client.network_status()['mqtt_error'])
         self.assertFalse(self.client.composition('desk')['active'])
 
@@ -480,15 +538,13 @@ def draw(ctx, runtime, pixels):
         self.client = Client(ProcessTransport(self.receiver, self.storage))
         self.assertEqual(self.client.describe()['controller_id'], self.controller_id)
         self.broker.wait(f'{self.root}/availability', b'online')
-        self.broker.publish(f'{self.root}/desk/set', 'ON')
-        self.broker.wait(f'{self.root}/desk/state', b'ON')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
+        self.wait_light(output='desk', state='ON')
         del self.config['outputs'][0]['home_assistant']
         self.client.configure(self.config)
         self.broker.wait(self.discovery, b'')
-        self.broker.wait(self.selector, b'')
         self.broker.wait(f'{self.root}/desk/state', b'')
-        self.broker.wait(f'{self.root}/desk/preset/state', b'')
-        self.broker.publish(f'{self.root}/desk/set', 'OFF')
+        self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
         time.sleep(.05)
         self.assertTrue(self.client.transition('desk')['playing'])
 

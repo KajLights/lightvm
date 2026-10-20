@@ -84,7 +84,7 @@ static void composition_tick_impl(Composition *s,unsigned budget) {
         if(!s->output->type){if(!s->front_pinned)composition_publish(s);return;}
         uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
         s->output_started=platform_time_us();
-        if(s->output->type->submit(s->output->driver,s->front,s->count)){s->pending=true;complete_output(s);}
+        if(pixels_submit(s->output,s->front,s->count)){s->pending=true;complete_output(s);}
         else{snprintf(s->error,sizeof(s->error),"native composition output failed; retrying");s->dirty=true;}
     }
     unsigned first=s->layer_count?s->cursor++%s->layer_count:0;
@@ -120,7 +120,7 @@ const char *composition_frame(Composition *s,uint32_t delta_ms) {
         composition_prepare(s);
         if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}
         if(!s->output->type)composition_publish(s);
-        else if(!s->output->type->show(s->output->driver,s->working,s->count))error="native composition output failed";
+        else if(!pixels_show_frame(s->output,s->working,s->count))error="native composition output failed";
         else{memcpy(s->output->rgb,s->working,(size_t)s->count*3);s->frames++;s->prepared=false;}
     }
     s->command_active=false;return error;

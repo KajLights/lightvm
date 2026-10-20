@@ -256,6 +256,7 @@ static void network_transactions(void) {
 #include "inputs_contract.inc"
 #include "composition_contract.inc"
 #include "transition_contract.inc"
+#include "light_controls_contract.inc"
 
 static unsigned service_calls;
 static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
@@ -397,6 +398,7 @@ int main(void) {
     const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply)); CHECK(reply.code==STATUS_OK);
     CHECK(shows==1 && displayed[0]==0);
+    size_t physical_heap=vm_heap_used();CHECK(physical_heap>=PIXEL_BYTES);
     command(&session, CMD_STATUS, NULL, 0);
     CHECK(reply.code == STATUS_OK && reply.id == 42);
     CHECK(strstr(reply.message, "version=" LIGHTVM_VERSION " protocol=1 platform=test board=virtual output=capture"));
@@ -452,11 +454,11 @@ int main(void) {
     command(&session, CMD_FRAME, delta, sizeof(delta));
     CHECK(reply.code == STATUS_EXECUTION);
     command(&session, CMD_RESET, NULL, 0);
-    CHECK(reply.code == STATUS_OK && vm_heap_used() == 0);
+    CHECK(reply.code == STATUS_OK && vm_heap_used() == physical_heap);
     deny_allocation = true;
     write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
     command(&session,CMD_BEGIN,begin,sizeof(begin));
-    CHECK(reply.code == STATUS_STORAGE && !app.upload_owner && vm_heap_used() == 0);
+    CHECK(reply.code == STATUS_STORAGE && !app.upload_owner && vm_heap_used() == physical_heap);
     deny_allocation = false;
     upload(&session, &reply, render_lbc, sizeof(render_lbc));
     CHECK(reply.code == STATUS_OK);
@@ -488,7 +490,7 @@ int main(void) {
     CHECK(displayed[2]==220 && app_output(&app,NULL)->pixels.rgb[2]==220);
     CHECK(app_output(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
     deny_show=false; deny_allocation=false;
-    command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==0);
+    command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==physical_heap);
     // Allocation failure during control preparation leaves management usable.
     vm_init(&app_output(&app,NULL)->vm,&app_output(&app,NULL)->pixels,capture,&reply);app_output(&app,NULL)->vm.memory=control_lbc;app_output(&app,NULL)->vm.expected=sizeof(control_lbc);
     CHECK(!vm_load(&app_output(&app,NULL)->vm));app_output(&app,NULL)->vm.ready=true;
@@ -601,6 +603,7 @@ int main(void) {
     inputs_contract();
     composition_contract();
     transition_contract();
+    light_controls_contract();
     startup_transition_clock();
     indicator_contract();indicator_effect_contract();
     return 0;

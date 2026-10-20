@@ -224,15 +224,11 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .audio-demo p { line-height: 1.65; }
 .audio-demo input[type=range] { accent-color: var(--accent); }
 .audio-buttons { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
-.audio-eye-strip { height: 100px; border-radius: 9px; background: repeating-linear-gradient(90deg, #0c131a 0, #0c131a 11px, #1c2934 12px, #0c131a 13px); position: relative; overflow: hidden; border: 1px solid var(--line); }
-.audio-eye-brush { position: absolute; top: 16px; height: 32px; border-radius: 5px; }
 .audio-meters { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-top: 24px; }
 .audio-meters > div { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr 32px; align-items: center; gap: 8px; }
 .audio-meters label { margin: 0; }
 .audio-meters meter { width: 100%; accent-color: var(--accent); }
 .audio-meters output { font: 11px 'JetBrains Mono', monospace; color: var(--accent); }
-.audio-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-.audio-range input { display: block; width: 100%; margin-top: 6px; padding: 7px 4px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 5px; }
 .audio-controller { border-top: 1px solid var(--line); margin-top: 18px; }
 .fader-endpoints { display: flex; justify-content: space-between; gap: 20px; }
 .fader-slot { min-width: 0; min-height: 160px; border: 1px solid #405362; border-radius: 10px; padding: 18px; background: #111c25; }
@@ -260,9 +256,14 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .fader-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 16px; }
 /* Live inputs remain compact enough for the editor sidebar. */
 .live-input-control { border-top: 1px solid var(--line, #29323b); padding: 12px 0; }
+.live-inputs > fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.live-input-control input[type=range] { width: 100%; accent-color: var(--accent); margin: 12px 0; }
+.live-input-control input[type=number], .live-input-control input[type=text] { display: block; width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 6px; background: #111c25; color: var(--text); }
 .live-input-heading, .live-input-actions { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
 .live-input-heading output { font-variant-numeric: tabular-nums; color: var(--muted, #9aa6b2); font-size: .85rem; }
 .live-input-actions > * { min-width: 0; flex: 1; }
+.live-input-actions { flex-wrap: wrap; }
+.live-input-actions > label { flex-basis: 140px; }
 .live-inputs details, .input-recipe { margin: 10px 0; }
 .live-inputs summary, .input-recipe summary { cursor: pointer; font-size: .85rem; }
 .input-recipe textarea { min-height: 7rem; font: .8rem/1.5 monospace; }
@@ -322,42 +323,18 @@ progress { width: 100%; height: 5px; accent-color: var(--accent); margin-top: 12
 .desk-footer { margin-top: 24px; border-top: 1px solid #34424c; padding-top: 18px; }
 .desk-footer > div { display: flex; gap: 8px; }
 .blackout-key { background: #0a1117; color: #c7d5df; }
-.audio-monitor { margin-bottom: 20px; }
-.audio-eye-strip { height: 64px; box-shadow: inset 0 0 25px #000; }
-.audio-console { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; }
-.audio-master { min-width: 0; }
-.audio-channels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #152029; border: 1px solid #3e4d58; border-radius: 10px; padding: 18px 0 0; box-shadow: 0 8px 24px #0003; min-width: 0; }
-.audio-channel { --channel: #6cddcf; min-width: 0; margin: 0; padding: 0 18px 16px; border: 0; border-right: 1px solid #34424c; }
-.channel-width { --channel: #9bbdff; }.channel-hue { --channel: #dca1ed; }.channel-brightness { --channel: #f1ce79; border-right: 0; }
-.audio-channel legend { width: 100%; color: var(--channel); font-size: 14px; font-weight: 600; padding: 0 0 16px; border-bottom: 3px solid var(--channel); }
-.audio-channel legend span { display: block; font: 10px 'JetBrains Mono', monospace; color: #7b919f; margin-bottom: 8px; }
-.audio-channel select { font-size: 12px; padding: 9px 6px; }
-.channel-readout { margin: 20px 0; display: flex; align-items: center; justify-content: space-between; }
-.channel-readout > span, .channel-meter-pair span { color: #8095a3; font: 9px 'JetBrains Mono', monospace; letter-spacing: 1px; }
-.channel-readout output { font: 19px 'JetBrains Mono', monospace; }
-.channel-readout small, .channel-output small { color: #879ca9; font-size: 10px; margin-left: 4px; }
-.audio-channel .audio-range { grid-template-columns: 1fr 1fr; gap: 8px; }
-.audio-channel .audio-range label { margin-top: 0; font-size: 10px; }
-.audio-channel .audio-range input { width: 100%; min-width: 0; padding: 9px 6px; font-family: 'JetBrains Mono', monospace; }
-.audio-channel .range-caption { color: #c1cdd5; margin: 14px 0 8px; font-size: 11px; }
-.channel-meter-pair { display: flex; gap: 18px; justify-content: center; margin: 20px 0 8px; }
-.channel-meter-pair > div { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.channel-meter-pair meter { writing-mode: vertical-lr; direction: rtl; width: 18px; height: 130px; }
-.channel-meter-pair meter::-webkit-meter-bar { background: #091219; border: 1px solid #35424c; border-radius: 3px; }
-.channel-meter-pair meter::-webkit-meter-optimum-value { background: repeating-linear-gradient(0deg, transparent 0 7px, #111a2088 7px 9px), linear-gradient(to top, var(--channel), #c4f46a); }
-.channel-output { display: block; text-align: center; font: 30px 'JetBrains Mono', monospace; color: var(--channel); }
+.audio-master { min-width: 0; margin-bottom: 20px; }
 .master-faders { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0 22px; border-bottom: 1px solid #34424c; margin-bottom: 18px; }
 .master-fader { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; }
 .master-fader label { font-size: 10px; }
 .vertical-fader { writing-mode: vertical-lr; direction: rtl; height: 170px; width: 28px; accent-color: #b6c9d5; }
 .master-fader output { font: 10px 'JetBrains Mono', monospace; color: #c2d2dd; }
-.audio-tuning-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 14px 0; }
 .audio-controller.card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 0; padding: 20px; }
 .audio-controller.card > .helper { width: 100%; margin: 0; }
 input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-@media (max-width: 1100px) { .workflow-steps { display: none; } .audio-console { grid-template-columns: 1fr; }.audio-master { display: block; }.master-faders { max-width: 360px; }.audio-master .audio-buttons { margin-top: 12px; } }
-@media (max-width: 760px) { .workspace-tabs a { font-size: 11px; gap: 6px; }.workspace-tabs a span { display: none; }.bus-grid, .desk-main, .preset-layout { grid-template-columns: 1fr; }.transition-module { border-left: 0; border-top: 1px solid #35434d; }.mixing-desk { padding: 14px; }.audio-channels { grid-template-columns: 1fr 1fr; row-gap: 26px; }.channel-width { border-right: 0; }.intro { align-items: start; }.desk-heading .badge { font-size: 8px; }.desk-label { font-size: 9px; }.crossfader-module, .transition-module { padding: 18px; }.transport-keys { grid-template-columns: 1fr 1fr; }.editor-workspace .sidebar { display: flex; }.fader-output { min-width: 120px; }.desk-footer { flex-wrap: wrap; } }
-@media (max-width: 400px) { .audio-channel { padding-left: 12px; padding-right: 12px; }.workspace-tabs a { font-size: 10px; padding-left: 5px; padding-right: 5px; }.desk-heading { flex-wrap: wrap; } }
+@media (max-width: 1100px) { .workflow-steps { display: none; } .audio-master { display: block; }.master-faders { max-width: 360px; }.audio-master .audio-buttons { margin-top: 12px; } }
+@media (max-width: 760px) { .workspace-tabs a { font-size: 11px; gap: 6px; }.workspace-tabs a span { display: none; }.bus-grid, .desk-main, .preset-layout { grid-template-columns: 1fr; }.transition-module { border-left: 0; border-top: 1px solid #35434d; }.mixing-desk { padding: 14px; }.intro { align-items: start; }.desk-heading .badge { font-size: 8px; }.desk-label { font-size: 9px; }.crossfader-module, .transition-module { padding: 18px; }.transport-keys { grid-template-columns: 1fr 1fr; }.editor-workspace .sidebar { display: flex; }.fader-output { min-width: 120px; }.desk-footer { flex-wrap: wrap; } }
+@media (max-width: 400px) { .workspace-tabs a { font-size: 10px; padding-left: 5px; padding-right: 5px; }.desk-heading { flex-wrap: wrap; } }
 .preset-layout input:not([type=checkbox]):not([type=range]), .transition-module > input { min-width: 0; padding: 10px; background: #111c25; color: var(--text); border: 1px solid var(--line); border-radius: 6px; }
 .transition-module > input { width: 100%; margin-bottom: 16px; }
 
@@ -377,3 +354,14 @@ input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid
 @media (max-width: 700px) { .block-workspace { height: 480px; } .editor-toolbar { align-items: flex-start; gap: 8px; flex-wrap: wrap; } }
 
 .blocks-tools { display: flex; gap: 10px; padding: 0 16px 12px; }
+
+.output-light { margin-bottom: 22px; }
+.output-light fieldset { border: 0; padding: 0; display: grid; grid-template-columns: auto minmax(160px, 1fr) auto; align-items: center; gap: 24px; }
+.output-light fieldset label { margin: 0; }
+.output-light input[type=range] { width: 100%; display: block; accent-color: var(--accent); }
+.output-light input[type=color] { display: block; width: 64px; height: 38px; }
+.output-light output { float: right; font-family: monospace; }
+.output-light .checkbox-label { display: flex; gap: 8px; align-items: center; }
+.audio-master .master-faders { max-width: 360px; }
+.audio-master .audio-meters > div { grid-template-columns: minmax(100px, 150px) minmax(0, 1fr) 36px; }
+@media (max-width: 520px) { .output-light fieldset { grid-template-columns: 1fr; gap: 18px; } }

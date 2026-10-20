@@ -15,7 +15,7 @@ static void composition_contract(void){
     unsigned allocation_count=allocations;
     deny_allocation=true;delayed_output=true;output_ready=false;output_failed=false;
     clock_now=20000;composition_tick(s,100);
-    CHECK(s->pending&&borrowed_output==s->front&&physical.rgb[0]==0);
+    CHECK(s->pending&&borrowed_output==physical.dimmed&&physical.rgb[0]==0);
     /* Finish several composites while the original front is borrowed. Every
        pixel must use the same committed layer generation across all slices. */
     for(unsigned n=0;n<12;n++){

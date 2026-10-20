@@ -4,9 +4,8 @@
     {
       "id": "background",
       "program": "color",
-      "settings": {
-        "color": 1056816,
-        "random_color": false
+      "inputs": {
+        "color": {"value": 1056816}
       }
     },
     {

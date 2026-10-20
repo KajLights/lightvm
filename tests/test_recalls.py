@@ -32,7 +32,7 @@ class RecallTests(unittest.TestCase):
             self.client.save_program(name, program)
         self.programs = {p['name']: p for p in self.client.programs(program_type='transition')}
         for name, color in [('red', 0xff0000), ('blue', 0x0000ff), ('green', 0x00ff00)]:
-            layers = [{'id': 'base', 'program': 'brush', 'crc32': zlib.crc32(self.brush), 'settings': {'color': color, 'random_color': False}}]
+            layers = [{'id': 'base', 'program': 'brush', 'crc32': zlib.crc32(self.brush), 'inputs': {'color': {'value': color}}}]
             self.client.save_preset(name, layers)
 
     def tearDown(self):
@@ -77,7 +77,7 @@ class RecallTests(unittest.TestCase):
         self.assertEqual(self.state()['revision'], revision)
 
     def test_first_recall_promotes_direct_playback_without_restarting_or_aliasing_generations(self):
-        self.client.activate('brush', output='lights', settings={'color': 0xff0000, 'random_color': False})
+        self.client.activate('brush', output='lights', inputs={'color': {'value': 0xff0000}})
         direct = self.client.program_state(output='lights')
         self.save_entry('blue', self.spec())
         self.client.recall_preset('blue', 'lights')

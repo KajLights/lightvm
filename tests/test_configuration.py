@@ -69,8 +69,10 @@ class ConfigurationTests(unittest.TestCase):
         changed["outputs"][0]["config"]["order"] = "BGR"
         self.client.configure(changed)
         fields = self.client.status_fields()
-        self.assertEqual((fields["pin"], fields["pixels"], fields["brightness"], fields["heap"]),
-                         ("18", "7", "0", "0"))
+        self.assertEqual((fields["pin"], fields["pixels"], fields["brightness"]), ("18", "7", "0"))
+        output_heap = fields["heap"]
+        self.client.command(RESET)
+        self.assertEqual(self.client.status_fields()["heap"], output_heap)
         self.assertEqual(self.client.get_config(), changed)
         self.assertEqual(self.client.command(5).code, 1)
         self.restart()
@@ -210,6 +212,7 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_repeated_activation_releases_memory(self):
         self.client.configure(config())
+        output_heap = self.client.status_fields()["heap"]
         data = sample("rainbow")
         self.client.save_program("p", data)
         live = None
@@ -220,7 +223,7 @@ class ConfigurationTests(unittest.TestCase):
                 live = heap
             self.assertEqual(heap, live)
         self.client.command(RESET)
-        self.assertEqual(self.client.status_fields()["heap"], "0")
+        self.assertEqual(self.client.status_fields()["heap"], output_heap)
 
     def test_corrupt_latest_snapshot_recovers_previous(self):
         one = color(1)

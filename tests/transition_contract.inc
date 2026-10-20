@@ -88,7 +88,7 @@ static void transition_contract(void){
     CHECK(transition_set(t,90));transition_tick(t,64);transition_tick(t,64);
     CHECK(t->prepared);
     for(unsigned n=0;n<67*3;n++)CHECK(t->working[n]==135);
-    transition_tick(t,64);CHECK(t->pending&&borrowed_output==t->front&&t->frames==0);
+    transition_tick(t,64);CHECK(t->pending&&borrowed_output==physical.dimmed&&t->frames==0);
     for(unsigned n=0;n<12;n++){CHECK(transition_set(t,n*5));transition_tick(t,64);CHECK(t->pending&&t->frames==0);}
     output_ready=true;t->command_active=true;transition_tick(t,64);t->command_active=false;CHECK(t->frames==1&&physical.rgb[0]==135);
     output_ready=false;transition_tick(t,64);transition_tick(t,64);transition_tick(t,64);transition_tick(t,64);

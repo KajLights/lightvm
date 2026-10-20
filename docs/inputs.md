@@ -1,7 +1,7 @@
 # Live inputs and wiring
 
 Programs declare the values they understand. Each running instance selects one
-driver per input: a constant, a timed ramp, or a named published signal. Updating
+driver per input: a constant, an output light control, a timed ramp, or a named published signal. Updating
 wiring preserves the running VM, its clock, sprites, arrays and random sequence.
 Frozen `setting(...)` declarations still control initialization and allocations.
 
@@ -9,7 +9,7 @@ Frozen `setting(...)` declarations still control initialization and allocations.
 
 1. Build/install the current firmware and open the matching editor.
 2. In Editor, select **eye.py · live inputs**, then **Preview on device**.
-3. In **Mixer → Live animation inputs**, drag position, width, hue and brightness. Dragging takes
+3. In **Mixer → Live animation inputs**, adjust position, width, colour and local intensity. Dragging takes
    manual control of that input. The other inputs retain their selected drivers.
 4. Restore position's default to resume its two-second eased bounce. The Timer
    controls can change its duration and select Once, Repeat or Bounce.
@@ -56,6 +56,56 @@ continuations and sprite callbacks retain it across yields. Publications and
 binding changes affect the next invocation. Rendering and source publication do
 not allocate; admission and wiring changes reserve bounded storage beforehand.
 
+## Output light controls
+
+Each physical animation output owns power, master brightness, selected RGB colour
+and preset. HA, the browser and API clients read and update this same state.
+Animations know only their input contract; source selection belongs in bindings.
+
+```python
+COLOR = Input("color", default=rgb(255, 255, 255), control="color")
+INTENSITY = Input("intensity", default=1.0, minimum=0.0, maximum=1.0)
+```
+
+`control="color"` requires RGB8. Optional `control="brightness"` requires a float
+input whose bounds contain 0–1. Both use output-relative, read-only values, without
+an external publisher slot or timeout. External publishers cannot claim `light.*`.
+A declaration chooses at most one default control or timer. Explicit preset wiring
+wins, then the declared control/timer, then the scalar default. No names are inferred.
+Declarations with control defaults require LightVM 1.1.0 and `light_controls: true`.
+
+Master brightness scales the completed RGB frame once, after layers and A/B.
+The physical `brightness_limit` remains separate. It works on paused retained
+frames, without changing generations, bindings or clocks. Do not bind a local
+intensity input to light brightness unless that additional behavior is intentional;
+it would otherwise dim twice. Use `music.level` for local musical intensity.
+Colour is opt-in: a background and an eye can follow different sources, while a
+rainbow can ignore selected colour entirely. Selecting another preset retains both
+controls. A/B instances resolve against the same hosting output, with independent
+invocation snapshots. Pixel snapshots show the scene before master dimming.
+
+Read `output_light_get` with an optional `output`. It returns `revision`,
+`composition_revision`, `power`, `brightness` (0–1), packed RGB `color`,
+`color_control` and nullable `preset`. Update any nonempty set of properties:
+
+```json
+{"op":"output_light_set","output":"lights","expected_revision":2,
+ "brightness":0.3,"color":16744576}
+```
+
+Power or preset changes also require `expected_composition_revision`. A preset
+without power implies ON. Colour and brightness alone do not turn on playback.
+All fields and any recall candidate validate before committing. Failures preserve
+the current state. Normal lamp edits do not restart the animation. Python clients
+provide `light_state` and `set_light`; JavaScript provides `lightState` and `setLight`.
+
+Light controls are latched. Under `restore_last`, power, preset, colour and
+brightness survive reboot. Control edits coalesce for 750 ms before writing flash;
+a power/preset recall persists the complete target immediately. A power loss inside
+the debounce interval may lose the last edit. `startup: off` and `startup: preset`
+start with white/100% controls. Runtime persistence/output failures are reported in
+`describe.outputs[].light_error`. Live source samples are never persisted.
+
 ## Drivers and recipes
 
 Default `Ramp` descriptions apply to float inputs and span 0..1. `duration` is
@@ -71,8 +121,8 @@ Each input binding selects exactly one of:
 {
   "position": {"driver": {"kind": "ramp", "duration": 3, "mode": "pingpong"}},
   "width": {"value": 0.15},
-  "hue": {"source": "controls.hue", "timeout_ms": 1000, "fallback": "default"},
-  "brightness": {"default": true}
+  "color": {"control": "color"},
+  "intensity": {"source": "music.level", "timeout_ms": 1000, "fallback": "default"}
 }
 ```
 
@@ -80,7 +130,7 @@ Omitted inputs retain their program defaults. A ramp binding optionally supplies
 `from`, `to`, `easing` and `restart`. Range endpoints default to 0 and 1. Replacing
 a ramp or changing its rate preserves the current value where it fits the new
 range; bounce rate changes preserve direction. `restart: true` begins at `from`.
-`default: true` restores the declared constant or restarts its default timer.
+`default: true` restores the declared light control, constant or default timer.
 Timers do not restart the animation itself.
 
 Source values must match the input's type and bounds. Numeric mappings allow
@@ -98,6 +148,19 @@ explicit range conversion, clamping and inversion:
 The input range must increase; output endpoints may descend and must fit the
 declared consumer domain. Integer mappings round to the nearest integer, with
 ties away from zero. No implicit colour or boolean conversion occurs.
+
+A numeric signal can explicitly drive RGB through a two-colour palette:
+
+```json
+{"color":{"source":"music.bass","palette":{
+  "input_min":0,"input_max":1,"from":17407,"to":16729088}}}
+```
+
+The source range clamps, then interpolates each RGB channel and rounds to the
+nearest byte. A binding chooses either `map` or `palette`; direct sources must
+match the destination type. Music publishes reusable `music.level`, `music.bass`,
+`music.mid`, `music.treble`, `music.centroid` and `music.onset` floats in 0–1.
+The [audio source guide](audio-source.md) explains acquisition and wiring.
 
 An absent or unusable source initially supplies the declared scalar default.
 After a valid sample, the last accepted value remains until `timeout_ms` expires
@@ -128,7 +191,7 @@ Update one or several bindings atomically:
 ```json
 {"op":"program_inputs","output":"lights","slot":"A","layer":"eye",
  "expected_generation":7,"expected_inputs_revision":2,
- "inputs":{"hue":{"value":0.5},"brightness":{"value":0.6}}}
+ "inputs":{"color":{"control":"color"},"intensity":{"value":0.6}}}
 ```
 
 The reply is the updated program state. Both generation and wiring revision must
@@ -179,5 +242,8 @@ and the scalar signal registry live in `src/inputs.[ch]`.
 Rainbow's old `duration` and `scale` initialization settings are removed. Set
 `inputs.phase.driver.duration` and `inputs.scale.value` instead. Recompile its
 source, save a new version and recreate affected experimental recipes. No
-migration or compatibility aliases are provided. Sweep's API and history remain
+migration or compatibility aliases are provided. Eye now uses full RGB `color` and
+local `intensity`; Color uses a live `color` instead of frozen `color`/`random_color`
+settings. Recreate those recipes and follow the [clean-install steps](architecture.md#clean-installation-after-experimental-changes)
+for the new persisted light state format. Sweep's API and history remain
 unchanged.

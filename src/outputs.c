@@ -180,7 +180,7 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
                 return failure(error,capacity,"home_assistant.presets: expected 1..16 unique preset names");
             for(int p=presets+1;p<j.tokens[presets].next;p=j.tokens[p].next){
                 char *name=d->ha_presets[d->ha_preset_count];
-                if(!json_string(&j,p,name,OBJECT_NAME_LIMIT+1)||(!object_name_valid(name)||!strcmp(name,"None")))
+                if(!json_string(&j,p,name,OBJECT_NAME_LIMIT+1)||!object_name_valid(name)||!strcmp(name,"off")||!strcmp(name,"Custom"))
                     return failure(error,capacity,"home_assistant.presets: invalid preset name");
                 for(unsigned n=0;n<d->ha_preset_count;n++)if(!strcmp(name,d->ha_presets[n]))
                     return failure(error,capacity,"home_assistant.presets: duplicate preset name");

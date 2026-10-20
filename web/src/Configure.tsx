@@ -113,18 +113,18 @@ function Hardware() {
           <select id={'ha-preset-' + index} value={output.home_assistant?.default_preset || ''} onChange={event => setOutput(index, item => { if (event.target.value) item.home_assistant = { ...item.home_assistant, default_preset: event.target.value, presets: Array.from(new Set([...(item.home_assistant?.presets || []), event.target.value])) }; else delete item.home_assistant; })}>
             <option value="">Do not expose this output</option>
             {output.home_assistant && !controller.presets.some(item => item.name === output.home_assistant?.default_preset) && <option value={output.home_assistant.default_preset}>{output.home_assistant.default_preset + ' (unavailable)'}</option>}
-            {controller.presets.map(preset => <option key={preset.name} value={preset.name} disabled={preset.name === 'None' || Boolean(output.home_assistant && output.home_assistant.presets.length >= 16 && !output.home_assistant.presets.includes(preset.name))}>{preset.name}</option>)}
+            {controller.presets.map(preset => <option key={preset.name} value={preset.name} disabled={['off', 'Custom'].includes(preset.name) || Boolean(output.home_assistant && output.home_assistant.presets.length >= 16 && !output.home_assistant.presets.includes(preset.name))}>{preset.name}</option>)}
           </select>
           {output.home_assistant && <><fieldset className="ha-presets"><legend>Home Assistant presets</legend>
             {Array.from(new Set([...controller.presets.map(preset => preset.name), ...output.home_assistant.presets])).map(name => <label className="checkbox-label" key={name}>
               <input type="checkbox" aria-label={'Expose preset ' + name} checked={output.home_assistant!.presets.includes(name)}
-                disabled={name === 'None' || name === output.home_assistant!.default_preset || (!output.home_assistant!.presets.includes(name) && output.home_assistant!.presets.length >= 16)}
+                disabled={['off', 'Custom'].includes(name) || name === output.home_assistant!.default_preset || (!output.home_assistant!.presets.includes(name) && output.home_assistant!.presets.length >= 16)}
                 onChange={event => setOutput(index, item => { if (item.home_assistant) item.home_assistant.presets = event.target.checked ? [...item.home_assistant.presets, name] : item.home_assistant.presets.filter(preset => preset !== name); })} />
               {name}{!controller.presets.some(preset => preset.name === name) ? ' (unavailable)' : ''}
             </label>)}
             <p className="helper">Choose up to 16 presets. The default is always included. Unavailable presets appear in HA after they are saved on this controller.</p>
           </fieldset><label htmlFor={'ha-name-' + index}>Home Assistant name</label><input id={'ha-name-' + index} value={output.home_assistant.name || ''} placeholder={output.id} onChange={event => setOutput(index, item => { if (item.home_assistant) { if (event.target.value) item.home_assistant.name = event.target.value; else delete item.home_assistant.name; } })} /></>}
-          <p className="helper">Each exposed output has an on/off light and a Preset selector. Selecting a preset starts it; ON recalls the last selected preset, or the default. OFF transitions to black. Enable MQTT in network settings.</p>
+          <p className="helper">Each exposed output has one light with power, brightness, colour and preset effects. Selecting an effect starts it; ON recalls the last selected preset, or the default. OFF transitions to black. Enable MQTT in network settings.</p>
         </>}
         </>}
         <button className="quiet small" onClick={() => removeOutput(index)}>Remove output</button>

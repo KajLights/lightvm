@@ -15,8 +15,8 @@ class InputCompiler:
     def input_declaration(self, target, call, node):
         if not isinstance(target, ast.Name) or target.id in self.imports or target.id in self.input_symbols or target.id in self.helpers or target.id in self.artwork or target.id in self.sprite_definitions:
             self.fail(node, 'Input needs a unique module-level name')
-        args = self.arguments(call, ('name', 'default', 'minimum', 'maximum', 'unit', 'driver'),
-                              {'default': 0.0, 'minimum': None, 'maximum': None, 'unit': '', 'driver': None})
+        args = self.arguments(call, ('name', 'default', 'minimum', 'maximum', 'unit', 'driver', 'control'),
+                              {'default': 0.0, 'minimum': None, 'maximum': None, 'unit': '', 'driver': None, 'control': None})
         try:
             name = ast.literal_eval(args['name'])
             unit = ast.literal_eval(args['unit'])
@@ -54,8 +54,17 @@ class InputCompiler:
             if not math.isfinite(item[key]): self.fail(node, 'input bound must fit binary32')
         if value < item.get('minimum', value) or value > item.get('maximum', value):
             self.fail(node, 'input default is outside its bounds')
+        try: control = ast.literal_eval(args['control'])
+        except (ValueError, TypeError): self.fail(node, 'input control must be a literal')
+        if control is not None:
+            if not ((control == 'color' and typ == C) or
+                    (control == 'brightness' and typ == F and item.get('minimum', 0) <= 0 and item.get('maximum', 1) >= 1)):
+                self.fail(node, 'light control must match the input type and bounds')
+            item['control'] = control
         driver = args['driver']
         if not (isinstance(driver, ast.Constant) and driver.value is None):
+            if control is not None:
+                self.fail(node, 'choose one default control or timer')
             if typ != F or not isinstance(driver, ast.Call) or self.imports.get(getattr(driver.func, 'id', '')) != 'Ramp':
                 self.fail(node, 'default input drivers must be Ramp descriptions on float inputs')
             params = self.arguments(driver, ('duration', 'mode', 'easing'), {'mode': 'once', 'easing': 'linear'})

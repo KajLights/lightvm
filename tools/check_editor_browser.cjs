@@ -216,12 +216,25 @@ async function grantLocalNetwork(cdp, page, origin) {
     await page.locator('#upload').click(); await page.getByText('Preview sent to lights.').waitFor();
     await tab('Mixer').click(); await page.getByText('Active transition: _preview_transition', { exact: true }).waitFor();
     console.log('Transition scratch preview runs against the prepared A/B buses: passed');
+    const lightUpdate = waitForCommand('output_light_set');
+    await page.getByLabel('Light brightness', { exact: true }).fill('0.3'); await lightUpdate;
+    await tab('Editor').click(); await page.getByLabel('Load example').selectOption('eye'); await ready();
+    await page.locator('#upload').click(); await page.getByText('Preview sent to lights.').waitFor();
+    await tab('Mixer').click();
+    await page.getByText('Live animation inputs', { exact: true }).click();
+    const liveInputs = page.getByRole('region', { name: 'Live animation inputs', exact: true });
+    await liveInputs.getByLabel('color driver', { exact: true }).waitFor();
+    assert.equal(await liveInputs.getByLabel('color driver', { exact: true }).inputValue(), 'control:color');
+    const musicBinding = waitForCommand('program_inputs');
+    await liveInputs.getByLabel('intensity driver', { exact: true }).selectOption('music.level'); await musicBinding;
+    await page.screenshot({ path: path.join(root, 'build/light-controls-desktop.png'), fullPage: true });
+    console.log('Standard light dimmer, automatic colour binding and generic music selection: passed');
 
     for (const name of ['Editor', 'Configuration', 'Mixer', 'Audio Playground']) {
       await tab(name).click();
       if (name === 'Audio Playground') {
-        await page.getByLabel('brightness input minimum', { exact: true }).fill('40');
-        await page.getByLabel('brightness input maximum', { exact: true }).fill('60');
+        await page.getByLabel('Sensitivity', { exact: true }).fill('12');
+        assert.equal(await page.getByRole('button', { name: 'Send music to controller', exact: true }).isDisabled(), true);
         await page.screenshot({ path: path.join(root, 'build/audio-playground-desktop.png'), fullPage: true });
       }
       await page.setViewportSize({ width: 390, height: 844 });
@@ -264,8 +277,7 @@ async function grantLocalNetwork(cdp, page, origin) {
     await page.locator('#network-save').click();
     await page.waitForFunction(() => document.querySelector('#activity')?.textContent.includes('Network settings saved') && !document.querySelector('#network-fields')?.disabled);
     await tab('Mixer').click(); await tab('Audio Playground').click();
-    assert.equal(await page.getByLabel('brightness input minimum', { exact: true }).inputValue(), '40');
-    assert.equal(await page.getByLabel('brightness input maximum', { exact: true }).inputValue(), '60');
+    assert.equal(await page.getByLabel('Sensitivity', { exact: true }).inputValue(), '12');
     await page.getByRole('link', { name: 'Firmware', exact: true }).click();
     await page.getByRole('heading', { name: 'Firmware installation' }).waitFor();
     await page.goBack();

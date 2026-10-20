@@ -25,6 +25,7 @@ class MultiOutputTests(unittest.TestCase):
     def setUp(self):
         self.client = Client(ProcessTransport(os.environ.get('LIGHTVM_RECEIVER', ROOT / 'build/host/lightvm')))
         self.client.configure(configuration())
+        self.output_heap = self.client.status_fields()['heap']
         self.effects = {}
         for name in ('rainbow', 'color', 'pattern', 'rainbow_sprite', 'sweep', 'stars'):
             result = compile_source((ROOT / 'examples/animations' / f'{name}.py').read_text())
@@ -67,13 +68,13 @@ class MultiOutputTests(unittest.TestCase):
         time.sleep(.04)
         self.assertGreater(self.client.program_state(output='lights1')['program_us'], paused)
         a_generation = self.client.program_state()['generation']
-        self.client.reset_program(settings={'random_color': False, 'color': 0x123456}, output='lights1')
+        self.client.set_light(color=0x123456, output='lights1')
         self.client.require_ok(self.client.command(FRAME, bytes(4), output='lights1'))
         self.assertEqual(bytes(self.client.pixel_snapshot), bytes.fromhex('123456') * 17)
         self.assertEqual(self.client.program_state()['generation'], a_generation)
         for slot in [f'lights{i}' for i in range(6)]:
             self.client.require_ok(self.client.command(RESET, output=slot))
-        self.assertEqual(self.client.status_fields()['heap'], '0')
+        self.assertEqual(self.client.status_fields()['heap'], self.output_heap)
 
     def test_adding_and_removing_devices_preserves_existing_playback(self):
         self.client.configure(configuration(1))
@@ -99,7 +100,7 @@ class MultiOutputTests(unittest.TestCase):
         before = self.client.program_state()
         data = self.effects['stars']
         self.client.require_ok(self.client.command(BEGIN, struct.pack('<II', len(data), zlib.crc32(data)) + b'lights2'))
-        self.client.reset_program(settings={'random_color': False}, output='lights1')
+        self.client.reset_program(inputs={'color': {'value': 0xffffff}}, output='lights1')
         for offset in range(0, len(data), 508):
             self.client.require_ok(self.client.command(CHUNK, struct.pack('<I', offset) + data[offset:offset+508]))
             time.sleep(.004)

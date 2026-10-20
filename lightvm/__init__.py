@@ -55,7 +55,7 @@ class SpriteBatch:
 
 class Input:
     """Static typed live-input declaration, read with runtime.input(handle)."""
-    def __init__(self, name, *, default=0.0, minimum=None, maximum=None, unit="", driver=None):
+    def __init__(self, name, *, default=0.0, minimum=None, maximum=None, unit="", driver=None, control=None):
         raise RuntimeError("Input is provided by the compiled native runtime")
 
 

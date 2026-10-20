@@ -278,6 +278,14 @@ export class LightVMClient {
     return this.manage('output_power', { output, name, action: on ? 'on' : 'off', expected_revision: state.revision });
   }
 
+  async lightState(output) { return this.json('output_light_get', { output }); }
+
+  async setLight(values, output) {
+    const state = await this.lightState(output);
+    return this.json('output_light_set', { output, expected_revision: state.revision,
+      ...(('power' in values || 'preset' in values) ? { expected_composition_revision: state.composition_revision } : {}), ...values });
+  }
+
   async swapTransition(output) {
     const state = await this.transition(output);
     return this.json('transition_swap', { output, expected_revision: state.revision });

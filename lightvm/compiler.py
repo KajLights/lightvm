@@ -40,6 +40,8 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
                 raise CompileError('target requires Python transition support')
             if manifest.get('inputs') and not target.get('live_inputs'):
                 raise CompileError('target requires live input support')
+            if any('control' in port for port in manifest.get('inputs', [])) and not target.get('light_controls'):
+                raise CompileError('target requires output light controls')
             if len(bytecode) > target.get("module_limit", 32768):
                 raise CompileError("artifact exceeds target module limit")
             error = release_error(target.get('version'), manifest['requires'])

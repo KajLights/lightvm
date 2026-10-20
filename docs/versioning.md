@@ -49,9 +49,9 @@ def draw(ctx, runtime, pixels):
 ```
 
 The compiler normalizes `requires("1.2")` to `1.2.0`. One optional top-level
-`requires(...)` declaration is accepted. Omitting it currently selects `1.0.0`,
-the release that introduced all currently supported features. Requirements below
-that floor or in another major are rejected. A declaration may request a future
+`requires(...)` declaration is accepted. Omitting it selects the source's feature
+floor: `1.1.0` for an `Input(..., control=...)` declaration, otherwise `1.0.0`.
+Requirements below that floor or in another major are rejected. A declaration may request a future
 minor release; it prevents execution on older firmware even when the source uses
 only baseline operations.
 

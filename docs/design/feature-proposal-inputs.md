@@ -17,10 +17,18 @@ Implemented scalar core, 18 October 2026: static Input declarations, typed rende
 snapshots inherited by sprites, constant/timed/source bindings, generation-checked
 atomic publication, persisted invocation recipes, native progress bindings and
 editor controls. Rainbow exposes phase and scale; the new Eye exposes position,
-width, hue and brightness. Sweep retains its existing history and settings.
+width, colour and local intensity. Sweep retains its existing history and settings.
 The separate native TCA9555 adapter supplies debounced tap, multi-press and hold events for
 MQTT HA event entities, paired with APA102 RGB indicators; see [keypad setup](../mqtt.md#keypad-and-rgb-indicators).
 Other hardware adapters, conditioning, guest events and streams remain proposed.
+
+Implemented light controls, 20 October 2026: each output owns latched power,
+master brightness and full RGB colour. Typed output-relative control bindings
+and author defaults connect them to animation inputs; master dimming runs once
+after composition/A/B. HA exposes one JSON light with preset effects. The browser
+publishes generic music features, and presets choose numeric response ranges or
+RGB palettes. See [light controls](../inputs.md#output-light-controls) and
+[music sources](../audio-source.md) for the current contract and clean-install notes.
 
 ## Recommendation
 

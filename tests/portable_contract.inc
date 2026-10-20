@@ -89,7 +89,7 @@ static void portable_contract(void){
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(reply.code==STATUS_OK);
     delayed_output=true;output_ready=false;output_failed=false;clock_now+=20000;
     uint32_t output_frame=vm.control.output_frame;vm_tick(&vm);
-    CHECK(vm.output_pending&&vm.view.sealed&&borrowed_output==vm.control.presentation);
+    CHECK(vm.output_pending&&vm.view.sealed&&borrowed_output==physical.dimmed);
     CHECK(vm.portable->render_count==2);
     CHECK(vm.control.output_frame==output_frame&&displayed[0]==1);
     uint64_t ticks=vm.portable->render_count;

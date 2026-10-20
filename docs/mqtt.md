@@ -2,7 +2,7 @@
 
 LightVM connects to an existing MQTT broker shared with Home Assistant. MQTT is
 an optional control path alongside HTTP, WebSocket and USB/serial. Each exposed
-output has **one on/off light and one Preset selector**, grouped under its
+output has **one light with power, brightness, colour and preset effects**, grouped under its
 controller's HA device. A preset recalls a complete composition, including its
 animation versions, layer settings, opacity and blending. A one-layer composition
 works exactly the same way. Composition editing stays in LightVM.
@@ -36,7 +36,7 @@ that boot and retains the saved broker settings.
 1. Save the desired animation programs and the presets to the controller through the
    existing editor or CLI. A preset can contain one animation or a layered composition.
 2. Under **Configure → Output & startup**, choose **Home Assistant default preset**
-   for each output to expose, then check the presets to include in its selector.
+   for each output to expose, then check the presets to include in its effect list.
    Optionally set its Home Assistant display name.
    Apply in RAM to try it, or apply and save for reboot.
 3. Under the network settings, enable MQTT and enter the broker hostname or IPv4 address,
@@ -46,8 +46,8 @@ that boot and retains the saved broker settings.
 
 There can be up to eight exposed outputs. Outputs without `home_assistant` stay
 out of discovery and ignore MQTT commands. Names default to the output ID.
-Changing the display name or assigned preset preserves both entities' unique IDs;
-changing the output ID creates new entities.
+Changing the display name or assigned preset preserves the light's unique ID;
+changing the output ID creates a new entity.
 
 The same settings are available in JSON. Add this optional object to each
 physical output in `lightvm.config` (see `examples/config/mqtt-lights.json`):
@@ -62,8 +62,7 @@ physical output in `lightvm.config` (see `examples/config/mqtt-lights.json`):
 
 `presets` is a required list of 1–16 unique preset names for that output.
 `default_preset` must appear in it. Names contain 1–32 letters, digits, dots,
-underscores or hyphens. The name `None` is reserved by HA for unknown select state
-and cannot be exposed. `name` accepts 1–64 UTF-8 bytes. These limits also remain
+underscores or hyphens. The names `off` and `Custom` are reserved and cannot be exposed. `name` accepts 1–64 UTF-8 bytes. These limits also remain
 subject to the controller's configuration size and JSON token budget.
 
 Only presets currently stored on the controller appear in HA's options. Saving,
@@ -121,40 +120,55 @@ Host and ESP32 use their system resolver on a bounded background worker, so DNS
 does not block playback. Cancelled or timed-out lookups cannot connect to an old
 broker after settings change. A failed lookup follows the MQTT reconnect policy.
 It is intended for the trusted LAN. TLS, MQTT 5 properties, QoS2,
-custom discovery prefixes, brightness, colour and additional channels are outside
-this iteration. Home Assistant and LightVM may use different supported protocol
+custom discovery prefixes and additional channels are outside this iteration. Home Assistant and LightVM may use different supported protocol
 versions on the same broker.
 
-## Topics and power behavior
+## Topics and light behavior
 
 `controller_id` comes from `describe`. `output_id` is the output’s `id`.
 
 | Topic | Payload / behavior |
 | --- | --- |
-| `homeassistant/lightvm/<controller_id>/<output_id>/set` | Exact `ON` or `OFF`; publish without retain. |
-| `homeassistant/lightvm/<controller_id>/<output_id>/preset/set` | Preset name from this output’s list; starts it, without retain. |
-| `homeassistant/lightvm/<controller_id>/<output_id>/preset/state` | Retained preset name, or `None` for unknown. |
-| `homeassistant/lightvm/<controller_id>/<output_id>/state` | Retained accepted power target, `ON` or `OFF`; rendering may continue during a fade. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/set` | JSON light command; publish without retain. |
+| `homeassistant/lightvm/<controller_id>/<output_id>/state` | Retained JSON accepted light state. |
 | `homeassistant/lightvm/<controller_id>/availability` | Retained `online`; retained Last Will `offline`. |
-| `homeassistant/light/<controller_id>/<hex_output_id>/config` | Retained MQTT light discovery document. |
-| `homeassistant/select/<controller_id>/<hex_output_id>_preset/config` | Retained MQTT Select discovery document. |
-| `homeassistant/status` | HA's `online` birth message triggers discovery/state/availability refresh. |
+| `homeassistant/light/<controller_id>/<hex_output_id>/config` | Retained MQTT JSON light discovery. |
+| `homeassistant/status` | HA's `online` birth triggers discovery/state/availability refresh. |
 
 All binding topics use the default `homeassistant/` namespace. Allow the controller
-account to read and write `homeassistant/#` on brokers with topic ACLs. Home
-Assistant learns command, state and availability topics from discovery; no manual
-entity YAML or topic configuration is needed.
+account to read and write `homeassistant/#` on brokers with topic ACLs. HA learns
+all topics from discovery; no manual entity YAML is needed. Discovery encodes the
+output ID as lowercase UTF-8 hex (for example `desk` becomes `6465736b`). The light
+keeps its stable unique ID and belongs to its controller's HA device.
 
-Discovery encodes the output ID as lowercase UTF-8 hex to satisfy HA's topic
-identifier restrictions without collisions (for example `desk` becomes
-`6465736b`). State and command topics use the original ID. Every light has a
-stable unique ID and all outputs are grouped under one device representing the controller in HA.
-Discovery uses HA's default light schema, advertises only power control, supplies
-a state topic and explicitly disables retained commands. See the official
-[MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
-and [MQTT light](https://www.home-assistant.io/integrations/light.mqtt/) contracts.
-The accompanying [MQTT Select](https://www.home-assistant.io/integrations/select.mqtt/)
-entity is named `<output name> Preset` and reports confirmed state.
+A command can contain any combination of `state` (`ON` or `OFF`), `brightness`
+(0–255), `color` (complete integer `r`, `g`, `b` channels in 0–255) and `effect`
+(an exposed preset name). Optional `color_mode` must be `rgb`. Unknown fields and
+invalid values reject the entire command before changing controls or playback.
+Retained commands are ignored. Discovery disables HA flash and transition commands;
+preset entry transitions supply the transition behavior.
+
+```json
+{"state":"ON","effect":"eye","brightness":128,"color":{"r":255,"g":128,"b":192}}
+```
+
+Brightness is the output master dimmer, applied once after composition and A/B
+mixing, before the configured hardware brightness limit. Music can independently
+drive an animation's local intensity. Colour is a latched full RGB selection,
+consumed only by inputs bound to `{"control":"color"}`. Commands without state
+or effect update controls without turning an off light on. Brightness zero means
+OFF in the HA adapter, preserving the previous dimmer level for the next ON.
+
+State reports the accepted power, master brightness, selected RGB and current
+`effect`. `Custom` identifies an edited, private or unidentified composition.
+`color_mode` is `rgb` when a visible animation follows light colour; otherwise it
+is `brightness`, as permitted for active effects. Colour remains stored for a
+later colour-following preset. Audio fluctuations do not become HA light state;
+a black musical frame remains logically on. Pausing retains the light and allows
+master dimming without advancing animation time.
+
+See HA's [MQTT JSON light contract](https://www.home-assistant.io/integrations/light.mqtt/#json-schema)
+and [effect colour modes](https://developers.home-assistant.io/docs/core/entity/light/#color-mode-while-an-effect-runs).
 
 Selecting a preset invokes the application's recall operation: it completes the
 previous destination, moves it into A if necessary, prepares the new preset in B,
@@ -178,18 +192,19 @@ Recall publishes the accepted preset and logical power target even while the
 physical transition is running. OFF does not mean the rendering engine has stopped.
 Manual A/B controls keep fixed slots and release recall ownership. An intermediate
 manual mix, edited layers, unsaved compositions or changed/deleted recipe versions
-report unknown preset state; an endpoint can identify its unmodified preset.
+report the `Custom` effect; an endpoint can identify its unmodified preset.
 `describe.outputs[].preset` remains the actual visible endpoint identity, while
 `selected_preset` and `transition_get.recall` expose the recall selection separately.
 
 For example, turn on an output and recall a preset in HA:
 
 ```yaml
-- action: select.select_option
+- action: light.turn_on
   target:
-    entity_id: select.desk_lamp_preset
+    entity_id: light.desk_lamp
   data:
-    option: stars
+    effect: stars
+    brightness_pct: 30
 ```
 
 Commands with a retained flag, unknown outputs and unsupported payloads are
@@ -234,8 +249,7 @@ supports the peripherals over USB, but standalone MQTT needs Pico W networking.
 
 HA discovers **one controller device**, containing sixteen button event entities,
 sixteen RGB light entities and sixteen **Press feedback** configuration switches.
-Existing HA output lights and preset selectors
-also belong to that same controller device. The RGB lights support on/off,
+Existing HA output lights also belong to that same controller device. The RGB lights support on/off,
 brightness, RGB colour and effects through the MQTT JSON light schema; transition
 and flash are disabled in discovery. HA automations decide what the gesture does
 and what the indicator should display. Optional local press feedback temporarily

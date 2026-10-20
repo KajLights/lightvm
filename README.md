@@ -84,7 +84,7 @@ Each effect has one source in `examples/animations/`, shared by the editor, buil
 current animation tests. `examples/animations/rainbow.py` is the picolights gradient with a
 60-second default cycle. Its live phase input selects a timer, while spatial scale
 is another live input. The separate [Eye](examples/animations/eye.py) demo exposes
-position, width, hue and brightness. Preview it and use the editor's **Live inputs**
+position, width, full RGB colour and local intensity. Preview it and use the editor's **Live inputs**
 panel to try these controls without restarting the sprite. See [inputs](docs/inputs.md)
 for recipes and the management API.
 
@@ -115,7 +115,7 @@ candidate and retains the old instance on failure. Startup resolves the current
 definition of its configured or remembered preset; saving a replacement changes
 what runs on the next boot. Root-level `targets` and `startup` are unsupported.
 
-The application version comes from `lightvm/release.json`, initially `1.0.0`.
+The application version comes from `lightvm/release.json`, currently `1.1.0`.
 A program's `requires` field is its minimum release within that major: `1` means
 1.0.0 and `1.2` means 1.2.0. Later compatible firmware accepts it without exact
 compiler/schema matching. Unsupported requirements fail before replacing the
@@ -183,7 +183,7 @@ integration. Configuration manages device presets, outputs, Wi-Fi and MQTT. Mixe
 cues presets on A/B buses with transition selection, manual mixing, cuts, timed fades
 and swaps. Audio Playground tunes signal input windows and output ranges.
 [MQTT control and Home Assistant lights](docs/mqtt.md) provide optional power and preset selection
-through an existing broker, with one light and one Preset selector per output.
+through an existing broker, with one light exposing power, master brightness, colour and preset effects per output.
 Pico W also supports the [Pico RGB Keypad](docs/mqtt.md#keypad-and-rgb-indicators):
 sixteen HA/Matter-style button event inputs (tap, multi-press and hold) and sixteen
 independently controlled RGB indicators,
@@ -234,6 +234,6 @@ and `licenses/`; distribute these with firmware.
 The current vocabulary and breaking API names are defined in
 [Controller concepts](docs/architecture.md#controller-concepts). Earlier
 experimental installs require the documented
-[clean installation](docs/architecture.md#clean-installation-after-the-naming-change).
+[clean installation](docs/architecture.md#clean-installation-after-experimental-changes).
 
 See [JavaScript and blocks](docs/javascript-and-blocks.md) for the editor modes, language contracts and visual toolbox.

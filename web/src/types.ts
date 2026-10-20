@@ -16,7 +16,7 @@ export interface Description {
   largest_free_bytes?: number; storage_allocation_unit?: number;
   boot_sequence_supported?: boolean;
   recovery_supported?: boolean;
-  live_inputs?: boolean; input_limit?: number; input_source_limit?: number;
+  live_inputs?: boolean; light_controls?: boolean; input_limit?: number; input_source_limit?: number;
   boot_sequence?: { count: number; triggered: boolean; error: string };
 }
 export interface TransitionSpec {
@@ -38,9 +38,11 @@ export interface NetworkStatus { mqtt_connected?: boolean; mqtt_error?: string; 
 export interface Program { name: string; size: number; crc32: number; type?: 'animation' | 'transition'; profile?: 'animation' | 'transition' }
 export interface Setting { name: string; type: 'int' | 'float' | 'bool' | 'rgb8'; minimum?: number; maximum?: number }
 export interface RampDriver { kind: 'ramp'; duration: number; mode: 'once' | 'repeat' | 'pingpong'; easing?: 'linear' | 'smoothstep'; from?: number; to?: number; restart?: boolean }
-export type InputBinding = { value: number | boolean } | { driver: RampDriver } | { source: string; timeout_ms?: number; fallback?: 'default' | 'hold'; map?: { input_min: number; input_max: number; output_min: number; output_max: number } } | { default: true };
+export type LightControl = 'color' | 'brightness';
+export interface OutputLightState { revision: number; composition_revision: number; power: boolean; brightness: number; color: number; color_control: boolean; preset: string | null }
+export type InputBinding = { value: number | boolean } | { driver: RampDriver } | { control: LightControl } | { source: string; timeout_ms?: number; fallback?: 'default' | 'hold'; map?: { input_min: number; input_max: number; output_min: number; output_max: number }; palette?: { input_min: number; input_max: number; from: number; to: number } } | { default: true };
 export type InputBindings = Record<string, InputBinding>;
-export interface InputDeclaration extends Setting { default: number | boolean; unit?: string; driver?: RampDriver }
+export interface InputDeclaration extends Setting { default: number | boolean; unit?: string; driver?: RampDriver; control?: LightControl }
 export interface InputState { value: number | boolean; fallback: boolean; binding: InputBinding }
 export interface InputSource { name: string; type: Setting['type']; valid: boolean; value: number | boolean | null; age_ms: number | null }
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[]; inputs?: InputDeclaration[] }

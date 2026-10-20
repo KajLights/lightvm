@@ -96,18 +96,21 @@ Fader updates use `desktop.fader` and its assignment token, at most every 33 ms,
 with one request in flight and only the latest pending position. Another client's
 assignment releases control without automatically reclaiming it.
 
+Mixer also provides standard **Light** controls. Brightness dims the entire
+output, including music and paused frames. Colour is retained even if the current
+animation does not follow it. Live inputs and saved recipes provide **What controls
+this?** choices for light colour, fixed values, timers, music and named sources;
+JSON remains available under Advanced.
+
 ## Audio Playground
 
-The audio desk has master sensitivity/noise-floor/release faders and four response
-channel strips. Each selects a signal, input Low/High window and output From/To
-range, with input, normalized and output metering. Input is clamped and rescaled
-before output mapping: a 40–60% input window makes 40% become 0%, 50% become 50%
-and 60% become 100%. Invert swaps the output ends.
-
-The local Eye monitor works without a controller. **Drive running Eye** connects
-the tuned values to a running `eye.py` instance. Capture stops when leaving the tab;
-tuning remains in memory across workspace navigation. See the
-[audio guide](audio-eye-demo.md) for microphone requirements and lifecycle details.
+The audio desk shows six generic music meters and sensitivity/noise-floor/release
+controls. **Start listening** analyzes locally; **Send music to controller**
+publishes reusable signals. Choose Music → Level, Bass, etc. in each animation's
+**What controls this?** selector, with response ranges or a colour palette.
+The adapter does not change animation bindings. Stopping uses each input's fallback.
+Listening continues across workspace routes with a visible stop control and stops
+when the browser tab is hidden. See the [audio guide](audio-source.md).
 
 ## Connections
 
@@ -229,5 +232,5 @@ storage and retain source/configuration backups across contract cutovers.
 Under **Configuration → Output & startup**, choose **Home Assistant default preset**
 to expose that output. Check its **Home Assistant presets** and optionally set a
 name. Apply in RAM or save the configuration for reboot. Enable MQTT separately
-in **Wi-Fi, HTTP & MQTT**. Each exposed output appears in HA as an on/off light
-and a Preset selector; selecting a preset starts its complete composition.
+in **Wi-Fi, HTTP & MQTT**. Each exposed output appears in HA as one light
+with power, master brightness, colour and preset effects; selecting an effect starts its complete composition.

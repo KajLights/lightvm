@@ -16,7 +16,7 @@ different receivers can retain different baseline offsets. Precise clock
 synchronization, two-way timing exchanges and compensation for that baseline
 delay are outside the first implementation.
 
-The existing [browser audio demo](../audio-eye-demo.md) and
+The existing [browser audio demo](../audio-source.md) and
 [live-input core](../inputs.md) provide the feature semantics and consumer model.
 Microcontroller capture, multicast publication, clock tracking and buffered
 reception are new native components proposed here.

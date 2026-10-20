@@ -25,6 +25,10 @@ export function inputsFor(manifest: Manifest, bindings: InputBindings): InputBin
     const keys = Object.keys(binding);
     if ('value' in binding) { if (keys.length !== 1) throw new Error('Use one driver for ' + name + '.'); validateSetting(declaration, binding.value); }
     else if ('default' in binding) { if (keys.length !== 1 || binding.default !== true) throw new Error('default must be true.'); }
+    else if ('control' in binding) {
+      if (keys.length !== 1 || !((binding.control === 'color' && declaration.type === 'rgb8') ||
+        (binding.control === 'brightness' && declaration.type === 'float' && (declaration.minimum ?? 0) <= 0 && (declaration.maximum ?? 1) >= 1))) throw new Error('Light control does not match ' + name + '.');
+    }
     else if ('driver' in binding) {
       const driver = binding.driver;
       if (keys.length !== 1 || declaration.type !== 'float' || !driver || driver.kind !== 'ramp' || !Number.isFinite(driver.duration) || driver.duration <= 0 || driver.duration > 1e9 ||
@@ -32,9 +36,16 @@ export function inputsFor(manifest: Manifest, bindings: InputBindings): InputBin
         (driver.restart !== undefined && typeof driver.restart !== 'boolean') || Object.keys(driver).some(key => !['kind','duration','mode','easing','from','to','restart'].includes(key))) throw new Error('Invalid timer for ' + name + '.');
       validateSetting(declaration, driver.from ?? 0); validateSetting(declaration, driver.to ?? 1);
     } else if ('source' in binding) {
-      if (!/^[A-Za-z0-9_.-]{1,32}$/.test(binding.source) || keys.some(key => !['source','timeout_ms','fallback','map'].includes(key)) ||
+      if (!/^[A-Za-z0-9_.-]{1,32}$/.test(binding.source) || keys.some(key => !['source','timeout_ms','fallback','map','palette'].includes(key)) ||
         (binding.timeout_ms !== undefined && (!Number.isInteger(binding.timeout_ms) || binding.timeout_ms < 0 || binding.timeout_ms > 0xffffffff)) ||
         (binding.fallback !== undefined && !['default','hold'].includes(binding.fallback))) throw new Error('Invalid source binding for ' + name + '.');
+      if (binding.palette !== undefined) {
+        const palette = binding.palette;
+        if (binding.map || declaration.type !== 'rgb8' || !palette || Object.keys(palette).length !== 4 ||
+          ![palette.input_min,palette.input_max,palette.from,palette.to].every(value => typeof value === 'number' && Number.isFinite(value)) ||
+          palette.input_min >= palette.input_max) throw new Error('Invalid colour palette for ' + name + '.');
+        validateSetting(declaration, palette.from); validateSetting(declaration, palette.to);
+      }
       if (binding.map !== undefined) {
         const map = binding.map;
         if (!['int','float'].includes(declaration.type) || !map || Object.keys(map).length !== 4 ||

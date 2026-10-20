@@ -4,6 +4,7 @@ import type { LightVMClient } from '../protocol.mjs';
 import { useRuntime } from './runtime';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
 import { type SettingsValues } from './program';
+import { OutputLight } from './OutputLight';
 import { LiveInputs } from './LiveInputs';
 import { FADER_SOURCE, TransitionFaderInput } from './transition-fader';
 import { TransitionProgram } from './TransitionProgram';
@@ -125,6 +126,7 @@ export function Fader() {
     <div className="intro"><div><p className="eyebrow">03 / MIXER</p><h1>Take the controls.</h1><p>Cue a preset. Choose a transition. Make your next move.</p></div>
       <div className="fader-output"><label htmlFor="fader-output">Output</label><select id="fader-output" value={output ?? ''} disabled={Boolean(operation) || !controller.selectedPath} onChange={event => void controllers.selectOutput(event.target.value)}>
         {!output && <option value="">Choose an output</option>}{controller.config?.outputs.filter(item => item.mode !== 'indicators').map(item => <option key={item.id}>{item.id}</option>)}</select></div></div>
+    <OutputLight />
     {!supported ? <section className="card"><p>{controller.description ? 'This controller needs A/B transition firmware to use the Mixer.' : 'Connect a device to cue presets and mix your lights.'}</p><Link to="/controllers">Connect a device →</Link></section> : <>
       <div className="mixing-desk">
         <div className="desk-heading"><span className="desk-label">LIGHTVM / PERFORMANCE DESK</span><span className={'badge ' + (controller.selectedPath ? 'ready' : '')}><span className="status-dot" />{controller.selectedPath ? 'LIVE CONTROL' : 'DISCONNECTED'}</span></div>

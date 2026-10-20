@@ -137,13 +137,13 @@ const char *control_reset_program(VmInstance *a,const Json *request,int settings
         a->playing=false;output_attempted=true;
         vm_output_cancel(a);
         PixelBuffer *output=candidate->output;const uint8_t *frame=control_output_frame(candidate);
-        bool shown=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&output->type->show(output->driver,frame,output->count);
+        bool shown=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&pixels_show_frame(output,frame,output->count);
         control_presented(candidate,shown);
         if(shown){memcpy(output->rgb,frame,(size_t)output->count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
     }
     if(error){
         if(output_attempted&&a->output&&a->control.output_valid)
-            (void)a->output->type->show(a->output->driver,a->output->rgb,a->output->count);
+            (void)pixels_show_frame(a->output,a->output->rgb,a->output->count);
         a->playing=was_playing;control_destroy(candidate);demo_free(candidate);return error;
     }
     bool playing=was_playing;

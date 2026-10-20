@@ -8,7 +8,7 @@ import { Develop } from './Develop';
 import { Configure } from './Configure';
 import { Firmware } from './Firmware';
 import { Fader } from './Fader';
-import { AudioEye } from './AudioEye';
+import { AudioSource } from './AudioSource';
 
 export function controllerRoute(id: string, view: string) { return '/controllers/' + encodeURIComponent(id) + '/' + view; }
 export function App() {
@@ -71,7 +71,7 @@ export function App() {
       {openedConfigure && description && <div hidden={!configure}><Configure key={description?.controller_id || 'none'} /></div>}
       {configure && !description && <section className="empty-state"><h1>Configure your device.</h1><p>Connect a controller to manage presets, outputs, Wi-Fi and MQTT.</p><Link className="button primary" to="/controllers">Connect a device</Link></section>}
       {fader && <Fader />}
-      {openedAudio && <div hidden={!audio}><AudioEye active={audio} /></div>}
+      {openedAudio && <AudioSource active={audio} />}
       {firmware && <Firmware usbConnected={controller.paths.some(path => path.key === 'usb')} />}
       {!knownRoute && <section className="empty-state"><h1>Select a controller to continue.</h1><p>Connect to a controller to open its workspace.</p><Link className="button primary" to="/controllers">Choose a controller</Link></section>}
       {develop && <span id="compiler-state" className="sr-only">{editor.compiler === 'ready' ? 'Compiler ready' : editor.compiler === 'error' ? 'Compiler unavailable' : 'Loading compiler'}</span>}

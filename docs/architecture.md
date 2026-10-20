@@ -66,9 +66,26 @@ name namespaces for animations, transitions and presets. Backends and capacity a
 selected by the board/build; see [internal storage](storage.md).
 A composition supports up to eight layers, subject to available memory.
 
+## Controls and sources
+
+The output owns power, master brightness and selected RGB colour. Source adapters
+publish music or sensor features. Preset bindings decide which input consumes a
+control or source; the animation defines its visual meaning. Author-declared
+control defaults make ordinary colour selection work without custom wiring.
+
+The renderer produces unscaled layer contributions and A/B frames. A physical
+output owns one admitted RGB dimming buffer (three bytes per pixel plus allocator
+metadata), charged to the aggregate heap. It applies master brightness after
+composition and pins that buffer for native asynchronous output. The hardware
+brightness limit applies in the platform driver. Retained snapshots remain unscaled.
+
+See [inputs](inputs.md) for binding precedence, snapshot boundaries, palette/range
+mapping, revisions and persistence. Music publication does not replace bindings;
+HA edits of the master dimmer do not take over musical intensity inputs.
+
 ## Startup
 
-Startup is configured per output: off, restore the last preset and power state,
+Startup is configured per output: off, restore the last preset, power and light controls,
 or select a saved preset. The preset supplies the startup transition.
 
 ## Reference guides
@@ -85,7 +102,7 @@ or select a saved preset. The preset supplies the startup transition.
 
 LightVM uses controller for the board and output for one LED connection. In HA,
 the controller becomes a device grouping, each output becomes a light, and its
-exposed presets become options in a Preset select entity. HA scenes can recall
+exposed presets become its standard light effects. HA scenes can recall
 these entities alongside other household equipment. They are separate from a
 LightVM composition. Arbitrary layer settings are not exposed automatically.
 
@@ -95,10 +112,10 @@ and description use `outputs`, routing uses `output`, controller identity is
 `program_*`, and layer/startup references use `program` with initialization `settings`. Compiled packages keep
 `lightvm.program`; saved compositions keep `lightvm.preset`.
 
-## Clean installation after the naming change
+## Clean installation after experimental changes
 
-Earlier experimental configuration/preset documents use different field names and
-are not accepted. Export animation source before reprovisioning. There are no API
+Earlier experimental configuration/preset documents and saved output state formats
+are not accepted. LightVM 1.1 adds colour and brightness to the saved output state. Export animation source before reprovisioning. There are no API
 aliases, fallback readers or automatic data migrations.
 
 1. Host: start with a fresh storage path, for example
@@ -112,7 +129,10 @@ aliases, fallback readers or automatic data migrations.
    presets, then configure each output's `home_assistant` binding.
 4. Remove stale HA/MQTT discovery entries if output IDs or controller identities
    changed, or if the old binding was removed while offline. Current bindings
-   publish both the light and Preset selector automatically.
+   publish one JSON light automatically. Clear the old retained
+   `homeassistant/select/<controller_id>/<hex_output_id>_preset/config` with an empty
+   retained payload, and clear the old output `preset/state` topic. Remove the old
+   selector entity in HA. No legacy topic reader or automatic migration is retained.
 
 A firmware-only update does not rewrite old saved configuration. Source files
 using older experimental APIs must be updated and recompiled;

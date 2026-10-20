@@ -27,7 +27,7 @@ static void stop_animation(VmInstance *a) {
         size_t n=(size_t)a->control.count*3;
         memset(a->control.working,0,n);
         if (a->output->count==a->control.count && a->output->type && a->output->driver && a->output->rgb &&
-            a->output->type->show(a->output->driver,a->control.working,a->control.count)) {
+            pixels_show_frame(a->output,a->control.working,a->control.count)) {
             memset(a->output->rgb,0,n); a->control.output_valid=true;
             ++a->control.output_frame;
         } else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed");
@@ -77,7 +77,7 @@ static void show_frame(VmInstance *a,bool asynchronous) {
     if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
     const uint8_t *frame=control_output_frame(a);
     if(asynchronous){
-        if(a->output->driver&&a->output->type->submit(a->output->driver,frame,a->control.count)){
+        if(a->output->driver&&pixels_submit(a->output,frame,a->control.count)){
             a->output_pending=true;a->view.sealed=true;a->output_started=show_started;return;
         }
         vm_output_cancel(a);
@@ -86,7 +86,7 @@ static void show_frame(VmInstance *a,bool asynchronous) {
     }
     success=a->output->driver && a->output->type && a->output->rgb &&
         a->output->count==a->control.count &&
-        a->output->type->show(a->output->driver,frame,a->control.count);
+        pixels_show_frame(a->output,frame,a->control.count);
     if (success) memcpy(a->output->rgb,frame,(size_t)a->control.count*3);
     control_presented(a,success);
     a->show_us=(uint32_t)(platform_time_us()-show_started);

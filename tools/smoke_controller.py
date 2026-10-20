@@ -42,9 +42,9 @@ def smoke(client, board, reference):
             before,pixels=client.snapshot();after,repeated=client.snapshot()
             check(before==after and pixels==repeated,'snapshot changed program state')
             if source.stem=='color':
-                client.reset_program(settings={'color':0x123456,'random_color':False})
+                client.set_inputs({'color':{'value':0x123456}})
                 client.require_ok(client.command(FRAME,bytes(4)))
-                check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'settings restart failed')
+                check(bytes(client.pixel_snapshot)==bytes.fromhex('123456')*count,'live colour update failed')
             if source.stem=='sweep':
                 state=client.program_state()
                 check(state['render_count']>1,'Sweep did not keep rendering')

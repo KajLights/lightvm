@@ -1,11 +1,16 @@
 #include "pixels.h"
 #include "platform.h"
+#include "vm_allocator.h"
+#include <math.h>
 #include <string.h>
 
 bool pixels_init(PixelBuffer *p, const PixelConfig *config, const OutputType *type) {
     memset(p, 0, sizeof(*p));
     p->rgb = platform_calloc(config->count, 3);
     if (!p->rgb) return false;
+    p->dimmed = demo_calloc(config->count,3);
+    if(!p->dimmed){platform_free(p->rgb);p->rgb=NULL;return false;}
+    p->light=(LightControls){.color=0xffffff,.brightness=1};
     p->count = config->count; p->config = *config; p->type = type;
     if (!type->open(config, &p->driver) || !pixels_show(p)) {
         pixels_destroy(p); return false;
@@ -15,7 +20,7 @@ bool pixels_init(PixelBuffer *p, const PixelConfig *config, const OutputType *ty
 void pixels_destroy(PixelBuffer *p) {
     if (!p) return;
     if (p->driver) { pixels_clear(p); (void)pixels_show(p); p->type->close(p->driver); }
-    platform_free(p->rgb); memset(p, 0, sizeof(*p));
+    platform_free(p->rgb);demo_free(p->dimmed); memset(p, 0, sizeof(*p));
 }
 void pixels_clear(PixelBuffer *p) {
     if (p && p->rgb) memset(p->rgb, 0, (size_t)p->count * 3);
@@ -52,7 +57,22 @@ bool pixels_set_hsv(PixelBuffer *p, uint32_t index, uint32_t hue, uint32_t satur
 }
 
 bool pixels_show(PixelBuffer *p) {
-    return !p || !p->count || (p->driver && p->type->show(p->driver, p->rgb, p->count));
+    return !p || !p->count || pixels_show_frame(p,p->rgb,p->count);
+}
+/* This admitted buffer is owned by the physical transfer until poll/cancel.
+ * Scene frames remain unscaled, including paused frames and A/B endpoints. */
+static const uint8_t *dim(PixelBuffer *p,const uint8_t *rgb,size_t count){
+    if(!p||!p->driver||!p->type||!p->dimmed||count!=p->count||!rgb)return NULL;
+    for(size_t i=0;i<count*3;i++)p->dimmed[i]=(uint8_t)lroundf(rgb[i]*p->light.brightness);
+    return p->dimmed;
+}
+bool pixels_show_frame(PixelBuffer *p,const uint8_t *rgb,size_t count){
+    const uint8_t *frame=dim(p,rgb,count);
+    return frame&&p->type->show(p->driver,frame,count);
+}
+bool pixels_submit(PixelBuffer *p,const uint8_t *rgb,size_t count){
+    const uint8_t *frame=dim(p,rgb,count);
+    return frame&&p->type->submit(p->driver,frame,count);
 }
 
 /* Synchronous ports and test fixtures can use these defaults. Hardware ports

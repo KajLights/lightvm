@@ -523,6 +523,19 @@ class Client:
                            **({'name': preset} if preset is not None else {}),
                            **({'output': output} if output is not None else {}))
 
+    def light_state(self, output=None):
+        self.manage('output_light_get', **({'output': output} if output is not None else {}))
+        return json.loads(self.data_reply)
+
+    def set_light(self, *, brightness=None, color=None, power=None, preset=None, output=None):
+        state = self.light_state(output)
+        fields = {key: value for key, value in dict(brightness=brightness, color=color, power=power, preset=preset).items() if value is not None}
+        if power is not None or preset is not None:
+            fields['expected_composition_revision'] = state['composition_revision']
+        self.manage('output_light_set', expected_revision=state['revision'],
+                    **({'output': output} if output is not None else {}), **fields)
+        return json.loads(self.data_reply)
+
     def swap_transition(self, output=None):
         revision = self.transition(output)['revision']
         return self._transition_control('transition_swap', output, expected_revision=revision)

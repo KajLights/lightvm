@@ -4,10 +4,10 @@
 #include "mqtt.h"
 #define HA_OUTPUT_LIMIT 8u
 typedef struct {
-    char id[OBJECT_NAME_LIMIT+1], name[65], preset[OBJECT_NAME_LIMIT+1];
-    uint32_t binding_crc;
+    char id[OBJECT_NAME_LIMIT+1], name[65];
+    uint32_t binding_crc, state_crc;
     unsigned remove_phase;
-    bool discovered, selector_discovered, known, preset_known, playing, removing;
+    bool discovered, known, removing;
 } HaOutput;
 typedef struct {
     char input[OBJECT_NAME_LIMIT+1],output[OBJECT_NAME_LIMIT+1],name[33];

@@ -24,10 +24,14 @@ typedef struct {
     Composition *composition;
     Transition *transition;
     uint32_t composition_revision;
+    uint32_t light_revision;
+    uint64_t light_save_due;
+    char light_error[96];
     uint32_t layer_generation;
     char active_program[OBJECT_NAME_LIMIT + 1];
     uint32_t active_crc;
-    /* Recall owns destination semantics; manual A/B operations release ownership. */
+    /* Power is a latched output target, independent of VM clocks or pixel content.
+       Recall separately owns destination semantics until a manual edit. */
     bool recall_owned, power_on;
     char selected_preset[OBJECT_NAME_LIMIT + 1];
     uint32_t selected_preset_crc;
@@ -78,6 +82,8 @@ AppOutput *app_output(App *, const char *id);
 const char *app_output_preset(const App *, const AppOutput *);
 const char *app_output_selected_preset(const App *, const AppOutput *);
 bool app_output_power(const AppOutput *);
+bool app_output_color_control(const AppOutput *);
+size_t app_output_light_json(const App *,const AppOutput *,char *,size_t,bool);
 size_t app_indicator_json(const AppOutput *,unsigned pixel,char *,size_t);
 void app_init(App *app, SendMessage send, void *transport);
 void app_destroy(App *app);

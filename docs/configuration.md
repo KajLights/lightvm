@@ -85,7 +85,7 @@ sets **Power-on behavior**, independently of its Home Assistant default preset:
 ```
 
 - `off` keeps the output black. This is also the default when `startup` is omitted.
-- `restore_last` restores the last selected preset and logical on/off state.
+- `restore_last` restores the last selected preset, logical on/off state, master brightness and selected RGB colour.
   With no remembered state, it stays off. An output remembered as off retains its
   preset selection for the next ON command.
 - `preset` turns on with the named controller preset, including all layers,
@@ -103,6 +103,10 @@ Output & startup**. Presets must already be saved on the controller.
 
 On writable controllers, successful `preset_recall` and `output_power` commands
 save their desired preset and power immediately, before starting the transition.
+`output_light_set` uses the same transaction for combined light/preset commands.
+Pure colour/brightness edits coalesce for 750 ms before persistence, so a power
+loss within that interval can lose the last edit. Startup off/preset policies
+begin with white and 100% master brightness; restore-last restores the saved controls.
 This happens in every startup mode, so switching to `restore_last` can use the
 last command. Saving restore-last while a startup preset is running also captures
 that current target. An OFF accepted during a fade remains OFF after power loss.
@@ -409,8 +413,7 @@ preset transition in the current editor; there is no migration or compatibility
 path. See [recall transitions](transitions.md#preset-recalls-and-power).
 
 Each output may include a `home_assistant` object with `default_preset`, an
-explicit `presets` list and an optional `name`. It exposes one on/off light and
-one Preset selector for that output. The default must belong to its 1–16 unique
+explicit `presets` list and an optional `name`. It exposes one JSON light with power, brightness, colour and preset effects. The default must belong to its 1–16 unique
 preset names. MQTT broker settings remain separate in `lightvm.network`.
 See [MQTT control and Home Assistant presets](mqtt.md) for configuration, topics,
 selection state and power behavior.

@@ -94,6 +94,8 @@ class Example:
         exec(compile(tree, str(path), 'exec'), namespace)
         self.ctx, self.runtime, self.pixels = SimpleNamespace(), SimpleNamespace(time=0.0, delta=0.0, pixel_count=count), Pixels(count)
         def input_value(port):
+            if getattr(port, 'control', None) == 'color': return 0xffffff
+            if getattr(port, 'control', None) == 'brightness': return 1.0
             if not hasattr(port, 'driver'): return port.default
             phase = self.runtime.time / port.driver.duration
             if port.driver.mode == 'repeat': phase %= 1.0
@@ -102,7 +104,7 @@ class Example:
             if getattr(port.driver, 'easing', 'linear') == 'smoothstep': phase = phase * phase * (3 - 2 * phase)
             return phase
         self.runtime.input = input_value
-        namespace['setup'](self.ctx, self.runtime)
+        if 'setup' in namespace: namespace['setup'](self.ctx, self.runtime)
         self.draw = namespace['draw']
         self.frame(0)
     def frame(self, ms):

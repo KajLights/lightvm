@@ -39,6 +39,14 @@ static bool easing(const Json *j,int token,uint8_t *out){
     if(json_equal(j,token,"smoothstep")){*out=1;return true;}
     return false;
 }
+static bool light_control(const Json *j,int token,const InputPort *port,uint8_t *out){
+    if(json_equal(j,token,"color")&&port->type==T_COLOR){*out=LIGHT_CONTROL_COLOR;return true;}
+    if(json_equal(j,token,"brightness")&&port->type==T_FLOAT&&
+       in_bounds(port,(InputValue){.f=0})&&in_bounds(port,(InputValue){.f=1})){
+        *out=LIGHT_CONTROL_BRIGHTNESS;return true;
+    }
+    return false;
+}
 /* Shared by input ramps and native transition timing. interval==0 means no dwell. */
 double input_ramp(double from,double to,double elapsed,double duration,double interval,unsigned kind){
     double span=interval>0?interval:duration;
@@ -51,7 +59,8 @@ double input_ramp(double from,double to,double elapsed,double duration,double in
 }
 static void default_driver(InputPort *port){
     memset(&port->driver,0,sizeof(port->driver));
-    port->driver.kind=port->default_mode?INPUT_RAMP:INPUT_CONSTANT;
+    port->driver.kind=port->default_control?INPUT_CONTROL:port->default_mode?INPUT_RAMP:INPUT_CONSTANT;
+    port->driver.control=port->default_control;
     port->driver.value=port->initial;port->driver.to=1;
     port->driver.duration=port->default_duration;
     port->driver.mode=port->default_mode;port->driver.easing=port->default_easing;
@@ -68,7 +77,7 @@ const char *inputs_load(Portable *p){
     if(p->ninputs){p->inputs=demo_calloc(p->ninputs,sizeof(*p->inputs));if(!p->inputs){error="inputs exceed memory budget";goto done;}}
     unsigned index=0;
     for(int t=declarations+1;t<j.tokens[declarations].next;t=j.tokens[t].next,index++){
-        static const char *const fields[]={"name","type","default","minimum","maximum","unit","driver",NULL};
+        static const char *const fields[]={"name","type","default","minimum","maximum","unit","driver","control",NULL};
         InputPort *port=&p->inputs[index];
         if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"name"),port->name,sizeof(port->name))||!object_name_valid(port->name)||
            !(port->type=scalar_type(&j,json_get(&j,t,"type")))||!input_value_parse(&j,json_get(&j,t,"default"),port->type,&port->initial))goto done;
@@ -85,8 +94,11 @@ const char *inputs_load(Portable *p){
             port->bounds|=1u<<n;
         }
         if(!in_bounds(port,port->initial))goto done;
+        int control=json_get(&j,t,"control");
+        if(control>=0&&!light_control(&j,control,port,&port->default_control))goto done;
         int driver=json_get(&j,t,"driver");
         if(driver>=0){
+            if(control>=0)goto done;
             static const char *const driver_fields[]={"kind","duration","mode","easing",NULL};
             if(port->type!=T_FLOAT||!json_fields(&j,driver,driver_fields)||!json_equal(&j,json_get(&j,driver,"kind"),"ramp")||
                !json_f64(&j,json_get(&j,driver,"duration"),&port->default_duration)||port->default_duration<=0||port->default_duration>1e9||
@@ -99,6 +111,10 @@ const char *inputs_load(Portable *p){
 done:
     demo_free(data);return error;
 }
+void inputs_attach(Portable *p,InputRegistry *registry,const LightControls *light){
+    p->input_registry=registry;
+    for(unsigned n=0;n<p->ninputs;n++)p->inputs[n].light=light;
+}
 bool inputs_call_valid(Portable *p,unsigned binding,unsigned reg){
     return binding>=55&&binding<=58&&pbc_type(p,reg)==T_INT&&pbc_role(p,reg)==R_CONST&&
         pbc_initial(p,reg)<p->ninputs&&p->inputs[pbc_initial(p,reg)].type==binding-54;
@@ -110,11 +126,18 @@ static InputSignal *signal(InputRegistry *registry,const char *name){
 static bool source_value(InputRegistry *registry,InputPort *port,uint64_t now,InputValue *out){
     InputDriver *driver=&port->driver;InputSignal *source=signal(registry,driver->source);
     if(source&&source->valid){
-        bool ok=source->type==port->type;InputValue value=source->value;
+        bool ok=!driver->mapped&&source->type==port->type;InputValue value=source->value;
         if(driver->mapped&&(source->type==T_FLOAT||source->type==T_INT)){
             double u=(input_value_number(source->value,source->type)-driver->input_min)/(driver->input_max-driver->input_min);
             double v=driver->output_min+fmax(0,fmin(1,u))*(driver->output_max-driver->output_min);
-            if(port->type==T_FLOAT)value.f=(float)v;
+            if(driver->palette&&port->type==T_COLOR){
+                uint32_t from=(uint32_t)driver->output_min,to=(uint32_t)driver->output_max;value.u=0;
+                u=fmax(0,fmin(1,u));
+                for(unsigned shift=0;shift<24;shift+=8){
+                    double a=(from>>shift)&255,b=(to>>shift)&255;
+                    value.u|=(uint32_t)round(a+(b-a)*u)<<shift;
+                }
+            }else if(port->type==T_FLOAT)value.f=(float)v;
             else if(port->type==T_INT&&v>=INT32_MIN&&v<=INT32_MAX)value.i=(int32_t)round(v);
             else return false;
             ok=true;
@@ -129,6 +152,10 @@ static bool source_value(InputRegistry *registry,InputPort *port,uint64_t now,In
 static InputValue evaluate(InputRegistry *registry,InputPort *port,uint64_t time,uint64_t now,bool *fallback){
     InputDriver *driver=&port->driver;*fallback=false;
     if(driver->kind==INPUT_CONSTANT)return driver->value;
+    if(driver->kind==INPUT_CONTROL){
+        if(!port->light){*fallback=true;return port->initial;}
+        return driver->control==LIGHT_CONTROL_COLOR?(InputValue){.u=port->light->color}:(InputValue){.f=port->light->brightness};
+    }
     if(driver->kind==INPUT_SOURCE){InputValue value;if(source_value(registry,port,now,&value))return value;*fallback=true;return port->initial;}
     double elapsed=time>=driver->started?(double)(time-driver->started)/1000000:0;
     double u=input_ramp(0,1,elapsed+driver->phase*driver->duration,driver->duration,0,driver->mode);
@@ -141,13 +168,17 @@ static double inverse_ease(double u){
     return (lo+hi)/2;
 }
 const char *input_port_bind(InputRegistry *registry,InputPort *port,const Json *j,int object,uint64_t time){
-    static const char *const fields[]={"value","driver","source","map","timeout_ms","fallback","default",NULL};
+    static const char *const fields[]={"value","driver","source","control","map","palette","timeout_ms","fallback","default",NULL};
     if(!json_fields(j,object,fields))return "invalid input binding fields";
-    int value=json_get(j,object,"value"),ramp=json_get(j,object,"driver"),source=json_get(j,object,"source"),reset=json_get(j,object,"default");
-    if((value>=0)+(ramp>=0)+(source>=0)+(reset>=0)!=1)return "input binding needs one value, driver, source or default";
+    int value=json_get(j,object,"value"),ramp=json_get(j,object,"driver"),source=json_get(j,object,"source"),reset=json_get(j,object,"default"),control=json_get(j,object,"control");
+    if((value>=0)+(ramp>=0)+(source>=0)+(reset>=0)+(control>=0)!=1)return "input binding needs one value, driver, source, control or default";
     bool unused;InputValue current=evaluate(registry,port,time,platform_time_us(),&unused);InputDriver old=port->driver;
     memset(&port->driver,0,sizeof(port->driver));InputDriver *driver=&port->driver;
     driver->started=time;
+    if(control>=0){
+        if(j->tokens[object].children!=1||!light_control(j,control,port,&driver->control))return "light control does not match the input type or bounds";
+        driver->kind=INPUT_CONTROL;return NULL;
+    }
     if(value>=0){
         if(j->tokens[object].children!=1||!input_value_parse(j,value,port->type,&driver->value)||!in_bounds(port,driver->value))return "input value is outside its declared type or bounds";
         return NULL;
@@ -179,9 +210,19 @@ const char *input_port_bind(InputRegistry *registry,InputPort *port,const Json *
     }
     driver->kind=INPUT_SOURCE;driver->timeout_ms=1000;
     if(!json_string(j,source,driver->source,sizeof(driver->source))||!object_name_valid(driver->source))return "invalid source name";
-    int timeout=json_get(j,object,"timeout_ms"),fallback=json_get(j,object,"fallback"),map=json_get(j,object,"map");
+    int timeout=json_get(j,object,"timeout_ms"),fallback=json_get(j,object,"fallback"),map=json_get(j,object,"map"),palette=json_get(j,object,"palette");
     if(timeout>=0&&!json_u32(j,timeout,&driver->timeout_ms))return "invalid source timeout";
     if(fallback>=0){if(json_equal(j,fallback,"hold"))driver->hold=true;else if(!json_equal(j,fallback,"default"))return "fallback must be hold or default";}
+    if(palette>=0){
+        static const char *const palette_fields[]={"input_min","input_max","from","to",NULL};uint32_t from,to;
+        if(map>=0||port->type!=T_COLOR||!json_fields(j,palette,palette_fields)||
+           !json_f64(j,json_get(j,palette,"input_min"),&driver->input_min)||
+           !json_f64(j,json_get(j,palette,"input_max"),&driver->input_max)||driver->input_min>=driver->input_max||
+           fabs(driver->input_min)>FLT_MAX||fabs(driver->input_max)>FLT_MAX||
+           !json_u32(j,json_get(j,palette,"from"),&from)||from>0xffffff||
+           !json_u32(j,json_get(j,palette,"to"),&to)||to>0xffffff)return "invalid numeric-to-color palette";
+        driver->mapped=driver->palette=true;driver->output_min=from;driver->output_max=to;
+    }
     if(map>=0){
         static const char *const map_fields[]={"input_min","input_max","output_min","output_max",NULL};
         double values[4];
@@ -251,9 +292,12 @@ void input_binding_describe(const InputPort *port,void (*write)(void *,const cha
         else if(driver->kind==INPUT_RAMP){
             static const char *const modes[]={"","once","repeat","pingpong"};
             snprintf(b,sizeof(b),"\"driver\":{\"kind\":\"ramp\",\"duration\":%.17g,\"mode\":\"%s\",\"easing\":\"%s\",\"from\":%.17g,\"to\":%.17g}",driver->duration,modes[driver->mode],driver->easing?"smoothstep":"linear",driver->from,driver->to);write(context,b);
+        }else if(driver->kind==INPUT_CONTROL){
+            snprintf(b,sizeof(b),"\"control\":\"%s\"",driver->control==LIGHT_CONTROL_COLOR?"color":"brightness");write(context,b);
         }else{
             snprintf(b,sizeof(b),"\"source\":\"%s\",\"timeout_ms\":%" PRIu32 ",\"fallback\":\"%s\"",driver->source,driver->timeout_ms,driver->hold?"hold":"default");write(context,b);
-            if(driver->mapped){snprintf(b,sizeof(b),",\"map\":{\"input_min\":%.17g,\"input_max\":%.17g,\"output_min\":%.17g,\"output_max\":%.17g}",driver->input_min,driver->input_max,driver->output_min,driver->output_max);write(context,b);}
+            if(driver->palette){snprintf(b,sizeof(b),",\"palette\":{\"input_min\":%.17g,\"input_max\":%.17g,\"from\":%u,\"to\":%u}",driver->input_min,driver->input_max,(unsigned)driver->output_min,(unsigned)driver->output_max);write(context,b);}
+            else if(driver->mapped){snprintf(b,sizeof(b),",\"map\":{\"input_min\":%.17g,\"input_max\":%.17g,\"output_min\":%.17g,\"output_max\":%.17g}",driver->input_min,driver->input_max,driver->output_min,driver->output_max);write(context,b);}
         }
         write(context,"}");
 }
@@ -276,6 +320,7 @@ const char *input_registry_claim(InputRegistry *registry,const Json *j,int decla
     for(int t=declarations+1;t<j->tokens[declarations].next;t=j->tokens[t].next){
         static const char *const fields[]={"name","type",NULL};char name[33];unsigned type,index;
         if(!json_fields(j,t,fields)||!json_string(j,json_get(j,t,"name"),name,sizeof(name))||!object_name_valid(name)||!(type=scalar_type(j,json_get(j,t,"type"))))goto done;
+        if(!strncmp(name,"light.",6)){error="light controls are reserved; use a control binding";goto done;}
         for(index=0;index<count;index++)if(!strcmp(candidate[index].name,name))break;
         if(index==count){if(count==INPUT_SOURCE_LIMIT){error="source limit exceeded";goto done;}count++;}
         else if(candidate[index].publisher==next)goto done;

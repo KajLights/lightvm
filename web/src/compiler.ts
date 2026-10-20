@@ -9,6 +9,7 @@ export function programCompatibility(target: Description, manifest: Manifest): s
     return 'Recompile this program with the release-based compiler.';
   if (manifest.profile === 'transition' && !target.transition_programs) return 'Install firmware with transition program support.';
   if (manifest.inputs?.length && !target.live_inputs) return 'Install firmware with live input support.';
+  if (manifest.inputs?.some(input => input.control) && !target.light_controls) return 'Install firmware with light control support.';
   return releaseError(target.version, manifest.requires);
 }
 export function supportsProgram(target: Description, manifest: Manifest) {
