@@ -56,17 +56,21 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     if (!c->wifi_enabled) return true;
     if (cyw43_arch_init_with_country(country)) return false;
     initialized=true; mode=c->mode;
+    // SDK 1.5.1 loads the radio and its OTP MAC lazily. Reading the MAC
+    // before bringing an interface up gives every cold boot an all-zero name.
+    cyw43_arch_enable_sta_mode();
     uint8_t mac[6];
     if (cyw43_wifi_get_mac(&cyw43_state,CYW43_ITF_STA,mac)) return false;
     snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
     if (mode==NET_MODE_AP) {
+        cyw43_arch_disable_sta_mode();
         snprintf(engine->network.ap_ssid,sizeof(engine->network.ap_ssid),"%s",c->ap_ssid[0]?c->ap_ssid:hostname);
         cyw43_wifi_ap_set_channel(&cyw43_state,1);
         cyw43_arch_enable_ap_mode(engine->network.ap_ssid,c->ap_password[0]?c->ap_password:NULL,c->ap_password[0]?CYW43_AUTH_WPA2_AES_PSK:CYW43_AUTH_OPEN);
         ip4_addr_t ip,mask; IP4_ADDR(&ip,192,168,4,1); IP4_ADDR(&mask,255,255,255,0);
         netif_set_addr(active_netif(),&ip,&mask,&ip);
         if (!pico_dhcp_start(&dhcp,active_netif())) return false;
-    } else cyw43_arch_enable_sta_mode();
+    }
     netif_set_hostname(active_netif(),hostname); return true;
 }
 static bool scan(void *ctx) {
