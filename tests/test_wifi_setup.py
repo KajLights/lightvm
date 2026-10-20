@@ -175,9 +175,9 @@ class WifiSetupTests(unittest.TestCase):
         self.assertTrue(after['wifi']['networks'][0]['hidden'])
         self.assertEqual(after['wifi']['ap'], before['wifi']['ap'])
         self.assertEqual(after['http']['port'], 8080)
-        if 'mqtt' in before:
-            self.assertEqual(after['mqtt'], before['mqtt'])
-            self.assertIn(b'mqtt-secret', self.storage.read_bytes())
+        self.assertEqual(after['mqtt'], before['mqtt'])
+        if before['mqtt']['enabled']:
+            self.assertTrue(b'mqtt-secret' in self.storage.read_bytes(), 'Saved MQTT password was lost')
         for secret in (b'station-secret-0', b'station-secret-1', b'saved-ap-secret'):
             self.assertIn(secret, self.storage.read_bytes())
 
