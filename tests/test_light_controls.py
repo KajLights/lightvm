@@ -2,12 +2,14 @@
 import json
 import os
 import struct
+import sys
 import tempfile
 import time
 import unittest
 import zlib
 from pathlib import Path
 from bytecode_fixtures import ROOT, program, sample
+sys.path.insert(0, str(ROOT / 'tools'))
 from client import Client, ProcessTransport, ProtocolError, FRAME, STOP
 from lightvm.compiler import compile_source
 from test_configuration import config
@@ -29,8 +31,8 @@ class LightControlTests(unittest.TestCase):
         self.client=Client(ProcessTransport(self.receiver,self.storage))
         self.config=config(20);self.client.configure(self.config)
     def tearDown(self): self.client.close();self.temp.cleanup()
-    def frame(self):
-        self.client.require_ok(self.client.command(FRAME,struct.pack('<I',0)))
+    def frame(self,ms=0):
+        self.client.require_ok(self.client.command(FRAME,struct.pack('<I',ms)))
         return bytes(self.client.pixel_snapshot)
     def preset(self,name='eye'):
         bytecode=program(SOURCE);self.client.save_program('eye',bytecode)
@@ -111,3 +113,36 @@ class LightControlTests(unittest.TestCase):
             self.assertFalse(compile_source(source).success)
         self.assertFalse(compile_source(SOURCE,target={'version':'1.0.0','live_inputs':True}).success)
         self.assertTrue(compile_source(SOURCE,target={'version':'1.1.0','live_inputs':True,'light_controls':True}).success)
+
+    def test_color_example_has_local_brightness_independent_of_master(self):
+        self.client.upload(sample('color'),inputs={'brightness':{'value':0.25}})
+        self.client.require_ok(self.client.command(STOP))
+        self.client.set_light(color=0x804020,brightness=0.5)
+        self.assertEqual(self.frame(),bytes([32,16,8])*20)
+        generation=self.client.program_state()['generation']
+        self.client.set_light(brightness=0.2)
+        self.assertEqual(self.frame(),bytes([32,16,8])*20)
+        self.client.set_inputs({'brightness':{'value':0.5}})
+        self.assertEqual(self.frame(),bytes([64,32,16])*20)
+        self.assertEqual(self.client.program_state()['generation'],generation)
+
+    def test_stars_brightness_updates_existing_sprites_without_reset(self):
+        self.client.upload(sample('stars'),settings={
+            'capacity':1,'duration':10.0,'probability':1000.0,
+            'color':0xffffff,'random_colors':False})
+        self.client.require_ok(self.client.command(STOP))
+        full=self.frame(10)
+        self.assertTrue(any(full))
+        before=self.client.program_state()
+        self.client.set_inputs({'brightness':{'value':0.5}})
+        half=self.frame()
+        self.assertTrue(any(half))
+        for original,dimmed in zip(full,half):
+            self.assertLessEqual(abs(dimmed-original*0.5),1)
+        self.client.set_inputs({'brightness':{'value':0.0}})
+        self.assertFalse(any(self.frame()))
+        self.client.set_inputs({'brightness':{'value':1.0}})
+        self.assertEqual(self.frame(),full)
+        after=self.client.program_state()
+        self.assertEqual(after['generation'],before['generation'])
+        self.assertEqual(after['program_us'],before['program_us'])

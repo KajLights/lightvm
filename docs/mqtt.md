@@ -221,7 +221,7 @@ the network or disabling/reconfiguring MQTT closes the session so the broker's
 Last Will marks it offline; silent radio/power loss can take the broker's
 keepalive timeout to be detected. Playback continues during MQTT outages.
 
-Removing an exposed output or its binding clears both retained discovery documents and both state topics
+Removing an exposed output or its binding clears its retained light discovery document and state topic
 on the connected broker. Removal is retried across reconnects during the same
 firmware run. If you change brokers, wipe storage, or reboot after removing a
 binding while offline, remove the old discovery entries on the old broker/HA

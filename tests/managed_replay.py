@@ -8,7 +8,7 @@ import builtins
 import math
 from pathlib import Path
 from types import SimpleNamespace
-from lightvm import rgb, hsv
+from lightvm import rgb, hsv, ColorTransform
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -66,6 +66,12 @@ class Pixels:
         stop = self.count if stop is None else stop
         assert 0 <= start <= stop <= self.count
         for i in range(start, stop): self[i] = color
+    def transform(self, color):
+        assert color.alpha == 1 and color.tint == 0xffffff and color.hue == 0 and color.saturation == 1
+        for i, value in enumerate(self.values):
+            channels = [min(255, max(0, int((value >> shift & 255) * color.brightness + 0.5)))
+                        for shift in (16, 8, 0)]
+            self[i] = rgb(*channels)
     def rgb(self): return b''.join(value.to_bytes(3, 'big') for value in self.values)
 
 class SettingNames(ast.NodeTransformer):
@@ -80,7 +86,7 @@ class Example:
     def __init__(self, name, count, settings=None):
         settings = settings or {}
         path = ROOT / 'examples/animations' / f'{name}.py'
-        api = SimpleNamespace(profile=lambda _: None, init=lambda f: f, render=lambda f: f, rgb=rgb, hsv=hsv,
+        api = SimpleNamespace(profile=lambda _: None, init=lambda f: f, render=lambda f: f, rgb=rgb, hsv=hsv, ColorTransform=ColorTransform,
             Input=lambda name, **kwargs: SimpleNamespace(name=name, **kwargs), Ramp=lambda **kwargs: SimpleNamespace(**kwargs),
             setting=lambda default, _name=None, **bounds: settings.get(_name, default),
             pico_colorwheel=lambda hue: rgb(*pico_colorwheel(hue)), colorwheel=lambda hue: rgb(*rainbow_colorwheel(hue)),

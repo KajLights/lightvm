@@ -89,6 +89,10 @@ class AnimationProfileTests(unittest.TestCase):
                     state=self.client.program_state()
                     self.assertEqual(state['render_count'],9)
                     self.assertNotIn('logical_ticks',state);self.assertNotIn('cycle_count',state)
+                    if name == 'color':
+                        self.client.set_inputs({'brightness': {'value': 0.25}})
+                        reference.runtime.input = lambda port: 0.25 if port.name == 'brightness' else 0xffffff
+                        self.assertEqual(self.frame(), reference.frame(0))
 
     def test_supplied_delta_and_state_once_per_call(self):
         self.client.upload(program(PREFIX+'''@init

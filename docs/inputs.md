@@ -84,6 +84,17 @@ rainbow can ignore selected colour entirely. Selecting another preset retains bo
 controls. A/B instances resolve against the same hosting output, with independent
 invocation snapshots. Pixel snapshots show the scene before master dimming.
 
+The Color and Stars examples each declare a local `brightness` input from 0 to 1,
+defaulting to 1. In a layered stars preset, set the background layer's brightness
+to 12/255 (about 0.0471) and the stars layer's brightness to 1 for a faint coloured
+background with bright stars. With output colour `#0000FF`, this produces a
+`#00000C` background before master dimming. Save these values under each layer's
+**Settings & inputs**.
+[Color and stars](../examples/compositions/color-stars.json) demonstrates this
+recipe. Colour continues to follow the output light control, while the output
+brightness scales the completed composition. Changing local brightness affects
+existing stars without resetting their positions or lifetimes.
+
 Read `output_light_get` with an optional `output`. It returns `revision`,
 `composition_revision`, `power`, `brightness` (0–1), packed RGB `color`,
 `color_control` and nullable `preset`. Update any nonempty set of properties:
@@ -105,6 +116,10 @@ a power/preset recall persists the complete target immediately. A power loss ins
 the debounce interval may lose the last edit. `startup: off` and `startup: preset`
 start with white/100% controls. Runtime persistence/output failures are reported in
 `describe.outputs[].light_error`. Live source samples are never persisted.
+
+The experimental saved-output format now includes colour and brightness. For a
+controller provisioned before light controls, wipe/reprovision its storage, upload
+the current programs and presets, and save its configuration again.
 
 ## Drivers and recipes
 

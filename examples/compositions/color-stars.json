@@ -1,0 +1,33 @@
+{
+  "schema": "lightvm.composition",
+  "layers": [
+    {
+      "id": "background",
+      "program": "color",
+      "inputs": {
+        "color": {
+          "control": "color"
+        },
+        "brightness": {
+          "value": 0.047058823529411764
+        }
+      }
+    },
+    {
+      "id": "stars",
+      "program": "stars",
+      "settings": {
+        "capacity": 20,
+        "duration": 2.0,
+        "probability": 5.0,
+        "color": 16777215,
+        "random_colors": false
+      },
+      "inputs": {
+        "brightness": {
+          "value": 1.0
+        }
+      }
+    }
+  ]
+}

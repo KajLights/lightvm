@@ -11,15 +11,19 @@ Modes (initialization settings):
     probability * delta and can spawn at most one star. capacity limits the
     number of concurrent stars.
 Run directly over black, or layer these transparent stars over any background.
+The live brightness input scales existing and new stars without restarting their
+lifetimes. Background brightness belongs to the independent background layer.
 """
 import random
 
 from lightvm import (
-    profile, setting, init, render, rgb, pico_colorwheel,
+    profile, setting, init, render, Input, rgb, pico_colorwheel,
     Sprite, SpriteBatch, PixelArray, Transform, ColorTransform,
 )
 
 profile("animation")
+
+BRIGHTNESS = Input("brightness", default=1.0, minimum=0.0, maximum=1.0)
 
 STAR_IMAGE = PixelArray([
      64,  64,  64, 255,
@@ -40,7 +44,8 @@ def star_render(s, runtime, pixels):
         return
     pixels.draw(STAR_IMAGE)
     s.transform = Transform(translate=s.position, origin=1.0)
-    s.color = ColorTransform(alpha=1.0 - runtime.time / s.duration, tint=s.tint)
+    s.color = ColorTransform(alpha=1.0 - runtime.time / s.duration, tint=s.tint,
+                             brightness=runtime.input(BRIGHTNESS))
 
 
 Star = Sprite(width=3, init=star_init, render=star_render)
