@@ -13,6 +13,7 @@
 #include <string.h>
 #if LIGHTVM_HTTP
 #include "http.h"
+#include "http_setup.h"
 #if LIGHTVM_WEBSOCKET
 #include "websocket.h"
 #include <errno.h>
@@ -298,6 +299,15 @@ static esp_err_t request(httpd_req_t *r) {
         if (httpd_req_get_hdr_value_str(r,"Content-Type",type,sizeof(type))!=ESP_OK || strcmp(type,"application/octet-stream")) q->error=415;
         if (httpd_req_get_hdr_value_str(r,"X-LightVM-Session",q->token,sizeof(q->token))!=ESP_OK) q->error=400;
     }
+    if (r->method==HTTP_POST && !strcmp(q->path,"/setup")) {
+        char type[64],host[96],origin[112]="";
+        if (httpd_req_get_hdr_value_str(r,"Content-Type",type,sizeof(type))!=ESP_OK || strcmp(type,"application/x-www-form-urlencoded")) q->error=415;
+        if (httpd_req_get_hdr_value_str(r,"Host",host,sizeof(host))!=ESP_OK) q->error=400;
+        else {
+            if (httpd_req_get_hdr_value_len(r,"Origin") && httpd_req_get_hdr_value_str(r,"Origin",origin,sizeof(origin))!=ESP_OK) q->error=400;
+            q->form_origin_valid=http_setup_origin(host,origin);
+        }
+    }
 #if LIGHTVM_WEBSOCKET
     q->websocket=&c->websocket;
     if (!q->error && !strcmp(q->path,WEBSOCKET_PATH)) {
@@ -331,6 +341,11 @@ static bool start_http(uint16_t port) {
     if (httpd_start(&handle,&config)!=ESP_OK) return false;
     const httpd_method_t methods[]={HTTP_GET,HTTP_POST,HTTP_DELETE,HTTP_OPTIONS};
     for (unsigned i=0;i<4;i++) { httpd_uri_t route={.uri="/api/v1/*",.method=methods[i],.handler=request}; if (httpd_register_uri_handler(handle,&route)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; } }
+    const httpd_uri_t setup_routes[]={
+        {.uri="/",.method=HTTP_GET,.handler=request},
+        {.uri="/setup",.method=HTTP_POST,.handler=request},
+    };
+    for (unsigned i=0;i<2;i++) if (httpd_register_uri_handler(handle,&setup_routes[i])!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; }
     if (port!=80) {
         config.server_port=80; config.ctrl_port++; config.max_open_sockets=2; config.stack_size=4096;
         if (httpd_start(&bootstrap_handle,&config)!=ESP_OK) { httpd_stop(handle); handle=NULL; return false; }

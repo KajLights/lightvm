@@ -4,7 +4,7 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ;
 
-; Adapted for Pico SDK 1.5.1: omit the newer version directive and parallel driver.
+; Single-strip PIO version 0 program, shared by RP2040 and RP2350.
 .program ws2812
 .side_set 1
 

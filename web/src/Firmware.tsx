@@ -4,7 +4,7 @@ import { decodePicoUf2 } from './PicoFirmware';
 import { Picoboot } from './vendor/picoflash/picoboot.js';
 import { Target } from './vendor/picoflash/target.js';
 
-type PicoBuild = { board: 'pico' | 'pico_w'; name: string; path: string; sha256: string; firmware_end: number };
+type PicoBuild = { board: 'pico' | 'pico_w' | 'pico2_w'; chip: 'RP2040' | 'RP2350'; name: string; path: string; sha256: string; firmware_end: number };
 const firmwareRoot = new URL('firmware/', document.baseURI);
 const espManifestUrl = new URL('manifest.json', firmwareRoot).href;
 
@@ -29,7 +29,7 @@ export function Firmware({ usbConnected }: { usbConnected: boolean }) {
       fetch(new URL('pico.json', firmwareRoot)).then(async response => {
         if (!response.ok) throw new Error('Pico images unavailable');
         const manifest = await response.json();
-        if (!Array.isArray(manifest.builds) || manifest.builds.some((build: PicoBuild) => !['pico', 'pico_w'].includes(build.board))) throw new Error('Invalid Pico manifest');
+        if (!Array.isArray(manifest.builds) || manifest.builds.some((build: PicoBuild) => !['pico', 'pico_w', 'pico2_w'].includes(build.board) || build.chip !== (build.board === 'pico2_w' ? 'RP2350' : 'RP2040'))) throw new Error('Invalid Pico manifest');
         if (active) { setPicoBuilds(manifest.builds); setVersion(manifest.version); }
       }),
     ]).then(results => { if (active && results.every(result => result.status === 'rejected')) setError('Firmware images are not included in this editor build.'); });
@@ -38,7 +38,7 @@ export function Firmware({ usbConnected }: { usbConnected: boolean }) {
 
   async function installPico() {
     const build = picoBuilds.find(item => item.board === selectedPico);
-    if (!build || busy || usbConnected) return;
+    if (!build || build.chip !== 'RP2040' || busy || usbConnected) return;
     setError('');
     setProgress('Choose the RP2040 board in BOOTSEL mode.');
     setBusy(true);
@@ -90,7 +90,7 @@ export function Firmware({ usbConnected }: { usbConnected: boolean }) {
   return <section className="firmware-page card">
     <p className="eyebrow">CONTROLLER SETUP</p>
     <h1>Firmware installation</h1>
-    <p>Choose the exact physical board model before flashing. The browser can detect an ESP chip family or an RP2040 bootloader, but cannot distinguish Pico from Pico W.</p>
+    <p>Choose the exact physical board model before flashing. Choose Pico 2 W for an RP2350 board. The browser cannot distinguish Pico from Pico W, which share the RP2040 bootloader.</p>
     {version && <p className="helper">Firmware build {version}</p>}
     {usbConnected && <p className="stale-banner">Disconnect the current USB session before flashing, then choose the controller again here.</p>}
     {espBoards.length > 0 && <div className="firmware-section">
@@ -106,16 +106,21 @@ export function Firmware({ usbConnected }: { usbConnected: boolean }) {
     </div>}
     {picoBuilds.length > 0 && <div className="firmware-section">
       <h2>Raspberry Pi Pico</h2>
-      <p>Select the model printed on the board. Both use the same RP2040 bootloader, so the browser cannot check this choice.</p>
+      <p>Select the model printed on the board. Pico and Pico W share a bootloader; Pico 2 W uses a different firmware image.</p>
       <label htmlFor="pico-model">Board model</label>
       <select id="pico-model" value={selectedPico} onChange={event => setSelectedPico(event.target.value)} disabled={busy}>
-        <option value="">Choose Pico or Pico W</option>
+        <option value="">Choose a Pico model</option>
         {picoBuilds.map(build => <option key={build.board} value={build.board}>{build.name}</option>)}
       </select>
-      <ol className="firmware-steps"><li>Disconnect the Pico, hold <strong>BOOTSEL</strong>, and reconnect its USB cable.</li><li>Select the exact board model above, then choose <strong>Install Pico firmware</strong>.</li><li>Choose <strong>RP2 Boot</strong> in the browser prompt. After verification, connect from Controllers.</li></ol>
-      <button className="primary" onClick={installPico} disabled={!selectedPico || usbConnected || busy || !('usb' in navigator) || !window.isSecureContext}>Install Pico firmware</button>
-      {selectedPico && <p className="helper">Or <a href={new URL(picoBuilds.find(build => build.board === selectedPico)!.path, firmwareRoot).href} download={`${selectedPico}-lightvm.uf2`}>download the UF2</a> and copy it to the RPI-RP2 drive.</p>}
-      {(!('usb' in navigator) || !window.isSecureContext) && <p className="helper">Direct installation needs Chrome or Edge on HTTPS or localhost. You can still download the UF2 above.</p>}
+      {selectedPico === 'pico2_w' ? <>
+        <ol className="firmware-steps"><li>Download the Pico 2 W UF2 below.</li><li>Disconnect the board, hold <strong>BOOTSEL</strong>, and reconnect its USB cable.</li><li>Copy the UF2 to the <strong>RP2350</strong> drive. After it restarts, connect from Controllers.</li></ol>
+        <p className="helper">Pico 2 W installation uses the UF2 download. Direct browser installation is available for Pico and Pico W.</p>
+      </> : <>
+        <ol className="firmware-steps"><li>Disconnect the Pico, hold <strong>BOOTSEL</strong>, and reconnect its USB cable.</li><li>Select the exact board model above, then choose <strong>Install Pico firmware</strong>.</li><li>Choose <strong>RP2 Boot</strong> in the browser prompt. After verification, connect from Controllers.</li></ol>
+        <button className="primary" onClick={installPico} disabled={!selectedPico || usbConnected || busy || !('usb' in navigator) || !window.isSecureContext}>Install Pico firmware</button>
+        {(!('usb' in navigator) || !window.isSecureContext) && <p className="helper">Direct installation needs Chrome or Edge on HTTPS or localhost. You can still download the UF2 below.</p>}
+      </>}
+      {selectedPico && <p className="helper"><a href={new URL(picoBuilds.find(build => build.board === selectedPico)!.path, firmwareRoot).href} download={`${selectedPico}-lightvm.uf2`}>Download the {picoBuilds.find(build => build.board === selectedPico)!.name} UF2</a> and copy it to the {selectedPico === 'pico2_w' ? 'RP2350' : 'RPI-RP2'} drive.</p>}
     </div>}
     {progress && <p role="status" className="firmware-progress">{progress}</p>}
     {error && <p role="alert" className="stale-banner">{error}</p>}

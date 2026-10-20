@@ -19,7 +19,7 @@ typedef struct {
     char method[8],path[80],token[33];
     uint8_t body[HEADER_SIZE+FRAME_LIMIT]; size_t size;
     unsigned error;
-    bool discovery_only;
+    bool discovery_only,form_origin_valid;
     HttpIO io;
 #if LIGHTVM_WEBSOCKET
     WebSocket *websocket;
@@ -32,7 +32,7 @@ typedef struct Http {
     HttpRequest queue[HTTP_QUEUE],active; unsigned head,count;
     uint8_t response[HTTP_RESPONSE_LIMIT]; size_t used,sent;
     char header[512]; size_t header_size,header_sent;
-    bool sending,closing,overflow,executing; uint64_t deadline,reply_source;
+    bool sending,closing,overflow,executing,html; uint64_t deadline,reply_source;
 #if LIGHTVM_WEBSOCKET
     bool websocket_keep_open;
 #endif

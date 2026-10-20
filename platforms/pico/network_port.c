@@ -20,8 +20,6 @@ static PicoMqtt mqtt_stream;
 #include "lwip/udp.h"
 #include "lwip/igmp.h"
 #endif
-_Static_assert(VM_HEAP_LIMIT==64u*1024u, "Pico W network builds require the 64 KiB heap profile used by the RAM gate");
-_Static_assert(PIXEL_CAPACITY<=1024u, "Pico W RAM gate reserves at most 1024 physical pixels");
 static App *engine;
 static bool initialized;
 static NetworkMode mode;
@@ -56,7 +54,7 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     if (!c->wifi_enabled) return true;
     if (cyw43_arch_init_with_country(country)) return false;
     initialized=true; mode=c->mode;
-    // SDK 1.5.1 loads the radio and its OTP MAC lazily. Reading the MAC
+    // Radio initialization loads its OTP MAC lazily. Reading the MAC
     // before bringing an interface up gives every cold boot an all-zero name.
     cyw43_arch_enable_sta_mode();
     uint8_t mac[6];

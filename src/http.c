@@ -1,4 +1,5 @@
 #include "http.h"
+#include "http_setup.h"
 #if LIGHTVM_WEBSOCKET
 #include "websocket.h"
 #endif
@@ -56,6 +57,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     }
 #endif
     if (!strcmp(r->method,"OPTIONS")) return 204;
+    if (LIGHTVM_WIFI && (!strcmp(r->path,"/") || !strcmp(r->path,"/setup"))) return http_setup(h,r);
     if (!strcmp(r->path,"/api/v1/controllers")) {
         if (strcmp(r->method,"GET")) return 405;
         if (r->size) return 400;
@@ -96,7 +98,7 @@ static void headers(Http *h,unsigned code,bool binary) {
         h->websocket_keep_open=opcode!=WS_CLOSE; return;
     }
 #endif
-    const char *reason=code==200?"OK":code==201?"Created":code==204?"No Content":code==400?"Bad Request":code==404?"Not Found":code==405?"Method Not Allowed":code==413?"Payload Too Large":code==415?"Unsupported Media Type":
+    const char *reason=code==200?"OK":code==201?"Created":code==204?"No Content":code==400?"Bad Request":code==403?"Forbidden":code==404?"Not Found":code==405?"Method Not Allowed":code==409?"Conflict":code==413?"Payload Too Large":code==415?"Unsupported Media Type":
 #if LIGHTVM_WEBSOCKET
         code==426?"Upgrade Required":
 #endif
@@ -111,7 +113,7 @@ static void headers(Http *h,unsigned code,bool binary) {
 #if LIGHTVM_WEBSOCKET
         "%s"
 #endif
-        "\r\n",code,reason,binary?"application/octet-stream":"application/json",(unsigned long)h->used
+        "\r\n",code,reason,h->html?"text/html; charset=utf-8":binary?"application/octet-stream":"application/json",(unsigned long)h->used
 #if LIGHTVM_WEBSOCKET
         ,code==426?"close, Upgrade":"close"
         ,code==426?"Upgrade: websocket\r\nSec-WebSocket-Version: 13\r\n":""
@@ -123,9 +125,9 @@ void http_tick(Http *h,uint64_t now) {
     expire(h,now);
     if (!h->sending && h->count) {
         h->active=h->queue[h->head]; h->head=(h->head+1)%HTTP_QUEUE; h->count--;
-        h->used=0; h->sent=0; h->header_sent=0; h->overflow=false; h->reply_source=0;
+        h->used=0; h->sent=0; h->header_sent=0; h->overflow=false; h->reply_source=0; h->html=false;
         h->executing=true;unsigned code=execute(h,&h->active,now);h->executing=false;
-        if (code>=400) { h->used=(size_t)snprintf((char *)h->response,sizeof(h->response),"{\"error\":%u}",code); }
+        if (code>=400 && !h->html) { h->used=(size_t)snprintf((char *)h->response,sizeof(h->response),"{\"error\":%u}",code); }
         headers(h,code,code==200 && !strcmp(h->active.path,"/api/v1/command")); h->deadline=now+2000000u; h->sending=true; h->closing=false;
     }
     if (!h->sending) return;
@@ -176,7 +178,9 @@ bool http_input(HttpInput *input,const uint8_t *bytes,size_t size,HttpRequest *r
     char *line=strstr(header,"\r\n"); if (!line) { r->error=400; input->ready=true; return true; } *line=0;
     char version[16],extra;
     if (sscanf(header,"%7s %79s %15s %c",r->method,r->path,version,&extra)!=3 || strcmp(version,"HTTP/1.1")) r->error=400;
-    bool length_seen=false,token_seen=false,media=false; size_t length=0;
+    bool length_seen=false,token_seen=false,media=false,form=false,host_seen=false,origin_seen=false; size_t length=0;
+    bool setup_post=!strcmp(r->method,"POST") && !strcmp(r->path,"/setup");
+    char host[96]="",origin[112]="";
 #if LIGHTVM_WEBSOCKET
     WebSocketHandshake handshake={0};
     bool upgrading=!strcmp(r->path,WEBSOCKET_PATH);
@@ -195,11 +199,17 @@ bool http_input(HttpInput *input,const uint8_t *bytes,size_t size,HttpRequest *r
             for (char *p=value;*p;p++) { if (*p<'0' || *p>'9' || length>528) { r->error=413; break; } length=length*10+(unsigned)(*p-'0'); }
         } else if (!strcasecmp(field,"Transfer-Encoding")) r->error=400;
         else if (!strcasecmp(field,"X-LightVM-Session")) { if (token_seen || strlen(value)>=sizeof(r->token)) r->error=400; else strcpy(r->token,value); token_seen=true; }
-        else if (!strcasecmp(field,"Content-Type")) media=!strcmp(value,"application/octet-stream");
+        else if (!strcasecmp(field,"Content-Type")) { media=!strcmp(value,"application/octet-stream"); form=!strcmp(value,"application/x-www-form-urlencoded"); }
+        else if (setup_post && !strcasecmp(field,"Host")) { if(host_seen || strlen(value)>=sizeof(host))r->error=400; else strcpy(host,value);host_seen=true; }
+        else if (setup_post && !strcasecmp(field,"Origin")) { if(origin_seen || strlen(value)>=sizeof(origin))r->error=400; else strcpy(origin,value);origin_seen=true; }
         field=next+2;
     }
     if (length>sizeof(r->body)) r->error=413;
     if (!strcmp(r->method,"POST") && !strcmp(r->path,"/api/v1/command") && (!media || !length_seen)) r->error=media?400:415;
+    if (setup_post) {
+        if (!form || !length_seen) r->error=form?400:415;
+        r->form_origin_valid=http_setup_origin(host,origin);
+    }
     if (r->error) { input->ready=true; return true; }
     if (input->used<end+length) return false;
     if (input->used!=end+length) r->error=400;

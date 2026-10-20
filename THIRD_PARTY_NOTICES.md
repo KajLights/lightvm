@@ -3,12 +3,12 @@
 LightVM's original code and documentation are licensed under the MIT License in
 [LICENSE](LICENSE), copyright 2026 Kaj Wik Siebert. Dependencies retain the
 licenses and copyright notices listed below. The review covers the current
-native receiver, RP2040 Pico and XIAO ESP32 builds, and pinned Python tools.
+native receiver, RP2040/RP2350 Pico and XIAO ESP32 builds, and pinned Python tools.
 
 | Component | Version | License | Use | Preserved notice |
 |---|---|---|---|---|
-| Pico SDK | 1.5.1 | BSD-3-Clause; selected files MIT | Pico firmware | [BSD license](licenses/pico-sdk-1.5.1.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
-| TinyUSB | SDK submodule `86c416d4c0fb38432460b3e11b08b9de76941bf5` | MIT | USB device driver | [License](licenses/tinyusb.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
+| Pico SDK | 2.3.1 | BSD-3-Clause; selected files MIT | Pico firmware | [BSD license](licenses/pico-sdk-2.3.1.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
+| TinyUSB | SDK submodule `86ad6e56c1700e85f1c5678607a762cfe3aa2f47` | MIT | USB device driver | [License](licenses/tinyusb.txt), [per-file notices](licenses/pico-sdk-additional-notices.txt) |
 | pico⚡flash PICOBOOT package | commit `230759cf32ab245decf1194f5b37b7d3c0088aed` | MIT | Browser WebUSB Pico flashing | [License](licenses/picoflash.txt), copyright 2025–2026 Piers Finlayson |
 | Pico examples WS2812 PIO | 1545dfd9a186 | BSD-3-Clause | Adapted PIO program | [License](licenses/pico-examples.txt), copyright notice in [source](platforms/pico/ws2812.pio) |
 | pySerial | 3.5 | BSD-3-Clause | Desktop serial client | [License](licenses/pyserial-3.5.txt) |
@@ -30,12 +30,11 @@ that are not linked by this `arm-none-eabi` firmware.
 
 ## Pico double-precision implementation
 
-Pico SDK 1.5.1's `src/rp2_common/pico_double/double_v1_rom_shim.S` grants use solely
-on a Raspberry Pi Pico device and alternatively offers GPLv2 licensing. LightVM
-selects `pico_set_double_implementation(lightvm compiler)` so that source is
-neither compiled nor linked into the firmware. Double-precision operations use
-the compiler/Newlib implementations; floating-point performance can differ from
-the SDK's ROM-assisted implementation.
+LightVM selects `pico_set_double_implementation(lightvm compiler)` on both
+RP2040 and RP2350. Double-precision operations use compiler/Newlib routines,
+not SDK ROM double shims. Compiler math code and constant tables remain in XIP
+flash to retain the Pico W network builds' RAM budget. SDK routines explicitly
+marked as time-critical, including flash programming, remain in SRAM.
 
 ## Python animation frontend and example provenance
 
@@ -61,8 +60,7 @@ dependency licenses remain as listed above.
 ## Existing dependency modifications
 
 The WS2812 PIO program is adapted from Pico examples commit 1545dfd9a1862961904856d46a4e05f35454d4be.
-Only the single-strip program is used; the newer PIO version directive is omitted
-for SDK 1.5.1 compatibility. The Raspberry Pi copyright and BSD license identifier
+Only the single-strip PIO version 0 program is used, shared by RP2040 and RP2350. The Raspberry Pi copyright and BSD license identifier
 are retained. Source: https://github.com/raspberrypi/pico-examples/blob/1545dfd9a1862961904856d46a4e05f35454d4be/pio/ws2812/ws2812.pio
 
 
@@ -86,16 +84,15 @@ the notices for their selected native SDKs and linked services.
 
 ## Optional Wi-Fi and HTTP dependencies
 
-Pico W networking uses the Pico SDK 1.5.1 pins: CYW43 driver
-`8ef38a6d32c54f850bff8f189bdca19ded33792a` and lwIP
-`239918ccc173cb2c2a62f41a40fd893f57faf1d6`. The driver and its bundled CYW43439
-firmware patches are used under the RP2040-specific alternative grant in
-[LICENSE.RP](licenses/cyw43-driver-rp2040.txt), copyright 2019–2022 George Robotics
-Pty Ltd, together with SDK BSD headers. This alternative permits this Pico W
-build; it is restricted to Raspberry Pi semiconductor devices. No CYW43 driver
+Pico W and Pico 2 W networking use the Pico SDK 2.3.1 pins: CYW43 driver
+`055d64274b014dd7b1c2fc94d26e8a18face7124` and lwIP
+`77dcd25a72509eb83f72b033d219b1d40cd8eb95`. The driver and its bundled CYW43439
+firmware patches are used under the Raspberry Pi semiconductor alternative grant in
+[LICENSE.RP](licenses/cyw43-driver-raspberry-pi.txt), copyright 2019–2022 George Robotics
+Pty Ltd, together with SDK BSD headers. This alternative covers RP2040 and RP2350 builds; it is restricted to Raspberry Pi semiconductor devices. No CYW43 driver
 source or blob is linked into the host or ESP32 firmware. lwIP's BSD terms and
 Swedish Institute of Computer Science copyright are preserved in
-[its license](licenses/lwip-pico-sdk-1.5.1.txt).
+[its license](licenses/lwip-pico-sdk-2.3.1.txt).
 
 The bounded Pico AP DHCP server adapts MicroPython DHCP lease and reply logic
 from Raspberry Pi pico-examples, copyright 2018–2019 Damien P. George, under
@@ -113,8 +110,8 @@ headers are preserved [here](licenses/networking-additional-notices.txt).
 
 These optional dependencies are excluded from USB-only native SDK dependency
 closures. Their notices are copied alongside build artifacts with the existing
-license bundle. Upstream sources: [CYW43 driver](https://github.com/georgerobotics/cyw43-driver/tree/8ef38a6d32c54f850bff8f189bdca19ded33792a),
-[lwIP for Pico SDK](https://github.com/lwip-tcpip/lwip/tree/239918ccc173cb2c2a62f41a40fd893f57faf1d6),
+license bundle. Upstream sources: [CYW43 driver](https://github.com/georgerobotics/cyw43-driver/tree/055d64274b014dd7b1c2fc94d26e8a18face7124),
+[lwIP for Pico SDK](https://github.com/lwip-tcpip/lwip/tree/77dcd25a72509eb83f72b033d219b1d40cd8eb95),
 [ESP-IDF Wi-Fi libraries](https://github.com/espressif/esp-idf/tree/v5.5.3/components/esp_wifi/lib).
 
 ## Redistribution
@@ -125,8 +122,8 @@ If distributing dependency sources or Python packages, retain their original
 per-file copyright/license notices and any additional notices supplied by their
 own distributions.
 
-Upstream sources: [Pico SDK](https://github.com/raspberrypi/pico-sdk/tree/1.5.1),
-[TinyUSB](https://github.com/hathach/tinyusb/tree/86c416d4c0fb38432460b3e11b08b9de76941bf5),
+Upstream sources: [Pico SDK 2.3.1](https://github.com/raspberrypi/pico-sdk/tree/079c6f39023649b154152db30f1d781e884879bc),
+[TinyUSB](https://github.com/hathach/tinyusb/tree/86ad6e56c1700e85f1c5678607a762cfe3aa2f47),
 [pySerial](https://github.com/pyserial/pyserial/tree/v3.5),
 [Newlib 4.3.0](https://github.com/mirror/newlib-cygwin/blob/newlib-4.3.0/COPYING.NEWLIB),
 and [GCC runtime exception](https://github.com/gcc-mirror/gcc/blob/releases/gcc-13.2.0/COPYING.RUNTIME).
@@ -135,3 +132,8 @@ ESP32 upstream sources: [ESP-IDF v5.5.3](https://github.com/espressif/esp-idf/tr
 [RMT encoder example](https://github.com/espressif/esp-idf/blob/v5.5.3/examples/peripherals/rmt/led_strip/main/led_strip_encoder.c),
 [TLSF](https://github.com/espressif/tlsf/tree/2867f6883a12920b1969ff9624c0ab0e4185c2ce),
 and [Espressif toolchain release](https://github.com/espressif/crosstool-NG/releases/tag/esp-14.2.0_20251107).
+
+The build-only UF2 utility is picotool 2.3.1, commit
+`2041936441b48a3cc53ae3da9e805229fe8f4e18`, selected by SDK 2.3.1. It is not
+linked into firmware or shipped in the browser bundle. Its upstream source and
+notices are in [picotool](https://github.com/raspberrypi/picotool/tree/2041936441b48a3cc53ae3da9e805229fe8f4e18).

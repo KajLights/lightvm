@@ -38,6 +38,32 @@ static bool broker_host(const char *host) {
         previous=c;
     }
 }
+bool network_country_valid(const char *country) {
+    return country[0]>='A' && country[0]<='Z' && country[1]>='A' && country[1]<='Z' && !country[2];
+}
+bool network_wifi_valid(const WifiNetwork *n,char *error,size_t capacity) {
+    if (!memchr(n->ssid,0,sizeof(n->ssid)) || !n->ssid[0]) return fail(error,capacity,"wifi.networks: SSID must be 1..32 UTF-8 bytes");
+    // Forms supply raw bytes; JSON callers have already checked UTF-8 decoding.
+    const unsigned char *s=(const unsigned char *)n->ssid;
+    while (*s) {
+        unsigned char c=*s++; unsigned remaining; uint32_t code,minimum;
+        if (c<128) continue;
+        if (c>=0xc2 && c<=0xdf) { remaining=1; code=c&31; minimum=0x80; }
+        else if (c>=0xe0 && c<=0xef) { remaining=2; code=c&15; minimum=0x800; }
+        else if (c>=0xf0 && c<=0xf4) { remaining=3; code=c&7; minimum=0x10000; }
+        else return fail(error,capacity,"wifi.networks: SSID must be valid UTF-8");
+        while (remaining--) { if ((*s&0xc0)!=0x80) return fail(error,capacity,"wifi.networks: SSID must be valid UTF-8"); code=(code<<6)|(*s++&63); }
+        if (code<minimum || code>0x10ffff || (code>=0xd800 && code<=0xdfff)) return fail(error,capacity,"wifi.networks: SSID must be valid UTF-8");
+    }
+    if (!memchr(n->password,0,sizeof(n->password))) return fail(error,capacity,"wifi.password: invalid string");
+    size_t len=strlen(n->password);
+    if (len && (len<8 || len>64)) return fail(error,capacity,"wifi.password: expected 8..63 printable ASCII characters or 64 hex digits");
+    for (size_t i=0;i<len;i++) {
+        char c=n->password[i];
+        if (c<32 || c>126 || (len==64 && !((c>='0' && c<='9') || (c>='a' && c<='f') || (c>='A' && c<='F')))) return fail(error,capacity,"wifi.password: invalid passphrase");
+    }
+    return true;
+}
 bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity) {
     Json j; memset(out,0,sizeof(*out)); strcpy(out->country,"XX"); out->port=80;
     static const char *const root[]={"schema","wifi","http","mqtt",NULL};
@@ -71,7 +97,7 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
     for (size_t i=0;i<ap_length;i++) if ((unsigned char)out->ap_password[i]<32 || (unsigned char)out->ap_password[i]>126)
         return fail(error,capacity,"wifi.ap.password: expected printable ASCII");
     int country=json_get(&j,w,"country");
-    if (country>=0 && (!json_string(&j,country,out->country,sizeof(out->country)) || strlen(out->country)!=2 || out->country[0]<'A' || out->country[0]>'Z' || out->country[1]<'A' || out->country[1]>'Z'))
+    if (country>=0 && (!json_string(&j,country,out->country,sizeof(out->country)) || !network_country_valid(out->country)))
         return fail(error,capacity,"wifi.country: expected two uppercase letters or XX");
     uint32_t port=80; int p=json_get(&j,h,"port");
     if (p>=0 && (!json_u32(&j,p,&port) || !port || port>65535)) return fail(error,capacity,"http.port: expected 1..65535");
@@ -91,12 +117,7 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
             if (previous) for (unsigned i=0;i<previous->count;i++) if (!strcmp(n->ssid,previous->networks[i].ssid)) { strcpy(n->password,previous->networks[i].password); found=true; }
             if (!found) return fail(error,capacity,"wifi.password: required for a new SSID; empty selects open");
         }
-        size_t len=strlen(n->password);
-        if (len && (len<8 || len>64)) return fail(error,capacity,"wifi.password: expected 8..63 printable ASCII characters or 64 hex digits");
-        for (size_t i=0;i<len;i++) {
-            char c=n->password[i];
-            if (c<32 || c>126 || (len==64 && !((c>='0' && c<='9') || (c>='a' && c<='f') || (c>='A' && c<='F')))) return fail(error,capacity,"wifi.password: invalid passphrase");
-        }
+        if (!network_wifi_valid(n,error,capacity)) return false;
     }
     if (out->wifi_enabled && out->mode==NET_MODE_STATION && !out->count) return fail(error,capacity,"wifi.networks: enabled station Wi-Fi needs an SSID");
     if(previous)out->mqtt=previous->mqtt;

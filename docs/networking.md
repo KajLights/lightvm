@@ -4,7 +4,7 @@ HTTP-enabled builds can optionally include [plain WebSocket management](websocke
 with `-DLIGHTVM_WEBSOCKET=ON`, on the same listener and port.
 
 Networking is optional firmware functionality. The original Pico remains USB-only.
-Pico W, XIAO ESP32-C3, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTTP. USB continues
+Pico W, Pico 2 W, XIAO ESP32-C3, XIAO ESP32-S3 and XIAO ESP32-C6 can include Wi-Fi and HTTP. USB continues
 working when networking is disabled, unavailable or reconnecting. All paths share
 one runtime, library and configuration; commands execute between engine steps.
 
@@ -15,7 +15,8 @@ network changes. Routers that register DHCP names in local DNS can resolve it;
 the DNS suffix, if any, depends on the router.
 
 HTTP has **no authentication or encryption**. It is intended for your trusted LAN.
-The server exposes commands and discovery metadata, not the editor's static files.
+The server exposes commands, discovery metadata and a small Wi-Fi setup form at `/`.
+The editor's static files are hosted separately.
 Firmware OTA, HTTPS and source storage are not included. Optional
 [MQTT control and Home Assistant lights](mqtt.md) connect to an existing broker
 independently of the HTTP enable switch. AP mode serves
@@ -31,7 +32,7 @@ idf.py -C platforms/esp32 -B "$PWD/build/network-c6" \
   -D LIGHTVM_BOARD=xiao_esp32c6 -D LIGHTVM_WIFI=ON -D LIGHTVM_HTTP=ON build
 # Substitute xiao_esp32c3 or xiao_esp32s3 and a separate directory for each board.
 
-# Pico SDK 1.5.1, with its pinned radio and network submodules:
+# Pico SDK 2.3.1, with its pinned radio and network submodules:
 git -C PATH_TO_PICO_SDK submodule update --init lib/tinyusb lib/cyw43-driver lib/lwip
 cmake -S . -B build/network-pico-w -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico_w \
   -DPICO_SDK_PATH=PATH_TO_PICO_SDK -DLIGHTVM_WIFI=ON -DLIGHTVM_HTTP=ON
@@ -42,6 +43,9 @@ cmake --build build/network-host
 build/network-host/lightvm --storage build/http-store.bin --http 8001
 ```
 
+Use `-DPICO_BOARD=pico2_w` and a separate directory for Pico 2 W. See the
+[Pico 2 W guide](pico2-w.md) for SDK pins, flash geometry and hardware acceptance.
+
 Host HTTP binds to `127.0.0.1`; `--http-bind IPV4` changes this explicitly. Port
 zero chooses an available test port, printed to stderr. Pipes remain available;
 closing stdin leaves an explicitly HTTP-enabled host running. The `--http` option
@@ -49,8 +53,9 @@ is a development listener override, independent of saved radio settings. Without
 that option, an HTTP-enabled saved network configuration starts a loopback
 listener on its saved port at boot; the host has no physical radio.
 
-Pico W networking profiles retain the 32 KiB module limit and use a 64 KiB VM heap
-ceiling. The radio uses PIO1; WS2812 remains on PIO0. Bounded lwIP pools and the
+Pico W and Pico 2 W networking profiles retain the 32 KiB module limit and use a 64 KiB VM heap
+ceiling. Output drivers use PIO0/PIO1. The SDK normally allocates the radio on
+PIO1 for Pico W and PIO2 for Pico 2 W; PIO2 is not used by output drivers. Bounded lwIP pools and the
 reply buffer are included in the linker footprint. The build emits
 `ram-report.json` and rejects reservations that cannot retain 16 KiB operating
 headroom after VM, stack and pixel-driver ceilings. This is a reservation check;
@@ -59,11 +64,14 @@ measurement. USB-only profiles retain their original ceilings.
 
 ## Initial setup and standalone AP mode
 
-On Pico W and the XIAO ESP32-C3/S3/C6 builds with both `LIGHTVM_WIFI=ON`
+On Pico W, Pico 2 W and the XIAO ESP32-C3/S3/C6 builds with both `LIGHTVM_WIFI=ON`
 and `LIGHTVM_HTTP=ON`, a controller without a valid saved network configuration
 starts an **open** access point named `lightvm-xxxxxx`, using the same stable
-station-MAC suffix as its hostname. Join it and connect the editor or CLI to
-`http://192.168.4.1`. The radio uses channel 1 and DHCP assigns up to four addresses
+station-MAC suffix as its hostname. Join it and open `http://192.168.4.1` in a browser.
+Enter the network name, password and two-letter country code, then **Save Wi-Fi**.
+This is a plain HTML POST form with no JavaScript, external assets or editor dependency.
+After the confirmation, rejoin your normal Wi-Fi and open the editor.
+The radio uses channel 1 and DHCP assigns up to four addresses
 from `192.168.4.2` through `192.168.4.5` on a `/24` subnet.
 
 This setup configuration exists only in RAM. `network_get` returns it and
@@ -75,6 +83,15 @@ disabled Wi-Fi. Explicit power-cycle recovery overrides it for the current boot.
 Station connection failures keep retrying the saved list and never open an AP.
 Wi-Fi-only builds can use saved AP mode through USB but do not start a setup AP.
 USB-only builds and the host simulator do not start an AP.
+
+The form enables station Wi-Fi and HTTP, makes the submitted network preferred,
+and keeps other saved networks, the HTTP port, AP settings and MQTT configuration.
+Leave the password blank to retain the password for an already saved SSID; select
+**Open network** explicitly for a new network without a password. Passwords are never
+included in the returned page. Invalid submissions keep the saved configuration.
+During power-cycle recovery, saves retain the current AP until restart.
+The same form is available at the controller's normal HTTP address after provisioning;
+a custom-port discovery-only listener does not serve it.
 
 The editor's **Wi-Fi & HTTP** panel offers **Join Wi-Fi networks** and **Host an
 access point** on firmware advertising `wifi_ap_supported:true`. Only one mode
@@ -114,7 +131,8 @@ fixed IP when `.local` resolution is unavailable. A custom HTTP port retains
 the discovery-only listener on port 80, as in station mode.
 
 AP mode provides local controller access without internet routing or a captive
-portal. Open the hosted editor before joining the AP, or build and serve it on
+portal. The board's setup page works without internet access. For full editor access
+while remaining on the AP, open the hosted editor before joining, or build and serve it on
 localhost following [the editor instructions](web-editor.md#run-locally).
 Visit Editor while online if source compilation will be needed: its external
 compiler/editor assets must already be loaded, and offline caching is not
@@ -154,7 +172,7 @@ python tools/client.py --url http://DEVICE_IP --activate rainbow
 python tools/client.py --url http://DEVICE_IP --program-state
 ```
 
-Omit `--no-reset` for Pico/Pico W. `--get-network` omits passwords;
+Omit `--no-reset` for Pico/Pico W/Pico 2 W. `--get-network` omits passwords;
 `--validate-network FILE` checks without saving. After initial USB provisioning,
 network settings may be changed through either path. Network changes preserve the
 program and output configuration, but can terminate HTTP access. Read the new IP
@@ -164,7 +182,7 @@ direct addresses remain available when multicast is blocked.
 
 ## Local controller discovery
 
-Wi-Fi/HTTP firmware on Pico W and all XIAO ESP32 profiles advertises
+Wi-Fi/HTTP firmware on Pico W, Pico 2 W and all XIAO ESP32 profiles advertises
 `_lightvm._tcp.local` with its command port, stable controller ID, board and application release.
 Each board also answers the shared `lightvm.local` IPv4 name. This bootstrap name
 may reach any LightVM board; each board retains its unique `lightvm-xxxxxx.local`
@@ -252,6 +270,8 @@ configured service availability.
 
 | Request | Reply |
 |---|---|
+| `GET /`, Wi-Fi builds | 200 HTML: local Wi-Fi setup form |
+| `POST /setup`, Wi-Fi builds | URL-encoded form; 200 HTML confirmation after persistence, 400 invalid fields, 403 invalid origin/token, 409 stale revision or conflicting upload |
 | `GET /api/v1/controllers` | 200 JSON: bounded DNS-SD controller list; no session required |
 | `POST /api/v1/sessions`, empty body | 201 JSON: `session_id`, `controller_id`, `boot_id`, `expires_in_ms` |
 | `POST /api/v1/command`, `X-LightVM-Session` header | 200 binary response frames ending in STATUS |

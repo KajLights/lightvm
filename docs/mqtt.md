@@ -9,7 +9,7 @@ works exactly the same way. Composition editing stays in LightVM.
 
 ## Build
 
-Add `-DLIGHTVM_MQTT=ON` to a host, Pico W or ESP32 build. It defaults OFF.
+Add `-DLIGHTVM_MQTT=ON` to a host, Pico W, Pico 2 W or ESP32 build. It defaults OFF.
 Embedded MQTT requires `LIGHTVM_WIFI=ON`; HTTP is independently optional.
 
 ```sh
@@ -24,6 +24,9 @@ cmake --build build/mqtt-pico-w --parallel
 idf.py -C platforms/esp32 -B "$PWD/build/mqtt-c6" \
   -D LIGHTVM_BOARD=xiao_esp32c6 -D LIGHTVM_WIFI=ON -D LIGHTVM_MQTT=ON build
 ```
+
+For Pico 2 W, use `-DPICO_BOARD=pico2_w` and a fresh directory with the same
+feature flags; see the [board guide](pico2-w.md).
 
 A host with saved MQTT enabled continues serving after stdin closes. Use its
 storage file to keep a stable host controller identity between launches. Embedded
@@ -230,7 +233,7 @@ MQTT retains discovery but makes the controller unavailable.
 
 ## Keypad and RGB indicators
 
-Pico W can use the Pimoroni Pico RGB Keypad Base as an HA automation controller.
+Pico W and Pico 2 W can use the Pimoroni Pico RGB Keypad Base as an HA automation controller.
 Under **Configure → Output & startup**, choose **Add Pico RGB Keypad**, then
 **Apply & save for reboot**. This adds generic TCA9555 inputs and one APA102
 indicator output. The Advanced JSON editor supports custom labels and bindings.
@@ -245,7 +248,7 @@ python tools/client.py --port PORT --network examples/config/network-mqtt.json
 Set the actual broker credentials in the network example first. Applying the
 keypad example replaces the active output configuration; combine its `outputs`
 and `inputs` with existing outputs when keeping other lights. An original Pico
-supports the peripherals over USB, but standalone MQTT needs Pico W networking.
+supports the peripherals over USB, but standalone MQTT needs Pico W or Pico 2 W networking. Pico 2 W physical acceptance is pending; see the [board guide](pico2-w.md).
 
 HA discovers **one controller device**, containing sixteen button event entities,
 sixteen RGB light entities and sixteen **Press feedback** configuration switches.

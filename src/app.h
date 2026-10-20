@@ -94,4 +94,7 @@ void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *payloa
 void app_dispatch(App *, uint64_t source, SendMessage, void *, uint8_t, uint16_t, const uint8_t *, size_t);
 void app_disconnect(App *, uint64_t source);
 void app_reply_delivered(App *, uint64_t source);
+// Save an already validated network configuration on the engine owner.
+enum Status app_save_network(App *, const NetworkConfig *, uint32_t revision,
+                             uint64_t source, char *error, size_t capacity);
 #endif

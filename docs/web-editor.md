@@ -150,8 +150,10 @@ partition table and application binaries. Confirm that the physical board is a
 supported XIAO model; the installer detects the ESP chip family only. Choose the
 serial port when prompted. Existing boards should keep their data
 when offered an erase choice. The published bundle also contains a USB Pico
-image and a Wi-Fi/HTTP/WebSocket Pico W image, both with boot-sequence support. Hold
-BOOTSEL while connecting a Pico, select its printed model, and choose RP2 Boot
+image and Wi-Fi/HTTP/WebSocket Pico W and Pico 2 W images, all with boot-sequence support.
+Pico 2 W uses the UF2 download: hold BOOTSEL while connecting, then copy its UF2
+to the **RP2350** drive. Direct WebUSB installation is limited to Pico/Pico W. For Pico/Pico W, hold
+BOOTSEL while connecting, select its printed model, and choose RP2 Boot
 in the WebUSB picker. The RP2040 bootloader cannot distinguish Pico from Pico W.
 The installer validates the UF2 and checksum, writes below the reserved flash
 storage, reads back the written image and then restarts the board. A UF2 download
@@ -165,19 +167,24 @@ Pico UF2s before starting Vite or building the site:
     python3 tools/package_web_firmware.py --build-id local \
       --board xiao_esp32c6=build/firmware/xiao_esp32c6 \
       --pico pico=build/boot-sequence-pico/lightvm.uf2 \
-      --pico pico_w=build/firmware/pico_w/lightvm.uf2
+      --pico pico_w=build/firmware/pico_w/lightvm.uf2 \
+      --pico pico2_w=build/firmware/pico2_w/lightvm.uf2
     npm run dev
 
 The packager checks the chip and flash offsets in `flasher_args.json` and requires
 Wi-Fi, HTTP, WebSocket and boot-sequence support in the ESP build's `CMakeCache.txt` before
 copying images into `build/editor-assets/firmware`. Add a `--board` argument
-for each additional built XIAO profile. Each `--pico` UF2 is checked for RP2040
-family, contiguous blocks and the reserved flash boundary. The Pages workflow
-builds all five profiles and packages them into the deployed editor automatically.
+for each additional built XIAO profile. Each `--pico` UF2 is checked against its board/chip, contiguous application
+blocks and the linked reserved flash boundary. Pico 2 W accepts only RP2350 Arm
+Secure images, with strict validation of picotool's ignored RP2350-E10 workaround
+block. The Pages workflow builds all six profiles and packages them into the deployed editor automatically.
 
 For initial setup or standalone use, Wi-Fi firmware can host an access point
-at **http://192.168.4.1**. Open the hosted editor before joining that network or
-serve this local build. Select **Host an access point** in **Wi-Fi & HTTP** to
+at **http://192.168.4.1**. Join it and open that address to provision station Wi-Fi
+using the board's plain HTML form; no editor or internet access is needed. After
+saving, rejoin your normal Wi-Fi and open the editor. To use the full editor while
+remaining on the AP, load it before joining or serve this local build.
+Select **Host an access point** in **Wi-Fi & HTTP** to
 save AP settings; station and AP drafts are retained when switching modes.
 Passwords remain only in the form and are cleared after attempted saves.
 The controller serves the full API, while editor/compiler assets remain separate;

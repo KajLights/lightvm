@@ -1,0 +1,2 @@
+/* Retain compiler/Newlib math routines in flash rather than copying to SRAM. */
+*(.text*)

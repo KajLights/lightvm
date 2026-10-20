@@ -43,6 +43,8 @@ typedef struct {
     char ip[48], error[96], ap_ssid[33];
 } Network;
 bool network_parse(const void *, size_t, const NetworkConfig *, NetworkConfig *, char *, size_t);
+bool network_wifi_valid(const WifiNetwork *, char *, size_t);
+bool network_country_valid(const char *);
 size_t network_json(const NetworkConfig *, bool secrets, char *, size_t);
 void network_init(Network *);
 void network_bootstrap(Network *, bool setup_enabled);

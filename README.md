@@ -131,9 +131,9 @@ revisions remain supported.
 
 ## Firmware builds
 
-Pico and Pico W output use asynchronous PIO/DMA by default. ESP32 uses asynchronous
+Pico, Pico W and Pico 2 W output use asynchronous PIO/DMA by default. ESP32 uses asynchronous
 RMT and prefers DMA on chips that support it, with ordinary RMT for additional
-outputs or unavailable DMA resources. Host and RP2040 use the root
+outputs or unavailable DMA resources. Host, RP2040 and RP2350 use the root
 CMake project. ESP32 uses its SDK project. Resource budgets remain in board
 headers; bytecode contains no GPIO, controller or driver selection.
 The [Pico output probe](tests/pico_output/README.md) verifies the production driver.
@@ -141,7 +141,10 @@ The [Pico output probe](tests/pico_output/README.md) verifies the production dri
 `-DLIGHTVM_STORAGE_BYTES=1048576` selects a 1 MiB native region instead of the
 default 512 KiB. Stored program and preset counts follow available capacity.
 
-For Pico/Pico W, use Pico SDK 1.5.1 and an Arm GNU embedded toolchain:
+For Pico/Pico W/Pico 2 W, use Pico SDK 2.3.1 and Arm GNU Toolchain 13.2.Rel1.
+Initialise its `lib/tinyusb`, `lib/cyw43-driver` and `lib/lwip` submodules.
+The SDK uses picotool 2.3.1 for UF2 generation, building it automatically if
+needed. Use fresh build directories after upgrading the SDK.
 
 ```sh
 cmake -S . -B build/pico-w -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico_w \
@@ -153,6 +156,12 @@ cmake --build build/pico-w --parallel
 Install the resulting `lightvm.uf2` through the existing BOOTSEL flow. For the
 original Pico, select `-DPICO_BOARD=pico` and omit Wi-Fi/HTTP. Preserve the reserved
 storage region when using flashing tools.
+
+For **Pico 2 W**, select `-DPICO_BOARD=pico2_w` and a separate directory such as
+`build/pico2-w`; this selects RP2350 Arm Cortex-M33. Hold BOOTSEL while connecting
+USB and copy its `lightvm.uf2` to the **RP2350** drive. See the
+[Pico 2 W guide](docs/pico2-w.md) for complete build commands, memory layout,
+clean provisioning and hardware acceptance. Pico W images cannot run on Pico 2 W.
 
 For XIAO ESP32-C3, S3 or C6, use ESP-IDF 5.5.3 and its selected toolchains:
 

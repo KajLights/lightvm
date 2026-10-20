@@ -219,6 +219,11 @@ users must be able to change their choices over time.
 
 ## Current platform and implementation path
 
+The [Pico 2 W support plan](feature-proposal-pico2-w.md) adds an RP2350 board
+definition within the existing Pico port. Its board identity, flash geometry and
+resource accounting are independent of the instance profile mechanism proposed
+here; adding that board does not depend on implementing this proposal.
+
 Today, `LIGHTVM_PLATFORM`, `LIGHTVM_BOARD` in the ESP32 project and
 `LIGHTVM_BOARD_CONFIG` select native ports and board/resource headers. The shared
 core has a fixed source list; the output driver and management transport are

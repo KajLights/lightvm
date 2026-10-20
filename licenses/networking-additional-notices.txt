@@ -589,7 +589,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/apps/ping/esp_ping.c, ESP-IDF 5.5.3/compo
  * SPDX-License-Identifier: Apache-2.0
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/auth.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/auth.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/auth.c
 /*
  * auth.c - PPP authentication and phase control.
  *
@@ -660,7 +660,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/auth.c, Pico SDK 1.5.1
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ccp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ccp.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ccp.c
 /*
  * ccp.c - PPP Compression Control Protocol.
  *
@@ -691,7 +691,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ccp.c, Pico SDK 1.5.1/
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-md5.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/chap-md5.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-md5.c
 /*
  * chap-md5.c - New CHAP/MD5 implementation.
  *
@@ -722,7 +722,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-md5.c, Pico SDK 1
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-new.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/chap-new.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-new.c
 /*
  * chap-new.c - New CHAP implementation.
  *
@@ -753,7 +753,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap-new.c, Pico SDK 1
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap_ms.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/chap_ms.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap_ms.c
 /*
  * chap_ms.c - Microsoft MS-CHAP compatible implementation.
  *
@@ -784,7 +784,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/chap_ms.c, Pico SDK 1.
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/demand.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/demand.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/demand.c
 /*
  * demand.c - Support routines for demand-dialling.
  *
@@ -815,7 +815,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/demand.c, Pico SDK 1.5
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eap.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/eap.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eap.c
 /*
  * eap.c - Extensible Authentication Protocol for PPP (RFC 2284)
  *
@@ -861,7 +861,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eap.c, Pico SDK 1.5.1/
  * Based on draft-ietf-pppext-eap-srp-03.txt.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ecp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ecp.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ecp.c
 /*
  * ecp.c - PPP Encryption Control Protocol.
  *
@@ -921,7 +921,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ecp.c, Pico SDK 1.5.1/
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eui64.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/eui64.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eui64.c
 /*
  * eui64.c - EUI64 routines for IPv6CP.
  *
@@ -959,7 +959,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/eui64.c, Pico SDK 1.5.
  * $Id: eui64.c,v 1.6 2002/12/04 23:03:32 paulus Exp $
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/fsm.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/fsm.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/fsm.c
 /*
  * fsm.c - {Link, IP} Control Protocol Finite State Machine.
  *
@@ -1002,7 +1002,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/fsm.c, Pico SDK 1.5.1/
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipcp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ipcp.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipcp.c
 /*
  * ipcp.c - PPP IP Control Protocol.
  *
@@ -1045,7 +1045,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipcp.c, Pico SDK 1.5.1
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipv6cp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ipv6cp.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipv6cp.c
 /*
  * ipv6cp.c - PPP IPV6 Control Protocol.
  *
@@ -1082,7 +1082,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ipv6cp.c, Pico SDK 1.5
  *
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/lcp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/lcp.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/lcp.c
 /*
  * lcp.c - PPP Link Control Protocol.
  *
@@ -1125,7 +1125,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/lcp.c, Pico SDK 1.5.1/
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/magic.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/magic.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/magic.c
 /*
  * magic.c - PPP Magic Number routines.
  *
@@ -1168,7 +1168,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/magic.c, Pico SDK 1.5.
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/mppe.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/mppe.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/mppe.c
 /*
  * mppe.c - interface MPPE to the PPP code.
  *
@@ -1194,7 +1194,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/mppe.c, Pico SDK 1.5.1
  *                    deprecated in 2.6
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/multilink.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/multilink.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/multilink.c
 /*
  * multilink.c - support routines for multilink.
  *
@@ -1225,7 +1225,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/multilink.c, Pico SDK 
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/arc4.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/arc4.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/arc4.c
 /*
  *  An implementation of the ARCFOUR algorithm
  *
@@ -1261,7 +1261,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/arc4.c, Pico 
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/des.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/des.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/des.c
 /*
  *  FIPS-46-3 compliant Triple-DES implementation
  *
@@ -1297,7 +1297,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/des.c, Pico S
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md4.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/md4.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md4.c
 /*
  *  RFC 1186/1320 compliant MD4 implementation
  *
@@ -1333,7 +1333,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md4.c, Pico S
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md5.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/md5.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md5.c
 /*
  *  RFC 1321 compliant MD5 implementation
  *
@@ -1369,7 +1369,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/md5.c, Pico S
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/sha1.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/polarssl/sha1.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/sha1.c
 /*
  *  FIPS-180-1 compliant SHA-1 implementation
  *
@@ -1405,7 +1405,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/polarssl/sha1.c, Pico 
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ppp.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/ppp.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ppp.c
 /*****************************************************************************
 * ppp.c - Network Point to Point Protocol program file.
 *
@@ -1439,7 +1439,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/ppp.c, Pico SDK 1.5.1/
 *   Original.
 *****************************************************************************/
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppcrypt.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/pppcrypt.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppcrypt.c
 /*
  * pppcrypt.c - PPP/DES linkage for MS-CHAP and EAP SRP-SHA1
  *
@@ -1472,7 +1472,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppcrypt.c, Pico SDK 1
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppoe.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/pppoe.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppoe.c
 /*****************************************************************************
 * pppoe.c - PPP Over Ethernet implementation for lwIP.
 *
@@ -1503,7 +1503,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/pppoe.c, Pico SDK 1.5.
 *   Ported to lwIP.
 *****************************************************************************/
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/upap.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/upap.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/upap.c
 /*
  * upap.c - User/Password Authentication Protocol.
  *
@@ -1546,7 +1546,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/upap.c, Pico SDK 1.5.1
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/utils.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/utils.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/utils.c
 /*
  * utils.c - various utility functions used in pppd.
  *
@@ -1577,7 +1577,7 @@ Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/utils.c, Pico SDK 1.5.
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/vj.c, Pico SDK 1.5.1/lib/lwip/src/netif/ppp/vj.c
+Sources: ESP-IDF 5.5.3/components/lwip/lwip/src/netif/ppp/vj.c
 /*
  * Routines to compress and uncompess tcp packets (for transmission
  * over low speed serial lines.
@@ -3303,439 +3303,3 @@ Sources: ESP-IDF 5.5.3/components/xtensa/xtensa_vectors.S
  *
  * SPDX-FileContributor: 2016-2024 Espressif Systems (Shanghai) CO LTD
  */
-
-Sources: Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_ctrl.c, Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_ll.c, Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_lwip.c, Pico SDK 1.5.1/lib/cyw43-driver/src/cyw43_stats.c
-/*
- * This file is part of the cyw43-driver
- *
- * Copyright (C) 2019-2022 George Robotics Pty Ltd
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- * 3. Any redistribution, use, or modification in source or binary form is done
- *    solely for personal benefit and not for any commercial purpose or for
- *    monetary gain.
- *
- * THIS SOFTWARE IS PROVIDED BY THE LICENSOR AND COPYRIGHT OWNER "AS IS" AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE LICENSOR OR COPYRIGHT OWNER BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * This software is also available for use with certain devices under different
- * terms, as set out in the top level LICENSE file.  For commercial licensing
- * options please email contact@georgerobotics.com.au.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/audio/audio_device.c
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Reinhard Panhuber, Jerzy Kasenberg
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/cdc/cdc_device.c, Pico SDK 1.5.1/lib/tinyusb/src/class/midi/midi_device.c
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/dfu/dfu_device.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 XMOS LIMITED
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/dfu/dfu_rt_device.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Sylvain Munaut <tnt@246tNt.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/hid/hid_device.c, Pico SDK 1.5.1/lib/tinyusb/src/class/msc/msc_device.c, Pico SDK 1.5.1/lib/tinyusb/src/class/vendor/vendor_device.c, Pico SDK 1.5.1/lib/tinyusb/src/device/usbd.c, Pico SDK 1.5.1/lib/tinyusb/src/device/usbd_control.c, Pico SDK 1.5.1/lib/tinyusb/src/tusb.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/net/ecm_rndis_device.c
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Peter Lawrence
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/net/ncm_device.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Jacob Berg Potter
- * Copyright (c) 2020 Peter Lawrence
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/usbtmc/usbtmc_device.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Nathan Conrad
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/class/video/video_device.c
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Koji KITAYAMA
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/common/tusb_fifo.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- * Copyright (c) 2020 Reinhard Panhuber - rework to unmasked pointers
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/portable/raspberrypi/rp2040/dcd_rp2040.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- * Copyright (c) 2021 Ha Thach (tinyusb.org) for Double Buffered
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-Sources: Pico SDK 1.5.1/src/common/pico_sync/critical_section.c, Pico SDK 1.5.1/src/common/pico_sync/lock_core.c, Pico SDK 1.5.1/src/common/pico_sync/mutex.c, Pico SDK 1.5.1/src/common/pico_sync/sem.c, Pico SDK 1.5.1/src/common/pico_time/time.c, Pico SDK 1.5.1/src/common/pico_time/timeout_helper.c, Pico SDK 1.5.1/src/common/pico_util/pheap.c, Pico SDK 1.5.1/src/common/pico_util/queue.c, Pico SDK 1.5.1/src/rp2_common/hardware_claim/claim.c, Pico SDK 1.5.1/src/rp2_common/hardware_clocks/clocks.c, Pico SDK 1.5.1/src/rp2_common/hardware_dma/dma.c, Pico SDK 1.5.1/src/rp2_common/hardware_exception/exception.c, Pico SDK 1.5.1/src/rp2_common/hardware_flash/flash.c, Pico SDK 1.5.1/src/rp2_common/hardware_gpio/gpio.c, Pico SDK 1.5.1/src/rp2_common/hardware_irq/irq.c, Pico SDK 1.5.1/src/rp2_common/hardware_irq/irq_handler_chain.S, Pico SDK 1.5.1/src/rp2_common/hardware_pio/pio.c, Pico SDK 1.5.1/src/rp2_common/hardware_pll/pll.c, Pico SDK 1.5.1/src/rp2_common/hardware_sync/sync.c, Pico SDK 1.5.1/src/rp2_common/hardware_timer/timer.c, Pico SDK 1.5.1/src/rp2_common/hardware_uart/uart.c, Pico SDK 1.5.1/src/rp2_common/hardware_vreg/vreg.c, Pico SDK 1.5.1/src/rp2_common/hardware_watchdog/watchdog.c, Pico SDK 1.5.1/src/rp2_common/hardware_xosc/xosc.c, Pico SDK 1.5.1/src/rp2_common/pico_bit_ops/bit_ops_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_bootrom/bootrom.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cyw43_bus_pio_spi.c, Pico SDK 1.5.1/src/rp2_common/pico_divider/divider.S, Pico SDK 1.5.1/src/rp2_common/pico_fix/rp2040_usb_device_enumeration/rp2040_usb_device_enumeration.c, Pico SDK 1.5.1/src/rp2_common/pico_float/float_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_float/float_init_rom.c, Pico SDK 1.5.1/src/rp2_common/pico_float/float_math.c, Pico SDK 1.5.1/src/rp2_common/pico_float/float_v1_rom_shim.S, Pico SDK 1.5.1/src/rp2_common/pico_int64_ops/pico_int64_ops_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_malloc/pico_malloc.c, Pico SDK 1.5.1/src/rp2_common/pico_mem_ops/mem_ops_aeabi.S, Pico SDK 1.5.1/src/rp2_common/pico_platform/platform.c, Pico SDK 1.5.1/src/rp2_common/pico_runtime/runtime.c, Pico SDK 1.5.1/src/rp2_common/pico_standard_link/binary_info.c, Pico SDK 1.5.1/src/rp2_common/pico_standard_link/crt0.S, Pico SDK 1.5.1/src/rp2_common/pico_standard_link/new_delete.cpp, Pico SDK 1.5.1/src/rp2_common/pico_stdio/stdio.c, Pico SDK 1.5.1/src/rp2_common/pico_stdlib/stdlib.c
-/*
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-Sources: Pico SDK 1.5.1/src/rp2_common/pico_async_context/async_context_base.c, Pico SDK 1.5.1/src/rp2_common/pico_async_context/async_context_poll.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch_freertos.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch_poll.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_arch/cyw43_arch_threadsafe_background.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cyw43_driver.c, Pico SDK 1.5.1/src/rp2_common/pico_lwip/lwip_nosys.c, Pico SDK 1.5.1/src/rp2_common/pico_rand/rand.c
-/*
- * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-Sources: Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus.c, Pico SDK 1.5.1/src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus_driver.c
-/*
- * Copyright (c) 2023 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-Sources: Pico SDK 1.5.1/src/rp2_common/pico_stdio_usb/reset_interface.c
-/**
- * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-Sources: Pico SDK 1.5.1/src/rp2_common/pico_stdio_usb/stdio_usb.c
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
-Sources: Pico SDK 1.5.1/src/rp2_common/pico_stdio_usb/stdio_usb_descriptors.c
-/*
- * This file is based on a file originally part of the
- * MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- * Copyright (c) 2019 Damien P. George
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
-Sources: Pico SDK 1.5.1/src/rp2_common/pico_unique_id/unique_id.c
-/*
- * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-

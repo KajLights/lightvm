@@ -14,19 +14,19 @@ if(LIGHTVM_PLATFORM STREQUAL "esp32")
 endif()
 set(LIGHTVM_PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/platforms/${LIGHTVM_PLATFORM}"
     CACHE PATH "Native port directory (may be outside the source tree)")
+# Resolve SDK board defaults before choosing the engine's resource header.
+if(EXISTS "${LIGHTVM_PLATFORM_DIR}/pre_project.cmake")
+    include("${LIGHTVM_PLATFORM_DIR}/pre_project.cmake")
+endif()
 set(LIGHTVM_DEFAULT_BOARD_CONFIG "${LIGHTVM_PLATFORM_DIR}/board_config.h")
-if(LIGHTVM_PLATFORM STREQUAL "pico" AND PICO_BOARD STREQUAL "pico_w")
-    set(LIGHTVM_DEFAULT_BOARD_CONFIG "${LIGHTVM_PLATFORM_DIR}/boards/pico_w.h")
+if(LIGHTVM_PLATFORM STREQUAL "pico" AND NOT PICO_BOARD STREQUAL "pico")
+    set(LIGHTVM_DEFAULT_BOARD_CONFIG "${LIGHTVM_PLATFORM_DIR}/boards/${PICO_BOARD}.h")
 endif()
 set(LIGHTVM_BOARD_CONFIG "${LIGHTVM_DEFAULT_BOARD_CONFIG}"
     CACHE FILEPATH "Board wiring and engine resource profile")
 if(NOT EXISTS "${LIGHTVM_PLATFORM_DIR}/CMakeLists.txt" OR
    NOT EXISTS "${LIGHTVM_BOARD_CONFIG}")
     message(FATAL_ERROR "Port '${LIGHTVM_PLATFORM}' is not implemented or its board profile is missing")
-endif()
-# SDK/toolchain imports belong to the port and run before compiler detection.
-if(EXISTS "${LIGHTVM_PLATFORM_DIR}/pre_project.cmake")
-    include("${LIGHTVM_PLATFORM_DIR}/pre_project.cmake")
 endif()
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/lightvm_release.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/lightvm_storage.cmake")

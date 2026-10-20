@@ -29,7 +29,7 @@ cmake --build build/ws-host --parallel
 build/ws-host/lightvm --http 8080
 ```
 
-For Pico W, using the pinned SDK/toolchain from the main build instructions:
+For Pico W or Pico 2 W, using the pinned SDK/toolchain from the main build instructions:
 
 ```sh
 cmake -S . -B build/ws-pico-w -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=pico_w \
@@ -91,7 +91,7 @@ Idle upgraded sockets remain connected. Incomplete frames/fragmented messages
 and stalled response writes expire after two seconds without progress. Queue
 exhaustion closes the affected WebSocket with 1013 after previously accepted
 work; it does not accumulate an unbounded backlog. Native connection limits are
-shared with HTTP: four on Pico W, six on ESP32, eight on the host. Clients should
+shared with HTTP: four on Pico W/Pico 2 W, six on ESP32, eight on the host. Clients should
 bound outstanding work and coalesce fader positions to the latest value.
 
 ## Measured footprint

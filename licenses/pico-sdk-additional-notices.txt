@@ -1,14 +1,3034 @@
-Additional notices from Pico SDK 1.5.1 and its matching TinyUSB sources.
+Source notices for Pico SDK 2.3.1 (RP2040 and RP2350 Arm), and its pinned
+TinyUSB, lwIP and CYW43 dependencies. The complete component licences are
+preserved separately in this directory. CYW43 uses its LICENSE.RP alternative.
 
-BSD-3-Clause source copyright notices (terms in pico-sdk-1.5.1.txt):
-// Copyright (c) 2019-2021 Raspberry Pi (Trading) Ltd.
-Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
-Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
+Sources: lib/cyw43-driver/firmware/wifi_nvram_43439.h
+/*
+ * $ Copyright Broadcom Corporation $
+ */
 
+------------------------------------------------------------------------
 
+Sources: lib/cyw43-driver/src/cyw43.h, lib/cyw43-driver/src/cyw43_config.h, lib/cyw43-driver/src/cyw43_country.h, lib/cyw43-driver/src/cyw43_ctrl.c, lib/cyw43-driver/src/cyw43_debug_pins.h, lib/cyw43-driver/src/cyw43_internal.h, lib/cyw43-driver/src/cyw43_ll.c, lib/cyw43-driver/src/cyw43_ll.h, lib/cyw43-driver/src/cyw43_lwip.c, lib/cyw43-driver/src/cyw43_spi.h, lib/cyw43-driver/src/cyw43_stats.c, lib/cyw43-driver/src/cyw43_stats.h
+/*
+ * This file is part of the cyw43-driver
+ *
+ * Copyright (C) 2019-2022 George Robotics Pty Ltd
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. Any redistribution, use, or modification in source or binary form is done
+ *    solely for personal benefit and not for any commercial purpose or for
+ *    monetary gain.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE LICENSOR AND COPYRIGHT OWNER "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE LICENSOR OR COPYRIGHT OWNER BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * This software is also available for use with certain devices under different
+ * terms, as set out in the top level LICENSE file.  For commercial licensing
+ * options please email contact@georgerobotics.com.au.
+ */
 
-src/rp2_common/pico_printf/printf.c
+------------------------------------------------------------------------
 
+Sources: lib/cyw43-driver/src/cyw43_btbus.h
+/*
+ * This file is part of the cyw43-driver
+ *
+ * Copyright (C) 2019-2023 George Robotics Pty Ltd
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. Any redistribution, use, or modification in source or binary form is done
+ *    solely for personal benefit and not for any commercial purpose or for
+ *    monetary gain.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE LICENSOR AND COPYRIGHT OWNER "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE LICENSOR OR COPYRIGHT OWNER BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * This software is also available for use with certain devices under different
+ * terms, as set out in the top level LICENSE file.  For commercial licensing
+ * options please email contact@georgerobotics.com.au.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/api/api_lib.c, lib/lwip/src/core/init.c, lib/lwip/src/core/netif.c, lib/lwip/src/include/lwip/sys.h
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/api/api_msg.c, lib/lwip/src/api/err.c, lib/lwip/src/api/netbuf.c, lib/lwip/src/api/tcpip.c, lib/lwip/src/core/inet_chksum.c, lib/lwip/src/core/ip.c, lib/lwip/src/core/ipv4/icmp.c, lib/lwip/src/core/ipv4/ip4.c, lib/lwip/src/core/ipv4/ip4_addr.c, lib/lwip/src/core/memp.c, lib/lwip/src/core/pbuf.c, lib/lwip/src/core/raw.c, lib/lwip/src/core/stats.c, lib/lwip/src/core/sys.c, lib/lwip/src/core/tcp.c, lib/lwip/src/core/tcp_in.c, lib/lwip/src/core/tcp_out.c, lib/lwip/src/core/udp.c, lib/lwip/src/include/lwip/api.h, lib/lwip/src/include/lwip/arch.h, lib/lwip/src/include/lwip/debug.h, lib/lwip/src/include/lwip/def.h, lib/lwip/src/include/lwip/err.h, lib/lwip/src/include/lwip/errno.h, lib/lwip/src/include/lwip/icmp.h, lib/lwip/src/include/lwip/inet_chksum.h, lib/lwip/src/include/lwip/init.h, lib/lwip/src/include/lwip/ip.h, lib/lwip/src/include/lwip/ip4.h, lib/lwip/src/include/lwip/ip4_addr.h, lib/lwip/src/include/lwip/ip_addr.h, lib/lwip/src/include/lwip/mem.h, lib/lwip/src/include/lwip/memp.h, lib/lwip/src/include/lwip/netbuf.h, lib/lwip/src/include/lwip/netif.h, lib/lwip/src/include/lwip/opt.h, lib/lwip/src/include/lwip/pbuf.h, lib/lwip/src/include/lwip/priv/api_msg.h, lib/lwip/src/include/lwip/priv/memp_priv.h, lib/lwip/src/include/lwip/priv/raw_priv.h, lib/lwip/src/include/lwip/priv/tcp_priv.h, lib/lwip/src/include/lwip/priv/tcpip_priv.h, lib/lwip/src/include/lwip/prot/etharp.h, lib/lwip/src/include/lwip/prot/ethernet.h, lib/lwip/src/include/lwip/prot/icmp.h, lib/lwip/src/include/lwip/prot/icmp6.h, lib/lwip/src/include/lwip/prot/igmp.h, lib/lwip/src/include/lwip/prot/ip.h, lib/lwip/src/include/lwip/prot/ip4.h, lib/lwip/src/include/lwip/prot/tcp.h, lib/lwip/src/include/lwip/prot/udp.h, lib/lwip/src/include/lwip/raw.h, lib/lwip/src/include/lwip/sockets.h, lib/lwip/src/include/lwip/stats.h, lib/lwip/src/include/lwip/tcp.h, lib/lwip/src/include/lwip/tcpbase.h, lib/lwip/src/include/lwip/tcpip.h, lib/lwip/src/include/lwip/udp.h
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/api/if_api.c, lib/lwip/src/include/lwip/priv/sockets_priv.h
+/*
+ * Copyright (c) 2017 Joel Cunningham, Garmin International, Inc. <joel.cunningham@garmin.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Joel Cunningham <joel.cunningham@me.com>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/api/netdb.c, lib/lwip/src/include/lwip/netdb.h
+/*
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/api/netifapi.c, lib/lwip/src/include/netif/ppp/ppp_opts.h, lib/lwip/src/netif/ppp/pppapi.c, lib/lwip/src/netif/ppp/pppol2tp.c, lib/lwip/src/netif/ppp/pppos.c
+/*
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/api/sockets.c
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ *
+ * Improved by Marc Boucher <marc@mbsi.ca> and David Haas <dhaas@alum.rpi.edu>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/altcp.c, lib/lwip/src/core/altcp_alloc.c, lib/lwip/src/core/altcp_tcp.c, lib/lwip/src/include/lwip/altcp.h
+/*
+ * Copyright (c) 2017 Simon Goldschmidt
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt <goldsimon@gmx.de>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/def.c
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/dns.c, lib/lwip/src/include/lwip/prot/dns.h
+/*
+ * Port to lwIP from uIP
+ * by Jim Pettinato April 2007
+ *
+ * security fixes and more by Simon Goldschmidt
+ *
+ * uIP version Copyright (c) 2002-2003, Adam Dunkels.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv4/acd.c, lib/lwip/src/include/lwip/acd.h, lib/lwip/src/include/lwip/prot/acd.h
+/*
+ *
+ * Copyright (c) 2007 Dominik Spies <kontakt@dspies.de>
+ * Copyright (c) 2018 Jasper Verschueren <jasper.verschueren@apart-audio.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * Author: Jasper Verschueren <jasper.verschueren@apart-audio.com>
+ * Author: Dominik Spies <kontakt@dspies.de>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv4/autoip.c
+/*
+ *
+ * Copyright (c) 2007 Dominik Spies <kontakt@dspies.de>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * Author: Dominik Spies <kontakt@dspies.de>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv4/dhcp.c
+/*
+ * Copyright (c) 2001-2004 Leon Woestenberg <leon.woestenberg@gmx.net>
+ * Copyright (c) 2001-2004 Axon Digital Design B.V., The Netherlands.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ * The Swedish Institute of Computer Science and Adam Dunkels
+ * are specifically granted permission to redistribute this
+ * source code.
+ *
+ * Author: Leon Woestenberg <leon.woestenberg@gmx.net>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv4/etharp.c, lib/lwip/src/netif/ethernet.c
+/*
+ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
+ * Copyright (c) 2003-2004 Leon Woestenberg <leon.woestenberg@axon.tv>
+ * Copyright (c) 2003-2004 Axon Digital Design B.V., The Netherlands.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv4/igmp.c, lib/lwip/src/include/lwip/igmp.h
+/*
+ * Copyright (c) 2002 CITEL Technologies Ltd.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of CITEL Technologies Ltd nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY CITEL TECHNOLOGIES AND CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL CITEL TECHNOLOGIES OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is a contribution to the lwIP TCP/IP stack.
+ * The Swedish Institute of Computer Science and Adam Dunkels
+ * are specifically granted permission to redistribute this
+ * source code.
+*/
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv4/ip4_frag.c
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Jani Monoses <jani@iv.ro>
+ *         Simon Goldschmidt
+ * original reassembly code by Adam Dunkels <adam@sics.se>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv6/dhcp6.c, lib/lwip/src/include/lwip/dhcp6.h
+/*
+ * Copyright (c) 2018 Simon Goldschmidt
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt <goldsimon@gmx.de>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv6/ethip6.c, lib/lwip/src/core/ipv6/icmp6.c, lib/lwip/src/core/ipv6/inet6.c, lib/lwip/src/core/ipv6/ip6.c, lib/lwip/src/core/ipv6/ip6_frag.c, lib/lwip/src/core/ipv6/mld6.c, lib/lwip/src/core/ipv6/nd6.c, lib/lwip/src/include/lwip/ethip6.h, lib/lwip/src/include/lwip/icmp6.h, lib/lwip/src/include/lwip/ip6.h, lib/lwip/src/include/lwip/ip6_frag.h, lib/lwip/src/include/lwip/mld6.h, lib/lwip/src/include/lwip/nd6.h, lib/lwip/src/include/lwip/priv/nd6_priv.h
+/*
+ * Copyright (c) 2010 Inico Technologies Ltd.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Ivan Delamer <delamer@inicotech.com>
+ *
+ *
+ * Please coordinate changes and requests with Ivan Delamer
+ * <delamer@inicotech.com>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/ipv6/ip6_addr.c
+/*
+ * Copyright (c) 2010 Inico Technologies Ltd.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Ivan Delamer <delamer@inicotech.com>
+ *
+ * Functions for handling IPv6 addresses.
+ *
+ * Please coordinate changes and requests with Ivan Delamer
+ * <delamer@inicotech.com>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/core/mem.c, lib/lwip/src/core/timeouts.c, lib/lwip/src/include/lwip/timeouts.h
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ *         Simon Goldschmidt
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/autoip.h
+/*
+ *
+ * Copyright (c) 2007 Dominik Spies <kontakt@dspies.de>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * Author: Dominik Spies <kontakt@dspies.de>
+ *
+ * This is a AutoIP implementation for the lwIP TCP/IP stack. It aims to conform
+ * with RFC 3927.
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/dhcp.h, lib/lwip/src/include/lwip/prot/dhcp.h
+/*
+ * Copyright (c) 2001-2004 Leon Woestenberg <leon.woestenberg@gmx.net>
+ * Copyright (c) 2001-2004 Axon Digital Design B.V., The Netherlands.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Leon Woestenberg <leon.woestenberg@gmx.net>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/dns.h
+/**
+ * lwip DNS resolver header file.
+
+ * Author: Jim Pettinato
+ *   April 2007
+
+ * ported from uIP resolv.c Copyright (c) 2002-2003, Adam Dunkels.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote
+ *    products derived from this software without specific prior
+ *    written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/etharp.h, lib/lwip/src/include/netif/ethernet.h
+/*
+ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
+ * Copyright (c) 2003-2004 Leon Woestenberg <leon.woestenberg@axon.tv>
+ * Copyright (c) 2003-2004 Axon Digital Design B.V., The Netherlands.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/ip4_frag.h
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Jani Monoses <jani@iv.ro>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/ip6_addr.h
+/*
+ * Copyright (c) 2010 Inico Technologies Ltd.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Ivan Delamer <delamer@inicotech.com>
+ *
+ * Structs and macros for handling IPv6 addresses.
+ *
+ * Please coordinate changes and requests with Ivan Delamer
+ * <delamer@inicotech.com>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/priv/mem_priv.h
+/*
+ * Copyright (c) 2018 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt <goldsimon@gmx.de>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/prot/iana.h, lib/lwip/src/include/lwip/prot/ieee.h
+/*
+ * Copyright (c) 2017 Dirk Ziegelmeier.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Dirk Ziegelmeier <dziegel@gmx.de>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/sio.h
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/lwip/snmp.h
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Dirk Ziegelmeier <dziegel@gmx.de>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/netif/bridgeif.h, lib/lwip/src/include/netif/bridgeif_opts.h, lib/lwip/src/netif/bridgeif.c, lib/lwip/src/netif/bridgeif_fdb.c
+/*
+ * Copyright (c) 2017 Simon Goldschmidt.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt <goldsimon@gmx.de>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/netif/lowpan6.h, lib/lwip/src/include/netif/lowpan6_common.h, lib/lwip/src/include/netif/lowpan6_opts.h, lib/lwip/src/netif/lowpan6.c, lib/lwip/src/netif/lowpan6_common.c
+/*
+ * Copyright (c) 2015 Inico Technologies Ltd.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Ivan Delamer <delamer@inicotech.com>
+ *
+ *
+ * Please coordinate changes and requests with Ivan Delamer
+ * <delamer@inicotech.com>
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/netif/lowpan6_ble.h, lib/lwip/src/netif/lowpan6_ble.c
+/*
+ * Copyright (c) 2017 Benjamin Aigner
+ * Copyright (c) 2015 Inico Technologies Ltd. , Author: Ivan Delamer <delamer@inicotech.com>
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * Author: Benjamin Aigner <aignerb@technikum-wien.at>
+ *
+ * Based on the original 6lowpan implementation of lwIP ( @see 6lowpan.c)
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/netif/ppp/ppp_impl.h
+/*****************************************************************************
+* ppp.h - Network Point to Point Protocol header file.
+*
+* Copyright (c) 2003 by Marc Boucher, Services Informatiques (MBSI) inc.
+* portions Copyright (c) 1997 Global Election Systems Inc.
+*
+* The authors hereby grant permission to use, copy, modify, distribute,
+* and license this software and its documentation for any purpose, provided
+* that existing copyright notices are retained in all copies and that this
+* notice and the following disclaimer are included verbatim in any
+* distributions. No written agreement, license, or royalty fee is required
+* for any of the authorized uses.
+*
+* THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
+* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+* IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+* NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+* THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+******************************************************************************
+* REVISION HISTORY
+*
+* 03-01-01 Marc Boucher <marc@mbsi.ca>
+*   Ported to lwIP.
+* 97-11-05 Guy Lancaster <glanca@gesn.com>, Global Election Systems Inc.
+*   Original derived from BSD codes.
+*****************************************************************************/
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/netif/slipif.h
+/*
+ * Copyright (c) 2001, Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/include/netif/zepif.h, lib/lwip/src/netif/zepif.c
+/*
+ * Copyright (c) 2018 Simon Goldschmidt
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Simon Goldschmidt <goldsimon@gmx.de>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/auth.c
+/*
+ * auth.c - PPP authentication and phase control.
+ *
+ * Copyright (c) 1993-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * Derived from main.c, which is:
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/ccp.c
+/*
+ * ccp.c - PPP Compression Control Protocol.
+ *
+ * Copyright (c) 1994-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/chap-md5.c
+/*
+ * chap-md5.c - New CHAP/MD5 implementation.
+ *
+ * Copyright (c) 2003 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/chap-new.c
+/*
+ * chap-new.c - New CHAP implementation.
+ *
+ * Copyright (c) 2003 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/chap_ms.c
+/*
+ * chap_ms.c - Microsoft MS-CHAP compatible implementation.
+ *
+ * Copyright (c) 1995 Eric Rosenquist.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/demand.c
+/*
+ * demand.c - Support routines for demand-dialling.
+ *
+ * Copyright (c) 1996-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/eap.c
+/*
+ * eap.c - Extensible Authentication Protocol for PPP (RFC 2284)
+ *
+ * Copyright (c) 2001 by Sun Microsystems, Inc.
+ * All rights reserved.
+ *
+ * Non-exclusive rights to redistribute, modify, translate, and use
+ * this software in source and binary forms, in whole or in part, is
+ * hereby granted, provided that the above copyright notice is
+ * duplicated in any source form, and that neither the name of the
+ * copyright holder nor the author is used to endorse or promote
+ * products derived from this software.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * Original version by James Carlson
+ *
+ * This implementation of EAP supports MD5-Challenge and SRP-SHA1
+ * authentication styles.  Note that support of MD5-Challenge is a
+ * requirement of RFC 2284, and that it's essentially just a
+ * reimplementation of regular RFC 1994 CHAP using EAP messages.
+ *
+ * As an authenticator ("server"), there are multiple phases for each
+ * style.  In the first phase of each style, the unauthenticated peer
+ * name is queried using the EAP Identity request type.  If the
+ * "remotename" option is used, then this phase is skipped, because
+ * the peer's name is presumed to be known.
+ *
+ * For MD5-Challenge, there are two phases, and the second phase
+ * consists of sending the challenge itself and handling the
+ * associated response.
+ *
+ * For SRP-SHA1, there are four phases.  The second sends 's', 'N',
+ * and 'g'.  The reply contains 'A'.  The third sends 'B', and the
+ * reply contains 'M1'.  The forth sends the 'M2' value.
+ *
+ * As an authenticatee ("client"), there's just a single phase --
+ * responding to the queries generated by the peer.  EAP is an
+ * authenticator-driven protocol.
+ *
+ * Based on draft-ietf-pppext-eap-srp-03.txt.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/ecp.c
+/*
+ * ecp.c - PPP Encryption Control Protocol.
+ *
+ * Copyright (c) 2002 Google, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * Derived from ccp.c, which is:
+ *
+ * Copyright (c) 1994-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/eui64.c
+/*
+ * eui64.c - EUI64 routines for IPv6CP.
+ *
+ * Copyright (c) 1999 Tommi Komulainen.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Tommi Komulainen
+ *     <Tommi.Komulainen@iki.fi>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * $Id: eui64.c,v 1.6 2002/12/04 23:03:32 paulus Exp $
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/fsm.c
+/*
+ * fsm.c - {Link, IP} Control Protocol Finite State Machine.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/ipcp.c
+/*
+ * ipcp.c - PPP IP Control Protocol.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/ipv6cp.c
+/*
+ * ipv6cp.c - PPP IPV6 Control Protocol.
+ *
+ * Copyright (c) 1999 Tommi Komulainen.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Tommi Komulainen
+ *     <Tommi.Komulainen@iki.fi>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/lcp.c
+/*
+ * lcp.c - PPP Link Control Protocol.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/magic.c
+/*
+ * magic.c - PPP Magic Number routines.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/mppe.c
+/*
+ * mppe.c - interface MPPE to the PPP code.
+ *
+ * By Frank Cusack <fcusack@fcusack.com>.
+ * Copyright (c) 2002,2003,2004 Google, Inc.
+ * All rights reserved.
+ *
+ * License:
+ * Permission to use, copy, modify, and distribute this software and its
+ * documentation is hereby granted, provided that the above copyright
+ * notice appears in all copies.  This software is provided without any
+ * warranty, express or implied.
+ *
+ * Changelog:
+ *      08/12/05 - Matt Domsch <Matt_Domsch@dell.com>
+ *                 Only need extra skb padding on transmit, not receive.
+ *      06/18/04 - Matt Domsch <Matt_Domsch@dell.com>, Oleg Makarenko <mole@quadra.ru>
+ *                 Use Linux kernel 2.6 arc4 and sha1 routines rather than
+ *                 providing our own.
+ *      2/15/04 - TS: added #include <version.h> and testing for Kernel
+ *                    version before using
+ *                    MOD_DEC_USAGE_COUNT/MOD_INC_USAGE_COUNT which are
+ *                    deprecated in 2.6
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/multilink.c
+/*
+ * multilink.c - support routines for multilink.
+ *
+ * Copyright (c) 2000-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/polarssl/arc4.c
+/*
+ *  An implementation of the ARCFOUR algorithm
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/polarssl/des.c
+/*
+ *  FIPS-46-3 compliant Triple-DES implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/polarssl/md4.c
+/*
+ *  RFC 1186/1320 compliant MD4 implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/polarssl/md5.c
+/*
+ *  RFC 1321 compliant MD5 implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/polarssl/sha1.c
+/*
+ *  FIPS-180-1 compliant SHA-1 implementation
+ *
+ *  Based on XySSL: Copyright (C) 2006-2008  Christophe Devine
+ *
+ *  Copyright (C) 2009  Paul Bakker <polarssl_maintainer at polarssl dot org>
+ *
+ *  All rights reserved.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    * Redistributions of source code must retain the above copyright
+ *      notice, this list of conditions and the following disclaimer.
+ *    * Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *    * Neither the names of PolarSSL or XySSL nor the names of its contributors
+ *      may be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+ *  TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/ppp.c
+/*****************************************************************************
+* ppp.c - Network Point to Point Protocol program file.
+*
+* Copyright (c) 2003 by Marc Boucher, Services Informatiques (MBSI) inc.
+* portions Copyright (c) 1997 by Global Election Systems Inc.
+*
+* The authors hereby grant permission to use, copy, modify, distribute,
+* and license this software and its documentation for any purpose, provided
+* that existing copyright notices are retained in all copies and that this
+* notice and the following disclaimer are included verbatim in any
+* distributions. No written agreement, license, or royalty fee is required
+* for any of the authorized uses.
+*
+* THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
+* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+* IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+* NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+* THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+******************************************************************************
+* REVISION HISTORY
+*
+* 03-01-01 Marc Boucher <marc@mbsi.ca>
+*   Ported to lwIP.
+* 97-11-05 Guy Lancaster <lancasterg@acm.org>, Global Election Systems Inc.
+*   Original.
+*****************************************************************************/
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/pppcrypt.c
+/*
+ * pppcrypt.c - PPP/DES linkage for MS-CHAP and EAP SRP-SHA1
+ *
+ * Extracted from chap_ms.c by James Carlson.
+ *
+ * Copyright (c) 1995 Eric Rosenquist.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/pppoe.c
+/*****************************************************************************
+* pppoe.c - PPP Over Ethernet implementation for lwIP.
+*
+* Copyright (c) 2006 by Marc Boucher, Services Informatiques (MBSI) inc.
+*
+* The authors hereby grant permission to use, copy, modify, distribute,
+* and license this software and its documentation for any purpose, provided
+* that existing copyright notices are retained in all copies and that this
+* notice and the following disclaimer are included verbatim in any
+* distributions. No written agreement, license, or royalty fee is required
+* for any of the authorized uses.
+*
+* THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS *AS IS* AND ANY EXPRESS OR
+* IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+* OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+* IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+* INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+* NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+* DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+* THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+* THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+******************************************************************************
+* REVISION HISTORY
+*
+* 06-01-01 Marc Boucher <marc@mbsi.ca>
+*   Ported to lwIP.
+*****************************************************************************/
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/upap.c
+/*
+ * upap.c - User/Password Authentication Protocol.
+ *
+ * Copyright (c) 1984-2000 Carnegie Mellon University. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. The name "Carnegie Mellon University" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For permission or any legal
+ *    details, please contact
+ *      Office of Technology Transfer
+ *      Carnegie Mellon University
+ *      5000 Forbes Avenue
+ *      Pittsburgh, PA  15213-3890
+ *      (412) 268-4387, fax: (412) 268-7395
+ *      tech-transfer@andrew.cmu.edu
+ *
+ * 4. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Computing Services
+ *     at Carnegie Mellon University (http://www.cmu.edu/computing/)."
+ *
+ * CARNEGIE MELLON UNIVERSITY DISCLAIMS ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY BE LIABLE
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/utils.c
+/*
+ * utils.c - various utility functions used in pppd.
+ *
+ * Copyright (c) 1999-2002 Paul Mackerras. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. The name(s) of the authors of this software must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission.
+ *
+ * 3. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by Paul Mackerras
+ *     <paulus@samba.org>".
+ *
+ * THE AUTHORS OF THIS SOFTWARE DISCLAIM ALL WARRANTIES WITH REGARD TO
+ * THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS, IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+ * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/ppp/vj.c
+/*
+ * Routines to compress and uncompess tcp packets (for transmission
+ * over low speed serial lines.
+ *
+ * Copyright (c) 1989 Regents of the University of California.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms are permitted
+ * provided that the above copyright notice and this paragraph are
+ * duplicated in all such forms and that any documentation,
+ * advertising materials, and other materials related to such
+ * distribution and use acknowledge that the software was developed
+ * by the University of California, Berkeley.  The name of the
+ * University may not be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ *
+ * Van Jacobson (van@helios.ee.lbl.gov), Dec 31, 1989:
+ *   Initial distribution.
+ *
+ * Modified June 1993 by Paul Mackerras, paulus@cs.anu.edu.au,
+ * so that the entire packet being decompressed doesn't have
+ * to be in contiguous memory (just the compressed header).
+ *
+ * Modified March 1998 by Guy Lancaster, glanca@gesn.com,
+ * for a 16 bit processor.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/lwip/src/netif/slipif.c
+/*
+ * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the Institute nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * This file is built upon the file: src/arch/rtxc/netif/sioslip.c
+ *
+ * Author: Magnus Ivarsson <magnus.ivarsson(at)volvo.com>
+ *         Simon Goldschmidt
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/audio/audio_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Reinhard Panhuber, Jerzy Kasenberg
+ * Copyright (c) 2023 HiFiPhile
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/cdc/cdc.h, lib/tinyusb/src/class/cdc/cdc_device.c, lib/tinyusb/src/class/cdc/cdc_device.h, lib/tinyusb/src/class/hid/hid_device.c, lib/tinyusb/src/class/midi/midi_device.c, lib/tinyusb/src/class/msc/msc_device.c, lib/tinyusb/src/class/vendor/vendor_device.c, lib/tinyusb/src/common/tusb_common.h, lib/tinyusb/src/common/tusb_compiler.h, lib/tinyusb/src/common/tusb_types.h, lib/tinyusb/src/common/tusb_verify.h, lib/tinyusb/src/device/dcd.h, lib/tinyusb/src/device/usbd.c, lib/tinyusb/src/device/usbd.h, lib/tinyusb/src/device/usbd_control.c, lib/tinyusb/src/device/usbd_pvt.h, lib/tinyusb/src/osal/osal.h, lib/tinyusb/src/tusb.c, lib/tinyusb/src/tusb.h, lib/tinyusb/src/tusb_option.h
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/dfu/dfu_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021 XMOS LIMITED
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/dfu/dfu_rt_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Sylvain Munaut <tnt@246tNt.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/net/ecm_rndis_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Peter Lawrence
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/net/ncm_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Copyright (c) 2024 Hardy Griech
+ * Copyright (c) 2020 Jacob Berg Potter
+ * Copyright (c) 2020 Peter Lawrence
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/usbtmc/usbtmc_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Nathan Conrad
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/class/video/video_device.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021 Koji KITAYAMA
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/common/tusb_debug.h, lib/tinyusb/src/common/tusb_private.h
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2022, Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/common/tusb_fifo.c, lib/tinyusb/src/common/tusb_fifo.h
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Copyright (c) 2020 Reinhard Panhuber - rework to unmasked pointers
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/common/tusb_mcu.h
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2021, Ha Thach (tinyusb.org)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/osal/osal_pico.h, lib/tinyusb/src/portable/raspberrypi/rp2040/dcd_rp2040.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2021 Ha Thach (tinyusb.org) for Double Buffered
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * This file is part of the TinyUSB stack.
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/boards/include/boards/pico2_w.h, src/rp2_common/hardware_boot_lock/boot_lock.c, src/rp2_common/hardware_boot_lock/include/hardware/boot_lock.h, src/rp2_common/hardware_sync_spin_lock/include/hardware/sync/spin_lock.h, src/rp2_common/hardware_sync_spin_lock/sync_spin_lock.c, src/rp2_common/hardware_ticks/include/hardware/ticks.h, src/rp2_common/hardware_ticks/ticks.c, src/rp2_common/pico_bootrom/bootrom_lock.c, src/rp2_common/pico_bootrom/include/pico/bootrom/lock.h, src/rp2_common/pico_runtime_init/include/pico/runtime_init.h, src/rp2_common/pico_time_adapter/include/pico/time_adapter.h, tools/pioasm/pio_enums.h
+/*
+ * Copyright (c) 2024 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/boards/include/boards/pico_w.h, src/rp2_common/pico_async_context/async_context_base.c, src/rp2_common/pico_async_context/async_context_poll.c, src/rp2_common/pico_async_context/include/pico/async_context.h, src/rp2_common/pico_async_context/include/pico/async_context_base.h, src/rp2_common/pico_async_context/include/pico/async_context_poll.h, src/rp2_common/pico_cyw43_arch/cyw43_arch.c, src/rp2_common/pico_cyw43_arch/cyw43_arch_freertos.c, src/rp2_common/pico_cyw43_arch/cyw43_arch_poll.c, src/rp2_common/pico_cyw43_arch/cyw43_arch_threadsafe_background.c, src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch/arch_poll.h, src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch.h, src/rp2_common/pico_cyw43_driver/cyw43_driver.c, src/rp2_common/pico_cyw43_driver/include/cyw43_configport.h, src/rp2_common/pico_cyw43_driver/include/pico/cyw43_driver.h, src/rp2_common/pico_lwip/include/pico/lwip_nosys.h, src/rp2_common/pico_lwip/lwip_nosys.c, src/rp2_common/pico_rand/include/pico/rand.h, src/rp2_common/pico_rand/rand.c
+/*
+ * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/common/boot_picobin_headers/include/boot/picobin.h, src/common/boot_picoboot_headers/include/boot/picoboot.h, src/common/boot_picoboot_headers/include/boot/picoboot_constants.h, src/common/hardware_claim/claim.c, src/common/hardware_claim/include/hardware/claim.h, src/common/pico_base_headers/include/pico/assert.h, src/common/pico_base_headers/include/pico/config.h, src/common/pico_base_headers/include/pico/error.h, src/common/pico_base_headers/include/pico/types.h, src/common/pico_base_headers/include/pico.h, src/common/pico_binary_info/include/pico/binary_info/code.h, src/common/pico_binary_info/include/pico/binary_info/defs.h, src/common/pico_binary_info/include/pico/binary_info/structure.h, src/common/pico_binary_info/include/pico/binary_info.h, src/common/pico_divider_headers/include/pico/divider.h, src/common/pico_stdlib_headers/include/pico/stdlib.h, src/common/pico_sync/critical_section.c, src/common/pico_sync/include/pico/critical_section.h, src/common/pico_sync/include/pico/lock_core.h, src/common/pico_sync/include/pico/mutex.h, src/common/pico_sync/include/pico/sem.h, src/common/pico_sync/include/pico/sync.h, src/common/pico_sync/lock_core.c, src/common/pico_sync/mutex.c, src/common/pico_sync/sem.c, src/common/pico_time/include/pico/time.h, src/common/pico_time/include/pico/timeout_helper.h, src/common/pico_time/time.c, src/common/pico_time/timeout_helper.c, src/common/pico_util/include/pico/util/datetime.h, src/common/pico_util/include/pico/util/pheap.h, src/common/pico_util/include/pico/util/queue.h, src/common/pico_util/pheap.c, src/common/pico_util/queue.c, src/rp2040/boot_stage2/include/boot_stage2/config.h, src/rp2040/pico_platform/include/pico/platform/cpu_regs.h, src/rp2040/pico_platform/include/pico/platform.h, src/rp2040/pico_platform/platform.c, src/rp2350/boot_stage2/include/boot_stage2/config.h, src/rp2350/pico_platform/include/pico/platform/cpu_regs.h, src/rp2350/pico_platform/include/pico/platform.h, src/rp2350/pico_platform/platform.c, src/rp2_common/boot_bootrom_headers/include/boot/bootrom_constants.h, src/rp2_common/cmsis/include/cmsis/rename_exceptions.h, src/rp2_common/hardware_base/include/hardware/address_mapped.h, src/rp2_common/hardware_clocks/clocks.c, src/rp2_common/hardware_clocks/include/hardware/clocks.h, src/rp2_common/hardware_divider/include/hardware/divider.h, src/rp2_common/hardware_dma/dma.c, src/rp2_common/hardware_dma/include/hardware/dma.h, src/rp2_common/hardware_exception/exception.c, src/rp2_common/hardware_exception/include/hardware/exception.h, src/rp2_common/hardware_flash/flash.c, src/rp2_common/hardware_flash/include/hardware/flash.h, src/rp2_common/hardware_gpio/gpio.c, src/rp2_common/hardware_gpio/include/hardware/gpio.h, src/rp2_common/hardware_gpio/include/hardware/gpio_coproc.h, src/rp2_common/hardware_i2c/i2c.c, src/rp2_common/hardware_i2c/include/hardware/i2c.h, src/rp2_common/hardware_irq/include/hardware/irq.h, src/rp2_common/hardware_irq/irq.c, src/rp2_common/hardware_pio/include/hardware/pio.h, src/rp2_common/hardware_pio/include/hardware/pio_instructions.h, src/rp2_common/hardware_pio/pio.c, src/rp2_common/hardware_pll/include/hardware/pll.h, src/rp2_common/hardware_pll/pll.c, src/rp2_common/hardware_rcp/include/hardware/rcp.h, src/rp2_common/hardware_resets/include/hardware/resets.h, src/rp2_common/hardware_rtc/include/hardware/rtc.h, src/rp2_common/hardware_rtc/rtc.c, src/rp2_common/hardware_sync/include/hardware/sync.h, src/rp2_common/hardware_sync/sync.c, src/rp2_common/hardware_timer/include/hardware/timer.h, src/rp2_common/hardware_timer/timer.c, src/rp2_common/hardware_uart/include/hardware/uart.h, src/rp2_common/hardware_uart/uart.c, src/rp2_common/hardware_vreg/include/hardware/vreg.h, src/rp2_common/hardware_vreg/vreg.c, src/rp2_common/hardware_watchdog/include/hardware/watchdog.h, src/rp2_common/hardware_watchdog/watchdog.c, src/rp2_common/hardware_xosc/include/hardware/xosc.h, src/rp2_common/hardware_xosc/xosc.c, src/rp2_common/pico_atomic/atomic.c, src/rp2_common/pico_bootrom/bootrom.c, src/rp2_common/pico_bootrom/include/pico/bootrom/sf_table.h, src/rp2_common/pico_bootrom/include/pico/bootrom.h, src/rp2_common/pico_bootrom/include/pico/bootrom_constants.h, src/rp2_common/pico_clib_interface/newlib_interface.c, src/rp2_common/pico_cxx_options/new_delete.cpp, src/rp2_common/pico_cyw43_driver/cyw43_bus_pio_spi.c, src/rp2_common/pico_fix/rp2040_usb_device_enumeration/rp2040_usb_device_enumeration.c, src/rp2_common/pico_float/float_init_rom_rp2040.c, src/rp2_common/pico_float/float_math.c, src/rp2_common/pico_float/include/pico/float.h, src/rp2_common/pico_malloc/include/pico/malloc.h, src/rp2_common/pico_malloc/malloc.c, src/rp2_common/pico_platform_compiler/include/pico/platform/compiler.h, src/rp2_common/pico_platform_panic/include/pico/platform/panic.h, src/rp2_common/pico_platform_panic/panic.c, src/rp2_common/pico_platform_sections/include/pico/platform/sections.h, src/rp2_common/pico_runtime/include/pico/runtime.h, src/rp2_common/pico_runtime/runtime.c, src/rp2_common/pico_runtime_init/runtime_init.c, src/rp2_common/pico_runtime_init/runtime_init_clocks.c, src/rp2_common/pico_standard_binary_info/standard_binary_info.c, src/rp2_common/pico_stdio/include/pico/stdio/driver.h, src/rp2_common/pico_stdio/include/pico/stdio.h, src/rp2_common/pico_stdio/stdio.c, src/rp2_common/pico_stdio_usb/include/pico/stdio_usb.h, src/rp2_common/pico_stdlib/stdlib.c, tools/pioasm/c_sdk_output.cpp, tools/pioasm/hex_output.cpp, tools/pioasm/json_output.cpp, tools/pioasm/main.cpp, tools/pioasm/output_format.h, tools/pioasm/pio_assembler.cpp, tools/pioasm/pio_assembler.h, tools/pioasm/pio_disassembler.cpp, tools/pioasm/pio_disassembler.h, tools/pioasm/pio_types.h
+/*
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/common/pico_usb_reset_interface_headers/include/pico/usb_reset_interface.h, src/rp2_common/pico_unique_id/include/pico/unique_id.h, src/rp2_common/pico_unique_id/unique_id.c, tools/pioasm/python_output.cpp
+/*
+ * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/common/pico_util/fixed_bitset.c, src/rp2_common/pico_clib_interface/cxa_guard.c, src/rp2_common/pico_thread_local/include/pico/thread_local.h
+/*
+* Copyright (c) 2026 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/common/pico_util/include/pico/util/fixed_bitset.h, src/rp2_common/pico_cxx_options/include/pico/cxx_options.h, src/rp2_common/pico_thread_local/thread_local.c
+/*
+ * Copyright (c) 2026 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2040/hardware_regs/include/hardware/platform_defs.h
+/*
+ * Copyright (c) 2021 Raspberry Pi Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2040/hardware_regs/include/hardware/regs/addressmap.h, src/rp2040/hardware_regs/include/hardware/regs/busctrl.h, src/rp2040/hardware_regs/include/hardware/regs/clocks.h, src/rp2040/hardware_regs/include/hardware/regs/dma.h, src/rp2040/hardware_regs/include/hardware/regs/dreq.h, src/rp2040/hardware_regs/include/hardware/regs/i2c.h, src/rp2040/hardware_regs/include/hardware/regs/intctrl.h, src/rp2040/hardware_regs/include/hardware/regs/io_bank0.h, src/rp2040/hardware_regs/include/hardware/regs/io_qspi.h, src/rp2040/hardware_regs/include/hardware/regs/m0plus.h, src/rp2040/hardware_regs/include/hardware/regs/pads_bank0.h, src/rp2040/hardware_regs/include/hardware/regs/pads_qspi.h, src/rp2040/hardware_regs/include/hardware/regs/pio.h, src/rp2040/hardware_regs/include/hardware/regs/pll.h, src/rp2040/hardware_regs/include/hardware/regs/psm.h, src/rp2040/hardware_regs/include/hardware/regs/resets.h, src/rp2040/hardware_regs/include/hardware/regs/rosc.h, src/rp2040/hardware_regs/include/hardware/regs/rtc.h, src/rp2040/hardware_regs/include/hardware/regs/sio.h, src/rp2040/hardware_regs/include/hardware/regs/ssi.h, src/rp2040/hardware_regs/include/hardware/regs/sysinfo.h, src/rp2040/hardware_regs/include/hardware/regs/tbman.h, src/rp2040/hardware_regs/include/hardware/regs/timer.h, src/rp2040/hardware_regs/include/hardware/regs/uart.h, src/rp2040/hardware_regs/include/hardware/regs/usb.h, src/rp2040/hardware_regs/include/hardware/regs/vreg_and_chip_reset.h, src/rp2040/hardware_regs/include/hardware/regs/watchdog.h, src/rp2040/hardware_regs/include/hardware/regs/xip.h, src/rp2040/hardware_regs/include/hardware/regs/xosc.h, src/rp2040/hardware_structs/include/hardware/structs/busctrl.h, src/rp2040/hardware_structs/include/hardware/structs/clocks.h, src/rp2040/hardware_structs/include/hardware/structs/dma.h, src/rp2040/hardware_structs/include/hardware/structs/dma_debug.h, src/rp2040/hardware_structs/include/hardware/structs/i2c.h, src/rp2040/hardware_structs/include/hardware/structs/interp.h, src/rp2040/hardware_structs/include/hardware/structs/io_bank0.h, src/rp2040/hardware_structs/include/hardware/structs/io_qspi.h, src/rp2040/hardware_structs/include/hardware/structs/m0plus.h, src/rp2040/hardware_structs/include/hardware/structs/mpu.h, src/rp2040/hardware_structs/include/hardware/structs/nvic.h, src/rp2040/hardware_structs/include/hardware/structs/pads_bank0.h, src/rp2040/hardware_structs/include/hardware/structs/pads_qspi.h, src/rp2040/hardware_structs/include/hardware/structs/pio.h, src/rp2040/hardware_structs/include/hardware/structs/pll.h, src/rp2040/hardware_structs/include/hardware/structs/psm.h, src/rp2040/hardware_structs/include/hardware/structs/resets.h, src/rp2040/hardware_structs/include/hardware/structs/rosc.h, src/rp2040/hardware_structs/include/hardware/structs/rtc.h, src/rp2040/hardware_structs/include/hardware/structs/scb.h, src/rp2040/hardware_structs/include/hardware/structs/sio.h, src/rp2040/hardware_structs/include/hardware/structs/ssi.h, src/rp2040/hardware_structs/include/hardware/structs/systick.h, src/rp2040/hardware_structs/include/hardware/structs/timer.h, src/rp2040/hardware_structs/include/hardware/structs/uart.h, src/rp2040/hardware_structs/include/hardware/structs/usb.h, src/rp2040/hardware_structs/include/hardware/structs/vreg_and_chip_reset.h, src/rp2040/hardware_structs/include/hardware/structs/watchdog.h, src/rp2040/hardware_structs/include/hardware/structs/xip.h, src/rp2040/hardware_structs/include/hardware/structs/xosc.h
+/**
+ * Copyright (c) 2021 Raspberry Pi Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2040/hardware_structs/include/hardware/structs/usb_dpram.h, src/rp2350/hardware_structs/include/hardware/structs/usb_dpram.h
+/**
+ * Copyright (c) 2024 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2350/hardware_regs/include/hardware/platform_defs.h, src/rp2_common/hardware_xip_cache/include/hardware/xip_cache.h
+/*
+ * Copyright (c) 2024 Raspberry Pi Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2350/hardware_regs/include/hardware/regs/accessctrl.h, src/rp2350/hardware_regs/include/hardware/regs/addressmap.h, src/rp2350/hardware_regs/include/hardware/regs/bootram.h, src/rp2350/hardware_regs/include/hardware/regs/clocks.h, src/rp2350/hardware_regs/include/hardware/regs/dma.h, src/rp2350/hardware_regs/include/hardware/regs/dreq.h, src/rp2350/hardware_regs/include/hardware/regs/i2c.h, src/rp2350/hardware_regs/include/hardware/regs/intctrl.h, src/rp2350/hardware_regs/include/hardware/regs/io_bank0.h, src/rp2350/hardware_regs/include/hardware/regs/m33.h, src/rp2350/hardware_regs/include/hardware/regs/otp_data.h, src/rp2350/hardware_regs/include/hardware/regs/pads_bank0.h, src/rp2350/hardware_regs/include/hardware/regs/pads_qspi.h, src/rp2350/hardware_regs/include/hardware/regs/pio.h, src/rp2350/hardware_regs/include/hardware/regs/pll.h, src/rp2350/hardware_regs/include/hardware/regs/powman.h, src/rp2350/hardware_regs/include/hardware/regs/psm.h, src/rp2350/hardware_regs/include/hardware/regs/qmi.h, src/rp2350/hardware_regs/include/hardware/regs/resets.h, src/rp2350/hardware_regs/include/hardware/regs/sio.h, src/rp2350/hardware_regs/include/hardware/regs/sysinfo.h, src/rp2350/hardware_regs/include/hardware/regs/tbman.h, src/rp2350/hardware_regs/include/hardware/regs/ticks.h, src/rp2350/hardware_regs/include/hardware/regs/timer.h, src/rp2350/hardware_regs/include/hardware/regs/trng.h, src/rp2350/hardware_regs/include/hardware/regs/uart.h, src/rp2350/hardware_regs/include/hardware/regs/usb.h, src/rp2350/hardware_regs/include/hardware/regs/watchdog.h, src/rp2350/hardware_regs/include/hardware/regs/xip.h, src/rp2350/hardware_regs/include/hardware/regs/xosc.h, src/rp2350/hardware_structs/include/hardware/structs/accessctrl.h, src/rp2350/hardware_structs/include/hardware/structs/bootram.h, src/rp2350/hardware_structs/include/hardware/structs/clocks.h, src/rp2350/hardware_structs/include/hardware/structs/dma.h, src/rp2350/hardware_structs/include/hardware/structs/dma_debug.h, src/rp2350/hardware_structs/include/hardware/structs/i2c.h, src/rp2350/hardware_structs/include/hardware/structs/interp.h, src/rp2350/hardware_structs/include/hardware/structs/io_bank0.h, src/rp2350/hardware_structs/include/hardware/structs/m33.h, src/rp2350/hardware_structs/include/hardware/structs/nvic.h, src/rp2350/hardware_structs/include/hardware/structs/pads_bank0.h, src/rp2350/hardware_structs/include/hardware/structs/pads_qspi.h, src/rp2350/hardware_structs/include/hardware/structs/pio.h, src/rp2350/hardware_structs/include/hardware/structs/pll.h, src/rp2350/hardware_structs/include/hardware/structs/powman.h, src/rp2350/hardware_structs/include/hardware/structs/psm.h, src/rp2350/hardware_structs/include/hardware/structs/qmi.h, src/rp2350/hardware_structs/include/hardware/structs/resets.h, src/rp2350/hardware_structs/include/hardware/structs/scb.h, src/rp2350/hardware_structs/include/hardware/structs/sio.h, src/rp2350/hardware_structs/include/hardware/structs/systick.h, src/rp2350/hardware_structs/include/hardware/structs/ticks.h, src/rp2350/hardware_structs/include/hardware/structs/timer.h, src/rp2350/hardware_structs/include/hardware/structs/trng.h, src/rp2350/hardware_structs/include/hardware/structs/uart.h, src/rp2350/hardware_structs/include/hardware/structs/usb.h, src/rp2350/hardware_structs/include/hardware/structs/watchdog.h, src/rp2350/hardware_structs/include/hardware/structs/xip.h, src/rp2350/hardware_structs/include/hardware/structs/xosc.h
+/**
+ * Copyright (c) 2024 Raspberry Pi Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/hardware_divider/divider.c, src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus.c, src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus_driver.c, src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_shared_bus_driver.h, src/rp2_common/pico_divider/divider_compiler.c, src/rp2_common/pico_flash/flash.c, src/rp2_common/pico_flash/include/pico/flash.h
+/*
+ * Copyright (c) 2023 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_atomic/include/stdatomic.h
+/*
+ * Copyright (c) 2024 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2024 Stephen Street (stephen@redrocketcomputing.com).
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_cyw43_driver/cybt_shared_bus/cybt_logging.h, src/rp2_common/pico_platform_common/common.c, src/rp2_common/pico_usb_reset/include/pico/usb_reset.h, src/rp2_common/pico_usb_reset/include/pico/usb_reset_config.h, src/rp2_common/pico_usb_reset/include/pico/usb_reset_tusb.h
+/*
+ * Copyright (c) 2025 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_lwip/include/arch/cc.h
+/*
+ * Copyright (c) 2001-2003 Swedish Institute of Computer Science.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+ * OF SUCH DAMAGE.
+ *
+ * This file is part of the lwIP TCP/IP stack.
+ *
+ * Author: Adam Dunkels <adam@sics.se>
+ *
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_platform_common/include/pico/platform/common.h
+/*
+* Copyright (c) 2025 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_printf/include/pico/printf.h
+///////////////////////////////////////////////////////////////////////////////
+// \author (c) Marco Paland (info@paland.com)
+//             2014-2019, PALANDesign Hannover, Germany
+//
+// \license The MIT License (MIT)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+// \brief Tiny printf, sprintf and snprintf implementation, optimized for speed on
+//        embedded systems with a very limited resources.
+//        Use this instead of bloated standard/newlib printf.
+//        These routines are thread safe and reentrant.
+//
+///////////////////////////////////////////////////////////////////////////////
+
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_printf/printf.c
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
 //             2014-2019, PALANDesign Hannover, Germany
@@ -41,11 +3061,47 @@ src/rp2_common/pico_printf/printf.c
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_stdio_usb/include/tusb_config.h
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2020 Damien P. George
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ */
 
 ------------------------------------------------------------------------
 
-src/rp2_common/pico_stdio_usb/stdio_usb_descriptors.c
+Sources: src/rp2_common/pico_stdio_usb/stdio_usb.c
+/**
+ * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
+------------------------------------------------------------------------
+
+Sources: src/rp2_common/pico_stdio_usb/stdio_usb_descriptors.c
 /*
  * This file is based on a file originally part of the
  * MicroPython project, http://micropython.org/
@@ -76,546 +3132,59 @@ src/rp2_common/pico_stdio_usb/stdio_usb_descriptors.c
 
 ------------------------------------------------------------------------
 
-lib/tinyusb/src/portable/raspberrypi/rp2040/dcd_rp2040.c
-
+Sources: src/rp2_common/pico_thread_local/include/picotls.h
 /*
- * The MIT License (MIT)
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
+ * Copyright (c) 2019 Keith Packard
+ * Copyright (c) 2026 Raspberry Pi (Trading) Ltd.
  */
 
 ------------------------------------------------------------------------
 
-lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c
+Sources: src/rp2_common/pico_usb_reset/usb_reset.c
+/**
+ * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
+ *
+ * SPDX-License-Identifier: BSD-3-Clause
+ */
 
+------------------------------------------------------------------------
+
+Sources: tools/pioasm/ada_output.cpp
 /*
- * The MIT License (MIT)
+ * Copyright (c) 2021 Raspberry Pi (Trading) Ltd.
  *
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- * Copyright (c) 2021 Ha Thach (tinyusb.org) for Double Buffered
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * Ada specifications generated by this assembler depend on the RP.PIO package,
+ * available in rp2040_hal.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
+ * https://github.com/JeremyGrosser/rp2040_hal
+ * https://github.com/JeremyGrosser/pico_bsp
+ * https://github.com/JeremyGrosser/pico_examples
  */
 
 ------------------------------------------------------------------------
 
-lib/tinyusb/src/device/usbd.c
+Sources: tools/pioasm/gen/location.h, tools/pioasm/gen/parser.cpp, tools/pioasm/gen/parser.hpp
+// Copyright (C) 2002-2015, 2018-2020 Free Software Foundation, Inc.
 
+------------------------------------------------------------------------
+
+Sources: tools/pioasm/go_output.cpp
 /*
- * The MIT License (MIT)
+ * Copyright (c) 2024 Raspberry Pi (Trading) Ltd.
  *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * SPDX-License-Identifier: BSD-3-Clause
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
+ * Contributed by the TinyGo authors.
  *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * Go generated by this assembler is compatible with TinyGo.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
+ * https://tinygo.org
+ * https://github.com/tinygo-org/tinygo
+ * https://github.com/tinygo-org/pio
  */
 
 ------------------------------------------------------------------------
-
-lib/tinyusb/src/device/usbd_control.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/audio/audio_device.c
-
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Reinhard Panhuber, Jerzy Kasenberg
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/cdc/cdc_device.c
-
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/dfu/dfu_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 XMOS LIMITED
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/dfu/dfu_rt_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Sylvain Munaut <tnt@246tNt.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/hid/hid_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/midi/midi_device.c
-
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/msc/msc_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/net/ecm_rndis_device.c
-
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Peter Lawrence
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/net/ncm_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2020 Jacob Berg Potter
- * Copyright (c) 2020 Peter Lawrence
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/usbtmc/usbtmc_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Nathan Conrad
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/vendor/vendor_device.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/class/video/video_device.c
-
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Koji KITAYAMA
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/tusb.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
-------------------------------------------------------------------------
-
-lib/tinyusb/src/common/tusb_fifo.c
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- * Copyright (c) 2020 Reinhard Panhuber - rework to unmasked pointers
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */

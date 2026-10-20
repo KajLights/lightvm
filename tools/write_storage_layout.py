@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-nm, image, output, storage_bytes = sys.argv[1:]
+nm, image, output, storage_bytes, board = sys.argv[1:]
 symbols = {}
 for line in subprocess.check_output([nm, '--defined-only', image], text=True).splitlines():
     fields = line.split()
@@ -14,6 +14,7 @@ for line in subprocess.check_output([nm, '--defined-only', image], text=True).sp
 start = symbols['__lightvm_storage_start']
 size = int(storage_bytes)
 Path(output).write_text(json.dumps({
+    'board': board,
     'storage_start': start, 'storage_bytes': size,
     'flash_bytes': start + size - 0x10000000,
     'firmware_end': min(symbols.values()),

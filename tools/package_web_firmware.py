@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Package ESP-IDF and RP2040 firmware for the browser installer."""
+"""Package ESP-IDF, RP2040 and RP2350 Arm firmware for the browser installer."""
 
 import argparse
 import hashlib
@@ -22,25 +22,42 @@ EXPECTED_FILES = {
     0x8000: "partition_table/partition-table.bin",
     0x10000: "lightvm.bin",
 }
-PICO_BOARDS = {"pico": "Pico", "pico_w": "Pico W"}
+PICO_BOARDS = {"pico": "Pico", "pico_w": "Pico W", "pico2_w": "Pico 2 W"}
+PICO_FAMILIES = {"pico": 0xE48BFF56, "pico_w": 0xE48BFF56, "pico2_w": 0xE48BFF59}
 UF2_MAGIC = (0x0A324655, 0x9E5D5157, 0x0AB16F30)
-PICO_FAMILY = 0xE48BFF56
 PICO_FLASH_START = 0x10000000
 
 
-def validate_pico_uf2(data: bytes, firmware_end: int) -> None:
-    if not isinstance(firmware_end, int) or firmware_end % 4096 or not PICO_FLASH_START < firmware_end <= PICO_FLASH_START + 16 * 1024 * 1024:
+def validate_pico_uf2(data: bytes, firmware_end: int, board: str) -> None:
+    if board not in PICO_FAMILIES:
+        raise ValueError(f"unsupported Pico board: {board}")
+    flash_bytes = 4 * 1024 * 1024 if board == "pico2_w" else 2 * 1024 * 1024
+    if (type(firmware_end) is not int or firmware_end % 4096 or
+            not PICO_FLASH_START < firmware_end <= PICO_FLASH_START + flash_bytes):
         raise ValueError("invalid Pico storage boundary")
     if not data or len(data) % 512:
         raise ValueError("Pico UF2 is empty or not 512-byte aligned")
+    # Picotool 2.3.1 prepends an RP2350-E10 workaround block. Its ignore tag
+    # tells the ROM not to program it; it is not part of the application image.
+    first = struct.unpack_from("<8I", data)
+    if board == "pico2_w" and first[7] == 0xE48BFF57:
+        if (first != (UF2_MAGIC[0], UF2_MAGIC[1], 0xA000, 0x10FFFF00, 256, 0, 2, 0xE48BFF57) or
+                data[32:288] != b"\xef" * 256 or
+                struct.unpack_from("<I", data, 288)[0] != 0x9957E304 or
+                data[292:508] != bytes(216) or
+                struct.unpack_from("<I", data, 508)[0] != UF2_MAGIC[2]):
+            raise ValueError("invalid Pico RP2350 ignored workaround block")
+        data = data[512:]
+    if not data:
+        raise ValueError("Pico UF2 has no application blocks")
     count = len(data) // 512
     for block_number in range(count):
         block = data[block_number * 512:(block_number + 1) * 512]
         magic0, magic1, flags, address, size, index, total, family = struct.unpack_from("<8I", block)
         end_magic, = struct.unpack_from("<I", block, 508)
         expected_address = PICO_FLASH_START + block_number * 256
-        if (magic0, magic1, end_magic) != UF2_MAGIC or flags != 0x2000 or family != PICO_FAMILY:
-            raise ValueError(f"Pico UF2 block {block_number}: invalid header or RP2040 family")
+        if (magic0, magic1, end_magic) != UF2_MAGIC or flags != 0x2000 or family != PICO_FAMILIES[board]:
+            raise ValueError(f"Pico UF2 block {block_number}: invalid header or {board} family")
         if size != 256 or index != block_number or total != count or address != expected_address:
             raise ValueError(f"Pico UF2 block {block_number}: invalid order or payload")
         if address + size > firmware_end:
@@ -114,16 +131,22 @@ def package(output: Path, board_dirs: dict[str, Path], pico_files: dict[str, Pat
         data = source.read_bytes()
         layout = json.loads(source.with_name("storage-layout.json").read_text())
         firmware_end = layout["firmware_end"]
-        if (layout["storage_start"] + layout["storage_bytes"] != PICO_FLASH_START + layout["flash_bytes"] or
-                firmware_end > layout["storage_start"]):
+        expected_flash = (4 if board == "pico2_w" else 2) * 1024 * 1024
+        if (layout.get("board") != board or
+                any(type(layout[key]) is not int for key in ("storage_start", "storage_bytes", "flash_bytes", "firmware_end")) or
+                layout["flash_bytes"] != expected_flash or
+                layout["storage_bytes"] < 16384 or layout["storage_bytes"] % 8192 or
+                layout["storage_start"] + layout["storage_bytes"] != PICO_FLASH_START + layout["flash_bytes"] or
+                firmware_end not in (layout["storage_start"], layout["storage_start"] - 8192)):
             raise ValueError("inconsistent Pico storage layout")
-        validate_pico_uf2(data, firmware_end)
+        validate_pico_uf2(data, firmware_end, board)
         path = f"{board}/lightvm.uf2"
         destination = output / path
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
         pico_builds.append({"board": board, "name": PICO_BOARDS[board], "path": path,
-                            "sha256": hashlib.sha256(data).hexdigest(), "firmware_end": firmware_end})
+                            "sha256": hashlib.sha256(data).hexdigest(), "firmware_end": firmware_end,
+                            "chip": "RP2350" if board == "pico2_w" else "RP2040"})
     if pico_builds:
         (output / "pico.json").write_text(json.dumps({"version": VERSION, "build": build_id, "builds": pico_builds}, indent=2) + "\n")
     root = Path(__file__).resolve().parents[1]

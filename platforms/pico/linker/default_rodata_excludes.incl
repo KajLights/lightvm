@@ -1,0 +1,2 @@
+/* Math constant tables are immutable and can remain in XIP flash. */
+*(.rodata*)

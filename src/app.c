@@ -442,6 +442,24 @@ static void resume_clock(App *a) {
         for(unsigned slot=0;slot<2;slot++){Composition *s=output_composition(d,slot);if(s)for(unsigned n=0;n<s->layer_count;n++){s->layers[n].vm.last_frame=now;s->layers[n].vm.next_frame=now+FRAME_INTERVAL_US;}}
     }
 }
+enum Status app_save_network(App *a,const NetworkConfig *config,uint32_t revision,uint64_t source,char *error,size_t capacity) {
+    if (revision!=a->store.network_revision || a->network_pending) {
+        snprintf(error,capacity,"network revision must match; wait for pending changes"); return STATUS_CONFIG;
+    }
+    if (a->upload_owner && a->upload_owner!=source) {
+        snprintf(error,capacity,"another upload is in progress; try again after it finishes"); return STATUS_BUSY;
+    }
+    char data[4096]; size_t count=network_json(config,true,data,sizeof(data));
+    bool previous=a->command_active; a->command_active=true;
+    bool ok=count && update_store(a,STORE_NETWORK_SETTINGS,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
+    a->command_active=previous; memset(data,0,sizeof(data));
+    if (!previous && a->disconnect_pending) { a->disconnect_pending=false; app_disconnect(a,a->upload_owner); }
+    if (!ok) { snprintf(error,capacity,"network save failed; active settings retained"); return STATUS_STORAGE; }
+    a->network.saved_valid=true; a->network_error[0]=0;
+    if (a->network.recovery) a->network.config=*config;
+    else { a->pending_network=*config; a->network_pending=true; a->network_due=platform_time_us()+1000000u; a->network_reply_source=source; }
+    return STATUS_OK;
+}
 static void transition_state(Writer *,AppOutput *);
 static void describe(App *a, uint16_t id) {
     Writer w={.app=a,.id=id};
@@ -1314,14 +1332,9 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
             error_reply(a,id,STATUS_CONFIG,"invalid_network",error[0]?error:"selected network feature is unavailable or HTTP/MQTT requires Wi-Fi"); return;
         }
         if (!strcmp(args.op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return; }
-        if (!args.has_revision || args.revision!=a->store.network_revision || a->network_pending) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }
-        char data[4096]; size_t count=network_json(&config,true,data,sizeof(data));
-        bool ok=count && update_store(a,STORE_NETWORK_SETTINGS,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
-        memset(data,0,sizeof(data));
-        if (!ok) { error_reply(a,id,STATUS_STORAGE,"save_failed","network save failed; active settings retained"); return; }
-        a->network.saved_valid=true; a->network_error[0]=0;
-        if (a->network.recovery) a->network.config=config;
-        else { a->pending_network=config; a->network_pending=true; a->network_due=platform_time_us()+1000000u; a->network_reply_source=a->source; }
+        if (!args.has_revision) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }
+        enum Status status=app_save_network(a,&config,args.revision,a->source,error,sizeof(error));
+        if (status!=STATUS_OK) { error_reply(a,id,status,status==STATUS_STORAGE?"save_failed":status==STATUS_BUSY?"busy":"stale_revision",error); return; }
         a->staged=false; a->upload_owner=0;
         reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,a->network.recovery?"network saved for next boot; recovery AP retained":"network saved; reconnect after settings apply"); return;
     }

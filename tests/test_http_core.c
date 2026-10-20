@@ -19,6 +19,7 @@ int main(void) {
     CHECK(strstr((char *)list.bytes,"200 OK") && strstr((char *)list.bytes,"Content-Type: application/json") && strstr((char *)list.bytes,"\"controllers\":[]"));
     CHECK(!http.sessions[0].source);
     memset(&list,0,sizeof(list)); get.discovery_only=true; strcpy(get.method,"POST"); strcpy(get.path,"/api/v1/sessions"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"404 Not Found") && !http.sessions[0].source);
+    memset(&list,0,sizeof(list)); strcpy(get.method,"GET"); strcpy(get.path,"/"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"404 Not Found"));
     get.discovery_only=false; strcpy(get.path,"/api/v1/controllers");
     memset(&list,0,sizeof(list)); strcpy(get.method,"POST"); CHECK(http_submit(&http,&get)); drain(&http,0,&list); CHECK(strstr((char *)list.bytes,"405 Method Not Allowed"));
     Sink sink={0}; HttpRequest request={.method="POST",.path="/api/v1/sessions",.io={&sink,output,close_sink}};

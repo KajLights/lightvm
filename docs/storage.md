@@ -82,6 +82,12 @@ symbols use the same board geometry as the flash driver and reject overlapping
 firmware. Each build exports `storage-layout.json`; firmware packaging and the
 browser installer use its linked boundary when validating the UF2. The optional boot journal occupies 8 KiB immediately before storage.
 
+Pico/Pico W declare 2 MiB flash; Pico 2 W declares 4 MiB. With the default
+512 KiB store, Pico 2 W uses flash offsets `0x380000..0x3fffff` for storage and,
+when enabled, `0x37e000..0x37ffff` for the boot journal. The exported layout also
+records the board, so packaging rejects a layout from another model. See the
+[Pico 2 W guide](pico2-w.md) for clean provisioning.
+
 ESP32 generates its partition table from the requested capacity, reserving a
 2 MiB application partition at `0x10000` and placing storage at `0x210000`.
 The optional boot journal follows the store. `LIGHTVM_PARTITION_TABLE` may instead
