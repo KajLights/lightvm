@@ -86,11 +86,12 @@ cannot close any board gate. RP2350 and ESP32 claims require their own evidence.
 
 ## Integration handoff
 
-Rebase onto the validated Pico repair before changing the loader/interpreter,
-map executor, scheduler, preparation or board build. Preserve its constant-value
-cache, float checks, SRAM placement, revised chunk choices and ownership rules.
+The numeric foundation is rebased onto validated Pico repair `a9c8611` before
+loader/interpreter, map executor, scheduler, preparation or board build changes.
+Preserve its constant-value cache, float checks, SRAM placement, revised chunk
+choices and ownership rules.
 Do not mechanically restore the planning baseline's 128/32 chunk assumption:
-the repair candidate also tests 64-pixel unsplit transient chunks.
+the committed repair uses 64-pixel unsplit transient chunks.
 
 Link the shared numeric module only after types, encodings and feature floors
 are assigned. Measure the module's compiler helper calls and code placement;

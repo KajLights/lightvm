@@ -1,9 +1,10 @@
 # Independent bytecode emission
 
-22 October 2026. Baseline: LightVM `bdc1045`. This document records the current
-container and the integration requirements for the [numeric foundation](numeric-types.md).
-The standalone numeric module adds no accepted wire encoding. Recheck the
-baseline tables after rebasing onto the Pico performance repair.
+22 October 2026. Baseline: validated Pico repair `a9c8611`. This document records
+the current container and the integration requirements for the
+[numeric foundation](numeric-types.md).
+The standalone numeric module adds no accepted wire encoding. The rebase onto
+the Pico performance repair preserves the container, type and opcode tables.
 
 ## Current container
 

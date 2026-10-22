@@ -8,8 +8,12 @@ The [numeric contract](../numeric-types.md),
 [emitter requirements](../bytecode-emitter.md) and
 [workload specification](numeric-workloads.md) freeze the foundation scope.
 `src/numeric.c` and its independent reference tests are isolated from firmware
-and application builds. This work is based on committed LightVM `bdc1045`;
-rebase onto the validated Pico repair before integrating runtime changes.
+and application builds. The foundation began on LightVM `bdc1045` and is now
+rebased onto validated Pico repair `a9c8611`. Runtime integration starts from
+that repair, preserving its memory, scheduling and ownership changes.
+The rebase was conflict-free; the foundation patch is unchanged. All eight
+standalone tests pass again in optimized and ASan/UBSan builds. These checks
+verify the foundation on the new baseline, not runtime or hardware integration.
 
 Source baselines: LightVM `1d9b7ea`; sibling picolights
 `f6480b4845b2ba3af4fbf0ffb1f398d362dda772`. Paths into picolights below assume
@@ -216,8 +220,9 @@ ordinary loop remains a valid program and the reference execution path.
 ### Work bounds, faults and parallelism
 
 Choose pixels per chunk from the longest validated path and per-operation cost,
-with a maximum of the current 128 split/32 serial pixels. Start with a conservative
-weighted-work ceiling equivalent to the current 32-by-32 cheap-operation budget;
+with the current maxima of 128 split, 64 unsplit transient and 32 persistent
+destination pixels. Start with a conservative weighted-work ceiling equivalent
+to the current 32-by-32 cheap-operation budget;
 calibrate math weights on boards. A single expensive operation must itself have
 a bounded implementation. Check time between pixels/chunks and measure overruns.
 

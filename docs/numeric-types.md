@@ -20,7 +20,7 @@ units, fault conditions, accuracy and intended kernel eligibility. Its names are
 semantic identifiers, not opcode numbers or source-language execution modes.
 `wire_id: null` and an unreleased feature floor mean **do not emit this operation
 as a new bytecode feature**. Assign encodings and the application feature floor
-during integration, after rebasing onto the Pico repair. Existing operations such
+during integration on the validated Pico repair. Existing operations such
 as sine retain their current bindings until that coordinated change.
 
 ## Values and conversions
