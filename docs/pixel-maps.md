@@ -12,48 +12,59 @@ for i in range(pixels.count):
 
 The compiler types and inlines the code, then recognizes independent pixel
 maps. It replaces eligible loop control with `PIXEL_MAP`, a generic bulk
-instruction. The native backend executes the existing typed expressions in
-chunks of at most 32 pixels, caches stable scalar inputs and evaluates invariant
-operations once per chunk. It does not recognize rainbow syntax or choose an
+instruction. The native backend executes typed expressions in weighted chunks,
+captures stable scalar inputs and caches straight-line invariants after their
+first ordered evaluation in each lane. It does not recognize rainbow syntax or choose an
 effect's colours or timing.
 
-The normal loop remains the fallback. `fillfn` and first-class callback values
-are not required by this implementation.
+Unsupported loops keep ordinary resumable bytecode. `fillfn` and first-class
+callback values are not required. A compiled map must admit its prepared plan;
+there is no hidden execution mode if its memory allocation fails.
 
 ## Supported loops
 
-The initial optimizer accepts `for i in range(stop)` with one final assignment
+The optimizer accepts `for i in range(stop)` with one final assignment
 to `image[i]`, where `image` is a writable output or PixelArray. Intermediate
-local calculations and straight-line inlined helpers are supported. The body
-must lower to at most 32 operations and cannot carry a value from one iteration
+local calculations, forward conditionals and inlined helpers are supported. The body
+must lower to at most 128 operations and cannot carry a value from one iteration
 to the next. Its output is an opaque RGB replacement, matching indexed writes:
 alpha becomes 255 and white becomes zero where those channels exist.
 
-Supported calculations include integer and float arithmetic, conversions,
-comparisons, min/max, RGB/HSV construction, `hash01`, fixed resource lengths,
-`math.sin`, RGB channel extraction and scalar `colorwheel`. These are generic
+Supported calculations include integer, float and explicit Q16.16 arithmetic,
+bitwise operations, conversions, comparisons, min/max, RGB/HSV construction,
+`hash01`, fixed resource lengths, resident numeric-array gathers, the
+[native math set](numeric-types.md#native-f32-math), RGB channel extraction and scalar `colorwheel`. These are generic
 operations; for example a nonlinear HSV expression takes the same path as the
 affine colourwheel expression in Rainbow.
 
-Loops that mutate context or sprites, use randomness, read pixel data, branch,
-break/continue, nest another loop, or use unsupported operations retain ordinary
-bytecode. This preserves ordered effects and pixel feedback. Further compiler
-work can broaden the proven subset without changing the source API.
+Every branch path must reach the common final store and define every body-written
+local it reads. Branches remain lazy: an invalid index or math domain in the
+untaken arm does not fault. Numeric sources must keep their identity and contents
+through the loop, although earlier code may update them before entering it.
+
+Loops that mutate context/sprites/source arrays, use stateful randomness, read
+pixel data, break/continue, nest another loop, scatter, skip writes or make
+multiple stores retain ordinary bytecode. This preserves ordered effects and
+pixel feedback. New branch-local names still follow the frontend's scope rules;
+initialize a local before an `if` statement when it is used after that statement.
 
 ## Execution contract
 
-The backend caches and evaluates the typed body; it neither JIT-compiles machine
-code nor invokes the normal VM separately for each pixel. Each dispatch executes
-at most 32 pixels times 32 body operations. The scheduler can yield between
-chunks, with time and scalar inputs stable throughout the frame. No rendering
-path allocates memory. Fixed C-stack scratch is approximately 1 KiB; it does not
-add per-instance heap storage.
+Preparation builds a compact immutable plan charged to the VM heap and reported
+as `map_plan_bytes`. The backend evaluates that plan without invoking the normal
+VM separately for each pixel. It chooses a chunk from the longest weighted path,
+with maxima of 128 split, 64 unsplit transient or 32 persistent pixels, and checks
+time between pixels. Time and scalar inputs remain stable throughout the frame.
+No rendering path allocates. Each lane has bounded private stack scratch; the
+whole-path target stack audit includes the caller and native math implementations.
+See [encoding and cost rules](bytecode-emitter.md#prepared-pixel-kernels).
 
 Floating operations keep their original f32 order and rounding. Division is not
 rewritten as multiplication by a reciprocal, and multiply/add is not contracted
 into an FMA. Loop locals and the final index retain scalar-loop values. Empty and
 negative ranges do not evaluate the body, including invariant expressions that
-would fault. Faults retain the last completed contribution as usual.
+would fault. Faults retain the last completed contribution as usual. Persistent
+images execute serially and retain the ordered writes preceding a fault.
 
 The loader independently validates the map's destination permissions, index,
 range, local writes, supported operations, native signatures and data flow. Maps
@@ -72,8 +83,10 @@ python -m lightvm.compiler examples/animations/rainbow.py --no-optimize -o build
 Python callers can pass `compile_source(source, optimize=False)`. Target-aware
 compilation checks the minimum application release and rejects insufficient targets.
 
-Pixel maps are part of the LightVM 1.0.0 baseline and use the same minimum-release
-check as other instructions. Opcode 39 contains a destination reference, index
+Simple maps are part of the LightVM 1.0.0 baseline. Gathers, fixed/bitwise map
+expressions, conditional branches, bodies above 32 instructions and new math
+require 1.3.0. They use the same minimum-release checks as other instructions;
+the loader independently rejects falsely lowered requirements. Opcode 39 contains a destination reference, index
 register, exclusive stop register and the PC after its embedded body. Header words
 80–92 remain reserved zero; there is no separate drawing API version. `native_draw_us` includes map execution in addition to native
 drawing bindings; `dispatch_count` counts the outer VM dispatches.
@@ -87,3 +100,8 @@ counts and timestamps with:
 python tools/benchmark_pixel_maps.py --process build/composition-host/lightvm \
     --pixels 200 --frames 300 --rounds 7 --output build/pixel-map-results.json
 ```
+
+`tools/benchmark_numeric.py` freezes and measures the broader gather, fixed,
+branch and native-math fixtures with scalar/bulk replay. See the
+[S2–S4 validation record](design/numeric-s234-validation-2026-10-22.md) for attached
+RP2040 evidence and its limits; host timings do not establish board performance.

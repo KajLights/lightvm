@@ -17,7 +17,7 @@ const category = (name: string, colour: string, types: string[]) => ({ kind: 'ca
 const toolbox = { kind: 'categoryToolbox', contents: [
   category('Program', '#9b59b6', ['lm_program', 'lm_runtime']),
   category('Light & colour', '#bd7730', ['lm_fill', 'lm_pixel', 'lm_range', 'lm_gradient', 'lm_clear', 'lm_rgb', 'lm_hsv', 'lm_colorwheel']),
-  category('Motion', '#536fc0', ['lm_motion', 'lm_lerp', 'lm_random']),
+  category('Motion', '#536fc0', ['lm_motion', 'lm_lerp', 'lm_native_math', 'lm_power', 'lm_random']),
   category('Numbers & logic', '#417bb0', ['lm_number', 'lm_math', 'lm_compare', 'lm_bool', 'lm_logic', 'lm_not']),
   category('Loops & choices', '#558b3c', ['lm_each', 'lm_repeat', 'lm_while', 'lm_if', 'lm_flow']),
   category('Values & inputs', '#a84978', ['lm_set', 'lm_get', 'lm_setting', 'lm_input', 'lm_array', 'lm_array_get', 'lm_array_set']),

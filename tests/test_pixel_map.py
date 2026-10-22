@@ -114,14 +114,13 @@ def draw(ctx,runtime,pixels):
  pixels.draw(ctx.image)
 ''')
 
-    def test_effectful_feedback_carried_and_branching_loops_fall_back(self):
+    def test_effectful_feedback_carried_and_break_loops_remain_scalar(self):
         bodies=[
             'ctx.calls+=1\n  pixels[i]=rgb(1,0,0)',
             'value+=1\n  pixels[i]=rgb(value,0,0)',
             'pixels[i]=pixels[0]',
             'pixels[i]=rgb(random.randrange(255),0,0)',
             'if i>5:\n   break\n  pixels[i]=rgb(1,0,0)',
-            'pixels[i]=rgb(1,0,0) if i>5 else rgb(0,1,0)',
         ]
         for body in bodies:
             source='import random\n'+PREFIX+'''@init

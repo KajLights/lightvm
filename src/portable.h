@@ -28,6 +28,7 @@ typedef struct Portable {
     bool io_fault;
     uint8_t *values; PbcResource *resources; void *state;
     size_t metadata_bytes,state_bytes,payload_bytes,register_bytes;
+    struct PbcMapPlan *maps; size_t map_bytes;
     uint32_t generation,pc,function,used,bulk,status;
     PbcValue result;
     LbcBuffer *output;
@@ -49,6 +50,7 @@ typedef struct Portable {
     float progress;
     bool initialized;
     bool numeric_allowed; /* Verified application feature floor, never a guest flag. */
+    bool kernels_allowed;
     bool render_reusable; /* Derived from verified operations, never a manifest claim. */
     _Alignas(4) uint8_t cache[LIGHTVM_BYTECODE_CACHE_BYTES]; uint32_t cache_offset,cache_size;
 } Portable;
@@ -68,6 +70,7 @@ const char *pbc_manifest_decode(Portable *,const Json *);
 void pbc_destroy(Portable *p);
 typedef struct {
     unsigned stage,index,pixel;
+    unsigned map_pc,map_index;
     size_t resource_offset,payload,zeroed,cursor;
     PbcValue fill;
     bool image;

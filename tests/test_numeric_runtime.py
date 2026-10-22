@@ -121,12 +121,12 @@ class NumericCompilerTests(unittest.TestCase):
         names = {}
         types = {'q16':7, 'i32':1, 'f32':2, 'bool':4}
         for operation in catalogue['operations']:
-            if operation['implementation'] != 'runtime' or operation['name'] == 'q16.eq': continue
+            if operation['implementation'] != 'runtime' or operation['name'] == 'q16.eq' or operation['name'].startswith('f32.'): continue
             name = by_id[operation['wire_id']['id']]
             self.assertEqual(numeric.SIGNATURES[name], tuple(types[t] for t in [operation['result'], *operation['arguments']]))
             self.assertEqual(operation['feature_floor']['release'], numeric.RELEASE)
             names[operation['name']] = name
-        self.assertEqual(set(names.values()), set(numeric.SIGNATURES))
+        self.assertEqual(set(names.values()), set(numeric.SIGNATURES)-set(numeric.MATH_SIGNATURES))
         for _ in range(1024):
             args = rng.getrandbits(32), rng.getrandbits(32)
             for operation, name in names.items():
@@ -267,7 +267,7 @@ def draw(ctx,runtime,pixels):
                     client.require_ok(client.command(FRAME,struct.pack('<I',milliseconds)))
                     self.assertEqual(bytes(client.pixel_snapshot), bytes([expected,0,0])*5)
                 generation = client.program_state()['generation']
-                for required in ('1.1.0','1.3.0'):
+                for required in ('1.1.0','1.4.0'):
                     with self.assertRaises(ProtocolError):
                         client.save_program('invalid', manifest_variant(package,requires=required))
                     self.assertEqual(client.program_state()['generation'], generation)

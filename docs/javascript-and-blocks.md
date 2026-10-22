@@ -74,7 +74,7 @@ numbers and fixed resource types; it is not a general browser JavaScript engine.
 | Control flow | `if` / `else`, ternaries, C-style `for`, `while`, `for…of` over managed typed arrays, `break`, `continue`, early render return |
 | Operators | `+ - * / %`, comparisons, `=== !==`, unary `+ - !`, standalone `++ --`, assignments and `+= -= *= /=` |
 | Logical operators | `&&` / `||` short circuit and return operand values; result branches must have the same LightVM type. Store an effectful left operand in a local first. |
-| Maths | `Math.sin/cos/abs/min/max/floor/ceil/round/trunc/random`, `Math.PI`, `Math.E`; `Number`, `float` and `int` |
+| Maths | `Math.sin/cos/sqrt/log/exp/pow/abs/min/max/floor/ceil/round/trunc/random`, `Math.PI`, `Math.E`; `Number`, `float` and `int` |
 | Collections | `new Float32Array`, `Int32Array`, `Uint32Array`, `Uint8Array`, `Uint16Array` with a length or literal array, indexing, element writes, `.length` |
 | SDK descriptions | `new PixelArray`, `Sprite`, `SpriteBatch`, `Transform`, `ColorTransform`; `input` / `Input`, `ramp` / `Ramp` |
 
@@ -84,8 +84,13 @@ A variable cannot change from a colour to a number, or an array to a scalar.
 Pixel/array indices and drawing ranges convert to integers at the API boundary.
 Typed integer arrays retain the VM's checked stores rather than JavaScript's
 wrapping byte-array stores. Arrays cannot resize. Allocate them in `init`.
-The VM uses f32 precision rather than JavaScript's binary64; signed zero,
-NaN/Infinity and arbitrary objects are not part of the contract.
+The VM uses f32 precision rather than JavaScript's binary64. Native math preserves
+the [specified zero signs and finite domains](numeric-types.md#native-f32-math);
+NaN/Infinity and arbitrary objects are unsupported. New native functions need
+firmware 1.3.0. Floor/ceil/trunc preserve an f32 result, including values outside
+the i32 range. `Math.round(x)` retains the frontend's existing `floor(x + 0.5)`
+lowering; it is not a new native operation. Blocks exposes the same operations
+through its native-math dropdown and power block.
 
 JavaScript `%` uses the dividend's sign. Use `repeat(x)` for positive wrapped
 motion. Logical operands must be compatible scalar types. Guest strings are

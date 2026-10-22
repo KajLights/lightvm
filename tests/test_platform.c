@@ -20,6 +20,8 @@
 } } while (0)
 
 static uint64_t clock_now, clock_step;
+static unsigned numeric_workers=1;
+unsigned render_platform_workers(void){return numeric_workers;}
 static unsigned shows, allocations;
 static bool deny_allocation;
 static unsigned fail_allocation_at;
@@ -379,7 +381,11 @@ static void indicator_effect_contract(void) {
 }
 int main(int argc,char **argv) {
     if((argc==2||argc==3)&&!strcmp(argv[1],"--numeric-driver"))return numeric_driver(argc==3?argv[2]:"nearest");
-    if(argc==3&&!strcmp(argv[1],"--numeric-package"))return numeric_package_driver(argv[2]);
+    if(argc>=3&&argc<=6&&!strcmp(argv[1],"--numeric-package")){
+        if(argc>5)numeric_workers=(unsigned)strtoul(argv[5],NULL,10);
+        CHECK(numeric_workers==1||numeric_workers==2);
+        return numeric_package_driver(argv[2],argc>3?(unsigned)strtoul(argv[3],NULL,10):67,argc>4?(unsigned)strtoul(argv[4],NULL,10):0);
+    }
     CHECK(argc==1);
     storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
     static App app;

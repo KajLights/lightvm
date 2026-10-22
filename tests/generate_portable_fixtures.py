@@ -5,6 +5,22 @@ import struct
 from bytecode_fixtures import program
 prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation")\n'
 fixtures={
+ 'extended_map_lbc':program('''import math
+from lightvm import profile,init,render,FixedArray,fixed,fixed_sqrt,rgb
+profile("animation")
+@init
+def setup(ctx,runtime):
+ ctx.a=FixedArray(5,fill=fixed(0.25))
+ ctx.last=fixed(0)
+@render
+def draw(ctx,runtime,pixels):
+ q=fixed(0)
+ for i in range(pixels.count):
+  if (i&1)==0:q=ctx.a[i%5]
+  else:q=fixed_sqrt(fixed(0.25))
+  pixels[i]=rgb(int(q*fixed(200)),int(math.cos(float(q))*100.0),0)
+ ctx.last=q
+'''),
  'fixed_array_lbc':program('''from lightvm import profile,init,render,FixedArray,fixed,fixed_bits,fixed_from_bits,fixed_sqrt,rgb
 profile("animation")
 @init

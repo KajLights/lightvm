@@ -1,7 +1,10 @@
 # Core numeric types, bulk kernels and native math
 
-22 October 2026. **Status: S0 and S1 complete. Scalar fixed-point integration
-is verified; broader kernels and native f32 math remain pending.**
+22 October 2026. **Status: S0–S4 implemented.** Stable numeric gathers, lazy
+conditional kernels and native f32 math join the scalar fixed-point foundation.
+Full frontend parity (S5) and the complete multi-board release matrix (S6) remain
+separate stages. See the [S2–S4 validation record](numeric-s234-validation-2026-10-22.md)
+for the measured attached-Pico scope and remaining target limits.
 
 The [numeric contract](../numeric-types.md),
 [operation catalogue](numeric-operations.json),
@@ -14,7 +17,8 @@ fixed arrays, declaration expressions and Python authoring under feature floor
 1.2.0, preserving the repair's memory, scheduling and ownership design.
 The [S1 validation record](numeric-s1-validation-2026-10-22.md) covers independent
 oracle comparisons, lifecycle/fault tests, host regressions, ASan/UBSan and Pico
-build/SRAM/stack gates. No physical numeric-performance result is claimed.
+build/SRAM/stack gates. S1 made no physical numeric-performance claim; S2–S4 adds
+its own firmware identities and measurements without changing the repair archive.
 
 Source baselines: LightVM `1d9b7ea`; sibling picolights
 `f6480b4845b2ba3af4fbf0ffb1f398d362dda772`. Paths into picolights below assume
@@ -103,17 +107,19 @@ actually reused. Do not claim that existing effects already use new arithmetic.
 - [The core](../../src/bytecode_core.h) has i32, f32, bool, packed RGB8 and Q16.16.
   Addition/subtraction/multiplication of i32 wrap; integer division faults on its
   exceptional overflow. S1 adds exact fixed arithmetic and integer bitwise/checked
-  shifts to scalar execution; map admission remains separate work.
+  shifts to scalar execution; S2 admits their verified use in pixel maps.
 - [Portable execution](../../src/portable.c) and
   [map execution](../../src/portable_map.c) implement overlapping arithmetic
-  switches. New operations must not acquire different semantics in these paths.
-- [Map recognition](../../lightvm/portable.py) accepts at most 32 body
-  instructions, no conditional branches, no element loads and one final pixel
-  store. Runtime validation independently enforces this subset.
-- Map plans are decoded per chunk. Some invariants are recomputed per task/chunk.
-  Increasing the body limit alone would increase decoding and stack costs.
-- `sin` is the general transcendental native. Some JavaScript math expands into
-  helper bytecode, including cosine via a shifted sine.
+  switches for existing arithmetic. New numeric operations share one evaluator.
+- [Map recognition](../../lightvm/portable.py) accepts up to 128 body
+  instructions, forward conditional branches, stable numeric-array loads and one
+  common final pixel store. Runtime validation independently checks that subset.
+- Compact plans are decoded once during admission and charged to the VM heap.
+  Bounded worker scratch, weighted chunks and checks between pixels keep render
+  work resumable. Straight-line invariants retain ordered first evaluation.
+- The shared finite-f32 math set includes abs, rounding, sin/cos, sqrt, log/exp,
+  pow and min/max. JavaScript and Blocks route supported math to this evaluator;
+  complete fixed authoring parity is still S5 work.
 - Packages admit at most 128 registers, 2,048 instructions, 16 resources and
   32 KiB. Retain these limits in the first delivery; use evidence before raising
   them. Native math should reduce instruction pressure rather than conceal it.

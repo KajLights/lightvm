@@ -11,6 +11,7 @@ import struct
 MASK = 0xffffffff
 SCALE = 65536
 RELEASE = '1.2.0'
+MATH_RELEASE = '1.3.0'
 I, F, B, Q = 1, 2, 4, 7
 # ID order also defines bytecode declaration-expression encodings.
 SIGNATURES = {
@@ -22,6 +23,9 @@ SIGNATURES = {
     'IAND': (I, I, I), 'IOR': (I, I, I), 'IXOR': (I, I, I),
     'INOT': (I, I), 'ISHL': (I, I, I), 'ISHR': (I, I, I),
 }
+MATH_SIGNATURES = {name:(F,F,F) if name=='FPOW' else (F,F) for name in
+                   ('FABS','FFLOOR','FCEIL','FTRUNC','FSIN','FCOS','FSQRT','FLOG','FEXP','FPOW')}
+SIGNATURES.update(MATH_SIGNATURES)
 OPCODES = {name: 40 + index for index, name in enumerate(SIGNATURES)}
 
 

@@ -135,7 +135,11 @@ per-instance PCG32 sequence across hosts; this is not CPython's generator or a
 cryptographic RNG. Unbiased integer sampling may yield and resume internally.
 `random.randint(0, 359)` is the Rainbow hue selection.
 
-`math.sin`, `math.pi`, and their explicit from-import forms are supported. LightVM
+`math.fabs`, `math.floor/ceil/trunc`, `math.sin/cos/sqrt/log/exp/pow`, `math.pi`,
+and their explicit from-import forms are supported. Rounding functions in `math`
+return checked i32; SDK `floor/ceil/trunc` return f32. Domain errors and nonfinite
+results fault. See [numeric semantics and feature floors](numeric-types.md).
+LightVM
 provides `rgb`, `hsv`, `hash01`, `red`, `green`, `blue`, `pico_colorwheel`,
 `hue_degrees` and `colorwheel`. Hue degrees uses the original rounded hue; Rainbow
 converts it into the colorwheel's 255-unit scale.
@@ -148,7 +152,9 @@ User helpers are positional, nonrecursive, statically inlined and must return a 
 on every path. Scalar arguments are copied; ctx/runtime/pixels arguments retain
 access to the caller objects. The subset supports scalar arithmetic, comparisons,
 conditionals, `range(bound)` and `while` loops, break/continue, int/float and two-argument
-min/max. Numbers use signed wrapping i32, binary32 floats, bool and packed RGB8.
+min/max. Numbers use signed wrapping i32, binary32 floats, explicit Q16.16, bool
+and packed RGB8. `fixed` and `FixedArray` provide the explicit fractional type;
+mixed arithmetic requires a conversion.
 General Python objects, arbitrary imports, exceptions and dynamic allocation are
 unsupported. Input, Ramp, Sprite, PixelArray, Transform and ColorTransform are statically
 compiled SDK descriptions rather than arbitrary Python objects. Standard-library support is limited to the forms above.

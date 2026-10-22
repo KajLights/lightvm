@@ -79,6 +79,21 @@ def fixed_sqrt(value):
     raise RuntimeError("fixed_sqrt is provided by the compiled native runtime")
 
 
+def floor(value):
+    """Round down, retaining an f32 result and signed zero."""
+    raise RuntimeError("floor is provided by the compiled native runtime")
+
+
+def ceil(value):
+    """Round up, retaining an f32 result and signed zero."""
+    raise RuntimeError("ceil is provided by the compiled native runtime")
+
+
+def trunc(value):
+    """Truncate toward zero, retaining an f32 result and signed zero."""
+    raise RuntimeError("trunc is provided by the compiled native runtime")
+
+
 class Input:
     """Static typed live-input declaration, read with runtime.input(handle)."""
     def __init__(self, name, *, default=0.0, minimum=None, maximum=None, unit="", driver=None, control=None):

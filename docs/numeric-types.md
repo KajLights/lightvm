@@ -1,8 +1,9 @@
 # Numeric foundation contract
 
-22 October 2026. **S1 scalar runtime contract, application feature floor 1.2.0.**
-The compiler, loader and shared firmware core support explicit fixed values and
-arrays alongside the existing types. This implements the first runtime stage of the
+22 October 2026. **Fixed scalar operations use floor 1.2.0; extended kernels and
+new f32 math use floor 1.3.0.** The compiler, loader and shared firmware core support
+explicit fixed values, stable array gathers, lazy conditional maps and native math.
+These implement S1 through S4 of the
 [core SDK plan](design/core-numeric-kernels-plan.md).
 
 ## Scope and provenance
@@ -17,10 +18,9 @@ references. The numeric implementation and fixtures are independently written.
 The [operation catalogue](design/numeric-operations.json) records signatures,
 units, fault conditions, accuracy and intended kernel eligibility. Its names are
 semantic identifiers, not opcode numbers or source-language execution modes.
-S1 encodings and their 1.2.0 feature floor are assigned. `wire_id: null` and an
-unreleased feature floor still mean **do not emit this operation as a new bytecode
-feature**: the expanded f32 math contract awaits S4. Existing operations such as
-sine retain their current bindings.
+The encodings and feature floors are assigned. Existing sine and min/max retain
+their earlier bindings/floors; the new FSIN instruction uses 1.3.0. Fixed and
+bitwise scalar instructions retain 1.2.0, while their use inside maps needs 1.3.0.
 
 ## Values and conversions
 
@@ -97,9 +97,12 @@ equal lengths. Fill/copy use the existing resumable chunks of at most 32 element
 Array identity, permissions and generation checks apply across yields. Rendering
 does not allocate.
 
-S1 fixed expressions and new bitwise operations execute as ordinary scalar
-bytecode. Compiler recognition and the runtime verifier keep them out of map
-kernels until S2 supplies the corresponding verifier and conformance coverage.
+Independent loops with one final pixel store can use fixed and bitwise operations,
+resident numeric-array gathers and forward conditional branches. The verifier
+checks resource identity, stable sources and definite assignment independently of
+the compiler. A loop that updates its source array, such as the example above,
+remains ordered scalar bytecode. Numeric arrays are not image views or output
+feedback. See the [kernel encoding](bytecode-emitter.md#prepared-pixel-kernels).
 
 ## Arithmetic and bit operations
 
@@ -127,7 +130,7 @@ overflow, not identical rounding. Do not change existing i32 division while
 adding fixed-point. Fixed values have no implicit saturation and no implicit
 bitwise interpretation; explicit raw-bit conversion bridges to i32 operations.
 
-## Native f32 math contract for S4
+## Native f32 math
 
 Required coverage is `abs`, `floor`, `ceil`, `trunc`, `sin`, `cos`, `sqrt`, `log`,
 `exp`, `pow`, `min` and `max`. All take finite binary32 values and return finite
@@ -146,17 +149,20 @@ Signed zeros are explicit: abs clears the sign; sqrt, sin, floor, ceil and trunc
 preserve it where applicable. Min of opposite zero signs is negative zero; max
 is positive zero. A negative-zero base raised to a positive odd integral exponent
 produces negative zero, otherwise positive zero. All zero exponents produce one.
-The [native vectors](../tests/fixtures/numeric-vectors.json) pin these identities
-and fault cases. They specify future behaviour; S1 does not implement the expanded
-native f32 set or establish its conformance.
+The [reviewed vectors](../tests/fixtures/numeric-vectors.json) pin these identities
+and fault cases. Python provides `math.fabs/sin/cos/sqrt/log/exp/pow` and built-in
+`abs/min/max`. `math.floor/ceil/trunc` explicitly convert the result to checked i32;
+SDK `floor/ceil/trunc` preserve the f32 result, full range and zero sign. JavaScript
+Math and the native-math Blocks use those same f32 operations.
 
 Scalar and bulk paths must use the same implementation and match exactly on one
-build. For S4, generate independent high-precision reference results from exact
-binary32 inputs, increasing precision until rounding is stable. Include every
+build. The independent reference corpus uses exact
+binary32 inputs and 90/160-digit calculations that must round identically. It includes every
 exponent band, signed zeros, subnormals, domain boundaries and adjacent values,
-range-reduction extremes and the locally motivated workload ranges. Freeze and
-hash that expanded corpus before comparing implementations. A host libm call is
-not the independent reference for another libm call.
+range-reduction extremes and the locally motivated workload ranges. The
+[16,209-case corpus](../tests/fixtures/native-math-vectors.json) is frozen before
+comparison. Its rational/Decimal oracle uses independently calculated pi and
+series for trigonometry, not host libm as the reference for another libm call.
 
 Initial targets: abs/floor/ceil/trunc/min/max are exact; sqrt is correctly rounded;
 sin/cos/log/exp are within four binary32 ULPs of the rounded reference and pow
@@ -164,9 +170,21 @@ within eight. Measure ULP distance using ordered finite binary32 encodings,
 treating the two zeros as one numeric value; check zero signs separately.
 Record maximum absolute error too. Exact domain/fault and signed-zero cases
 override tolerance. These are acceptance targets for the reference corpus, not
-a measured or universal accuracy claim. S4 must publish errors for each target
-math implementation before enabling it; a failing target needs a documented
-contract review rather than an unreported approximation.
+a universal accuracy claim. On the measured arm64 host and RP2040 builds, all
+functions matched the rounded reference exactly except `pow`, whose maximum was
+one ULP (absolute error 2^-149). Domains and zero signs passed exactly. Other
+target math implementations require their own measured conformance; a failing
+target needs contract review, not an unreported approximation.
+
+The shared [implementation](../src/native_math.c) uses exact bit operations for
+rounding/min/max and an integer algorithm for correctly rounded square root.
+Transcendentals use binary64 libm followed by explicit nearest-even binary32
+rounding. Bit conversions preserve subnormals even when a target's ordinary
+float conversion helpers flush them. No host approximation is folded by the
+compiler. Both render cores call the same reentrant implementation.
+Coarse range guards keep exp/pow away from binary64 range errors that would
+write bare-metal libm's shared `errno`. The standalone host and Pico probes also
+assert that every corpus call preserves an `errno` sentinel, including faults.
 
 Clamp, interpolation, periodic wrapping and easing remain SDK equations. Fixed
 transcendental approximations, noise and indexed sampling remain separate scope.
@@ -185,7 +203,7 @@ Float conversion operates on IEEE binary32 bits using integer arithmetic; float
 wrappers only copy those bits. Fixed square root takes exactly 24 restoring
 steps. Other loops are bounded by the 32-bit representation. Wide division may
 use a compiler support routine on embedded targets. Pico builds include the
-resulting calls in the whole-path stack audit; physical latency remains S6 work.
+resulting calls in the whole-path stack audit.
 
 [The oracle](../tests/numeric_oracle.py) uses rational arithmetic, arbitrary
 integers, binary32 packing and integer square root independently of the C code.
@@ -208,7 +226,8 @@ native/compiler regressions, ASan/UBSan and Pico build, SRAM and stack results.
 Coverage includes 93 reviewed raw operation vectors, 15 exact literal cases,
 seeded raw operands, conversion boundaries and four host rounding modes, plus
 resource admission, malformed packages, cancellation and allocation failures.
-These results establish scalar correctness and build bounds, not firmware
-throughput. Scalar/bulk agreement, complete frontend parity, expanded native f32
-math and physical measurements belong to the later stages. The 43 future native
-math vectors remain catalogue requirements awaiting S4.
+The [S2–S4 validation record](design/numeric-s234-validation-2026-10-22.md) adds
+scalar/bulk raw-state and pixel comparisons, malformed CFGs, lazy faults,
+prepared-plan cancellation/allocation failure, native math and attached-Pico
+measurements. Full fixed authoring parity (S5) and the complete multi-board
+performance matrix (S6) remain separate gates.

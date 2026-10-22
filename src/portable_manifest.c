@@ -40,6 +40,7 @@ const char *pbc_manifest_decode(Portable *p,const Json *j){
         if(!json_string(j,token,required,sizeof(required)))return "invalid required LightVM release";
         error=lightvm_release_error(LIGHTVM_VERSION,required);if(error)return error;
         p->numeric_allowed=lightvm_release_at_least(required,LBC_NUMERIC_RELEASE);
+        p->kernels_allowed=lightvm_release_at_least(required,LBC_KERNEL_RELEASE);
     }
     for(unsigned r=0;r<p->nregs;r++)if(pbc_type(p,r)==T_FIXED&&!p->numeric_allowed)
         return "fixed values require LightVM " LBC_NUMERIC_RELEASE;

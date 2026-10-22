@@ -1,9 +1,10 @@
 # Numeric and kernel workload specification
 
-22 October 2026. **S0 specification; benchmark implementations and board results
-are pending.** Follow the [numeric contract](../numeric-types.md) and
-[delivery plan](core-numeric-kernels-plan.md). The standalone host suite measures
-correctness only.
+22 October 2026. **S0 specification with S2–S4 fixtures and attached-RP2040
+validation.** Follow the [numeric contract](../numeric-types.md),
+[delivery plan](core-numeric-kernels-plan.md) and
+[validation record](numeric-s234-validation-2026-10-22.md). The complete S6
+multi-board matrix remains pending; host results establish correctness only.
 
 ## Source grounding
 
@@ -85,6 +86,28 @@ chunk/epoch and ingress gaps separately from wire-limited FPS. A local host loop
 cannot close any board gate. RP2350 and ESP32 claims require their own evidence.
 
 ## Integration handoff
+
+The first executable fixtures live in [tests/fixtures/numeric](../../tests/fixtures/numeric):
+repeating/fitted three-colour gathers, a fixed triangular branch ramp, prepared
+Gaussian input pairs, trigonometric colour powers and ordered fixed damping with
+independent shading. These are original small workload expressions. Their timed
+versions capture bounded elapsed-time phase/offset to prevent static frame reuse.
+The damping fixture alternates an impulse for repeatable frame-by-frame comparison;
+it is not the full five-impulse Q2 study. Table-length and exhaustive parameter
+sweeps remain S6 work.
+
+`tools/benchmark_numeric.py --prepare` freezes source/package hashes and both
+optimized and forced-scalar packages. Its replay mode compares five explicit
+frame deltas; its timing mode alternates scalar/bulk order and records raw
+render, presentation, status-latency, heap and service counters. Configuration is
+restored and temporary programs are removed. `tools/check_numeric_runtime_hardware.py`
+checks late faults, retained frames, recovery and repeated rejected admission.
+Neither tool changes saved configuration or makes firmware backups.
+
+The independent host tests additionally exercise every resident numeric array
+kind, exact 64/128-instruction map bodies and the 129-instruction scalar boundary,
+forced yields and conditional last writes across two lanes. Those raw-state
+checks complement the application-level hardware snapshots.
 
 The numeric foundation is rebased onto validated Pico repair `a9c8611` before
 loader/interpreter, map executor, scheduler, preparation or board build changes.

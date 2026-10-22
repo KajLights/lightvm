@@ -65,6 +65,9 @@ class Compiler:
         if tuple(self.typ(r) for r in args) != signature[1:]:
             raise CompileError('numeric operands require explicit matching types')
         self.numeric_used = True
+        if name in numeric.MATH_SIGNATURES:
+            self.kernels_used = True
+            out = self.reg(signature[0]); self.emit(name, out, *args); return out
         if getattr(self, 'optimize', True) and all(self.regs[r][1] == CONST for r in args):
             try:
                 bits = numeric.evaluate(name, *(self.regs[r][2] for r in args))
@@ -163,6 +166,8 @@ class Compiler:
             args = [self.expr(a) for a in n.args]
             if name in ('int', 'float') and len(args)==1:
                 return self.convert(args[0], I if name=='int' else F, explicit=True)
+            if name == 'abs' and len(args)==1:
+                return self.numeric_op('FABS', self.convert(args[0], F))
             if name in ('min','max') and len(args)==2:
                 a,b,t=self.pair(*args)
                 if t == Q: return self.numeric_op('Q'+name.upper(), a, b)

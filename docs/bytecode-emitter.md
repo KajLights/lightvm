@@ -1,9 +1,9 @@
 # Independent bytecode emission
 
 22 October 2026. Baseline: validated Pico repair `a9c8611`. This document records
-the current container and the S1 encodings for the
+the current container and the S1–S4 encodings for the
 [numeric foundation](numeric-types.md). The shared core adds numeric operations
-under application feature floor 1.2.0. The container layout remains unchanged.
+under application feature floors 1.2.0 and 1.3.0. The container layout remains unchanged.
 
 ## Current container
 
@@ -87,10 +87,9 @@ rounding, wrapping and fault order. Report unsupported operations before emissio
 Unknown/rejected opcodes and native bindings remain rejected; no runtime shim
 or source-language compatibility mode is introduced.
 
-The [operation catalogue](design/numeric-operations.json) assigns S1 encodings
-and their 1.2.0 application floor. Its future S4 entries remain unset: an encoder
-must reject an unset mapping or feature floor. A package using a fixed type,
-fixed array or new numeric operation must declare `requires` at least 1.2.0,
+The [operation catalogue](design/numeric-operations.json) assigns encodings
+and their application floors. A package using a fixed type,
+fixed array or instruction 40..61 must declare `requires` at least 1.2.0,
 including generic typed callbacks. The loader rejects a falsely lowered floor
 even on newer firmware. Existing programs retain their earlier feature floors.
 
@@ -128,9 +127,56 @@ and `value` is zero. Unary `b` must be zero. A literal expression has opcode 0
 and stores its raw bits in `value`, with type 7 for fixed. Admission evaluates
 these expressions with the same shared numeric implementation as scalar code.
 
-S1 does not admit these operations or fixed-typed values to map bodies. Emit an
-ordinary loop until S2 supplies verified bulk execution; a feature floor never
-authorizes an unimplemented map operation.
+## Native f32 encoding
+
+Instructions 62..70 are unary `FABS, FFLOOR, FCEIL, FTRUNC, FSIN, FCOS, FSQRT,
+FLOG, FEXP` in that order. Instruction 71 is binary FPOW. Their operands/results
+are f32, with the same unary/binary field layout above and feature floor 1.3.0.
+Declaration expressions accept the same IDs, signatures and earlier-expression
+references. Existing FMIN=25, FMAX=26 and native sine binding 7 retain floor 1.0.0
+and call the same shared finite-f32 evaluator. Reserved operands must be zero.
+
+## Prepared pixel kernels
+
+PIXEL_MAP=39 uses `a=destination reference`, `b=i32 index`, `c=i32 bound`,
+`d=exclusive body end PC`. The body starts at the next instruction, contains
+1..128 instructions and ends in one STORE_ELEM to that destination/current index.
+The map iterates from zero to the captured bound; nonpositive bounds do no work.
+Every path reaches the final store. JMP/JZ targets must be strictly forward and
+inside the body. No nested loops, early exits, skip-writes or multiple stores are
+admitted. The verifier proves every read of a body-written local is defined on
+every incoming path; captured inputs and read-only locals remain stable.
+
+Pure scalar arithmetic, the numeric operations above, existing colour helpers
+and resident numeric LOAD_ELEM/LENGTH are eligible. Gathers accept numeric array
+kinds 1, 2, 7, 8, 11 and 20 with zero flags. References must be verified constant
+resource identities; source/destination identity may not alias. Image reads,
+source mutation, persistent scalar writes, stateful RNG and scatter stay scalar.
+Bodies above 32 instructions, conditional/nontrivial forward branches, gathers,
+fixed values and numeric instructions 40..71 require floor 1.3.0. Earlier simple
+map bodies retain their old floor. A falsely lowered floor is rejected.
+
+Preparation admits immutable decoded plans, charges their exact allocation to
+the VM heap (`map_plan_bytes` telemetry), and frees them with the VM. It scans
+32 code instructions or decodes 16 body instructions per step; CFG verification
+is bounded by the 128-instruction limit. There is no render allocation or hidden
+fallback when admission fails. Each worker has bounded private register scratch.
+Straight-line invariants are cached after their first ordered evaluation;
+branches are lazy and their arms are never hoisted.
+
+Chunk size follows the maximum weighted CFG path, with a ceiling of 1024 weighted
+operations per lane and maxima of 128 split, 64 unsplit transient or 32 persistent
+pixels. Costs are 128 for log/exp/pow, 64 for sin/cos, 32 for square roots, 8 for
+division/modulo, 4 for HSV/fixed multiply, 2 for gathers, otherwise 1. Cached
+invariants cost 1 after initial evaluation. Time is checked between pixels against
+the render slice; one pixel always makes progress. This is a cooperative bound,
+not a preemption guarantee inside one pixel.
+
+Only transient output splits across workers. Persistent images stay serial to
+retain partial writes before a fault. Across yields only a contiguous completed
+prefix advances; unpublished speculative output is recomputed when necessary.
+Final locals merge from the last executed write, including conditional writes.
+Resource generations and the executor lifetime fence remain enforced.
 
 ## Conformance and remaining integration gates
 

@@ -548,7 +548,7 @@
     "platforms/pico/network_port.c": "6a35c10511c4b09668f8a0dc074d44bca0c483b99522b481c94c17c951f97285",
     "platforms/pico/main.c": "913fec12902d830eefbbf574db8648511d0fb1a9f9c9b09726b430475d4fb37e",
     "platforms/pico/platform.c": "d848c2bde4923ea4a721cc494aa7c18eb533d7b34a212d09e46470daad83120a",
-    "platforms/pico/CMakeLists.txt": "69f67f1e7ccf277467036890feaa5ba7080a186d8361f3ffaa87ce0efbca78a8",
+    "platforms/pico/CMakeLists.txt": "161cfbe7683526e9a421e92a572f93afd20f70827bccae2da197be8f44160a4a",
     "platforms/pico/lwipopts.h": "8c622e12bfb71fddc372081218a9e57c39b31601b799d29c2d42a93c4a178fb5"
   }
 }

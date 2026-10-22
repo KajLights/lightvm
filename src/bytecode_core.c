@@ -1,6 +1,7 @@
 #include "bytecode_core.h"
 #include "config.h"
 #include "numeric.h"
+#include "native_math.h"
 #include <math.h>
 LbcNumericSignature lbc_numeric_signature(unsigned op){
     static const LbcNumericSignature signatures[]={
@@ -12,11 +13,17 @@ LbcNumericSignature lbc_numeric_signature(unsigned op){
         {T_FIXED,T_FLOAT,0}, {T_FLOAT,T_FIXED,0},
         {T_FIXED,T_INT,0}, {T_INT,T_FIXED,0}, {T_FIXED,T_FIXED,0},
         {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT},
-        {T_INT,T_INT,0}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT}
+        {T_INT,T_INT,0}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT},
+        {T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},
+        {T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},
+        {T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},
+        {T_FLOAT,T_FLOAT,T_FLOAT}
     };
-    return op>=QADD&&op<=ISHR?signatures[op-QADD]:(LbcNumericSignature){0};
+    return op>=QADD&&op<=FPOW?signatures[op-QADD]:(LbcNumericSignature){0};
 }
 bool lbc_numeric_eval(unsigned op,uint32_t left,uint32_t right,uint32_t *out){
+    if(op>=FABS&&op<=FPOW)return lvm_f32_eval(op-FABS,left,right,out);
+    if(op==FMIN||op==FMAX)return lvm_f32_eval(op==FMIN?LVM_MIN:LVM_MAX,left,right,out);
     int32_t a=lvm_i32_from_bits(left),b=lvm_i32_from_bits(right),value;
     switch(op){
     case QADD:value=lvm_q16_add(a,b);break;

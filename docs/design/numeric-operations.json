@@ -1,5 +1,5 @@
 {
-  "status": "S1 scalar and declaration encodings assigned; S4 native math remains planned",
+  "status": "S1-S4 scalar and prepared-kernel encodings assigned; target validation is recorded separately",
   "operations": [
     {
       "name": "q16.literal",
@@ -23,7 +23,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.add",
@@ -46,7 +47,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.sub",
@@ -69,7 +71,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.mul",
@@ -92,7 +95,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.neg",
@@ -114,7 +118,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.div",
@@ -140,7 +145,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.mod",
@@ -165,7 +171,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.min",
@@ -188,7 +195,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.max",
@@ -211,7 +219,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.lt",
@@ -234,7 +243,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.eq",
@@ -257,7 +267,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.sqrt",
@@ -281,7 +292,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.from_i32",
@@ -305,7 +317,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.to_i32",
@@ -327,7 +340,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.from_f32",
@@ -352,7 +366,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.to_f32",
@@ -374,7 +389,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.bits",
@@ -396,7 +412,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "q16.from_bits",
@@ -418,7 +435,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "i32.and",
@@ -441,7 +459,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "i32.or",
@@ -464,7 +483,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "i32.xor",
@@ -487,7 +507,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "i32.not",
@@ -509,7 +530,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "i32.shl",
@@ -534,7 +556,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "i32.shr",
@@ -559,7 +582,8 @@
         "status": "implemented",
         "release": "1.2.0"
       },
-      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.abs",
@@ -574,13 +598,17 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 62
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.floor",
@@ -595,13 +623,17 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 63
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.ceil",
@@ -616,13 +648,17 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 64
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.trunc",
@@ -637,13 +673,17 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 65
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.sin",
@@ -659,13 +699,23 @@
       ],
       "effects": [],
       "accuracy": "4 ulp target on the frozen reference corpus",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 66
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0",
+      "existing_binding": {
+        "kind": "native",
+        "id": 7,
+        "feature_floor": "1.0.0",
+        "kernel_feature_floor": "1.0.0"
+      }
     },
     {
       "name": "f32.cos",
@@ -681,13 +731,17 @@
       ],
       "effects": [],
       "accuracy": "4 ulp target on the frozen reference corpus",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 67
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.sqrt",
@@ -704,13 +758,17 @@
       ],
       "effects": [],
       "accuracy": "correctly rounded binary32 target",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 68
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.log",
@@ -727,13 +785,17 @@
       ],
       "effects": [],
       "accuracy": "4 ulp target on the frozen reference corpus",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 69
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.exp",
@@ -749,13 +811,17 @@
       ],
       "effects": [],
       "accuracy": "4 ulp target on the frozen reference corpus",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 70
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.pow",
@@ -774,13 +840,17 @@
       ],
       "effects": [],
       "accuracy": "8 ulp target on the frozen reference corpus",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 71
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.3.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.3.0"
     },
     {
       "name": "f32.min",
@@ -796,13 +866,17 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 25
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.0.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.0.0"
     },
     {
       "name": "f32.max",
@@ -818,13 +892,17 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "planned",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 26
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.0.0"
+      },
+      "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
+      "kernel_feature_floor": "1.0.0"
     }
   ]
 }

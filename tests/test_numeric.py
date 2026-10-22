@@ -137,9 +137,10 @@ class NumericContractTests(unittest.TestCase):
             self.assertEqual(op['effects'], [], op)
             self.assertTrue(op['semantics'] and op['accuracy'] and op['feature_floor'], op)
             if op['implementation'] == 'runtime':
-                self.assertIn(op['name'], exact, op)
+                self.assertIn(op['name'], exact | native, op)
                 self.assertEqual(op['wire_id']['kind'], 'instruction')
-                self.assertEqual(op['feature_floor']['release'], '1.2.0')
+                expected='1.0.0' if op['name'] in ('f32.min','f32.max') else '1.3.0' if op['name'].startswith('f32.') else '1.2.0'
+                self.assertEqual(op['feature_floor']['release'], expected)
             elif op['name'] == 'q16.literal':
                 self.assertTrue(self.vectors['literals'])
                 self.assertEqual(op['wire_id'], {'kind':'constant', 'type':7})
@@ -148,10 +149,10 @@ class NumericContractTests(unittest.TestCase):
                 self.assertIn(op['name'], native, op)
             if op['faults'] and op['implementation'] == 'runtime':
                 self.assertTrue(any(case['op'] == op['name'] and case.get('fault')
-                                    for case in self.vectors['exact']), op)
+                                    for case in self.vectors['exact']+self.vectors['native']), op)
         implemented = set(BINARY + UNARY + ('q16.from_f32', 'i32.shl', 'i32.shr'))
         self.assertEqual({op['name'] for op in catalogue['operations']
-                          if op['implementation'] == 'runtime'}, implemented)
+                          if op['implementation'] == 'runtime'}, implemented | native)
 
 
 if __name__ == '__main__':

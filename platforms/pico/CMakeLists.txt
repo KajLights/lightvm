@@ -8,6 +8,7 @@ pico_sdk_init()
 target_compile_options(lightvm_core PRIVATE -fstack-usage -fcallgraph-info=su)
 target_compile_options(lightvm PRIVATE -fstack-usage -fcallgraph-info=su)
 option(LIGHTVM_OUTPUT_PROBE "Build the Pico hardware output verification image" OFF)
+option(LIGHTVM_NUMERIC_PROBE "Build the isolated numeric conformance image" OFF)
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/peripherals.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S"
     "${CMAKE_CURRENT_LIST_DIR}/render_executor.c")
@@ -101,6 +102,9 @@ endif()
 
 if(LIGHTVM_OUTPUT_PROBE)
     include("${CMAKE_SOURCE_DIR}/tests/pico_output/CMakeLists.txt")
+endif()
+if(LIGHTVM_NUMERIC_PROBE)
+    include("${CMAKE_SOURCE_DIR}/tests/numeric_pico/CMakeLists.txt")
 endif()
 
 pico_set_program_version(lightvm "${LIGHTVM_VERSION}")

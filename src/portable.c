@@ -195,9 +195,9 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
         return sig->result ? can_write(p,a,fn->rights)&&at==sig->result : a==255;
     }
     if(!can_write(p,a,fn->rights))return false;
-    if(op>=QADD&&op<=ISHR){
+    if(op>=QADD&&op<=FPOW){
         LbcNumericSignature sig=lbc_numeric_signature(op);
-        return p->numeric_allowed&&at==sig.result&&bt==sig.left&&
+        return (op<=ISHR?p->numeric_allowed:p->kernels_allowed)&&at==sig.result&&bt==sig.left&&
             (sig.right?ct==sig.right:!c)&&!d;
     }
     switch(op){
@@ -235,9 +235,9 @@ static bool valid_expressions(Portable *p){
         else if(e->op==2){
             if(e->a>=p->nregs||setting_for_reg[e->a]<0||e->type!=pbc_type(p,e->a)||e->b||e->value)return false;
             dependencies[n]=1u<<setting_for_reg[e->a];
-        }else if(e->op>=QADD&&e->op<=ISHR){
+        }else if(e->op>=QADD&&e->op<=FPOW){
             LbcNumericSignature sig=lbc_numeric_signature(e->op);
-            if(!p->numeric_allowed||e->type!=sig.result||e->a>=n||e->value||
+            if(!(e->op<=ISHR?p->numeric_allowed:p->kernels_allowed)||e->type!=sig.result||e->a>=n||e->value||
                 pbc_expression(p,e->a).type!=sig.left)return false;
             dependencies[n]=dependencies[e->a];
             if(sig.right){
@@ -264,7 +264,7 @@ static bool valid_expressions(Portable *p){
     }
     return true;
 }
-void pbc_destroy(Portable *p){if(p){demo_free(p->inputs);demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
+void pbc_destroy(Portable *p){if(p){pbc_map_destroy(p);demo_free(p->inputs);demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
 void pbc_open_cancel(PbcLoader *loader){demo_free(loader->manifest);loader->manifest=NULL;}
 int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,size_t size){
     Portable *p=*out;const char *error="invalid portable declarations";
@@ -415,7 +415,7 @@ static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bind
         if(e->op==0)v.u=e->value;
         else if(e->op==1)v.i=(int32_t)count;
         else if(e->op==2)v=bindings?bindings[e->a]:register_value(p,e->a);
-        else if(e->op>=QADD&&e->op<=ISHR){
+        else if(e->op>=QADD&&e->op<=FPOW){
             if(!lbc_numeric_eval(e->op,values[e->a].u,values[e->b].u,&v.u))return false;
         }
         else if(e->type==T_INT){
@@ -576,8 +576,7 @@ int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
             }
             s->stage=6;return 0;
         }
-        {static uint64_t sequence;p->seed_sequence=++sequence;}
-        random_default(p);p->initialized=true;s->stage=7;return 1;
+        s->stage=7;return 0;
     case 6:{
         PbcResource *r=&p->resources[s->index];unsigned limit=s->pixel+32;if(limit>r->count)limit=r->count;
         while(s->pixel<limit){
@@ -591,7 +590,14 @@ int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
         if(s->pixel==r->count){s->index++;s->stage=5;}
         return 0;
     }
-    case 7:return 1;
+    case 7:{
+        int result=pbc_map_prepare(p,&s->map_pc,&s->map_index);
+        if(result<0){error="pixel plans exceed memory budget or are invalid";goto fail;}
+        if(!result)return 0;
+        {static uint64_t sequence;p->seed_sequence=++sequence;}
+        random_default(p);p->initialized=true;s->stage=8;return 1;
+    }
+    case 8:return 1;
     default:error="invalid resource preparation stage";
     }
 fail:s->error=error;return -1;
@@ -600,7 +606,7 @@ const char *pbc_prepare(Portable *p,LbcBuffer *output){
     PbcPreparation state={0};int status;
     do{status=pbc_prepare_step(&state,p,output);if(!status)runtime_checkpoint();}while(!status);
     if(status>0)return NULL;
-    demo_free(p->state);p->state=NULL;p->values=NULL;p->resources=NULL;p->state_bytes=0;
+    pbc_map_destroy(p);demo_free(p->state);p->state=NULL;p->values=NULL;p->resources=NULL;p->state_bytes=0;
     return state.error;
 }
 bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned count){
@@ -653,7 +659,7 @@ static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
     case 4:return random_range(p,a[0].i,a[1].i,a[2].i,result);
     case 5:random_seed(p,a[0].i<0?(uint64_t)-(int64_t)a[0].i:(uint64_t)a[0].i);return true;
     case 6:random_default(p);return true;
-    case 7:if(!lbc_finite(a[0].f))return false;result->f=sinf(a[0].f);return true;
+    case 7:return lbc_numeric_eval(FSIN,a[0].u,0,&result->u);
     case 8:result->i=(int32_t)(a[0].u>>16);return true;
     case 9:result->i=(int32_t)((a[0].u>>8)&255);return true;
     case 10:result->i=(int32_t)(a[0].u&255);return true;
@@ -722,7 +728,7 @@ int pbc_resume(Portable *p,unsigned quota){
         case RGB:if(r[1].u>255||r[2].u>255||r[3].u>255)goto fault;r[0].u=r[1].u<<16|r[2].u<<8|r[3].u;break;
         case HSV:if(!lbc_finite(r[1].f)||!lbc_finite(r[2].f)||!lbc_finite(r[3].f)||r[2].f<0||r[2].f>1||r[3].f<0||r[3].f>1)goto fault;r[0].u=lbc_hsv(r[1].f,r[2].f,r[3].f);break;
         case IMIN:r[0].i=r[1].i<r[2].i?r[1].i:r[2].i;break;case IMAX:r[0].i=r[1].i>r[2].i?r[1].i:r[2].i;break;
-        case FMIN:r[0].f=fminf(r[1].f,r[2].f);break;case FMAX:r[0].f=fmaxf(r[1].f,r[2].f);break;
+        case FMIN:case FMAX:if(!lbc_numeric_eval(op,r[1].u,r[2].u,&r[0].u))goto fault;break;
         case HASH:r[0].f=lbc_hash01(r[1].i,r[2].i);break;
         case P_LOAD:if(!load_value(p,&p->resources[r[1].u],r[2].u,&r[0]))goto fault;break;
         case P_STORE:writes=false;if(!store_value(&p->resources[r[0].u],r[1].u,r[2]))goto fault;break;

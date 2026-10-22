@@ -129,6 +129,23 @@ describe.skipIf(!process.env.LIGHTVM_RECEIVER)('native bytecode execution', () =
     expect(replay(lowerJavaScript(render('pixels.fill(rgb(10 + -5 % 3, 10 + 5 % -3, 10 + -5 % -3));')))).toEqual([solid(8, 12, 8)]);
     expect(replay(lowerJavaScript(render('pixels.fill(rgb(10 + Math.floor(-1.5), Math.round(1.5), 10 + Math.ceil(-1.5)));')))).toEqual([solid(8, 2, 9)]);
   });
+  it('executes native transcendental functions and rounding beyond the i32 range', () => {
+    const source = lowerJavaScript(render('pixels.fill(rgb(Math.sqrt(81), Math.exp(Math.log(1)), Math.pow(3, 2) + Math.cos(0)));'));
+    expect(compile(source).manifest.requires).toBe('1.3.0');
+    expect(replay(source)).toEqual([solid(9, 1, 10)]);
+    expect(replay(lowerJavaScript(render('pixels.fill(rgb(Math.floor(1e30) === 1e30 ? 7 : 8, Math.trunc(-0.75) + 1, Math.abs(-3)));')))).toEqual([solid(7, 1, 3)]);
+  });
+  it('runs Blocks native math and its JavaScript learning view through the same core', () => {
+    const n = (value: number) => ({ block: { type: 'lm_number', fields: { VALUE: value } } });
+    const block = { type: 'lm_program', fields: { PROFILE: 'animation' }, inputs: { RENDER: { block: { type: 'lm_fill', inputs: { COLOR: { block: { type: 'lm_rgb', inputs: {
+      R: { block: { type: 'lm_native_math', fields: { FUNCTION: 'sqrt' }, inputs: { VALUE: n(9) } } },
+      G: { block: { type: 'lm_power', inputs: { BASE: n(3), EXPONENT: n(2) } } },
+      B: { block: { type: 'lm_native_math', fields: { FUNCTION: 'ceil' }, inputs: { VALUE: n(3.1) } } },
+    } } } } } } } };
+    const lowered = lowerBlocks(JSON.stringify({ blocks: { blocks: [block] } }));
+    expect(replay(lowered)).toEqual([solid(3, 9, 4)]);
+    expect(replay(lowerJavaScript(lowered.javascript))).toEqual([solid(3, 9, 4)]);
+  });
   it('short-circuits logical expressions and preserves operand values', () => {
     expect(replay(lowerJavaScript(render('const x = 0; const y = 5; pixels.fill(rgb(x || 12, y && 7, y || (1 / 0)));')))).toEqual([solid(12, 7, 5)]);
   });

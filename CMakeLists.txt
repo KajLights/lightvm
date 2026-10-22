@@ -63,6 +63,11 @@ if(LIGHTVM_PLATFORM STREQUAL "host")
         add_test(NAME numeric_runtime_contract COMMAND "${CMAKE_COMMAND}" -E env
             "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
             "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_numeric_runtime.py")
+        foreach(suite bulk_numeric native_math)
+            add_test(NAME ${suite}_contract COMMAND "${CMAKE_COMMAND}" -E env
+                "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
+                "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_${suite}.py")
+        endforeach()
         add_executable(test_render_executor tests/test_render_executor.c platforms/host/platform.c platforms/host/render_executor.c)
         target_compile_options(test_render_executor PRIVATE -Wall -Wextra -Werror)
         target_link_libraries(test_render_executor PRIVATE lightvm_core Threads::Threads)

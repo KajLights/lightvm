@@ -25,6 +25,8 @@ export const BLOCK_DEFINITIONS = [
   { type: 'lm_not', message0: 'not %1', args0: [value('VALUE')], ...output },
   { type: 'lm_motion', message0: '%1 %2', args0: [dropdown('FUNCTION', [['repeat 0 → 1', 'repeat'], ['bounce 0 ↔ 1', 'pingpong'], ['smooth step', 'smoothstep'], ['clamp 0…1', 'clamp01'], ['sine', 'sin'], ['ease in', 'quadratic_in'], ['ease out', 'quadratic_out'], ['ease in & out', 'quadratic_in_out']]), value('VALUE')], ...output, colour: 230 },
   { type: 'lm_lerp', message0: 'between %1 and %2 at %3', args0: [value('A'), value('B'), value('T')], ...output, colour: 230, inputsInline: true },
+  { type: 'lm_native_math', message0: '%1 of %2', args0: [dropdown('FUNCTION', [['absolute value', 'fabs'], ['round down', 'floor'], ['round up', 'ceil'], ['truncate', 'trunc'], ['sine', 'sin'], ['cosine', 'cos'], ['square root', 'sqrt'], ['natural log', 'log'], ['exponential', 'exp']]), value('VALUE')], ...output, colour: 230 },
+  { type: 'lm_power', message0: '%1 raised to %2', args0: [value('BASE'), value('EXPONENT')], ...output, colour: 230, inputsInline: true },
   { type: 'lm_random', message0: 'random (0–1)', ...output, colour: 230 },
   { type: 'lm_get', message0: '%1 %2', args0: [dropdown('SCOPE', [['variable', 'local'], ['remembered', 'state']]), field('NAME')], ...output, colour: 330 },
   { type: 'lm_set', message0: 'set %1 %2 to %3', args0: [dropdown('SCOPE', [['variable', 'local'], ['remembered', 'state']]), field('NAME'), value('VALUE')], ...statement, colour: 330 },
@@ -135,6 +137,8 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
       case 'lm_not': { const a = v('VALUE'); return [`(not ${a[0]})`, `(!${a[1]})`]; }
       case 'lm_motion': { const a = v('VALUE'), name = f(b, 'FUNCTION'), jsName = name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()); return [`${name === 'sin' ? 'math.sin' : name}(${a[0]})`, `${name === 'sin' ? 'Math.sin' : jsName}(${a[1]})`]; }
       case 'lm_lerp': { const a = ['A', 'B', 'T'].map(v); return [`lerp(${a.map(p => p[0]).join(', ')})`, `lerp(${a.map(p => p[1]).join(', ')})`]; }
+      case 'lm_native_math': { const a = v('VALUE'), name = f(b, 'FUNCTION'); return [`${['floor', 'ceil', 'trunc'].includes(name) ? name : 'math.' + name}(${a[0]})`, `Math.${name === 'fabs' ? 'abs' : name}(${a[1]})`]; }
+      case 'lm_power': { const a = v('BASE'), b = v('EXPONENT'); return [`math.pow(${a[0]}, ${b[0]})`, `Math.pow(${a[1]}, ${b[1]})`]; }
       case 'lm_random': return ['random.random()', 'Math.random()'];
       case 'lm_get': { const name = f(b, 'NAME'), state = f(b, 'SCOPE') === 'state'; return [state ? `state.${name}` : `v_${name}`, state ? `state.${name}` : name]; }
       case 'lm_input': {

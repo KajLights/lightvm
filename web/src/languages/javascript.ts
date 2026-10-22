@@ -18,14 +18,6 @@ const helperSource = `
 def _js_remainder(a, b):
     denominator = b if b >= 0.0 else -b
     return (a % denominator) if a >= 0.0 else -((-a) % denominator)
-def _js_floor(x):
-    n = int(x)
-    return float(n - 1) if float(n) > x else float(n)
-def _js_ceil(x):
-    n = int(x)
-    return float(n + 1) if float(n) < x else float(n)
-def _js_abs(x):
-    return -x if x < 0.0 else x
 `;
 
 export function lowerJavaScript(source: string): LoweredSource {
@@ -289,11 +281,9 @@ class JavaScriptFrontend {
       if (n.callee.computed) this.fail(n, 'Call methods by name.');
       const obj = n.callee.object.name, prop = n.callee.property.name;
       if (obj === 'Math' && !this.binding(obj)) {
-        const names: Record<string, string> = { sin: 'math.sin', cos: 'cos', random: 'random.random', min: 'min', max: 'max', trunc: 'trunc', floor: '_js_floor', ceil: '_js_ceil', abs: '_js_abs', round: 'round' };
-        name = names[prop]; if (!name) this.fail(n, `Math.${prop} is not supported. Try sin, cos, min, max, abs, floor, ceil, round, trunc or random.`);
-        if (name === 'cos' && args.length === 1) return `math.sin((${this.expr(args[0])}) + math.pi / 2.0)`;
-        if (name === 'round' && args.length === 1) return `_js_floor((${this.expr(args[0])}) + 0.5)`;
-        if (name === 'trunc' && args.length === 1) return `float(int(${this.expr(args[0])}))`;
+        const names: Record<string, string> = { sin: 'math.sin', cos: 'math.cos', sqrt: 'math.sqrt', log: 'math.log', exp: 'math.exp', pow: 'math.pow', random: 'random.random', min: 'min', max: 'max', trunc: 'trunc', floor: 'floor', ceil: 'ceil', abs: 'math.fabs', round: 'round' };
+        name = names[prop]; if (!name) this.fail(n, `Math.${prop} is not supported. Use a supported numeric function.`);
+        if (name === 'round' && args.length === 1) return `floor((${this.expr(args[0])}) + 0.5)`;
         if (['min', 'max'].includes(name) && args.length >= 2) return args.map(a => this.expr(a, integer)).reduce((a, b) => `${name}(${a}, ${b})`);
       } else if (obj === 'random' && !this.binding(obj)) {
         const names: Record<string, string> = { seed: 'seed', integer: 'randint', range: 'randrange', random: 'random' };

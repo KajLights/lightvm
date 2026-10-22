@@ -15,10 +15,12 @@ enum { END=0, RETURN, MOV, IADD, ISUB, IMUL, IDIV, IMOD, FADD, FSUB, FMUL, FDIV,
        IMIN=23, IMAX, FMIN, FMAX, HASH,
        QADD=40, QSUB, QMUL, QDIV, QMOD, QNEG, QMIN, QMAX, QLT,
        ITOQ, QTOI, FTOQ, QTOF, QFROMBITS, QBITS, QSQRT,
-       IAND, IOR, IXOR, INOT, ISHL, ISHR };
+       IAND, IOR, IXOR, INOT, ISHL, ISHR,
+       FABS, FFLOOR, FCEIL, FTRUNC, FSIN, FCOS, FSQRT, FLOG, FEXP, FPOW };
 enum { T_INT=1,T_FLOAT,T_COLOR,T_BOOL,T_FIXED=7 };
 enum { LBC_FIXED_ARRAY=20 };
 #define LBC_NUMERIC_RELEASE "1.2.0"
+#define LBC_KERNEL_RELEASE "1.3.0"
 typedef struct { uint8_t result,left,right; } LbcNumericSignature;
 /* New scalar instructions share types and exact evaluation with declaration
  * expressions. A zero right type denotes a unary operation. Unknown IDs have

@@ -1,6 +1,7 @@
 /* Uses the native test port's allocation faults and clock. The scalar fixture
  * below writes wire bytes independently of the Python compiler. */
 #include <fenv.h>
+#include "draw.h"
 typedef struct { const char *name; unsigned op,left,right,result; } NumericCase;
 static const NumericCase numeric_cases[]={
     {"q16.add",40,7,7,7},{"q16.sub",41,7,7,7},{"q16.mul",42,7,7,7},
@@ -10,10 +11,14 @@ static const NumericCase numeric_cases[]={
     {"q16.from_f32",51,2,0,7},{"q16.to_f32",52,7,0,2},
     {"q16.from_bits",53,1,0,7},{"q16.bits",54,7,0,1},{"q16.sqrt",55,7,0,7},
     {"i32.and",56,1,1,1},{"i32.or",57,1,1,1},{"i32.xor",58,1,1,1},
-    {"i32.not",59,1,0,1},{"i32.shl",60,1,1,1},{"i32.shr",61,1,1,1}
+    {"i32.not",59,1,0,1},{"i32.shl",60,1,1,1},{"i32.shr",61,1,1,1},
+    {"f32.abs",62,2,0,2},{"f32.floor",63,2,0,2},{"f32.ceil",64,2,0,2},
+    {"f32.trunc",65,2,0,2},{"f32.sin",66,2,0,2},{"f32.cos",67,2,0,2},
+    {"f32.sqrt",68,2,0,2},{"f32.log",69,2,0,2},{"f32.exp",70,2,0,2},
+    {"f32.pow",71,2,2,2},{"f32.min",25,2,2,2},{"f32.max",26,2,2,2}
 };
 static size_t numeric_package(uint8_t bytes[256],const NumericCase *test){
-    static const char manifest[]="{\"requires\":\"1.2.0\"}";
+    static const char manifest[]="{\"requires\":\"1.3.0\"}";
     memset(bytes,0,256);memcpy(bytes,"LBC1",4);
     write_u32(bytes+4,4);write_u32(bytes+8,3);write_u32(bytes+12,2);
     write_u32(bytes+20,1);write_u32(bytes+28,1);write_u32(bytes+76,sizeof(manifest)-1);
@@ -51,17 +56,17 @@ static int numeric_driver(const char *rounding){
     }
     return ferror(stdin)?1:0;
 }
-static int numeric_package_driver(const char *path){
-    static uint8_t bytes[32769],pixels[67*4];
+static int numeric_package_driver(const char *path,unsigned count,unsigned tick){
+    static uint8_t bytes[32769],pixels[1024*4];CHECK(count>=1&&count<=1024);
     FILE *file=fopen(path,"rb");CHECK(file);
     size_t size=fread(bytes,1,sizeof(bytes),file);CHECK(!ferror(file));fclose(file);
     PortableBytes source={bytes,size};Portable *p=NULL;
     const char *error=pbc_open(&p,portable_read,&source,size);
     if(error){puts("{\"load\":false}");CHECK(vm_heap_used()==0);return 0;}
-    LbcBuffer output={.data=pixels,.count=67,.generation=1};
+    LbcBuffer output={.data=pixels,.count=count,.generation=1};
     error=pbc_prepare(p,p->profile==3?&output:NULL);
     if(error){puts("{\"load\":true,\"prepare\":false}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;}
-    PbcValue args[3]={{.i=67},{.f=1.25f},{.f=0.25f}};
+    PbcValue args[3]={{.i=(int32_t)count},{.f=1.25f},{.f=0.25f}};clock_step=tick;
     unsigned before=allocations;deny_allocation=true;
     int status=1;
     for(unsigned fn=0;fn<(p->profile==3?2u:1u)&&status==1;fn++){
@@ -80,6 +85,12 @@ static int numeric_package_driver(const char *path){
         for(unsigned k=0;k<r->count;k++){uint32_t value;memcpy(&value,r->data+k*4,4);printf("%s%u",k?",":"",value);}
         printf("]");
     }
+    printf("],\"pixels\":\"");for(unsigned n=0;n<count*4;n++)printf("%02x",pixels[n]);
+    printf("\",\"plan_bytes\":%zu,\"images\":[",p->map_bytes);comma=false;
+    for(unsigned n=0;n<p->nresources;n++)if(p->resources[n].kind>=14&&p->resources[n].kind<=17&&!p->resources[n].sealed){
+        PbcResource *r=&p->resources[n];printf("%s\"",comma?",":"");comma=true;
+        for(unsigned k=0;k<r->count*draw_stride(r->kind);k++)printf("%02x",r->data[k]);printf("\"");
+    }
     puts("]}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;
 }
 static void numeric_contract(void){
@@ -88,7 +99,10 @@ static void numeric_contract(void){
        must be cancellable, including a partially filled fixed array. */
     PortableBytes source={fixed_array_lbc,sizeof(fixed_array_lbc)};
     uint8_t pixels[67*4]={0};LbcBuffer output={.data=pixels,.count=67,.generation=1};
-    unsigned start=allocations;Portable *p=NULL;
+    Portable *p=NULL;
+    for(unsigned fixture=0;fixture<2;fixture++){
+    source=fixture?(PortableBytes){extended_map_lbc,sizeof(extended_map_lbc)}:(PortableBytes){fixed_array_lbc,sizeof(fixed_array_lbc)};
+    unsigned start=allocations;
     CHECK(!pbc_open(&p,portable_read,&source,source.size));CHECK(!pbc_prepare(p,&output));
     unsigned allocation_count=allocations-start;pbc_destroy(p);CHECK(vm_heap_used()==0);
     for(unsigned fail=1;fail<=allocation_count;fail++){
@@ -108,6 +122,14 @@ static void numeric_contract(void){
         CHECK(cancel<999);
     }
     CHECK(!pbc_open(&p,portable_read,&source,source.size));CHECK(!pbc_prepare(p,&output));
+    if(fixture){
+        CHECK(p->map_bytes>0);PbcValue args[3]={{.i=67},{.f=1.25f},{.f=0.25f}};
+        unsigned before=allocations;deny_allocation=true;
+        CHECK(pbc_invoke(p,0,args,3));portable_finish(p,1);
+        CHECK(pbc_invoke(p,1,args,3));portable_finish(p,1);
+        CHECK(allocations==before);deny_allocation=false;
+        pbc_destroy(p);CHECK(vm_heap_used()==0);continue;
+    }
     CHECK(p->payload_bytes==2u*67u*4u); /* Four bytes per admitted element. */
     PbcValue args[3]={{.i=67},{.f=1.25f},{.f=0.25f}};
     unsigned before=allocations;deny_allocation=true;
@@ -121,4 +143,5 @@ static void numeric_contract(void){
     CHECK(pbc_invoke(p,1,args,3));CHECK(pbc_resume(p,1)==0);
     p->resources[1].generation++;CHECK(pbc_resume(p,1)==-1);
     pbc_destroy(p);CHECK(vm_heap_used()==0);
+    }
 }

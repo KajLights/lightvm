@@ -2,11 +2,13 @@
 #include "portable_map.h"
 #include "draw.h"
 #include "render_executor.h"
+#include "platform.h"
+#include "vm_allocator.h"
 #include <string.h>
 #include <limits.h>
 #include <math.h>
 
-enum { MAP_STORE=34, MAP_LENGTH=35, MAP_NATIVE=38, MAP_SIN=100, MAP_RED, MAP_GREEN, MAP_BLUE, MAP_WHEEL, MAP_FEQ, MAP_EQ, MAP_LITERAL };
+enum { MAP_LOAD=33, MAP_STORE=34, MAP_LENGTH=35, MAP_NATIVE=38, MAP_SIN=100, MAP_RED, MAP_GREEN, MAP_BLUE, MAP_WHEEL, MAP_FEQ, MAP_EQ, MAP_LITERAL };
 typedef union { uint32_t u; int32_t i; float f; } Value;
 typedef struct { uint8_t op,a,b,c; uint32_t d; } Instruction;
 
@@ -20,7 +22,29 @@ static bool decode(Portable *p,unsigned pc,Instruction *ins) {
     }
     return !p->io_fault;
 }
-/* Returns read registers. Each operation's normal verifier also checks types. */
+typedef struct { uint32_t word[4]; } Mask;
+static bool has(Mask m,unsigned r){return (m.word[r/32]>>(r%32))&1u;}
+static void add(Mask *m,unsigned r){m->word[r/32]|=1u<<(r%32);}
+typedef struct { Mask written,captured,cached; unsigned weight; bool branches; } MapInfo;
+struct PbcMapPlan {
+    struct PbcMapPlan *next;
+    uint16_t first,end,weight;
+    uint8_t dst,index,bound;
+    bool branches;
+    Mask written,captured;
+    Instruction code[];
+};
+/* Only resident numeric arrays can supply values. Identity comes from verified
+ * constant references; no guest word is interpreted as a pointer. */
+static int resource(Portable *p,unsigned reg){
+    if(reg>=p->nregs||pbc_type(p,reg)!=6||pbc_role(p,reg)!=R_CONST)return -1;
+    uint32_t id=pbc_initial(p,reg);return id<p->nresources?(int)id:-1;
+}
+static bool numeric_array(unsigned kind){
+    return kind==1||kind==2||kind==7||kind==8||kind==11||kind==LBC_FIXED_ARRAY;
+}
+static bool scalar(unsigned type){return (type>=T_INT&&type<=T_BOOL)||type==T_FIXED;}
+/* Normal instruction validation independently checks every exact signature. */
 static int reads(Instruction i,unsigned out[3]) {
     out[0]=i.b;out[1]=i.c;out[2]=i.d;
     switch(i.op){
@@ -29,39 +53,139 @@ static int reads(Instruction i,unsigned out[3]) {
     case FADD:case FSUB:case FMUL:case FDIV:case FMOD:
     case ILT:case FLT:case EQ:case IMIN:case IMAX:case FMIN:case FMAX:case HASH:return 2;
     case RGB:case HSV:return 3;
+    case MAP_LOAD:out[0]=i.c;return 1;
     case MAP_STORE:out[0]=i.c;return 1;
+    case JZ:out[0]=i.a;return 1;
     case JMP:case MAP_LENGTH:return 0;
-    default:return -1;
+    default:{LbcNumericSignature sig=lbc_numeric_signature(i.op);return sig.result?(sig.right?2:1):-1;}
     }
 }
-bool pbc_map_valid(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound) {
-    if(end<=first||end-first>32)return false;
-    uint8_t defined[128]={0},captured[128]={0};defined[index]=1;
-    unsigned stores=0;
-    for(unsigned pc=first;pc<end;pc++){
-        Instruction i;unsigned regs[3];if(!decode(p,pc,&i))return false;
-        int count=reads(i,regs);if(count<0)return false;
-        if(i.op==JMP){if(i.d!=pc+1)return false;continue;}
-        for(int k=0;k<count;k++){
-            unsigned r=regs[k];if(r>=p->nregs||pbc_type(p,r)>T_BOOL)return false;
-            if(!defined[r])captured[r]=1;
-        }
-        if(i.op==MAP_STORE){
-            if(i.a!=dst||i.b!=index||pc+1!=end)return false;
+static unsigned cost(unsigned op){
+    if(op==MAP_SIN||op==FSIN||op==FCOS)return 64;
+    if(op==FLOG||op==FEXP||op==FPOW)return 128;
+    if(op==QSQRT||op==FSQRT)return 32;
+    if(op==IDIV||op==IMOD||op==FDIV||op==FMOD||op==QDIV||op==QMOD)return 8;
+    if(op==HSV||op==QMUL)return 4;
+    if(op==MAP_LOAD)return 2;
+    return 1;
+}
+static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound,MapInfo *info){
+    if(end<=first||end-first>128||index>=p->nregs||bound>=p->nregs)return false;
+    *info=(MapInfo){0};unsigned length=end-first,stores=0;
+    bool extended=length>32;
+    for(unsigned n=0;n<length;n++){
+        Instruction i;if(!decode(p,first+n,&i))return false;
+        unsigned operands[3];int count=reads(i,operands);if(count<0)return false;
+        for(int k=0;k<count;k++)if(operands[k]>=p->nregs||!scalar(pbc_type(p,operands[k])))return false;
+        if(i.op==JMP||i.op==JZ){
+            if(i.d<=first+n||i.d>=end)return false; /* No path may skip the final store. */
+            if(i.op==JZ||i.d!=first+n+1){extended=true;info->branches=true;}
+        }else if(i.op==MAP_STORE){
+            if(i.a!=dst||i.b!=index||n+1!=length)return false;
             stores++;
         }else{
-            if(i.a>=p->nregs||i.a==index||i.a==bound||pbc_role(p,i.a)!=R_LOCAL||pbc_type(p,i.a)>T_BOOL)return false;
-            defined[i.a]=1;
+            if(i.a>=p->nregs||i.a==index||i.a==bound||pbc_role(p,i.a)!=R_LOCAL||!scalar(pbc_type(p,i.a)))return false;
+            add(&info->written,i.a);
+            if(i.op==MAP_LOAD||i.op==MAP_LENGTH){
+                int id=resource(p,i.b);if(id<0)return false;
+                if(i.op==MAP_LOAD){
+                    if(id==resource(p,dst)||!numeric_array(pbc_spec(p,(unsigned)id).kind)||pbc_spec(p,(unsigned)id).flags)return false;
+                    extended=true;
+                }
+            }
+        }
+        if(lbc_numeric_signature(i.op).result)extended=true;
+        for(int k=0;k<count;k++)if(pbc_type(p,operands[k])==T_FIXED)extended=true;
+        if(i.op!=JMP&&i.op!=JZ&&i.op!=MAP_STORE&&pbc_type(p,i.a)==T_FIXED)extended=true;
+    }
+    if(stores!=1||(extended&&!p->kernels_allowed))return false;
+    /* Forward-only CFG: intersect incoming definitions, take maximum path cost.
+     * A local written anywhere in the loop cannot be captured on another path.
+     * Conditional writes are retained for final-local merging between lanes. */
+    Mask before[129]={0};uint16_t weight[129]={0};bool reached[129]={0};
+    bool dependent[128]={0};dependent[index]=true;reached[0]=true;add(&before[0],index);
+    for(unsigned n=0;n<length;n++){
+        if(!reached[n])return false;
+        Instruction i;unsigned operands[3];if(!decode(p,first+n,&i))return false;
+        int count=reads(i,operands);bool varies=false;
+        for(int k=0;k<count;k++){
+            unsigned r=operands[k];varies|=dependent[r];
+            if(has(info->written,r)&&!has(before[n],r))return false;
+            if(!has(info->written,r)&&r!=index)add(&info->captured,r);
+        }
+        Mask after=before[n];unsigned work=cost(i.op);
+        if(i.op!=MAP_STORE&&i.op!=JMP&&i.op!=JZ){
+            add(&after,i.a);dependent[i.a]=varies;
+            if(!info->branches&&!varies){add(&info->cached,n);work=1;}
+        }
+        unsigned targets[2]={n+1,0},targets_count=1;
+        if(i.op==JMP)targets[0]=i.d-first;
+        if(i.op==JZ)targets[targets_count++]=i.d-first;
+        for(unsigned k=0;k<targets_count;k++){
+            unsigned to=targets[k];
+            if(!reached[to]){before[to]=after;reached[to]=true;}
+            else for(unsigned w=0;w<4;w++)before[to].word[w]&=after.word[w];
+            unsigned total=weight[n]+work;if(total>weight[to])weight[to]=(uint16_t)total;
         }
     }
-    for(unsigned r=0;r<p->nregs;r++)if(r!=index&&defined[r]&&captured[r])return false;
-    return stores==1;
+    info->weight=weight[length];return !p->io_fault;
 }
-static bool evaluate(Instruction i,Value *v) {
+bool pbc_map_valid(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound){
+    MapInfo info;return analyze(p,first,end,dst,index,bound,&info);
+}
+void pbc_map_destroy(Portable *p){
+    while(p->maps){struct PbcMapPlan *next=p->maps->next;demo_free(p->maps);p->maps=next;}
+    p->map_bytes=0;
+}
+int pbc_map_prepare(Portable *p,unsigned *pc,unsigned *index){
+    if(*pc>=p->ncode)return 1;
+    if(!*index){
+        /* Bound scanning as well as plan decoding between preparation returns. */
+        for(unsigned n=0;n<32&&*pc<p->ncode;n++,(*pc)++){
+            uint8_t bytes[8];if(!pbc_read_instruction(p,*pc,bytes))return -1;
+            if(bytes[0]!=39)continue;
+            unsigned end=lbc_u32(bytes+4),length=end-*pc-1;
+            if(!length||length>128)return -1;
+            size_t size=sizeof(struct PbcMapPlan)+length*sizeof(Instruction);
+            struct PbcMapPlan *plan=demo_alloc(size);if(!plan)return -1;
+            *plan=(struct PbcMapPlan){.next=p->maps,.first=(uint16_t)(*pc+1),.end=(uint16_t)end,
+                .dst=bytes[1],.index=bytes[2],.bound=bytes[3]};
+            p->maps=plan;p->map_bytes+=size;*index=1;return 0;
+        }
+        return *pc==p->ncode?1:0;
+    }
+    struct PbcMapPlan *plan=p->maps;unsigned length=plan->end-plan->first;
+    if(*index<=length){
+        unsigned stop=*index+16;if(stop>length+1)stop=length+1;
+        for(;*index<stop;(*index)++)if(!decode(p,plan->first+*index-1,&plan->code[*index-1]))return -1;
+        return 0;
+    }
+    MapInfo info;if(!analyze(p,plan->first,plan->end,plan->dst,plan->index,plan->bound,&info))return -1;
+    plan->written=info.written;plan->captured=info.captured;plan->weight=(uint16_t)info.weight;plan->branches=info.branches;
+    for(unsigned n=0;n<length;n++){
+        Instruction *i=&plan->code[n];
+        if(i->op==EQ)i->op=pbc_type(p,i->b)==T_FLOAT?MAP_FEQ:MAP_EQ;
+        else if(i->op==MAP_LENGTH){i->d=p->resources[pbc_initial(p,i->b)].count;i->b=i->c=0;i->op=MAP_LITERAL;}
+        else if(i->op==MAP_LOAD){i->b=(uint8_t)pbc_initial(p,i->b);i->d=p->resources[i->b].kind;}
+        else if(i->op==JMP||i->op==JZ)i->d-=plan->first;
+        if(has(info.cached,n))i->op|=128;
+    }
+    *pc=plan->end;*index=0;return 0;
+}
+static bool evaluate(Instruction i,Value *v,const Portable *p) {
     Value x=v[i.b],y=v[i.c];
     switch(i.op){
     case MOV:v[i.a]=x;break;
     case MAP_LITERAL:v[i.a].u=i.d;break;
+    case MAP_LOAD:{
+        const PbcResource *r=&p->resources[i.b];unsigned at=v[i.c].u;
+        if(at>=r->count||r->generation!=p->generation||!r->data)return false;
+        v[i.a].u=0;
+        if(i.d==7)v[i.a].u=r->data[at];
+        else if(i.d==8){uint16_t word;memcpy(&word,r->data+2u*at,2);v[i.a].u=word;}
+        else memcpy(&v[i.a].u,r->data+4u*at,4);
+        break;
+    }
     case IADD:v[i.a].u=x.u+y.u;break;case ISUB:v[i.a].u=x.u-y.u;break;case IMUL:v[i.a].u=x.u*y.u;break;
     case IDIV:case IMOD:{
         if(!y.i||(x.i==INT32_MIN&&y.i==-1))return false;
@@ -79,84 +203,88 @@ static bool evaluate(Instruction i,Value *v) {
     case RGB:if(x.u>255||y.u>255||v[i.d].u>255)return false;v[i.a].u=x.u<<16|y.u<<8|v[i.d].u;break;
     case HSV:if(!lbc_finite(x.f)||!lbc_finite(y.f)||!lbc_finite(v[i.d].f)||y.f<0||y.f>1||v[i.d].f<0||v[i.d].f>1)return false;v[i.a].u=lbc_hsv(x.f,y.f,v[i.d].f);break;
     case IMIN:v[i.a].i=x.i<y.i?x.i:y.i;break;case IMAX:v[i.a].i=x.i>y.i?x.i:y.i;break;
-    case FMIN:v[i.a].f=fminf(x.f,y.f);break;case FMAX:v[i.a].f=fmaxf(x.f,y.f);break;
+    case FMIN:case FMAX:return lbc_numeric_eval(i.op,x.u,y.u,&v[i.a].u);
     case HASH:v[i.a].f=lbc_hash01(x.i,y.i);break;
-    case MAP_SIN:if(!lbc_finite(x.f))return false;v[i.a].f=sinf(x.f);break;
+    case MAP_SIN:return lbc_numeric_eval(FSIN,x.u,0,&v[i.a].u);
     case MAP_RED:v[i.a].u=x.u>>16;break;case MAP_GREEN:v[i.a].u=(x.u>>8)&255;break;case MAP_BLUE:v[i.a].u=x.u&255;break;
     case MAP_WHEEL:if(!lbc_finite(x.f)||x.f<0)return false;v[i.a].u=draw_colorwheel(x.f);break;
-    default:return false;
+    default:return lbc_numeric_eval(i.op,x.u,y.u,&v[i.a].u);
     }
     return true;
 }
 typedef struct {
-    Instruction code[32];Value initial[128],final[128];uint8_t cached[32];
-    PbcResource *image;unsigned index,length,stride,limit;
-} MapKernel;
-typedef struct { MapKernel *kernel;unsigned first,end;bool success; } MapTask;
+    const struct PbcMapPlan *plan;const Portable *vm;PbcResource *image;
+    unsigned first,end,completed,stride;uint64_t deadline;bool success;
+    Mask written;Value values[128];
+} MapTask;
 static LIGHTVM_DRAW_CODE void map_pixels(void *context){
-    MapTask *task=context;MapKernel *k=task->kernel;
-    Value values[128],invariants[32];memcpy(values,k->initial,sizeof(values));
-    task->success=false;
+    MapTask *task=context;const struct PbcMapPlan *k=task->plan;
+    Value *values=task->values,invariants[128];
+    unsigned length=k->end-k->first;task->success=false;task->completed=task->first;
+    /* A straight-line path writes the entire verified set on every pixel.
+     * Only conditional paths need per-instruction last-write tracking. */
+    if(!k->branches)task->written=k->written;
     for(unsigned pixel=task->first;pixel<task->end;pixel++){
+        if(pixel>task->first&&platform_time_us()>=task->deadline)break;
         values[k->index].u=pixel;
-        for(unsigned n=0;n<k->length;n++){
-            Instruction i=k->code[n];
-            if(i.op==JMP)continue;
+        for(unsigned n=0;n<length;){
+            Instruction i=k->code[n];bool cached=(i.op&128)!=0;i.op&=127;
+            if(i.op==JMP){n=i.d;continue;}
+            if(i.op==JZ){n=values[i.a].u?n+1:i.d;continue;}
             if(i.op==MAP_STORE){
-                uint32_t color=values[i.c].u;if(color>0xffffff)return;
-                uint8_t *out=k->image->data+(size_t)pixel*k->stride;
+                uint32_t color=values[i.c].u;if(color>0xffffff||pixel>=task->image->count)return;
+                uint8_t *out=task->image->data+(size_t)pixel*task->stride;
                 out[0]=(uint8_t)(color>>16);out[1]=(uint8_t)(color>>8);out[2]=(uint8_t)color;
-                if(k->stride>3)out[3]=(k->image->kind==DRAW_IMAGE_RGBW||k->image->kind==DRAW_IMAGE_RGBWA)?0:255;
-                if(k->stride>4)out[4]=255;
-            }else if(k->cached[n]&&pixel>task->first)values[i.a]=invariants[n];
-            else{
-                if(!evaluate(i,values))return;
-                if(k->cached[n])invariants[n]=values[i.a];
+                if(task->stride>3)out[3]=(task->image->kind==DRAW_IMAGE_RGBW||task->image->kind==DRAW_IMAGE_RGBWA)?0:255;
+                if(task->stride>4)out[4]=255;
+            }else{
+                if(cached&&pixel>task->first)values[i.a]=invariants[n];
+                else{
+                    if(!evaluate(i,values,task->vm))return;
+                    if(cached)invariants[n]=values[i.a];
+                }
+                if(k->branches)add(&task->written,i.a);
             }
+            n++;
         }
+        task->completed=pixel+1;
     }
-    if(task->end==k->limit)memcpy(k->final,values,sizeof(values));
     task->success=true;
 }
-bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound) {
-    PbcResource *image=&p->resources[pbc_value(p,dst).u];int32_t stop=pbc_value(p,bound).i;
+bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound){
+    const struct PbcMapPlan *plan=p->maps;
+    while(plan&&plan->first!=first)plan=plan->next;
+    if(!plan||plan->end!=end||plan->dst!=dst||plan->index!=index||plan->bound!=bound)return false;
+    int32_t stop=pbc_value(p,bound).i;
     if(stop<=0){pbc_set_value(p,index,(PbcValue){0});p->bulk=0;return true;}
-    if(image->sealed||!image->data||(unsigned)stop>image->count)return false;
-    /* Failed transient output is discarded. Persistent resources stay serial so
-       their partial writes on a fault keep the defined instruction order. */
-    bool parallel=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA&&render_executor_can_split();
-    /* A transient output map can amortize decode/capture over 64 pixels even
-       when both cores own VMs. Persistent maps retain their smaller ordered
-       chunks, including the same partial-write boundary on failure. */
+    PbcResource *image=&p->resources[pbc_initial(p,dst)];
+    if(image->sealed||!image->data||image->generation!=p->generation)return false;
     bool transient=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA;
-    unsigned start=p->bulk,limit=start+(parallel?128u:transient?64u:32u);if(limit>(unsigned)stop)limit=(unsigned)stop;
-    MapKernel kernel={0};Instruction *code=kernel.code;Value *values=kernel.initial;
-    uint8_t flags[128]={0},*cached=kernel.cached;flags[index]=1;
-    unsigned length=end-first;
-    for(unsigned n=0;n<length;n++){
-        if(!decode(p,first+n,&code[n]))return false;
-        Instruction *i=&code[n];unsigned regs[3];int count=reads(*i,regs);unsigned dependent=0;
-        for(int k=0;k<count;k++){
-            unsigned r=regs[k];dependent|=flags[r]&1u;
-            if(!(flags[r]&2u)&&r!=index)flags[r]|=4u;
-        }
-        if(i->op!=JMP&&i->op!=MAP_STORE){
-            cached[n]=(uint8_t)!dependent;flags[i->a]=(uint8_t)(2u|dependent);
-            if(i->op==EQ)i->op=pbc_type(p,i->b)==T_FLOAT?MAP_FEQ:MAP_EQ;
-            else if(i->op==MAP_LENGTH){i->d=p->resources[pbc_value(p,i->b).u].count;i->b=i->c=0;i->op=MAP_LITERAL;}
+    bool parallel=transient&&render_executor_can_split();
+    unsigned pixels=1024u/plan->weight;if(!pixels)pixels=1;
+    if(parallel)pixels*=2;
+    unsigned cap=parallel?128u:transient?64u:32u;if(pixels>cap)pixels=cap;
+    unsigned start=p->bulk,limit=start+pixels;if(limit>(unsigned)stop)limit=(unsigned)stop;
+    unsigned middle=parallel&&limit-start>=2?start+(limit-start)/2:limit;
+    unsigned count=middle<limit?2:1;
+    MapTask tasks[2]={0};uint64_t deadline=platform_time_us()+LIGHTVM_RENDER_SLICE_US;
+    for(unsigned n=0;n<count;n++){
+        tasks[n].plan=plan;tasks[n].vm=p;tasks[n].image=image;tasks[n].stride=draw_stride(image->kind);
+        tasks[n].first=n?middle:start;tasks[n].end=n?limit:middle;tasks[n].deadline=deadline;
+        for(unsigned r=0;r<p->nregs;r++)if(has(plan->captured,r))tasks[n].values[r].u=pbc_value(p,r).u;
+    }
+    if(p->io_fault)return false;
+    RenderJob jobs[2]={{map_pixels,&tasks[0],0},{map_pixels,&tasks[1],0}};render_execute(jobs,count);
+    for(unsigned n=0;n<count;n++)if(!tasks[n].success)return false;
+    /* Only the contiguous completed prefix advances. A speculative transient
+     * suffix is unpublished and will be recomputed if the first lane yielded. */
+    if(tasks[0].completed<middle)count=1;
+    unsigned completed=tasks[count-1].completed;
+    for(unsigned r=0;r<p->nregs;r++)if(has(plan->written,r)){
+        for(unsigned n=count;n;n--)if(has(tasks[n-1].written,r)){
+            pbc_set_value(p,r,(PbcValue){.u=tasks[n-1].values[r].u});break;
         }
     }
-    for(unsigned r=0;r<p->nregs;r++)if(flags[r]&4u)values[r].u=pbc_value(p,r).u;
-    if(p->io_fault)return false;
-    kernel.image=image;kernel.index=index;kernel.length=length;
-    kernel.stride=draw_stride(image->kind);kernel.limit=limit;
-    unsigned middle=parallel&&limit-start>=64?start+(limit-start)/2:limit;
-    MapTask tasks[2]={{&kernel,start,middle,false},{&kernel,middle,limit,false}};
-    RenderJob jobs[2]={{map_pixels,&tasks[0],0},{map_pixels,&tasks[1],0}};
-    unsigned count=middle<limit?2:1;render_execute(jobs,count);
-    for(unsigned n=0;n<count;n++)if(!tasks[n].success)return false;
-    values=kernel.final;
-    for(unsigned r=0;r<p->nregs;r++)if(flags[r]&2u)pbc_set_value(p,r,(PbcValue){.u=values[r].u});
-    pbc_set_value(p,index,(PbcValue){.u=limit});
-    p->bulk=limit<(unsigned)stop?limit:0;p->native_pending=limit<(unsigned)stop;return true;
+    pbc_set_value(p,index,(PbcValue){.u=completed});
+    p->bulk=completed<(unsigned)stop?completed:0;p->native_pending=completed<(unsigned)stop;return true;
 }

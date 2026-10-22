@@ -39,7 +39,7 @@ NATIVES.update({
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
 PUBLIC = {'requires', 'profile', 'setting', 'Input', 'Ramp', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees',
-          'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt', 'FixedArray'}
+          'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt', 'FixedArray', 'floor', 'ceil', 'trunc'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
 BIT_OPS = {ast.BitAnd:'IAND', ast.BitOr:'IOR', ast.BitXor:'IXOR', ast.LShift:'ISHL', ast.RShift:'ISHR'}
 LIBRARIES = {'lightvm.motion', 'lightvm.easing', 'lightvm.transitions'}
@@ -292,6 +292,8 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     return -1
             module = self.imports.get(getattr(n.func.value, 'id', ''))
             if module == 'random': return self.random_call(n.func.attr, n)
+            if module == 'math' and n.func.attr in ('abs','fabs','floor','ceil','trunc','cos','sqrt','log','exp','pow'):
+                return self.math_call(n.func.attr,n)
             if module == 'math' and n.func.attr == 'sin':
                 if n.keywords: self.fail(n, 'math.sin takes one positional argument')
                 return self.native('sin', [self.expr(a) for a in n.args], n)
@@ -364,10 +366,15 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if isinstance(n, ast.Call):
             name = getattr(n.func, 'id', '')
             imported = self.imports.get(name, '')
+            if imported in ('floor','ceil','trunc'):
+                if len(n.args)!=1 or n.keywords:self.fail(n,'one numeric argument required')
+                return self.numeric_op('F'+imported.upper(),self.convert(self.expr(n.args[0]),F))
             if imported.startswith('random.'): return self.random_call(imported.split('.')[1], n)
             if name == 'len' and len(n.args) == 1 and not n.keywords:
                 ref, kind = self.resource(n.args[0])
                 out = self.reg(I); self.emit('LENGTH', out, ref); return out
+            if imported in {'math.'+name for name in ('fabs','floor','ceil','trunc','cos','sqrt','log','exp','pow')}:
+                return self.math_call(imported[5:],n)
             if imported == 'math.sin' or imported in NATIVES:
                 if n.keywords: self.fail(n, 'helper takes positional arguments')
                 return self.native('sin' if imported == 'math.sin' else imported, [self.expr(a) for a in n.args], n)
@@ -407,9 +414,17 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     self.code[jump][4] = len(self.code)
                 self.env, self.writes, self.loop_stack, self.caps = previous_env, previous_writes, previous_loops, previous_caps
                 return out
-        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id not in {'int', 'float', 'min', 'max'} and self.imports.get(n.func.id) not in {'rgb', 'hsv', 'hash01', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'}:
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id not in {'int', 'float', 'min', 'max', 'abs'} and self.imports.get(n.func.id) not in {'rgb', 'hsv', 'hash01', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'}:
             self.fail(n, 'unsupported or unimported function')
         return super().expr(n)
+
+    def math_call(self, name, node):
+        expected=2 if name=='pow' else 1
+        if len(node.args)!=expected or node.keywords:self.fail(node, name+' takes '+str(expected)+' positional arguments')
+        operation='FABS' if name in ('abs','fabs') else 'F'+name.upper()
+        args=[self.convert(self.expr(arg),F) for arg in node.args]
+        result=self.numeric_op(operation,*args)
+        return self.convert(result,I) if name in ('floor','ceil','trunc') else result
 
     def element_type(self, kind):
         return Q if kind == 20 else I if kind in (7, 8, 11) else C if kind in (12, 14, 15, 16, 17) else kind
@@ -643,34 +658,57 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         typed operations, including f32 rounding and scalar colour functions.
         """
         body = self.code[head+2:-2]
-        if not 1 <= len(body) <= 32:return
+        if not 1 <= len(body) <= 128:return
         unary = {P_OP[n] for n in ('MOV','ITOF','FTOI','LENGTH')}
         binary = {P_OP[n] for n in ('IADD','ISUB','IMUL','IDIV','IMOD','FADD','FSUB','FMUL','FDIV','FMOD','ILT','FLT','EQ','IMIN','IMAX','FMIN','FMAX','HASH')}
-        defined, captures, stores = {index}, set(), []
+        unary.update(P_OP[n] for n,s in numeric.SIGNATURES.items() if len(s)==2)
+        binary.update(P_OP[n] for n,s in numeric.SIGNATURES.items() if len(s)==3)
+        written, stores, read_sets = set(), [], []
+        first, end = head+2, head+2+len(body)
+        extended = len(body)>32
         for offset, (op,a,b,c,d) in enumerate(body):
-            if op in unary:reads=[b]
+            writes = op not in (P_OP['STORE_ELEM'],P_OP['JMP'],P_OP['JZ'])
+            if op in unary:reads=[] if op==P_OP['LENGTH'] else [b]
             elif op in binary:reads=[b,c]
             elif op in (P_OP['RGB'],P_OP['HSV']):reads=[b,c,d]
             elif op==P_OP['NATIVE']:
                 binding,reads=self.calls[d]
                 if binding not in (7,8,9,10,11):return
-            elif op==P_OP['JMP'] and d==head+3+offset:continue
+            elif op in (P_OP['JMP'],P_OP['JZ']):
+                if not first+offset<d<end:return
+                reads=[a] if op==P_OP['JZ'] else []
+                extended |= op==P_OP['JZ'] or d!=first+offset+1
+            elif op==P_OP['LOAD_ELEM']:
+                if self.regs[b][0:2]!=(REF,CONST) or self.resources[self.regs[b][2]][0] not in (1,2,7,8,11,20):return
+                reads=[c];extended=True
             elif op==P_OP['STORE_ELEM']:
                 if b!=index or self.resources[self.regs[a][2]][0] not in (3,12,14,15,16,17):return
                 stores.append(a);reads=[c]
             else:return
-            if any(self.typ(r) == Q for r in reads) or (op != P_OP['STORE_ELEM'] and self.typ(a) == Q): return
-            captures.update(r for r in reads if r not in defined)
-            if op!=P_OP['STORE_ELEM']:
+            if op in numeric.OPCODES.values() or any(self.typ(r)==Q for r in reads):extended=True
+            if writes:
                 if self.regs[a][1]!=LOCAL or a==index or a==bound:return
-                defined.add(a)
-        if len(stores)!=1 or body[-1][0]!=P_OP['STORE_ELEM'] or captures & (defined-{index}):return
-        # Removing loop control changes only this just-emitted region. Helpers
-        # can contain an unconditional return jump to the following instruction.
+                written.add(a)
+                extended |= self.typ(a)==Q
+            read_sets.append(reads)
+        if len(stores)!=1 or body[-1][0]!=P_OP['STORE_ELEM']:return
+        # Acyclic definite assignment. Reads of written locals must be defined
+        # on every incoming path, so no iteration carries hidden dependencies.
+        incoming=[None]*len(body);incoming[0]={index}
+        for offset,(op,a,b,c,d) in enumerate(body):
+            defined=incoming[offset]
+            if defined is None or any(r in written and r not in defined for r in read_sets[offset]):return
+            after=defined | ({a} if op not in (P_OP['STORE_ELEM'],P_OP['JMP'],P_OP['JZ']) else set())
+            targets=[] if offset+1==len(body) else [offset+1]
+            if op==P_OP['JMP']:targets=[d-first]
+            elif op==P_OP['JZ']:targets.append(d-first)
+            for target in targets:
+                incoming[target]=after.copy() if incoming[target] is None else incoming[target]&after
         for ins in body:
-            if ins[0]==P_OP['JMP']:ins[4]-=1
+            if ins[0] in (P_OP['JMP'],P_OP['JZ']):ins[4]-=1
         end=head+1+len(body)
         self.code[head:]=[[P_OP['PIXEL_MAP'],stores[0],index,bound,end]]+body
+        if extended:self.kernels_used=True
 
     def compile(self):
         marked = False
@@ -685,7 +723,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 if not n.level and n.module in LIBRARIES:
                     self.import_library(n)
                     continue
-                allowed = PUBLIC if n.module == 'lightvm' else {'array'} if n.module == 'array' else {'sin', 'pi'} if n.module == 'math' else {'seed', 'random', 'randint', 'randrange'} if n.module == 'random' else set()
+                allowed = PUBLIC if n.module == 'lightvm' else {'array'} if n.module == 'array' else {'sin','pi','fabs','floor','ceil','trunc','cos','sqrt','log','exp','pow'} if n.module == 'math' else {'seed', 'random', 'randint', 'randrange'} if n.module == 'random' else set()
                 if n.level or any(a.name not in allowed or a.asname for a in n.names): self.fail(n, 'unsupported import; animation decorators are @init and @render')
                 for item in n.names: self.imports[item.name] = item.name if n.module == 'lightvm' else n.module + '.' + item.name
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'requires':
@@ -739,6 +777,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             functions.append((start, len(self.code), self.rights, 0, 0, len(self.inputs)))
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         if self.numeric_used: feature_floor = numeric.RELEASE
+        if getattr(self, 'kernels_used', False): feature_floor = '1.3.0'
         if minimum_release and release_error(minimum_release, feature_floor):
             raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
         self.allocate(functions)
