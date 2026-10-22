@@ -1,6 +1,15 @@
 # Core numeric types, bulk kernels and native math
 
-22 October 2026. **Status: implementation plan; no runtime changes delivered.**
+22 October 2026. **Status: S0 foundation complete; standalone numeric module
+verified. Runtime integration remains pending.**
+
+The [numeric contract](../numeric-types.md),
+[operation catalogue](numeric-operations.json),
+[emitter requirements](../bytecode-emitter.md) and
+[workload specification](numeric-workloads.md) freeze the foundation scope.
+`src/numeric.c` and its independent reference tests are isolated from firmware
+and application builds. This work is based on committed LightVM `bdc1045`;
+rebase onto the validated Pico repair before integrating runtime changes.
 
 Source baselines: LightVM `1d9b7ea`; sibling picolights
 `f6480b4845b2ba3af4fbf0ffb1f398d362dda772`. Paths into picolights below assume
@@ -18,9 +27,8 @@ before building another source-language compiler in a sibling repository.
 The first delivery comprises an explicit Q16.16 value type, ordinary integer
 bitwise operations, broader verified pixel kernels, and native math justified by
 our existing effects. It preserves the current separation between animation code,
-the execution engine and hardware output. This document proposes contracts; S0
-below freezes their executable specifications before implementation depends on
-them.
+the execution engine and hardware output. The linked S0 contract now fixes the
+numeric rules; the remaining kernel and integration work follows the stages below.
 
 ## Design principles
 
@@ -404,8 +412,11 @@ sampling.
 
 ## Delivery sequence
 
-All stages below are **planned**. Each is a reviewable implementation change or
-small series; completing this document does not mark any stage implemented.
+S0 is complete for the foundational numeric/kernel scope. The standalone
+arithmetic portion of S1 is verified, but S1 runtime/resource/frontend integration
+and S2-S6 remain pending. Native f32 vectors and accuracy envelopes are requirements
+for S4, not evidence that its implementation has shipped. Optional procedural
+sampling remains its own evaluation and is not part of this S0 completion.
 
 | Stage | Deliverable and likely files | Completion gate |
 | --- | --- | --- |

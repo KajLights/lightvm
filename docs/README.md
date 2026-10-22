@@ -39,6 +39,9 @@ The [design directory](design/) describes future requirements on top of the
 current contract. Superseded implementations are available through Git history.
 
 - [Core numeric types, bulk kernels and native math](design/core-numeric-kernels-plan.md)
+- [Numeric foundation contract and standalone verification](numeric-types.md)
+- [Independent bytecode emission and integration gates](bytecode-emitter.md)
+- [Numeric and kernel workload specification](design/numeric-workloads.md)
 - [Control API proposal](design/feature-proposal-control-api.md)
 - [External inputs for transitions and animations](design/feature-proposal-inputs.md)
 - [ESP32-S3 audio analyser and multicast inputs](design/feature-proposal-audio-multicast.md)

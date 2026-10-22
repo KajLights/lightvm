@@ -1,0 +1,758 @@
+{
+  "status": "frozen mathematical contracts; no new wire encodings or release assignments",
+  "operations": [
+    {
+      "name": "q16.literal",
+      "arguments": [
+        "literal"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Quantize exact numeric source token times 65536, nearest ties to even; check rounded raw range.",
+      "faults": [
+        "range"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "reference-only",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.add",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Add raw operands modulo 2^32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.sub",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Subtract raw operands modulo 2^32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.mul",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Multiply signed raw operands in wide precision; divide by 65536 toward zero; wrap modulo 2^32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.neg",
+      "arguments": [
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Negate raw value modulo 2^32, including minimum remaining minimum.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.div",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Truncate (a_raw * 65536) / b_raw toward zero; range-check quotient.",
+      "faults": [
+        "zero-divisor",
+        "range"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.mod",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Floored remainder with divisor sign. Nonzero remainder magnitude is less than divisor magnitude. Does not fault merely because division would overflow.",
+      "faults": [
+        "zero-divisor"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.min",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Select signed raw minimum; no conversion.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.max",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Select signed raw maximum; no conversion.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.lt",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "bool",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Signed raw less-than comparison.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.eq",
+      "arguments": [
+        "q16",
+        "q16"
+      ],
+      "result": "bool",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Raw equality comparison.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.sqrt",
+      "arguments": [
+        "q16"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Integer floor square root of raw * 65536.",
+      "faults": [
+        "negative-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.from_i32",
+      "arguments": [
+        "i32"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Multiply by 65536 exactly; check signed raw range.",
+      "faults": [
+        "range"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.to_i32",
+      "arguments": [
+        "q16"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Divide raw by 65536 toward zero.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.from_f32",
+      "arguments": [
+        "f32"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Quantize exact finite binary32 value times 65536, nearest ties to even; check rounded raw range. Either zero sign produces raw zero.",
+      "faults": [
+        "nonfinite-input",
+        "range"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.to_f32",
+      "arguments": [
+        "q16"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Nearest binary32 with ties to even, independent of host rounding mode. Raw zero produces +0; upper raw values may round to 32768.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.bits",
+      "arguments": [
+        "q16"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Preserve all 32 raw bits without scaling.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "q16.from_bits",
+      "arguments": [
+        "i32"
+      ],
+      "result": "q16",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Preserve all 32 raw bits without scaling.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "i32.and",
+      "arguments": [
+        "i32",
+        "i32"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Bitwise AND on all 32 bits; interpret resulting bits as signed i32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "i32.or",
+      "arguments": [
+        "i32",
+        "i32"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Bitwise OR on all 32 bits; interpret resulting bits as signed i32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "i32.xor",
+      "arguments": [
+        "i32",
+        "i32"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Bitwise XOR on all 32 bits; interpret resulting bits as signed i32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "i32.not",
+      "arguments": [
+        "i32"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Invert all 32 bits; interpret resulting bits as signed i32.",
+      "faults": [],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "i32.shl",
+      "arguments": [
+        "i32",
+        "i32"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Shift unsigned bit pattern left, discarding high bits; interpret result as signed i32. Count must be 0..31.",
+      "faults": [
+        "invalid-shift-count"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "i32.shr",
+      "arguments": [
+        "i32",
+        "i32"
+      ],
+      "result": "i32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Arithmetic right shift with sign extension. Count must be 0..31.",
+      "faults": [
+        "invalid-shift-count"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "standalone",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.abs",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Clear sign bit, including -0 to +0.",
+      "faults": [
+        "nonfinite-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.floor",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Round toward negative infinity; return f32, preserving zero sign.",
+      "faults": [
+        "nonfinite-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.ceil",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Round toward positive infinity; return f32, preserving zero sign, including negative inputs rounded to -0.",
+      "faults": [
+        "nonfinite-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.trunc",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Round toward zero; return f32, preserving zero sign.",
+      "faults": [
+        "nonfinite-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.sin",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "input radians; output dimensionless",
+      "semantics": "Sine; sin(-0) is -0. Finite underflow to zero is allowed; subnormals are retained.",
+      "faults": [
+        "nonfinite-input",
+        "nonfinite-result"
+      ],
+      "effects": [],
+      "accuracy": "4 ulp target on the frozen reference corpus",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.cos",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "input radians; output dimensionless",
+      "semantics": "Cosine; cos(+0) and cos(-0) are 1. Finite underflow to zero is allowed; subnormals are retained.",
+      "faults": [
+        "nonfinite-input",
+        "nonfinite-result"
+      ],
+      "effects": [],
+      "accuracy": "4 ulp target on the frozen reference corpus",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.sqrt",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "output square root of input units",
+      "semantics": "Nonnegative square root; sqrt(-0) is -0. Finite underflow to zero is allowed; subnormals are retained.",
+      "faults": [
+        "nonfinite-input",
+        "negative-input",
+        "nonfinite-result"
+      ],
+      "effects": [],
+      "accuracy": "correctly rounded binary32 target",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.log",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless",
+      "semantics": "Natural logarithm; log(1) is +0. Finite underflow to zero is allowed; subnormals are retained.",
+      "faults": [
+        "nonfinite-input",
+        "nonpositive-input",
+        "nonfinite-result"
+      ],
+      "effects": [],
+      "accuracy": "4 ulp target on the frozen reference corpus",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.exp",
+      "arguments": [
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless",
+      "semantics": "Natural exponential; exp(+0) and exp(-0) are 1. Finite underflow to zero is allowed; subnormals are retained.",
+      "faults": [
+        "nonfinite-input",
+        "nonfinite-result"
+      ],
+      "effects": [],
+      "accuracy": "4 ulp target on the frozen reference corpus",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.pow",
+      "arguments": [
+        "f32",
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Real power. pow(0,0)=1. Negative bases require an exactly integral binary32 exponent. For zero base and positive exponent, sign is negative only for -0 with an odd integral exponent. Underflow to finite zero is allowed; subnormals are retained.",
+      "faults": [
+        "nonfinite-input",
+        "zero-base-negative-exponent",
+        "negative-base-nonintegral-exponent",
+        "nonfinite-result"
+      ],
+      "effects": [],
+      "accuracy": "8 ulp target on the frozen reference corpus",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.min",
+      "arguments": [
+        "f32",
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Select minimum finite operand; for opposite signed zeros return -0.",
+      "faults": [
+        "nonfinite-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    },
+    {
+      "name": "f32.max",
+      "arguments": [
+        "f32",
+        "f32"
+      ],
+      "result": "f32",
+      "units": "dimensionless; author selects application units",
+      "semantics": "Select maximum finite operand; for opposite signed zeros return  +0.",
+      "faults": [
+        "nonfinite-input"
+      ],
+      "effects": [],
+      "accuracy": "exact",
+      "implementation": "planned",
+      "wire_id": null,
+      "feature_floor": {
+        "status": "unreleased",
+        "release": null
+      },
+      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+    }
+  ]
+}

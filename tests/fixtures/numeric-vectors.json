@@ -1,0 +1,1079 @@
+{
+  "description": "Reviewed mathematical cases. Hex words are raw i32/q16 or IEEE binary32 bits; native vectors are S4 requirements, not current-runtime claims.",
+  "exact": [
+    {
+      "op": "q16.add",
+      "args": [
+        "00010000",
+        "00008000"
+      ],
+      "result": "00018000"
+    },
+    {
+      "op": "q16.add",
+      "args": [
+        "7fffffff",
+        "00000001"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "q16.add",
+      "args": [
+        "80000000",
+        "ffffffff"
+      ],
+      "result": "7fffffff"
+    },
+    {
+      "op": "q16.sub",
+      "args": [
+        "80000000",
+        "00000001"
+      ],
+      "result": "7fffffff"
+    },
+    {
+      "op": "q16.sub",
+      "args": [
+        "00010000",
+        "00018000"
+      ],
+      "result": "ffff8000"
+    },
+    {
+      "op": "q16.neg",
+      "args": [
+        "80000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "q16.neg",
+      "args": [
+        "00000001"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "q16.neg",
+      "args": [
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.mul",
+      "args": [
+        "00018000",
+        "00020000"
+      ],
+      "result": "00030000"
+    },
+    {
+      "op": "q16.mul",
+      "args": [
+        "ffffffff",
+        "00008000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.mul",
+      "args": [
+        "fffffffd",
+        "00008000"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "q16.mul",
+      "args": [
+        "80000000",
+        "00020000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.mul",
+      "args": [
+        "80000000",
+        "80000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "00010000",
+        "00030000"
+      ],
+      "result": "00005555"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "ffff0000",
+        "00030000"
+      ],
+      "result": "ffffaaab"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "00010000",
+        "fffd0000"
+      ],
+      "result": "ffffaaab"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "80000000",
+        "00010000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "7fffffff",
+        "00010000"
+      ],
+      "result": "7fffffff"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "00000000",
+        "00000001"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "00000001",
+        "00000000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "80000000",
+        "ffff0000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.div",
+      "args": [
+        "00010000",
+        "00000001"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "fffc8000",
+        "00030000"
+      ],
+      "result": "00028000"
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "00038000",
+        "fffd0000"
+      ],
+      "result": "fffd8000"
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "fffc8000",
+        "fffd0000"
+      ],
+      "result": "ffff8000"
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "80000000",
+        "ffffffff"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "80000000",
+        "ffff0000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "00000001",
+        "80000000"
+      ],
+      "result": "80000001"
+    },
+    {
+      "op": "q16.mod",
+      "args": [
+        "00000000",
+        "00000000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.min",
+      "args": [
+        "ffffffff",
+        "00000000"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "q16.max",
+      "args": [
+        "ffffffff",
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.lt",
+      "args": [
+        "80000000",
+        "7fffffff"
+      ],
+      "result": "00000001"
+    },
+    {
+      "op": "q16.lt",
+      "args": [
+        "00010000",
+        "00010000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.eq",
+      "args": [
+        "ffffffff",
+        "ffffffff"
+      ],
+      "result": "00000001"
+    },
+    {
+      "op": "q16.eq",
+      "args": [
+        "00000001",
+        "ffffffff"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "00000001"
+      ],
+      "result": "00000100"
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "00010000"
+      ],
+      "result": "00010000"
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "00020000"
+      ],
+      "result": "00016a09"
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "00040000"
+      ],
+      "result": "00020000"
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "ffffffff"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.sqrt",
+      "args": [
+        "7fffffff"
+      ],
+      "result": "00b504f3"
+    },
+    {
+      "op": "q16.from_i32",
+      "args": [
+        "ffff8000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "q16.from_i32",
+      "args": [
+        "00007fff"
+      ],
+      "result": "7fff0000"
+    },
+    {
+      "op": "q16.from_i32",
+      "args": [
+        "00008000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.from_i32",
+      "args": [
+        "ffff7fff"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.to_i32",
+      "args": [
+        "fffe8000"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "q16.to_i32",
+      "args": [
+        "ffffffff"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.to_i32",
+      "args": [
+        "80000000"
+      ],
+      "result": "ffff8000"
+    },
+    {
+      "op": "q16.to_i32",
+      "args": [
+        "7fffffff"
+      ],
+      "result": "00007fff"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "80000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "007fffff"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "3f800000"
+      ],
+      "result": "00010000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "bfc00000"
+      ],
+      "result": "fffe8000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "37000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "b7000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "37000001"
+      ],
+      "result": "00000001"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "37c00000"
+      ],
+      "result": "00000002"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "b7c00000"
+      ],
+      "result": "fffffffe"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "38200000"
+      ],
+      "result": "00000002"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "46ffffff"
+      ],
+      "result": "7fffff80"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "47000000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "c7000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "c7000001"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "7f800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "ff800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "7fc00000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.from_f32",
+      "args": [
+        "7f800001"
+      ],
+      "fault": true
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "00000001"
+      ],
+      "result": "37800000"
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "ffff0000"
+      ],
+      "result": "bf800000"
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "01000001"
+      ],
+      "result": "43800000"
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "01000003"
+      ],
+      "result": "43800002"
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "7fffffff"
+      ],
+      "result": "47000000"
+    },
+    {
+      "op": "q16.to_f32",
+      "args": [
+        "80000000"
+      ],
+      "result": "c7000000"
+    },
+    {
+      "op": "q16.bits",
+      "args": [
+        "ffffffff"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "q16.from_bits",
+      "args": [
+        "80000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "i32.and",
+      "args": [
+        "ffffffff",
+        "12345678"
+      ],
+      "result": "12345678"
+    },
+    {
+      "op": "i32.or",
+      "args": [
+        "80000000",
+        "00000001"
+      ],
+      "result": "80000001"
+    },
+    {
+      "op": "i32.xor",
+      "args": [
+        "ffffffff",
+        "55555555"
+      ],
+      "result": "aaaaaaaa"
+    },
+    {
+      "op": "i32.not",
+      "args": [
+        "00000000"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "i32.not",
+      "args": [
+        "ffffffff"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "i32.shl",
+      "args": [
+        "00000001",
+        "0000001f"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "i32.shl",
+      "args": [
+        "ffffffff",
+        "00000001"
+      ],
+      "result": "fffffffe"
+    },
+    {
+      "op": "i32.shl",
+      "args": [
+        "00000001",
+        "00000020"
+      ],
+      "fault": true
+    },
+    {
+      "op": "i32.shl",
+      "args": [
+        "00000001",
+        "ffffffff"
+      ],
+      "fault": true
+    },
+    {
+      "op": "i32.shr",
+      "args": [
+        "80000000",
+        "0000001f"
+      ],
+      "result": "ffffffff"
+    },
+    {
+      "op": "i32.shr",
+      "args": [
+        "fffffffd",
+        "00000001"
+      ],
+      "result": "fffffffe"
+    },
+    {
+      "op": "i32.shr",
+      "args": [
+        "80000000",
+        "00000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "i32.shr",
+      "args": [
+        "7fffffff",
+        "0000001f"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "i32.shr",
+      "args": [
+        "00000001",
+        "00000020"
+      ],
+      "fault": true
+    },
+    {
+      "op": "i32.shr",
+      "args": [
+        "00000001",
+        "ffffffff"
+      ],
+      "fault": true
+    }
+  ],
+  "literals": [
+    {
+      "source": "0",
+      "result": "00000000"
+    },
+    {
+      "source": "0.1",
+      "result": "0000199a"
+    },
+    {
+      "source": "-1.5",
+      "result": "fffe8000"
+    },
+    {
+      "source": "0.00000762939453125",
+      "result": "00000000"
+    },
+    {
+      "source": "0.0000076293945312500000000000001",
+      "result": "00000001"
+    },
+    {
+      "source": "0.00002288818359375",
+      "result": "00000002"
+    },
+    {
+      "source": "-0.00002288818359375",
+      "result": "fffffffe"
+    },
+    {
+      "source": "0.00003814697265625",
+      "result": "00000002"
+    },
+    {
+      "source": "32767.9999847412109375",
+      "result": "7fffffff"
+    },
+    {
+      "source": "32767.99999237060546875",
+      "fault": true
+    },
+    {
+      "source": "-32768",
+      "result": "80000000"
+    },
+    {
+      "source": "-32768.00000762939453125",
+      "result": "80000000"
+    },
+    {
+      "source": "-32768.00000762939453126",
+      "fault": true
+    },
+    {
+      "source": "1e-100",
+      "result": "00000000"
+    },
+    {
+      "source": "1e100",
+      "fault": true
+    }
+  ],
+  "native": [
+    {
+      "op": "f32.abs",
+      "args": [
+        "80000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "f32.abs",
+      "args": [
+        "bfc00000"
+      ],
+      "result": "3fc00000"
+    },
+    {
+      "op": "f32.abs",
+      "args": [
+        "7f800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.floor",
+      "args": [
+        "be800000"
+      ],
+      "result": "bf800000"
+    },
+    {
+      "op": "f32.floor",
+      "args": [
+        "80000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.floor",
+      "args": [
+        "7fc00000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.ceil",
+      "args": [
+        "be800000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.ceil",
+      "args": [
+        "3e800000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.ceil",
+      "args": [
+        "7f800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.trunc",
+      "args": [
+        "bfc00000"
+      ],
+      "result": "bf800000"
+    },
+    {
+      "op": "f32.trunc",
+      "args": [
+        "be800000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.trunc",
+      "args": [
+        "ff800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.sin",
+      "args": [
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "f32.sin",
+      "args": [
+        "80000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.sin",
+      "args": [
+        "7f800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.cos",
+      "args": [
+        "00000000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.cos",
+      "args": [
+        "80000000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.cos",
+      "args": [
+        "7fc00000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.sqrt",
+      "args": [
+        "40800000"
+      ],
+      "result": "40000000"
+    },
+    {
+      "op": "f32.sqrt",
+      "args": [
+        "80000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.sqrt",
+      "args": [
+        "bf800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.sqrt",
+      "args": [
+        "7f800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.log",
+      "args": [
+        "3f800000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "f32.log",
+      "args": [
+        "00000000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.log",
+      "args": [
+        "bf800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.log",
+      "args": [
+        "7f800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.exp",
+      "args": [
+        "00000000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.exp",
+      "args": [
+        "80000000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.exp",
+      "args": [
+        "447a0000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.exp",
+      "args": [
+        "7fc00000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "00000000",
+        "00000000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "c0000000",
+        "40400000"
+      ],
+      "result": "c1000000"
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "c0000000",
+        "3f000000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "00000000",
+        "bf800000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "80000000",
+        "40400000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "80000000",
+        "40000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "f32.pow",
+      "args": [
+        "7fc00000",
+        "00000000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.min",
+      "args": [
+        "00000000",
+        "80000000"
+      ],
+      "result": "80000000"
+    },
+    {
+      "op": "f32.min",
+      "args": [
+        "bf800000",
+        "3f800000"
+      ],
+      "result": "bf800000"
+    },
+    {
+      "op": "f32.min",
+      "args": [
+        "00000000",
+        "7fc00000"
+      ],
+      "fault": true
+    },
+    {
+      "op": "f32.max",
+      "args": [
+        "80000000",
+        "00000000"
+      ],
+      "result": "00000000"
+    },
+    {
+      "op": "f32.max",
+      "args": [
+        "bf800000",
+        "3f800000"
+      ],
+      "result": "3f800000"
+    },
+    {
+      "op": "f32.max",
+      "args": [
+        "00000000",
+        "ff800000"
+      ],
+      "fault": true
+    }
+  ]
+}
