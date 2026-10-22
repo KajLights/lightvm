@@ -1,6 +1,7 @@
 #include "store_backend.h"
 #include "outputs.h"
 #include "protocol.h"
+#include "runtime.h"
 #include <string.h>
 #include <limits.h>
 #ifndef LIGHTVM_STORAGE_BACKEND
@@ -85,7 +86,7 @@ bool store_upload_begin(Store *s,StoreUpload *u,StoreType type,const char *name,
     if(strlen(name)>OBJECT_NAME_LIMIT)return false;
     strcpy(e.name,name);
     /* Empty names are private transient uploads, never publishable. */
-    if(!s->available||!s->backend->begin||(!valid(&e)&&(name[0]||type!=STORE_ANIMATION||!size||size>MODULE_LIMIT)))return false;
+    if(s->writer||!s->available||!s->backend->begin||(!valid(&e)&&(name[0]||type!=STORE_ANIMATION||!size||size>MODULE_LIMIT)))return false;
     store_upload_cancel(u);u->store=s;u->entry=e;
     if(!s->backend->begin(s,u)){store_upload_cancel(u);return false;}
     u->pin=store_pin(s,&u->entry);
@@ -93,26 +94,41 @@ bool store_upload_begin(Store *s,StoreUpload *u,StoreType type,const char *name,
     u->active=true;return true;
 }
 bool store_upload_chunk(StoreUpload *u,uint32_t at,const void *data,size_t size) {
-    return u->store&&u->active&&size&&at<=u->received&&at<=u->entry.size&&size<=u->entry.size-at&&u->store->backend->chunk(u,at,data,size);
+    return u->store&&!u->store->writer&&u->active&&size&&at<=u->received&&at<=u->entry.size&&size<=u->entry.size-at&&u->store->backend->chunk(u,at,data,size);
 }
 bool store_upload_finish(StoreUpload *u) {
-    if(!u->store||!u->active||u->received!=u->entry.size||!u->store->backend->finish(u))return false;
+    if(!u->store||u->store->writer||!u->active||u->received!=u->entry.size||!u->store->backend->finish(u))return false;
     u->active=false;u->complete=true;return true;
 }
 bool store_publish(Store *s,const StoreEntry *e) {
-    if(!s->available||!valid(e)||!s->backend->publish)return false;
+    if(s->writer||!s->available||!valid(e)||!s->backend->publish)return false;
     int pin=store_pin(s,e);if(pin<0)return false;
     StoreType type=e->type;
     bool ok=s->backend->publish(s,e);if(ok&&type==STORE_PRESET)++s->preset_revision;
     store_unpin(s,pin);return ok;
 }
+bool store_write_begin(Store *s,StoreWrite *w,StoreType type,const char *name,const void *bytes,uint32_t size){
+    if(w->store||s->writer||!s->available||!s->backend->write_step||!s->backend->write_cancel||strlen(name)>OBJECT_NAME_LIMIT)return false;
+    StoreEntry e={.type=type,.size=size};strcpy(e.name,name);if(!valid(&e))return false;
+    *w=(StoreWrite){.store=s,.entry=e,.data=bytes};s->writer=w;return true;
+}
+void store_write_cancel(StoreWrite *w){
+    if(w->store){Store *s=w->store;s->backend->write_cancel(w);if(s->writer==w)s->writer=NULL;}
+    memset(w,0,sizeof(*w));
+}
+int store_write_step(StoreWrite *w){
+    if(!w->store||w->store->writer!=w)return -1;
+    int status=w->store->backend->write_step(w);
+    if(status){if(status>0&&w->entry.type==STORE_PRESET)++w->store->preset_revision;store_write_cancel(w);}
+    return status;
+}
 bool store_put(Store *s,StoreType type,const char *name,const void *bytes,uint32_t size) {
-    StoreUpload u={.pin=-1};bool ok=store_upload_begin(s,&u,type,name,size,crc32_bytes(bytes,size));
-    if(ok)ok=store_upload_chunk(&u,0,bytes,size)&&store_upload_finish(&u)&&store_publish(s,&u.entry);
-    store_upload_cancel(&u);return ok;
+    StoreWrite w={0};if(!store_write_begin(s,&w,type,name,bytes,size))return false;
+    int status;do{status=store_write_step(&w);runtime_checkpoint();}while(!status);return status>0;
 }
 bool store_put_config(Store *s,const void *bytes,uint32_t size) { return store_put(s,STORE_CONFIGURATION,STORE_CONFIG,bytes,size); }
 bool store_delete(Store *s,StoreType type,const char *name) {
+    if(s->writer)return false;
     const StoreEntry *e=store_find(s,type,name);
     if(e)type=e->type;
     bool ok=e&&s->backend->remove&&s->backend->remove(s,e);

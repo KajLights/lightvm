@@ -116,6 +116,17 @@ class RecallTests(unittest.TestCase):
         self.assertIsNone(swapped['recall'])
 
     def test_completed_recall_stops_hidden_work_and_manual_takeover_resumes_it(self):
+        # This contract needs stateful layers: pure solid backgrounds now sleep
+        # both when visible and hidden, so their frame count cannot test policy.
+        source=(ROOT/'examples/animations/color.py').read_text()
+        source=source.replace('from lightvm import profile, render,', 'from lightvm import profile, init, render,')
+        source=source.replace('@render', '@init\ndef setup(ctx,runtime):\n    ctx.calls=0\n\n@render')
+        source=source.replace('    pixels.fill(', '    ctx.calls += 1\n    pixels.fill(')
+        artifact=compile_source(source)
+        self.assertTrue(artifact.success,artifact.diagnostics)
+        self.client.save_program('moving_brush',artifact.bytecode)
+        for name,color in [('red',0xff0000),('blue',0x0000ff)]:
+            self.client.save_preset(name,[{'id':'base','program':'moving_brush','crc32':zlib.crc32(artifact.bytecode),'inputs':{'color':{'value':color}}}])
         self.client.recall_preset('red', 'lights')
         self.save_entry('blue', self.spec('crossfade', 10))
         self.client.recall_preset('blue', 'lights')

@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <limits.h>
+static bool request_word(const char **cursor,char *out,size_t capacity){
+    const char *p=*cursor;p+=strspn(p," \t\r\n\v\f");size_t n=strcspn(p," \t\r\n\v\f");
+    if(!n||n>=capacity)return false;
+    memcpy(out,p,n);out[n]=0;*cursor=p+n;return true;
+}
 static void capture_bytes(void *context,const uint8_t *bytes,size_t size) {
     Http *h=context;
     if (size>sizeof(h->response)-h->used) { h->overflow=true; return; }
@@ -176,8 +181,10 @@ bool http_input(HttpInput *input,const uint8_t *bytes,size_t size,HttpRequest *r
     if (end>2048 || memchr(input->bytes,0,end)) { r->error=400; input->ready=true; return true; }
     char header[2049]; memcpy(header,input->bytes,end); header[end]=0;
     char *line=strstr(header,"\r\n"); if (!line) { r->error=400; input->ready=true; return true; } *line=0;
-    char version[16],extra;
-    if (sscanf(header,"%7s %79s %15s %c",r->method,r->path,version,&extra)!=3 || strcmp(version,"HTTP/1.1")) r->error=400;
+    char version[16];
+    const char *request_line=header;
+    if(!request_word(&request_line,r->method,sizeof(r->method))||!request_word(&request_line,r->path,sizeof(r->path))||
+       !request_word(&request_line,version,sizeof(version))||request_line[strspn(request_line," \t\r\n\v\f")]||strcmp(version,"HTTP/1.1"))r->error=400;
     bool length_seen=false,token_seen=false,media=false,form=false,host_seen=false,origin_seen=false; size_t length=0;
     bool setup_post=!strcmp(r->method,"POST") && !strcmp(r->path,"/setup");
     char host[96]="",origin[112]="";

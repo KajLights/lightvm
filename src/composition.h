@@ -5,6 +5,7 @@
 typedef struct {
     char id[OBJECT_NAME_LIMIT+1], program[OBJECT_NAME_LIMIT+1];
     uint32_t crc, sampled_frame;
+    ContributionStamp sampled,front_stamp;
     uint8_t opacity, blend;
     PixelBuffer target;
     VmInstance vm;
@@ -24,10 +25,13 @@ typedef struct Composition {
 Composition *composition_create(PixelBuffer *, unsigned layers);
 void composition_destroy(Composition *);
 void composition_offscreen(Composition *, PixelBuffer *);
+void composition_install_prepared(Composition *, PixelBuffer *);
 void composition_publish(Composition *);
+void composition_presented(Composition *,const ContributionStamp *,uint64_t);
 CompositionLayer *composition_layer(Composition *, const char *id);
 void composition_invalidate(Composition *);
 void composition_tick(Composition *, unsigned budget);
+bool composition_prepare_step(Composition *);
 void composition_prepare(Composition *);
 void composition_play(Composition *, bool playing);
 const char *composition_frame(Composition *, uint32_t delta_ms);

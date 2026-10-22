@@ -129,7 +129,7 @@ class CompositionTests(unittest.TestCase):
     def test_layer_replacement_pause_and_removal_preserve_peer_state(self):
         self.save('clock',' pixels.fill(rgb(int(runtime.time*10.0)%255,0,0))\n')
         self.save('counter',' ctx.calls+=1\n pixels.point(0,rgb(255,255,255),128)\n',' ctx.calls=0\n')
-        self.save('blue',' pixels.fill(rgb(0,0,255))\n')
+        self.save('blue',' ctx.calls+=1\n pixels.fill(rgb(0,0,255))\n',' ctx.calls=0\n')
         self.composition([{'id':'bg','program':'clock'},{'id':'fg','program':'counter'}])
         self.frame(100)
         before=self.state('fg');pixels=self.layer('fg')

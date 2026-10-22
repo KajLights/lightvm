@@ -36,7 +36,10 @@ static void stop_animation(VmInstance *a) {
     } else if (!a->control.enabled&&a->output) { pixels_clear(a->output); pixels_show(a->output); }
 }
 void vm_destroy(VmInstance *a) {
-    stop_animation(a);
+    /* Destruction discards the instance. Finishing a suspended guest here could
+       make cancellation/configuration wait forever for a loop with no end. */
+    vm_output_cancel(a);a->playing=false;
+    if(a->output){pixels_clear(a->output);pixels_show(a->output);}
     control_destroy(a);
     if (a->generation!=UINT32_MAX) ++a->generation;
     a->ready=false; a->from_storage=false;
@@ -61,7 +64,8 @@ static const char *vm_load_impl(VmInstance *a) {
     if(a->generation==UINT32_MAX)return "program generation exhausted";
     const char *error=pbc_open(&a->portable,vm_read,a,a->expected);
     if(!error)error=animation_validate(a->portable);
-    return error?error:control_probe(a);
+    if(!error)control_loaded(a);
+    return error;
 }
 static const char *prepare_animation(VmInstance *a) { return control_prepare(a); }
 static const char *render_animation(VmInstance *a,uint32_t delta_ms) {
@@ -71,6 +75,34 @@ void control_presented(VmInstance *a,bool success) {
     if(success)a->animation_error[0]=0;
     else snprintf(a->animation_error,sizeof(a->animation_error),"native pixel output failed; retrying");
 }
+void control_wait(VmInstance *a,unsigned kind){
+    Control *c=&a->control;uint64_t now=platform_time_us();
+    if(c->wait_since_us&&now>=c->wait_since_us)c->wait_us[c->wait_kind]+=now-c->wait_since_us;
+    c->wait_since_us=now;c->wait_kind=(uint8_t)kind;
+}
+void control_observe(VmInstance *a,uint64_t time){
+    if(!a->portable)return;
+    Control *c=&a->control;uint32_t values[8]={0};uint8_t fallback;
+    inputs_sample(a->portable,time,values,&fallback);
+    if(!c->observed||memcmp(values,c->observed_inputs,sizeof(values))||fallback!=c->observed_fallback){
+        if(c->dependency_revision!=UINT32_MAX)c->dependency_revision++;
+        if(!c->dirty){c->dirty_since_us=platform_time_us();c->dirty=true;}
+        memcpy(c->observed_inputs,values,sizeof(values));c->observed_fallback=fallback;c->observed=true;
+    }
+}
+void control_contribution_presented(VmInstance *a,ContributionStamp stamp,uint64_t now){
+    if(!stamp.frame||stamp.generation!=a->generation)return;
+    if(stamp.frame!=a->control.displayed.frame||stamp.generation!=a->control.displayed.generation){
+        a->control.distinct_presentations++;
+        a->control.presented_us=now;
+        if(stamp.dependency_revision&&
+           stamp.dependency_revision!=a->control.displayed.dependency_revision){
+            a->control.dirty_to_display_us=now-stamp.dirty_since_us;
+            if(stamp.dependency_revision==a->control.dependency_revision)a->control.dirty=false;
+        }
+    }
+    a->control.displayed=stamp;
+}
 static void show_frame(VmInstance *a,bool asynchronous) {
     uint64_t show_started=platform_time_us();
     bool success;
@@ -78,6 +110,7 @@ static void show_frame(VmInstance *a,bool asynchronous) {
     // independent committed contribution.
     if (!a->output) { control_presented(a,true);a->show_us=0; ++a->frame_count; return; }
     const uint8_t *frame=control_output_frame(a);
+    a->control.submitted=a->control.contribution;
     if(asynchronous){
         if(a->output->driver&&pixels_submit(a->output,frame,a->control.count)){
             a->next_present=show_started+FRAME_INTERVAL_US;
@@ -96,7 +129,7 @@ static void show_frame(VmInstance *a,bool asynchronous) {
     if (a->control.enabled && success) {
         a->control.output_valid=true; ++a->control.output_frame;
     }
-    if(success)++a->frame_count;
+    if(success){++a->frame_count;control_contribution_presented(a,a->control.submitted,platform_time_us());}
 }
 static bool complete_output(VmInstance *a) {
     if(a->output_pending){
@@ -106,6 +139,7 @@ static bool complete_output(VmInstance *a) {
         if(status<0){a->output->type->cancel(a->output->driver);control_presented(a,false);return false;}
         memcpy(a->output->rgb,a->control.presentation,(size_t)a->control.count*3);
         control_presented(a,true);a->control.output_valid=true;a->control.output_frame++;a->frame_count++;
+        control_contribution_presented(a,a->control.submitted,platform_time_us());
         a->show_us=(uint32_t)(platform_time_us()-a->output_started);
     }
     return true;
@@ -122,16 +156,28 @@ static void tick_error(VmInstance *a,const char *error){
 static bool tick_prepare(VmInstance *a,unsigned budget,AnimationSlice *slice){
     (void)complete_output(a);
     if(a->frame_ready){
-        if(a->output_pending||platform_time_us()<a->next_present)return false;
+        if(a->output_pending||platform_time_us()<a->next_present){control_wait(a,3);return false;}
         a->frame_ready=false;show_frame(a,true);(void)complete_output(a);
         /* One complete waiting frame is the entire render-ahead queue. */
         return false;
     }
-    if (!a->playing) return false;
+    if (!a->playing){control_wait(a,0);return false;}
     uint64_t now=platform_time_us();
     bool continuing=a->control.in_step;
     if (!continuing&&now<a->next_frame) return false;
     uint64_t elapsed_us=continuing?0:now-a->last_frame;
+    /* Cached pixels do not stop the program clock. Advance both the virtual
+       clock and its wall anchor when sleeping, so binding a new ramp starts
+       now rather than at an arbitrarily old render. This proof excludes every
+       render observer of delta/time; stateful invocations never take this path. */
+    if(!continuing&&a->portable->render_reusable&&a->control.contribution_valid&&a->control.contribution.frame&&
+       !inputs_changed(a->portable,a->control.program_us+elapsed_us)){
+        const char *error=animation_preflight(a,elapsed_us);
+        if(!error&&a->portable->active_wall_us>UINT64_MAX-elapsed_us)error="wall clock overflow";
+        if(error){tick_error(a,error);return false;}
+        control_wait(a,4);a->control.program_us+=elapsed_us;a->portable->active_wall_us+=elapsed_us;a->last_frame=now;
+        return false;
+    }
     // Zero interval is demand driven; an optional cap spaces render starts.
     if(!continuing){
         a->last_frame=now;
@@ -140,18 +186,19 @@ static bool tick_prepare(VmInstance *a,unsigned budget,AnimationSlice *slice){
     }
     const char *error=animation_begin(a,elapsed_us);
     if(error){tick_error(a,error);return false;}
-    *slice=(AnimationSlice){a,budget,0};return true;
+    control_wait(a,0);*slice=(AnimationSlice){a,budget,0};return true;
 }
 static void tick_commit(AnimationSlice *slice,uint64_t elapsed){
     VmInstance *a=slice->vm;bool ready=false;
     const char *error=animation_commit(slice,elapsed,&ready);
     if(error){tick_error(a,error);return;}
+    control_wait(a,1);
     if(ready){
         a->frame_ready=true;
         if(!a->output_pending&&platform_time_us()>=a->next_present){a->frame_ready=false;show_frame(a,true);(void)complete_output(a);}
     }
 }
-void vm_tick_begin(void){assert(!batching&&!queued);runtime_defer_begin();batching=true;tick_epoch++;}
+void vm_tick_begin(void){assert(!batching&&!queued);runtime_defer_begin();runtime_epoch_begin();batching=true;tick_epoch++;}
 void vm_tick_flush(void){
     render_execute(jobs,queued);
     for(unsigned i=0;i<queued;i++)tick_commit(&slices[i],jobs[i].elapsed_us);
@@ -161,15 +208,21 @@ void vm_tick_collect(VmInstance *a,unsigned budget){
     assert(batching);
     if(a->scheduled_epoch==tick_epoch||runtime_owns(a))return;
     a->scheduled_epoch=tick_epoch;
+    control_observe(a,a->control.program_us+(platform_time_us()>=a->last_frame?platform_time_us()-a->last_frame:0));
+    /* Leave part of the epoch for composition/presentation; otherwise a full
+       runnable set could consume every epoch before producing any output. */
+    if(!runtime_epoch_can_collect()){control_wait(a,a->playing?1:0);return;}
     if(tick_prepare(a,budget,&slices[queued])){
         jobs[queued]=(RenderJob){animation_execute,&slices[queued],0};
         if(++queued==2)vm_tick_flush();
     }
 }
-void vm_tick_end(void){vm_tick_flush();batching=false;runtime_defer_end();}
+void vm_tick_end(void){vm_tick_flush();batching=false;runtime_epoch_end();runtime_defer_end();}
+bool vm_tick_batching(void){return batching;}
 void vm_tick_budget(VmInstance *a,unsigned budget) {
     if(batching&&a->scheduled_epoch==tick_epoch)return;
     if(batching)a->scheduled_epoch=tick_epoch;
+    if(!runtime_epoch_available())return;
     AnimationSlice slice;
     if(!tick_prepare(a,budget,&slice))return;
     RenderJob job={animation_execute,&slice,0};render_execute(&job,1);
@@ -278,10 +331,15 @@ const char *vm_validate(const uint8_t *bytes,size_t size) {
     control_destroy(candidate);demo_free(candidate);return error;
 }
 
+typedef struct {Store *store;const StoreEntry *entry;} StoredRead;
+static bool stored_read(void *context,uint32_t offset,void *bytes,size_t size){
+    StoredRead *r=context;return store_read(r->store,r->entry,offset,bytes,size);
+}
 const char *vm_validate_stored(Store *store,const StoreEntry *entry) {
-    VmInstance candidate;vm_init(&candidate,NULL,NULL,NULL);
-    if(!vm_bind_storage(&candidate,store,entry))return "package reference limit exceeded";
-    const char *error=vm_load(&candidate);control_destroy(&candidate);return error;
+    StoredRead read={store,entry};Portable *program=NULL;
+    const char *error=pbc_open(&program,stored_read,&read,entry->size);
+    if(!error)error=animation_validate(program);
+    pbc_destroy(program);return error;
 }
 
 const char *vm_load(VmInstance *a) {

@@ -40,6 +40,15 @@ class MultiOutputTests(unittest.TestCase):
         self.client.require_ok(self.client.command(PLAY if play else FRAME, b'' if play else bytes(4), output=slot))
 
     def test_six_instances_and_independent_controls(self):
+        # Exercise continuously running peers, including a stateful solid layer.
+        # Pure colour backgrounds intentionally sleep until an input changes.
+        source=(ROOT/'examples/animations/color.py').read_text()
+        source=source.replace('from lightvm import profile, render,','from lightvm import profile, init, render,')
+        source=source.replace('@render','@init\ndef setup(ctx,runtime):\n    ctx.calls=0\n\n@render')
+        source=source.replace('    pixels.fill(','    ctx.calls += 1\n    pixels.fill(')
+        artifact=compile_source(source)
+        self.assertTrue(artifact.success,artifact.diagnostics)
+        self.effects['color']=artifact.bytecode
         for slot, name in zip([f'lights{i}' for i in range(6)], self.effects):
             self.load(name, slot, play=False)
             state = self.client.program_state(output=slot)
@@ -104,7 +113,7 @@ class MultiOutputTests(unittest.TestCase):
         for offset in range(0, len(data), 508):
             self.client.require_ok(self.client.command(CHUNK, struct.pack('<I', offset) + data[offset:offset+508]))
             time.sleep(.004)
-        self.client.require_ok(self.client.command(FINISH))
+        self.client.require_ok(self.client.finish_upload(require_ok=False))
         self.client.require_ok(self.client.command(PLAY, output='lights2'))
         self.assertEqual(self.client.program_state(output='lights2')['slot'], 'A')
         self.assertEqual(self.client.program_state()['generation'], before['generation'])

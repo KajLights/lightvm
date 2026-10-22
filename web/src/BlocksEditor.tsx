@@ -22,6 +22,7 @@ const toolbox = { kind: 'categoryToolbox', contents: [
   category('Loops & choices', '#558b3c', ['lm_each', 'lm_repeat', 'lm_while', 'lm_if', 'lm_flow']),
   category('Values & inputs', '#a84978', ['lm_set', 'lm_get', 'lm_setting', 'lm_input', 'lm_array', 'lm_array_get', 'lm_array_set']),
   category('Images & trails', '#bd7730', ['lm_image', 'lm_image_point', 'lm_image_fade', 'lm_image_draw']),
+  category('Sprites', '#9b59b6', ['lm_sprite', 'lm_batch', 'lm_spawn', 'lm_batch_render', 'lm_sprite_transform', 'lm_sprite_color', 'lm_sprite_remove', 'lm_artwork', 'lm_artwork_draw']),
   category('Functions', '#9b59b6', ['lm_function', 'lm_call']),
   category('Transitions', '#9b59b6', ['lm_mix', 'lm_wipe', 'lm_copy']),
 ] };

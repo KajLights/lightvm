@@ -44,11 +44,12 @@ typedef struct {
 struct Portable;
 bool input_value_parse(const Json *,int,unsigned,InputValue *);
 double input_value_number(InputValue,unsigned);
-const char *inputs_load(struct Portable *);
+const char *inputs_load(struct Portable *,const Json *);
 void inputs_attach(struct Portable *,InputRegistry *,const LightControls *);
 bool inputs_call_valid(struct Portable *,unsigned,unsigned);
 const char *inputs_bind(struct Portable *,const Json *,int,uint64_t);
 void inputs_capture(struct Portable *,uint64_t,bool);
+void inputs_sample(struct Portable *,uint64_t,uint32_t *,uint8_t *);
 bool inputs_changed(struct Portable *,uint64_t);
 const char *input_port_bind(InputRegistry *,InputPort *,const Json *,int,uint64_t);
 bool input_port_capture(InputRegistry *,InputPort *,uint64_t);

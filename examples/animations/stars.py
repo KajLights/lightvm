@@ -34,6 +34,7 @@ STAR_IMAGE = PixelArray([
 
 def star_init(s, runtime, position, duration, color):
     s.position = position
+    s.transform = Transform(translate=s.position, origin=1.0)
     s.duration = duration
     s.tint = color
 
@@ -43,7 +44,6 @@ def star_render(s, runtime, pixels):
         s.remove()
         return
     pixels.draw(STAR_IMAGE)
-    s.transform = Transform(translate=s.position, origin=1.0)
     s.color = ColorTransform(alpha=1.0 - runtime.time / s.duration, tint=s.tint,
                              brightness=runtime.input(BRIGHTNESS))
 

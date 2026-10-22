@@ -29,6 +29,7 @@ class StartupTests(unittest.TestCase):
         if self.client:
             self.client.close()
         self.client = Client(ProcessTransport(self.receiver, self.storage))
+        self.client.wait_preparation()
 
     def save_preset(self, name, module, settings=None, inputs=None):
         self.client.save_program(name, module)
@@ -145,6 +146,17 @@ class StartupTests(unittest.TestCase):
         self.assertTrue(self.output()['power'])
         self.assertEqual(self.output()['selected_preset'], 'red')
         self.assertEqual(self.client.transition()['program'], 'wipe')
+
+    def test_more_startup_outputs_than_pending_operation_slots(self):
+        candidate={'schema':'lightvm.config','outputs':[
+            {'id':f'light{i}','type':'ws2812b','config':{'pin':f'GP{i}','count':1},
+             'startup':{'mode':'preset','preset':'red'}} for i in range(6)]}
+        self.client.configure(candidate,save=True)
+        self.restart()
+        state=self.client.describe()
+        self.assertEqual(state['boot_error'],'')
+        self.assertEqual(len(state['outputs']),6)
+        self.assertTrue(all(output['power'] and output['selected_preset']=='red' for output in state['outputs']))
 
     def test_each_output_restores_by_identity_after_reordering(self):
         candidate = self.policy('restore_last')

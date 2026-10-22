@@ -43,6 +43,15 @@ export const BLOCK_DEFINITIONS = [
   { type: 'lm_mix', message0: 'crossfade A → B at %1', args0: [value('VALUE')], ...statement, colour: 280 },
   { type: 'lm_wipe', message0: 'wipe A → B at %1 %2', args0: [value('VALUE'), dropdown('REVERSE', [['from start', 'False'], ['from end', 'True']])], ...statement, colour: 280 },
   { type: 'lm_function', message0: 'function %1 with %2 %3 return %4', args0: [field('NAME', 'breathe'), field('PARAM', 'seconds'), statements('DO'), value('VALUE')], colour: 290, tooltip: 'A reusable calculation. Use its argument with a variable block. Functions cannot call themselves.' },
+  { type: 'lm_sprite', message0: 'sprite %1 width %2 with %3', args0: [field('NAME', 'star'), number('WIDTH', 3), field('PARAM', 'position')], message1: 'when created %1', args1: [statements('INIT')], message2: 'each frame %1', args2: [statements('RENDER')], colour: 290, tooltip: 'Put fixed geometry and colour in when created. Remembered values belong to each sprite. Its clock starts at birth.' },
+  { type: 'lm_batch', message0: 'remember batch %1 of sprite %2 capacity %3', args0: [field('NAME', 'stars'), field('SPRITE', 'star'), number('CAPACITY', 20)], ...statement, colour: 290 },
+  { type: 'lm_spawn', message0: 'create sprite in batch %1 with %2', args0: [field('NAME', 'stars'), value('VALUE')], ...statement, colour: 290 },
+  { type: 'lm_batch_render', message0: 'draw batch %1', args0: [field('NAME', 'stars')], ...statement, colour: 290 },
+  { type: 'lm_sprite_transform', message0: 'sprite position %1 scale %2 origin %3', args0: [value('POSITION'), value('SCALE'), value('ORIGIN')], ...statement, colour: 290 },
+  { type: 'lm_sprite_color', message0: 'sprite opacity %1 brightness %2 tint %3', args0: [value('ALPHA'), value('BRIGHTNESS'), value('TINT')], ...statement, colour: 290 },
+  { type: 'lm_sprite_remove', message0: 'remove this sprite', ...statement, colour: 290 },
+  { type: 'lm_artwork', message0: 'shared artwork %1 RGBA bytes %2', args0: [field('NAME', 'star_image'), field('DATA', '64,64,64,255,255,255,255,255,64,64,64,255')], colour: 30, tooltip: 'Comma-separated red, green, blue, alpha bytes (0–255) for each pixel. Artwork is immutable and shared by every sprite.' },
+  { type: 'lm_artwork_draw', message0: 'draw shared artwork %1', args0: [field('NAME', 'star_image')], ...statement, colour: 30 },
   { type: 'lm_call', message0: '%1 with %2', args0: [field('NAME', 'breathe'), value('VALUE')], ...output, colour: 290 },
   { type: 'lm_array', message0: 'remember %1 as %2 array of length %3', args0: [field('NAME', 'values'), dropdown('TYPE', [['decimal', 'f'], ['integer', 'i']]), value('LENGTH')], ...statement, colour: 330 },
   { type: 'lm_array_get', message0: 'remembered array %1 at %2', args0: [field('NAME', 'values'), value('INDEX')], ...output, colour: 330 },
@@ -73,7 +82,13 @@ export function parseBlocks(source: string): BlockDocument {
       if (!arg) fail(`Unknown field “${name}”.`);
       if (arg.type === 'field_dropdown' && !arg.options.some((o: string[]) => o[1] === v)) fail(`Invalid choice for ${name}.`);
       if (arg.type === 'field_number' && (typeof v !== 'number' || !Number.isFinite(v))) fail('Number fields must be finite.');
-      if (arg.type === 'field_input' && (typeof v !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(v))) fail('Names use letters, digits and underscores, beginning with a letter or underscore.');
+      if (arg.type === 'field_input') {
+        if (b.type === 'lm_artwork' && name === 'DATA') {
+          if (typeof v !== 'string' || !/^\s*\d+(?:\s*,\s*\d+)*\s*$/.test(v)) fail('Artwork needs comma-separated RGBA bytes.');
+          const bytes = String(v).split(',').map(Number);
+          if (bytes.length % 4 || bytes.length > 4096 || bytes.some(n => !Number.isInteger(n) || n > 255)) fail('Use 1–1024 RGBA pixels with channel bytes from 0 to 255.');
+        } else if (typeof v !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(v)) fail('Names use letters, digits and underscores, beginning with a letter or underscore.');
+      }
     }
     for (const [name, child] of Object.entries(b.inputs ?? {})) {
       if (!args.some(a => a.name === name && a.type.startsWith('input_')) || !child || typeof child !== 'object') fail(`Unknown input “${name}”.`);
@@ -88,8 +103,9 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
   const doc = parseBlocks(source), lines: string[] = [], js: string[] = [], locations: SourceLocation[] = [];
   const roots = doc.blocks!.blocks!.filter(b => b.enabled !== false && !b.disabled && !b.disabledReasons?.length);
   const root = roots.find(b => b.type === 'lm_program'), functions = roots.filter(b => b.type === 'lm_function');
+  const sprites = roots.filter(b => b.type === 'lm_sprite'), artwork = roots.filter(b => b.type === 'lm_artwork');
   const fail = (b: Block | undefined, message: string): never => { throw new SourceError(message, { line: 1, column: 1, blockId: b?.id }); };
-  if (!root || roots.filter(b => b.type !== 'lm_function').length !== 1) fail(root, 'Connect your blocks inside one Animation or Transition block, or a function. Remove or disable loose blocks.');
+  if (!root || roots.filter(b => !['lm_function', 'lm_sprite', 'lm_artwork'].includes(b.type)).length !== 1) fail(root, 'Use one Animation or Transition block, with optional functions, sprite definitions and shared artwork. Remove or disable loose blocks.');
   const fieldValue = (b: Block, name: string) => b.fields?.[name] ?? ([0, 1, 2].flatMap(i => (definitions.get(b.type) as any)['args' + i] ?? []).find(a => a.name === name)?.text);
   const f = (b: Block, name: string) => String(fieldValue(b, name));
   const child = (b: Block, name: string) => b.inputs?.[name]?.block ?? b.inputs?.[name]?.shadow;
@@ -104,7 +120,7 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
     switch (b.type) {
       case 'lm_number': { const n = Number(b.fields?.VALUE ?? 0); return [Number.isInteger(n) ? `${n}.0` : String(n), String(n)]; }
       case 'lm_bool': return f(b, 'VALUE') === 'TRUE' ? ['True', 'true'] : ['False', 'false'];
-      case 'lm_runtime': { const p = f(b, 'PROPERTY'); return p === 'count' ? (stage === 'init' ? ['runtime.pixel_count', 'runtime.pixelCount'] : ['pixels.count', 'pixels.count']) : [`runtime.${p}`, `runtime.${p}`]; }
+      case 'lm_runtime': { const p = f(b, 'PROPERTY'); return p === 'count' ? (stage.endsWith('init') ? ['runtime.pixel_count', 'runtime.pixelCount'] : ['pixels.count', 'pixels.count']) : [`runtime.${p}`, `runtime.${p}`]; }
       case 'lm_rgb': case 'lm_hsv': { const name = b.type === 'lm_rgb' ? 'rgb' : 'hsv', a = (name === 'rgb' ? ['R', 'G', 'B'] : ['H', 'S', 'V']).map(v); return [`${name}(${a.map((p, i) => name === 'rgb' && child(b, ['R', 'G', 'B'][i])?.type === 'lm_number' ? String(Number(child(b, ['R', 'G', 'B'][i])?.fields?.VALUE ?? 0)) : p[0]).join(', ')})`, `${name}(${a.map(p => p[1]).join(', ')})`]; }
       case 'lm_call': { const a = v('VALUE'), name = f(b, 'NAME'); return [`fn_${name}(${a[0]})`, `${name}(${a[1]})`]; }
       case 'lm_array_get': { const i = v('INDEX'), name = f(b, 'NAME'); return [`state.${name}[int(${i[0]})]`, `state.${name}[${i[1]}]`]; }
@@ -138,6 +154,36 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
       const emit = (py: string, javascript: string) => line(py, javascript, b!, depth);
       const body = (name: string) => chain(child(b!, name), depth + 1);
       switch (b.type) {
+        case 'lm_batch': {
+          if (stage !== 'init' || depth !== 1) fail(b, 'Create a sprite batch directly in the program’s “when starting” section.');
+          const sprite = f(b, 'SPRITE'), capacity = Number(b.fields?.CAPACITY ?? 20);
+          if (!sprites.some(s => f(s, 'NAME') === sprite)) fail(b, 'Add a sprite definition with this name.');
+          if (!Number.isInteger(capacity) || capacity < 1 || capacity > 65535) fail(b, 'Batch capacity must be a whole number from 1 to 65535.');
+          emit(`state.${f(b, 'NAME')} = SpriteBatch(sprite_${sprite}, capacity=${capacity})`, `state.${f(b, 'NAME')} = new SpriteBatch(sprite_${sprite}, ${capacity});`); break;
+        }
+        case 'lm_spawn': case 'lm_batch_render': {
+          if (stage !== 'init' && stage !== 'render') fail(b, 'Create and draw sprites from the containing program.');
+          if (b.type === 'lm_spawn') { const a = v('VALUE'); emit(`state.${f(b, 'NAME')}.spawn(${a[0]})`, `state.${f(b, 'NAME')}.spawn(${a[1]});`); }
+          else { if (stage !== 'render') fail(b, 'Draw a batch in the program’s “every frame” section.'); emit(`state.${f(b, 'NAME')}.render(runtime, pixels)`, `state.${f(b, 'NAME')}.render(runtime, pixels);`); }
+          break;
+        }
+        case 'lm_sprite_transform': case 'lm_sprite_color': case 'lm_sprite_remove': {
+          if (!stage.startsWith('sprite_')) fail(b, 'Place this block inside a sprite definition.');
+          if (b.type === 'lm_sprite_remove') emit('state.remove()', 'state.remove();');
+          else if (b.type === 'lm_sprite_transform') {
+            const p = v('POSITION'), s = v('SCALE'), o = v('ORIGIN');
+            emit(`state.transform = Transform(translate=${p[0]}, scale=${s[0]}, origin=${o[0]})`, `state.transform = new Transform({ translate: ${p[1]}, scale: ${s[1]}, origin: ${o[1]} });`);
+          } else {
+            const a = v('ALPHA'), l = v('BRIGHTNESS'), c = v('TINT');
+            emit(`state.color = ColorTransform(alpha=${a[0]}, brightness=${l[0]}, tint=${c[0]})`, `state.color = new ColorTransform({ alpha: ${a[1]}, brightness: ${l[1]}, tint: ${c[1]} });`);
+          }
+          break;
+        }
+        case 'lm_artwork_draw': {
+          if (!artwork.some(a => f(a, 'NAME') === f(b, 'NAME'))) fail(b, 'Add shared artwork with this name.');
+          if (!stage.endsWith('render')) fail(b, 'Draw shared artwork in an each-frame section.');
+          emit(`pixels.draw(art_${f(b, 'NAME')})`, `pixels.draw(art_${f(b, 'NAME')});`); break;
+        }
         case 'lm_array': case 'lm_image': {
           if (stage !== 'init') fail(b, 'Create remembered arrays and images in “when starting”.');
           const length = child(b, 'LENGTH');
@@ -191,6 +237,14 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
     if (!count) line('pass', '// Try adding a block here.', root!, depth);
     declared = enclosing;
   };
+  for (const [items, kind] of [[artwork, 'artwork'], [sprites, 'sprite']] as const) {
+    const names = new Set<string>();
+    for (const item of items) { const name = f(item, 'NAME'); if (names.has(name)) fail(item, `Choose a unique ${kind} name instead of “${name}”.`); names.add(name); }
+  }
+  for (const art of artwork) {
+    const bytes = f(art, 'DATA').split(',').map(Number).join(', ');
+    line(`art_${f(art, 'NAME')} = PixelArray([${bytes}], format="rgba8", readonly=True)`, `const art_${f(art, 'NAME')} = new PixelArray([${bytes}], { format: "rgba8", readonly: true });`, art, 0);
+  }
   const functionNames = new Set<string>();
   for (const fn of functions) {
     const name = f(fn, 'NAME'), param = f(fn, 'PARAM');
@@ -199,6 +253,17 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
     line(`def fn_${name}(v_${param}):`, `function ${name}(${param}) {`, fn, 0);
     chain(child(fn, 'DO'), 1); const result = expression(child(fn, 'VALUE'));
     line(`return ${result[0]}`, `return ${result[1]};`, fn, 1); js.push('}');
+  }
+  for (const sprite of sprites) {
+    const name = f(sprite, 'NAME'), param = f(sprite, 'PARAM'), width = Number(sprite.fields?.WIDTH ?? 3);
+    if (!Number.isInteger(width) || width < 1 || width > 65535) fail(sprite, 'Sprite width must be a whole number from 1 to 65535.');
+    if (['state', 'runtime', 'pixels'].includes(param)) fail(sprite, 'Choose a creation argument other than state, runtime or pixels.');
+    for (const callback of ['init', 'render']) {
+      stage = 'sprite_' + callback; declared = new Set(callback === 'init' ? [param] : []);
+      line(`def sprite_${name}_${callback}(state, runtime, ${callback === 'init' ? 'v_' + param : 'pixels'}):`, `function sprite_${name}_${callback}(state, runtime, ${callback === 'init' ? param : 'pixels'}) {`, sprite, 0);
+      chain(child(sprite, callback.toUpperCase()), 1); js.push('}');
+    }
+    line(`sprite_${name} = Sprite(width=${width}, init=sprite_${name}_init, render=sprite_${name}_render)`, `const sprite_${name} = new Sprite(${width}, { init: sprite_${name}_init, render: sprite_${name}_render });`, sprite, 0);
   }
   for (stage of ['init', 'render']) {
     declared = new Set();
@@ -217,7 +282,31 @@ const input = (b: Block) => ({ block: b });
 const math = (a: Block, op: string, b: Block): Block => ({ type: 'lm_math', fields: { OP: op }, inputs: { A: input(a), B: input(b) } });
 const runtime = (property: string): Block => ({ type: 'lm_runtime', fields: { PROPERTY: property } });
 const get = (name: string): Block => ({ type: 'lm_get', fields: { SCOPE: 'local', NAME: name } });
-export function blockExample(kind: 'rainbow' | 'pulse' | 'wipe' = 'rainbow'): string {
+export function blockExample(kind: 'rainbow' | 'pulse' | 'wipe' | 'stars' = 'rainbow'): string {
+  if (kind === 'stars') {
+    const sequence = (...blocks: Block[]): Block => { blocks.slice(0, -1).forEach((b, i) => { b.next = { block: blocks[i + 1] }; }); return blocks[0]; };
+    const remembered = (name: string): Block => ({ type: 'lm_get', fields: { NAME: name, SCOPE: 'state' } });
+    const set = (name: string, value: Block): Block => ({ type: 'lm_set', fields: { NAME: name, SCOPE: 'state' }, inputs: { VALUE: input(value) } });
+    const white: Block = { type: 'lm_rgb', inputs: { R: input(num(255)), G: input(num(255)), B: input(num(255)) } };
+    return JSON.stringify({ blocks: { languageVersion: 0, blocks: [
+      { type: 'lm_artwork', fields: { NAME: 'star_image', DATA: '64,64,64,255,255,255,255,255,64,64,64,255' } },
+      { type: 'lm_sprite', fields: { NAME: 'star', WIDTH: 3, PARAM: 'position' }, inputs: {
+        INIT: input({ type: 'lm_sprite_transform', inputs: { POSITION: input(get('position')), SCALE: input(num(1)), ORIGIN: input(num(1)) } }),
+        RENDER: input(sequence(
+          { type: 'lm_if', inputs: { TEST: input({ type: 'lm_compare', fields: { OP: '>=' }, inputs: { A: input(runtime('time')), B: input(num(2)) } }), THEN: input(sequence({ type: 'lm_sprite_remove' }, { type: 'lm_flow', fields: { FLOW: 'return' } })) } },
+          { type: 'lm_artwork_draw', fields: { NAME: 'star_image' } },
+          { type: 'lm_sprite_color', inputs: { ALPHA: input(math(num(1), '-', math(runtime('time'), '/', num(2)))), BRIGHTNESS: input({ type: 'lm_input', fields: { NAME: 'brightness', DEFAULT: 1 } }), TINT: input(white) } },
+        )),
+      } },
+      { type: 'lm_program', fields: { PROFILE: 'animation' }, inputs: {
+        INIT: input(sequence({ type: 'lm_batch', fields: { NAME: 'stars', SPRITE: 'star', CAPACITY: 8 } }, set('next_birth', num(0)))),
+        RENDER: input(sequence(
+          { type: 'lm_if', inputs: { TEST: input({ type: 'lm_compare', fields: { OP: '>=' }, inputs: { A: input(runtime('time')), B: input(remembered('next_birth')) } }), THEN: input(sequence({ type: 'lm_spawn', fields: { NAME: 'stars' }, inputs: { VALUE: input(math(math(runtime('time'), '*', num(7)), '%', runtime('count'))) } }, set('next_birth', math(runtime('time'), '+', num(0.5))))) } },
+          { type: 'lm_batch_render', fields: { NAME: 'stars' } },
+        )),
+      } },
+    ] } });
+  }
   let render: Block;
   if (kind === 'wipe') render = { type: 'lm_wipe', fields: { REVERSE: 'False' }, inputs: { VALUE: input(runtime('progress')) } };
   else if (kind === 'pulse') render = { type: 'lm_fill', inputs: { COLOR: input({ type: 'lm_hsv', inputs: { H: input(num(0.08)), S: input(num(1)), V: input({ type: 'lm_motion', fields: { FUNCTION: 'pingpong' }, inputs: { VALUE: input(math(runtime('time'), '/', num(2))) } }) } }) } };

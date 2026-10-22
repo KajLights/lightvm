@@ -167,6 +167,29 @@ def draw(ctx,runtime,pixels):
             with self.assertRaises(ProtocolError):
                 self.client.configure_composition([{'id':'fg','program':'invalid_clear'}],output='lights')
 
+    def test_integer_mapping_matches_exact_fractional_reference(self):
+        # Adding the same half-pixel to translate/origin preserves this mapping
+        # exactly while forcing the general floating-point sampling path.
+        for readonly in (False,True):
+            for sampling in ('nearest','linear'):
+                self.load(f'''@init
+def setup(ctx,runtime):
+ ctx.image=PixelArray([251,19,83,127,37,199,73,0,11,23,239,255],readonly={readonly})
+ ctx.shift=setting(0.0)
+ ctx.position=setting(0.0)
+ ctx.origin=setting(0.0)
+@render
+def draw(ctx,runtime,pixels):
+ pixels.fill(rgb(13,67,101),alpha=113)
+ pixels.draw(ctx.image,transform=Transform(translate=ctx.position+ctx.shift,origin=ctx.origin+ctx.shift),sampling="{sampling}",color=ColorTransform(alpha=0.73,brightness=0.617,tint=rgb(197,113,251),hue=-95))
+''')
+                for position,origin in ((-3,0),(0,0),(1,1),(65,0),(67,2),(65535,65535),(-65535,-65535)):
+                    frames=[]
+                    for shift in (0.0,0.5):
+                        self.client.reset_program(output='lights',layer='fg',settings={'shift':shift,'position':position,'origin':origin})
+                        frames.append(self.frame())
+                    self.assertEqual(*frames,(readonly,sampling,position,origin))
+
     def test_draw_clipping_fractional_sampling_scale_origin_and_tint(self):
         self.load('''ART=PixelArray([255,255,255,255],readonly=True)
 @render

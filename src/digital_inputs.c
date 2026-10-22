@@ -70,20 +70,39 @@ void digital_inputs_destroy(DigitalInputs *s) {
     memset(s,0,sizeof(*s));
 }
 void digital_inputs_apply(DigitalInputs *s,const DigitalInputConfig *config,unsigned count) {
-    // Preserve sampling baselines for unchanged adapters; configuration is bounded.
-    DigitalInput next[DIGITAL_INPUT_LIMIT]={0};
+    /* Compute a permutation before touching any adapter. Preserve unchanged
+       sampling state without keeping four full DigitalInput objects on stack. */
+    unsigned source[DIGITAL_INPUT_LIMIT];bool used[DIGITAL_INPUT_LIMIT]={0},matched[DIGITAL_INPUT_LIMIT]={0};
     for(unsigned n=0;n<count;n++){
-        for(unsigned i=0;i<s->count;i++)if(s->devices[i].bus &&
+        source[n]=DIGITAL_INPUT_LIMIT;
+        for(unsigned i=0;i<s->count;i++)if(!used[i]&&s->devices[i].bus&&
             !strcmp(s->devices[i].config.id,config[n].id)&&s->devices[i].config.sda==config[n].sda&&
             s->devices[i].config.scl==config[n].scl&&s->devices[i].config.address==config[n].address&&
             s->devices[i].config.active_low==config[n].active_low&&s->devices[i].config.debounce_ms==config[n].debounce_ms){
-            next[n]=s->devices[i];s->devices[i].bus=NULL;break;
+            source[n]=i;used[i]=matched[n]=true;break;
         }
-        next[n].config=config[n];
     }
-    uint32_t overflow=s->overflow;digital_inputs_destroy(s);s->overflow=overflow;
-    memcpy(s->devices,next,sizeof(next));s->count=count;
-    digital_inputs_discard_events(s);
+    for(unsigned n=0;n<count;n++)if(!matched[n]){
+        unsigned i=0;while(used[i])i++;source[n]=i;used[i]=true;
+    }
+    for(unsigned n=0;n<count;n++){
+        unsigned from=source[n];
+        if(from!=n){
+            uint8_t *a=(uint8_t *)&s->devices[n],*b=(uint8_t *)&s->devices[from];
+            for(size_t k=0;k<sizeof(DigitalInput);k++){uint8_t value=a[k];a[k]=b[k];b[k]=value;}
+            for(unsigned k=n+1;k<count;k++)if(source[k]==n)source[k]=from;
+        }
+        if(!matched[n]){
+            if(s->devices[n].bus)platform_i2c_close(s->devices[n].bus);
+            memset(&s->devices[n],0,sizeof(s->devices[n]));
+        }
+        s->devices[n].config=config[n];
+    }
+    for(unsigned n=count;n<DIGITAL_INPUT_LIMIT;n++){
+        if(s->devices[n].bus)platform_i2c_close(s->devices[n].bus);
+        memset(&s->devices[n],0,sizeof(s->devices[n]));
+    }
+    s->count=count;digital_inputs_discard_events(s);
 }
 void digital_inputs_tick(DigitalInputs *s,uint64_t now) {
     for(unsigned i=0;i<s->count;i++){

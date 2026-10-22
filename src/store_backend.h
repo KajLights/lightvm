@@ -19,6 +19,8 @@ struct StoreBackend {
     void (*cancel)(StoreUpload *);
     bool (*publish)(Store *,const StoreEntry *);
     bool (*remove)(Store *,const StoreEntry *);
+    int (*write_step)(StoreWrite *);
+    void (*write_cancel)(StoreWrite *);
 };
 struct StorePin { StoreEntry entry; unsigned references; int id; StorePin *next; };
 extern const StoreBackend store_extent_backend,store_assets_backend;

@@ -10,12 +10,14 @@ typedef enum { STORE_ANY, STORE_ANIMATION, STORE_TRANSITION, STORE_PRESET, STORE
 typedef struct { char name[OBJECT_NAME_LIMIT+1]; StoreType type; uint32_t id,size,crc; } StoreEntry;
 typedef struct StoreBackend StoreBackend;
 typedef struct StorePin StorePin;
+typedef struct StoreWrite StoreWrite;
 typedef struct Store {
     const StoreBackend *backend;
     void *state;
     bool available;
     uint32_t generation,config_revision,network_revision,preset_revision;
     StorePin *pins;
+    StoreWrite *writer;
 } Store;
 typedef struct {
     Store *store;
@@ -25,6 +27,17 @@ typedef struct {
     int pin;
     bool active,complete;
 } StoreUpload;
+struct StoreWrite {
+    Store *store;
+    StoreEntry entry;
+    const uint8_t *data;
+    void *state;
+};
+/* The caller owns immutable data through completion/cancel. One catalogue writer
+ * at a time; readers and existing pinned VMs remain available between steps. */
+bool store_write_begin(Store *,StoreWrite *,StoreType,const char *,const void *,uint32_t);
+int store_write_step(StoreWrite *); /* 0 pending, 1 published, -1 failed */
+void store_write_cancel(StoreWrite *);
 typedef struct { uint32_t total_bytes,free_bytes,largest_free_bytes,allocation_unit; bool writable; } StoreInfo;
 const char *store_type_name(StoreType);
 StoreType store_type(const char *);

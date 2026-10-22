@@ -39,11 +39,17 @@ static void state_copy(TransitionProgram *program,size_t offset,size_t count,boo
         offset+=n;count-=n;
     }
 }
-bool transition_program_capture(TransitionProgram *program){
+int transition_program_capture_step(TransitionProgram *program,size_t *offset){
     Portable *p=program->vm.portable;size_t bytes=saved_bytes(p);
-    program->baseline=demo_calloc(1,bytes);if(!program->baseline)return false;
-    for(size_t offset=0;offset<bytes;offset+=256){size_t n=bytes-offset;if(n>256)n=256;state_copy(program,offset,n,false);runtime_checkpoint();}
-    program->random_state=p->random_state;return true;
+    if(!program->baseline){program->baseline=demo_alloc(bytes);if(!program->baseline)return -1;}
+    size_t n=bytes-*offset;if(n>256)n=256;state_copy(program,*offset,n,false);*offset+=n;
+    if(*offset<bytes)return 0;
+    program->random_state=p->random_state;return 1;
+}
+bool transition_program_capture(TransitionProgram *program){
+    size_t offset=0;int status;
+    do{status=transition_program_capture_step(program,&offset);if(!status)runtime_checkpoint();}while(!status);
+    return status>0;
 }
 void transition_program_destroy(TransitionProgram *p){if(p){control_destroy(&p->vm);demo_free(p->baseline);demo_free(p);}}
 void transition_destroy(Transition *t){
@@ -111,6 +117,10 @@ const char *transition_bind(Transition *t,InputRegistry *registry,const Json *j,
 static void start(Transition *t){
     t->sampled_progress=t->progress;t->pixel=0;t->phase=0;t->restore_offset=0;t->dirty=false;t->composing=true;
     for(unsigned n=0;n<2;n++){
+        memset(t->sampled[n],0,sizeof(t->sampled[n]));
+        Composition *s=t->compositions[n];
+        if(s&&!(n==0&&t->sampled_progress==100)&&!(n==1&&t->sampled_progress==0))
+            for(unsigned i=0;i<s->layer_count;i++)t->sampled[n][i]=s->layers[i].front_stamp;
         t->sampled_frames[n]=t->compositions[n]?t->compositions[n]->frames:0;
         if(t->compositions[n])t->compositions[n]->front_pinned=true;
     }
@@ -126,11 +136,16 @@ static uint32_t threshold(uint32_t pixel,uint32_t seed){
 static void compose_pixels(void *context,unsigned first,unsigned end){
     Transition *t=context;
     double p=t->sampled_progress/100;
+    if(p==0||p==1){
+        Composition *s=t->compositions[p==1];
+        uint8_t *dst=t->working+(size_t)first*3;
+        size_t bytes=(size_t)(end-first)*3;
+        if(s)memcpy(dst,s->front+(size_t)first*3,bytes);else memset(dst,0,bytes);
+        return;
+    }
     for(unsigned pixel=first;pixel<end;pixel++){
-        if(p==0||p==1||t->effect==TRANSITION_PROGRAM){
-            const uint8_t *src=NULL;
-            if(p==0||p==1){Composition *s=t->compositions[p==1];if(s)src=s->front+(size_t)pixel*3;}
-            else if(t->programs[0])src=control_frame(&t->programs[0]->vm)+(size_t)pixel*4;
+        if(t->effect==TRANSITION_PROGRAM){
+            const uint8_t *src=t->programs[0]?control_frame(&t->programs[0]->vm)+(size_t)pixel*4:NULL;
             if(src)memcpy(t->working+(size_t)pixel*3,src,3);else memset(t->working+(size_t)pixel*3,0,3);
             continue;
         }
@@ -205,6 +220,7 @@ static void complete(Transition *t){
     int status=t->output->type->poll(t->output->driver);if(!status)return;t->pending=false;
     if(status<0){t->output->type->cancel(t->output->driver);strcpy(t->error,"native transition output failed; retrying");t->dirty=true;return;}
     memcpy(t->output->rgb,t->front,(size_t)t->target.count*3);t->frames++;t->output_us+=platform_time_us()-t->output_started;t->error[0]=0;
+    for(unsigned n=0;n<2;n++)composition_presented(t->compositions[n],t->front_stamps[n],platform_time_us());
 }
 void transition_tick(Transition *t,unsigned budget){
     if(t->ticking)return;
@@ -216,7 +232,8 @@ void transition_tick(Transition *t,unsigned budget){
     if(t->command_active||!t->playing){t->ticking=false;return;}
     if(t->composing){
         for(unsigned n=t->destination_only?1:0;n<2;n++)if(t->compositions[n])composition_tick(t->compositions[n],budget);
-        slice(t,budget);t->ticking=false;return;
+        if(runtime_epoch_available())slice(t,budget);
+        t->ticking=false;return;
     }
     for(unsigned n=t->destination_only?1:0;n<2;n++)if(t->compositions[n]){composition_tick(t->compositions[n],budget);if(t->compositions[n]->frames!=t->sampled_frames[n])t->dirty=true;}
     /* The physical transfer owns only the transition front. Its complete back
@@ -228,11 +245,12 @@ void transition_tick(Transition *t,unsigned budget){
     }
     if(t->prepared&&!t->pending){
         uint8_t *previous=t->front;t->front=t->working;t->working=previous;t->prepared=false;t->output_started=platform_time_us();
+        memcpy(t->front_stamps,t->sampled,sizeof(t->front_stamps));
         if(pixels_submit(t->output,t->front,t->target.count)){t->pending=true;t->next_present=t->output_started+FRAME_INTERVAL_US;complete(t);}
         else{strcpy(t->error,"native transition output failed; retrying");t->dirty=true;}
     }
     uint64_t now=platform_time_us();
-    if(!t->prepared&&t->dirty&&now>=t->next_frame){
+    if(!t->prepared&&t->dirty&&now>=t->next_frame&&runtime_epoch_available()){
         t->next_frame=now+FRAME_INTERVAL_US;start(t);slice(t,budget);
     }
     t->ticking=false;
@@ -252,7 +270,10 @@ const char *transition_frame(Transition *t,uint32_t delta_ms){
         else{
             if(t->pending){t->output->type->cancel(t->output->driver);t->pending=false;}
             if(!pixels_show_frame(t->output,t->working,t->target.count))error="native transition output failed";
-            else{memcpy(t->output->rgb,t->working,(size_t)t->target.count*3);t->frames++;t->prepared=false;}
+            else{
+                memcpy(t->output->rgb,t->working,(size_t)t->target.count*3);t->frames++;t->prepared=false;
+                for(unsigned n=0;n<2;n++)composition_presented(t->compositions[n],t->sampled[n],platform_time_us());
+            }
         }
     }
     t->command_active=false;return error;

@@ -1,7 +1,10 @@
 #include "network.h"
+#include "platform.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+void *platform_calloc(size_t count,size_t size){return calloc(count,size);}
+void platform_free(void *p){free(p);}
 #define CHECK(x) do { if (!(x)) { fprintf(stderr,"%d: %s\n",__LINE__,#x); exit(1); } } while (0)
 typedef struct { unsigned scans,connections,configurations; int link; bool reject_next,reject_config; char tried[64][33]; NetworkConfig applied; } Radio;
 static bool configure(void *ctx,const NetworkConfig *config) { Radio *r=ctx; r->applied=*config; r->configurations++; return !r->reject_config; }

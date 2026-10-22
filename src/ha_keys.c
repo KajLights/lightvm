@@ -18,7 +18,7 @@ static void config_topic(const HomeAssistant *h,const HaKey *k,unsigned kind,cha
 static void quote(char *out,const char *in) {
     *out++='"';while(*in){unsigned char c=(unsigned char)*in++;if(c=='"'||c=='\\'){*out++='\\';*out++=(char)c;}else if(c<32){snprintf(out,7,"\\u%04x",c);out+=6;}else *out++=(char)c;}*out++='"';*out=0;
 }
-static bool discover(HomeAssistant *h,HaKey *k,unsigned kind) {
+static __attribute__((noinline)) bool discover(HomeAssistant *h,HaKey *k,unsigned kind) {
     char topic[MQTT_TOPIC_SIZE],root[160],object[80],payload[1600],name[6*48+3],label[48];
     config_topic(h,k,kind,topic,sizeof(topic));key_root(h,k,root,sizeof(root));object_id(k,object,sizeof(object));
     snprintf(label,sizeof(label),"%s%s",k->name,kind==2?" press feedback":kind==1?" indicator":"");quote(name,label);
@@ -89,7 +89,12 @@ void ha_keys_reconcile(HomeAssistant *h) {
         }
     }
 }
-bool ha_keys_command(HomeAssistant *h,const char *topic,const uint8_t *payload,size_t size,char *command,size_t capacity) {
+__attribute__((noinline)) static bool indicator_request(const uint8_t *payload,size_t size,Command *command){
+    Json *j=platform_calloc(1,sizeof(*j));
+    bool ok=j&&json_parse(j,payload,size)&&command_indicator_value(j,0,command);
+    platform_free(j);return ok;
+}
+bool ha_keys_command(HomeAssistant *h,const char *topic,const uint8_t *payload,size_t size,Command *command) {
     if(!size||size>384||memchr(payload,0,size))return false;
     for(unsigned i=0;i<KEY_LIMIT;i++){
         HaKey *k=&h->keys[i];if(!k->input[0]||k->removing||!k->output[0])continue;
@@ -98,12 +103,12 @@ bool ha_keys_command(HomeAssistant *h,const char *topic,const uint8_t *payload,s
         if(feedback_size>0&&(size_t)feedback_size<sizeof(expected)&&!strcmp(topic,expected)){
             bool on=size==2&&!memcmp(payload,"ON",2),off=size==3&&!memcmp(payload,"OFF",3);
             if(!on&&!off)return false;
-            int n=snprintf(command,capacity,"{\"op\":\"key_feedback_set\",\"input\":\"%s\",\"key\":%u,\"enabled\":%s}",k->input,k->channel+1,on?"true":"false");
-            return n>0&&(size_t)n<capacity;
+            *command=(Command){.kind=COMMAND_KEY_SET,.pixel=k->channel+1,.on=on};
+            strcpy(command->output,k->input);return true;
         }
         int n=snprintf(expected,sizeof(expected),"%s/set",root);if(n<0||(size_t)n>=sizeof(expected)||strcmp(topic,expected))continue;
-        n=snprintf(command,capacity,"{\"op\":\"indicator_set\",\"output\":\"%s\",\"pixel\":%u,\"value\":%.*s}",k->output,k->channel,(int)size,(const char *)payload);
-        return n>0&&(size_t)n<capacity;
+        *command=(Command){.kind=COMMAND_INDICATOR_SET,.pixel=k->channel};
+        strcpy(command->output,k->output);return indicator_request(payload,size,command);
     }
     return false;
 }

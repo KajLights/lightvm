@@ -39,14 +39,15 @@ def editor_compile(source, target_json):
             "syntax": True}]})
     result = compile_source(source, "animation.py", json.loads(target_json))
     diagnostics = [asdict(item) for item in result.diagnostics]
+    advisories = [asdict(item) for item in result.advisories]
     # CPython AST columns count UTF-8 bytes. Convert them to character offsets
     # before the browser converts those to its UTF-16 editor coordinates.
     lines = source.splitlines()
-    for item in diagnostics:
+    for item in diagnostics + advisories:
         if 0 < item["line"] <= len(lines):
             text = lines[item["line"] - 1]
             item["column"] = len(text.encode()[:max(0, item["column"] - 1)].decode(errors="ignore")) + 1
-    return json.dumps({"diagnostics": diagnostics, "manifest": result.manifest,
+    return json.dumps({"diagnostics": diagnostics, "advisories": advisories, "manifest": result.manifest,
         "bytecode": list(result.bytecode)}, allow_nan=False)
 `);
   self.postMessage({ type: "ready" });
@@ -69,10 +70,12 @@ self.onmessage = ({ data }) => {
       pyodide.globals.set("editor_source", lowered.python);
       pyodide.globals.set("editor_target", JSON.stringify(data.target ?? null));
       const result = JSON.parse(pyodide.runPython("editor_compile(editor_source, editor_target)"));
-      if (data.language !== 'python') result.diagnostics = result.diagnostics.map((item: any) => ({
-        ...item, ...lowered.locations[item.line - 1], filename: data.filename,
-        message: item.message.replaceAll('@init', 'init').replaceAll('@render', 'render'),
-      }));
+      if (data.language !== 'python') for (const key of ['diagnostics', 'advisories']) {
+        result[key] = (result[key] ?? []).map((item: any) => ({
+          ...item, ...lowered.locations[item.line - 1], filename: data.filename,
+          message: item.message.replaceAll('@init', 'init').replaceAll('@render', 'render'),
+        }));
+      }
       result.bytecode = new Uint8Array(result.bytecode || []);
       self.postMessage({ type: "compiled", id: data.id, ...result });
     } catch (error) {

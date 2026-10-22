@@ -43,5 +43,6 @@ const OutputType *output_type(const char *name);
 bool object_name_valid(const char *name);
 bool transition_spec_parse(const Json *, int, TransitionSpec *, char *, size_t);
 void hardware_destroy(HardwareConfig *config);
+bool hardware_decode(const Json *,HardwareConfig *,char *,size_t);
 bool hardware_parse(const void *bytes, size_t size, HardwareConfig *config, char *error, size_t capacity);
 #endif

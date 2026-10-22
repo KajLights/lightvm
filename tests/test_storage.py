@@ -31,6 +31,7 @@ class StorageTests(unittest.TestCase):
             self.client.close()
         receiver = os.environ.get('LIGHTVM_RECEIVER', str(ROOT / 'build/storage-host/lightvm'))
         self.client = Client(ProcessTransport(receiver, self.path))
+        self.client.wait_preparation()
 
     def tearDown(self):
         self.client.close()

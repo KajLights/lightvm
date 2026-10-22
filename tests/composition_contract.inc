@@ -16,6 +16,8 @@ static void composition_contract(void){
     deny_allocation=true;delayed_output=true;output_ready=false;output_failed=false;
     clock_now=20000;composition_tick(s,100);
     CHECK(s->pending&&borrowed_output==physical.dimmed&&physical.rgb[0]==0);
+    ContributionStamp submitted=s->layers[0].front_stamp;
+    CHECK(submitted.frame>0&&!s->layers[0].vm.control.displayed.frame);
     /* Finish several composites while the original front is borrowed. Every
        pixel must use the same committed layer generation across all slices. */
     for(unsigned n=0;n<12;n++){
@@ -25,7 +27,11 @@ static void composition_contract(void){
         CHECK(s->pending&&physical.rgb[0]==0);
         if(s->prepared)for(unsigned p=1;p<s->count;p++)CHECK(!memcmp(s->working,s->working+p*3,3));
     }
-    output_ready=true;composition_tick(s,100);CHECK(s->frames>0&&physical.rgb[0]>0&&!borrowed_output);
+    CHECK(s->layers[0].vm.control.contribution.frame>submitted.frame);
+    output_ready=true;s->command_active=true;composition_tick(s,100);s->command_active=false;
+    CHECK(s->frames>0&&physical.rgb[0]>0&&!borrowed_output);
+    CHECK(s->layers[0].vm.control.displayed.frame==submitted.frame);
+    CHECK(s->layers[0].vm.control.displayed.captured_us==submitted.captured_us);
     for(unsigned n=0;n<15;n++){clock_now+=20000;composition_tick(s,100);}
     CHECK(s->frames>1&&!s->layers[0].vm.control.faulted);
     output_ready=false;
@@ -74,11 +80,12 @@ static void composition_contract(void){
     app.staged=true;app.object_kind=1;app.upload_owner=1;
     const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
-    /* Activation presents its initial frame before autonomous playback. The
+    /* Activation queues its initial frame for asynchronous presentation. The
        direct driver must receive RGB, never the RGBA contribution bytes. */
     CHECK(store_put(&app.store,STORE_ANIMATION,"counter",counter_lbc,sizeof(counter_lbc)));
     const char *activate="{\"op\":\"program_activate\",\"name\":\"counter\",\"output\":\"lights\",\"action\":\"play\"}";
     command(&session,CMD_MANAGE,(const uint8_t *)activate,strlen(activate));CHECK(reply.code==STATUS_OK);
+    app_tick(&app);
     for(unsigned i=0;i<3;i++)CHECK(displayed[i*3]==1&&displayed[i*3+1]==0&&displayed[i*3+2]==0);
     CHECK(!memcmp(app.outputs[0]->pixels.rgb,displayed,9));
     for(unsigned i=0;i<app.output_count;i++){
@@ -91,4 +98,20 @@ static void composition_contract(void){
     apply="{\"op\":\"config_apply\",\"expected_revision\":1}";
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
     cooperative_show=false;secondary_output_allowed=false;session_destroy(&session);app_destroy(&app);storage_available=false;CHECK(vm_heap_used()==0);
+
+    /* A direct program assignment to B has no prebuilt composite. Its first
+       frame must already be published before any autonomous tick or FRAME. */
+    storage_available=true;secondary_output_allowed=true;memset(flash,255,sizeof(flash));
+    app_init(&app,capture,&reply);session_init(&session,&app,1,capture,&reply);
+    memcpy(app.staging,config_json,strlen(config_json));app.expected=(uint32_t)strlen(config_json);
+    app.staged=true;app.object_kind=1;app.upload_owner=1;
+    apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
+    command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply));CHECK(reply.code==STATUS_OK);
+    CHECK(store_put(&app.store,STORE_ANIMATION,"counter",counter_lbc,sizeof(counter_lbc)));
+    activate="{\"op\":\"program_activate\",\"name\":\"counter\",\"output\":\"lights\",\"slot\":\"B\",\"action\":\"play\"}";
+    command(&session,CMD_MANAGE,(const uint8_t *)activate,strlen(activate));CHECK(reply.code==STATUS_OK);
+    s=app.outputs[0]->transition->compositions[1];CHECK(s&&s->composite_frames==1&&s->frames==1);
+    for(unsigned i=0;i<3;i++)CHECK(s->front[i*3]==1&&s->front[i*3+1]==0&&s->front[i*3+2]==0);
+    CHECK(s->layers[0].front_stamp.frame==1);
+    session_destroy(&session);app_destroy(&app);secondary_output_allowed=false;storage_available=false;CHECK(vm_heap_used()==0);
 }

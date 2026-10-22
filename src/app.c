@@ -5,6 +5,7 @@
 #include "json.h"
 #include "vm_allocator.h"
 #include "draw.h"
+#include "preparation.h"
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
@@ -122,7 +123,9 @@ size_t app_output_light_json(const App *a,const AppOutput *d,char *buffer,size_t
 }
 static void composition_modified(Composition *s){if(s){s->preset[0]=0;s->preset_crc=0;}}
 static void composition_state_for(Writer *w,const AppOutput *d,const Composition *s){
+    uint64_t sampled_at=platform_time_us();
     literal(w,"{\"revision\":");number(w,d->composition_revision);
+    literal(w,",\"sampled_at_us\":");wide(w,sampled_at);
     literal(w,",\"active\":");literal(w,s?"true":"false");
     const char *preset=composition_preset(w->app,s);
     literal(w,",\"preset\":");if(preset)quoted(w,preset);else literal(w,"null");
@@ -147,6 +150,26 @@ static void composition_state_for(Writer *w,const AppOutput *d,const Composition
             literal(w,",\"frames\":");number(w,vm->control.contribution_frame);
             literal(w,",\"render_us\":");number(w,vm->render_us);
             literal(w,",\"render_total_us\":");wide(w,vm->render_total_us);
+            literal(w,",\"render_reusable\":");literal(w,vm->portable&&vm->portable->render_reusable?"true":"false");
+            literal(w,",\"dependency_current\":");
+            if(vm->portable&&vm->portable->render_reusable){
+                uint64_t time=vm->control.program_us;
+                if(s->playing&&vm->playing&&!vm->control.in_step&&sampled_at>=vm->last_frame)time+=sampled_at-vm->last_frame;
+                literal(w,vm->control.contribution_valid&&vm->control.contribution.frame&&!vm->control.in_step&&!inputs_changed(vm->portable,time)?"true":"false");
+            }else literal(w,"null");
+            literal(w,",\"displayed_frame\":");number(w,vm->control.displayed.frame);
+            literal(w,",\"distinct_presentations\":");wide(w,vm->control.distinct_presentations);
+            literal(w,",\"displayed_sample_age_us\":");
+            if(vm->control.displayed.frame)wide(w,sampled_at-vm->control.displayed.captured_us);else literal(w,"null");
+            literal(w,",\"completion_to_display_us\":");
+            if(vm->control.displayed.frame)wide(w,vm->control.presented_us-vm->control.displayed.completed_us);else literal(w,"null");
+
+            literal(w,",\"dependency_revision\":");number(w,vm->control.dependency_revision);
+            literal(w,",\"dirty_to_display_us\":");wide(w,vm->control.dirty_to_display_us);
+            literal(w,",\"dirty_age_us\":");if(vm->control.dirty)wide(w,sampled_at-vm->control.dirty_since_us);else literal(w,"null");
+            literal(w,",\"runnable_wait_us\":");wide(w,vm->control.wait_us[1]);
+            literal(w,",\"composite_wait_us\":");wide(w,vm->control.wait_us[2]);
+            literal(w,",\"output_wait_us\":");wide(w,vm->control.wait_us[3]);
             literal(w,",\"native_draw_us\":");wide(w,vm->portable?vm->portable->native_draw_us:0);
             literal(w,",\"error\":");quoted(w,vm->animation_error);
             literal(w,"}");
@@ -181,28 +204,8 @@ static void empty_config(App *a) {
 static void startup_error(char *error,size_t capacity,const HardwareOutput *output,const char *failure) {
     snprintf(error,capacity,"outputs[%s].startup: %s",output->id,failure);
 }
-static const char *prepare_instance(App *a,VmInstance *candidate,const StoreEntry *entry,const Json *request,int args,int inputs,const LightControls *light) {
-    const char *error=vm_bind_storage(candidate,&a->store,entry)?vm_load(candidate):"package reference limit exceeded";
-    if(!error&&candidate->portable->profile!=3)error="composition playback requires an animation; select transitions by program name";
-    if(!error)error=control_settings(candidate,request,args);
-    if(!error)inputs_attach(candidate->portable,&a->inputs,light);
-    if(!error)error=inputs_bind(candidate->portable,request,inputs,0);
-    if(!error){candidate->ready=true;if(candidate->target)error=control_prepare(candidate);}
-    return error;
-}
-static const char *prepare_recall_transition(App *,PixelBuffer *,const void *,const TransitionSpec *,TransitionProgram **);
-static const char *validate_startup(App *,const HardwareOutput *);
+
 static void start_output(App *,AppOutput *);
-static bool config_validate(App *a, const void *data, uint32_t size, HardwareConfig *config, char *error, size_t capacity) {
-    if(!hardware_parse(data,size,config,error,capacity))return false;
-    /* Boot admits hardware first, then attempts each invocation independently. */
-    for(unsigned i=0;!a->booting&&i<config->count;i++){
-        HardwareOutput *output=&config->outputs[i];
-        const char *failure=validate_startup(a,output);
-        if(failure){startup_error(error,capacity,output,failure);hardware_destroy(config);return false;}
-    }
-    return true;
-}
 static bool same_output(const HardwareOutput *a,const HardwareOutput *b){
     return !strcmp(a->id,b->id)&&!strcmp(a->type,b->type)&&a->pixels.pin==b->pixels.pin&&a->pixels.count==b->pixels.count&&
         a->pixels.brightness==b->pixels.brightness&&!strcmp(a->pixels.order,b->pixels.order)&&a->indicators==b->indicators&&
@@ -253,43 +256,13 @@ failed:
 static bool update_store(App *a,StoreType type,const char *name,const void *data,uint32_t size,bool remove) {
     return remove?store_delete(&a->store,type,name):store_put(&a->store,type,name,data,size);
 }
-static const char *install(App *a,AppOutput *d,const StoreEntry *entry,const char *name,bool play,const Json *request,int settings) {
-    if(d->vm.generation>=UINT32_MAX-1){
-        return "program generation exhausted";
-    }
-    VmInstance *candidate=demo_calloc(1,sizeof(*candidate));
-    if(!candidate){
-        return "replacement exceeds peak memory budget";
-    }
-    vm_init(candidate,d->vm.target,d->vm.send,d->vm.transport);candidate->output=&d->pixels;candidate->generation=d->vm.generation+1;
-    memcpy(candidate->slot,d->vm.slot,sizeof(candidate->slot));
-    memcpy(candidate->output_id,d->vm.output_id,sizeof(candidate->output_id));
-    const char *error=prepare_instance(a,candidate,entry,request,settings,request?json_get(request,0,"inputs"):-1,&d->pixels.light);
-    if(!error&&play&&!candidate->target)error="slot has no configured output";
-    bool was_playing=d->vm.playing,output_attempted=false,output_succeeded=false;
-    if(!error&&play&&candidate->output){
-        if(d->composition)d->composition->command_active=true;
-        if(d->transition){d->transition->command_active=true;if(d->transition->pending){d->pixels.type->cancel(d->pixels.driver);d->transition->pending=false;}}
-        if(d->composition&&d->composition->pending){d->pixels.type->cancel(d->pixels.driver);d->composition->pending=false;}
-        d->vm.playing=false;output_attempted=true;vm_output_cancel(&d->vm);
-        PixelBuffer *output=candidate->output;const uint8_t *frame=control_output_frame(candidate);
-        output_succeeded=output->driver&&output->type&&output->rgb&&output->count==candidate->control.count&&pixels_show_frame(output,frame,output->count);
-        control_presented(candidate,output_succeeded);
-    }
-    if(error){
-        if(output_attempted&&d->vm.control.output_valid&&d->vm.output)
-            (void)pixels_show_frame(d->vm.output,d->vm.output->rgb,d->vm.output->count);
-        if(d->composition)d->composition->command_active=false;
-        if(d->transition)d->transition->command_active=false;
-        d->vm.playing=was_playing;control_destroy(candidate);demo_free(candidate);return error;
-    }
-    if(output_succeeded){memcpy(candidate->output->rgb,control_output_frame(candidate),(size_t)candidate->control.count*3);candidate->control.output_valid=true;candidate->control.output_frame++;}
-    clear_output_composition(d);
-    control_destroy(&d->vm);d->vm=*candidate;demo_free(candidate);vm_rebind(&d->vm);
-    d->vm.playing=play;d->vm.last_frame=platform_time_us();d->vm.next_frame=d->vm.last_frame;
-    if(play)d->power_on=true;
-    if(name){strcpy(d->active_program,name);d->active_crc=entry->crc;}else{d->active_program[0]=0;d->active_crc=0;}
-    return NULL;
+static bool submit_scene(App *a,AppOutput *d,uint16_t id,PreparationRequest request,const void *data,size_t size){
+    request.revision=d->composition_revision;request.light_revision=d->light_revision;
+    if(!request.light_attached)request.light=d->pixels.light;
+    uint32_t operation;const char *error=preparation_submit(a,d,&request,data,size,&operation);
+    if(error){error_reply(a,id,STATUS_LOAD,"preparation_failed",error);return false;}
+    if(!a->booting)preparation_reply(a,id,operation);
+    return true;
 }
 static bool activate(App *a,const char *name,uint16_t id,const char *action,const char *output,const Json *request,int settings) {
     AppOutput *d=app_output(a,output);
@@ -297,18 +270,45 @@ static bool activate(App *a,const char *name,uint16_t id,const char *action,cons
     const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,name);
     if(!entry||!strcmp(name,STORE_CONFIG)||!strcmp(name,STORE_NETWORK)){error_reply(a,id,STATUS_STORAGE,"not_found","stored program does not exist");return false;}
     if(strcmp(action,"play")){error_reply(a,id,STATUS_EXECUTION,"invalid_action","animation profiles execute through PLAY/FRAME");return false;}
-    const char *error=install(a,d,entry,name,true,request,settings);
-    if(error){if(!a->booting)error_reply(a,id,STATUS_LOAD,"activation_failed",error);return false;}
-    reply(a,id,STATUS_OK,(int32_t)d->vm.control.count,"animation activated");return true;
+    PreparationRequest pending={.kind=PREPARE_DIRECT,.entry=*entry,.play=true};strcpy(pending.name,name);
+    (void)settings;
+    return submit_scene(a,d,id,pending,request?request->text:NULL,request?request->size:0);
 }
 static void indicator_tick(App *,AppOutput *,uint64_t);
 static const char *save_output_state(App *,const AppOutput *,bool,const char *,const LightControls *);
 static void collect_composition(Composition *s,unsigned budget){
-    if(!s||!s->playing||s->command_active||s->composing)return;
+    if(!s)return;
+    if(!s->playing||s->command_active||s->composing){
+        for(unsigned n=0;n<s->layer_count;n++){
+            VmInstance *vm=&s->layers[n].vm;control_observe(vm,vm->control.program_us);
+            control_wait(vm,s->playing&&s->composing?2:0);
+        }
+        return;
+    }
     unsigned first=s->layer_count?s->cursor%s->layer_count:0;
+    /* Rotate when this scene receives admission time. Rotating skipped scenes
+       as well can alias with output rotation and repeatedly skip the same
+       layers when only one pair fits in an epoch. */
+    if(runtime_epoch_can_collect())s->cursor++;
+    unsigned visited=0;
     for(unsigned n=0;n<s->layer_count;n++){
-        VmInstance *vm=&s->layers[(first+n)%s->layer_count].vm;
+        unsigned chosen=first;
+        if(n){
+            uint64_t best=0,now=platform_time_us();
+            for(unsigned k=1;k<=s->layer_count;k++){
+                unsigned i=(first+k)%s->layer_count;if(visited&(1u<<i))continue;
+                VmInstance *candidate=&s->layers[i].vm;Control *c=&candidate->control;
+                uint64_t since=c->dirty?c->dirty_since_us:c->displayed.captured_us;
+                uint64_t age=now>=since?now-since:0;
+                unsigned cost=candidate->render_us?candidate->render_us:1;if(cost>LIGHTVM_RENDER_SLICE_US)cost=LIGHTVM_RENDER_SLICE_US;
+                bool cached=candidate->portable&&candidate->portable->render_reusable&&c->contribution_valid&&c->contribution.frame&&!c->dirty;
+                uint64_t score=(!candidate->playing||cached)?0:(age/cost)+(c->in_step?1000000u:0u);
+                if(!best||score>best){best=score?score:1;chosen=i;}
+            }
+        }
+        visited|=1u<<chosen;VmInstance *vm=&s->layers[chosen].vm;
         if(!s->prepared||vm->control.in_step)vm_tick_collect(vm,budget);
+        else{control_observe(vm,vm->control.program_us);control_wait(vm,3);}
     }
 }
 static void collect_render_jobs(App *a,unsigned first,unsigned budget){
@@ -321,7 +321,12 @@ static void collect_render_jobs(App *a,unsigned first,unsigned budget){
             transition_update(t,platform_time_us());
             t->destination_only=d->recall_owned&&t->driver==TRANSITION_MANUAL&&t->progress==100;
             if(t->start_pending||t->command_active||!t->playing)continue;
-            for(unsigned k=t->destination_only?1:0;k<2;k++)collect_composition(t->compositions[k],budget);
+            if(t->destination_only)collect_composition(t->compositions[1],budget);
+            else{
+                unsigned slot=t->schedule_slot%2;
+                if(runtime_epoch_can_collect())t->schedule_slot++;
+                for(unsigned k=0;k<2;k++)collect_composition(t->compositions[(slot+k)%2],budget);
+            }
         }else if(d->composition)collect_composition(d->composition,budget);
         else vm_tick_collect(&d->vm,budget);
     }
@@ -331,14 +336,17 @@ static void service(void *context) {
     App *a=context;
     if(!a->hardware_changing)digital_inputs_tick(&a->digital_inputs,platform_time_us());
     bool previous=a->command_active;a->command_active=true;
-    collect_render_jobs(a,0,64);
-    for(unsigned i=0;i<a->output_count;i++)if(a->outputs[i]){
-        if(a->outputs[i]->hardware.indicators){indicator_tick(a,a->outputs[i],platform_time_us());continue;}
-        if(a->outputs[i]->transition){
-            if(!a->outputs[i]->transition->start_pending)transition_tick(a->outputs[i]->transition,64);
+    unsigned first=a->output_count?a->schedule_cursor++%a->output_count:0;
+    collect_render_jobs(a,first,64);
+    for(unsigned i=0;i<a->output_count;i++){
+        AppOutput *d=a->outputs[(first+i)%a->output_count];
+        if(!d)continue;
+        if(d->hardware.indicators){indicator_tick(a,d,platform_time_us());continue;}
+        if(d->transition){
+            if(!d->transition->start_pending)transition_tick(d->transition,64);
         }
-        else if(a->outputs[i]->composition)composition_tick(a->outputs[i]->composition,64);
-        else if(!runtime_owns(&a->outputs[i]->vm))vm_tick_budget(&a->outputs[i]->vm,64);
+        else if(d->composition)composition_tick(d->composition,64);
+        else if(!runtime_owns(&d->vm))vm_tick_budget(&d->vm,64);
     }
     vm_tick_end();
     if(a->service_io)a->service_io(a->service_context);
@@ -346,6 +354,7 @@ static void service(void *context) {
     if(!previous&&a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
 }
 void app_init(App *a, SendMessage send, void *transport) {
+    runtime_defer_begin();
     render_executor_init();
     memset(a,0,sizeof(*a)); a->connection_sequence=1; a->upload.pin=-1; a->send=send; a->transport=transport;
 #if LIGHTVM_BOOT_SEQUENCE
@@ -363,10 +372,10 @@ void app_init(App *a, SendMessage send, void *transport) {
         HardwareConfig hardware;
         char error[160];
         if (!store_read(&a->store,config,0,a->config_json,config->size)) { snprintf(a->boot_error,sizeof(a->boot_error),"configuration read failed"); empty_config(a); }
-        else if (!config_validate(a,a->config_json,config->size,&hardware,error,sizeof(error))) { snprintf(a->boot_error,sizeof(a->boot_error),"%s",error); empty_config(a); }
+        else if (!hardware_parse(a->config_json,config->size,&hardware,error,sizeof(error))) { snprintf(a->boot_error,sizeof(a->boot_error),"%s",error); empty_config(a); }
         else if (!config_apply(a,&hardware,a->config_json,config->size)) snprintf(a->boot_error,sizeof(a->boot_error),"native output initialization failed");
         else if(!a->network.recovery) {
-            for(unsigned i=0;i<a->output_count;i++)start_output(a,a->outputs[i]);
+            for(unsigned i=0;i<a->output_count;i++)a->outputs[i]->startup_pending=true;
         }
     }
     const StoreEntry *saved_network=store_find(&a->store,STORE_NETWORK_SETTINGS,STORE_NETWORK);
@@ -379,10 +388,11 @@ void app_init(App *a, SendMessage send, void *transport) {
         } else { a->network.config=candidate; a->network.saved_valid=true; }
         platform_free(data);
     }
-    a->booting=false;
+    a->booting=false;runtime_defer_end();
 }
 void app_destroy(App *a) {
     runtime_services(NULL,NULL);
+    preparation_destroy(a);
     store_upload_cancel(&a->upload);
     empty_config(a);vm_destroy(&a->fallback.vm);store_destroy(&a->store);
     input_registry_destroy(&a->inputs);
@@ -440,6 +450,7 @@ done:
 }
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
+    runtime_foreground(now);
     digital_inputs_tick(&a->digital_inputs,now);
 #if LIGHTVM_BOOT_SEQUENCE
     boot_sequence_tick(&a->boot_sequence,now);
@@ -459,9 +470,13 @@ void app_tick(App *a) {
         if(d->transition)transition_tick(d->transition,4096);else if(d->composition)composition_tick(d->composition,4096);else vm_tick(&d->vm);
     }
     vm_tick_end();
+    if(preparation_has_room(a))for(unsigned i=0;i<a->output_count;i++)if(a->outputs[i]->startup_pending){
+        a->outputs[i]->startup_pending=false;start_output(a,a->outputs[i]);break;
+    }
+    preparation_tick(a);
     for(unsigned i=0;i<a->output_count;i++){
         AppOutput *d=a->outputs[i];
-        if(d->light_save_due&&now>=d->light_save_due&&!a->command_active){
+        if(d->light_save_due&&now>=d->light_save_due&&!a->command_active&&!a->store.writer){
             d->light_save_due=0;
             const char *error=save_output_state(a,d,app_output_power(d),app_output_selected_preset(a,d),&d->pixels.light);
             snprintf(d->light_error,sizeof(d->light_error),"%s",error?error:"");
@@ -483,10 +498,11 @@ enum Status app_save_network(App *a,const NetworkConfig *config,uint32_t revisio
     if (a->upload_owner && a->upload_owner!=source) {
         snprintf(error,capacity,"another upload is in progress; try again after it finishes"); return STATUS_BUSY;
     }
-    char data[4096]; size_t count=network_json(config,true,data,sizeof(data));
+    char *data=platform_calloc(4096,1);if(!data){snprintf(error,capacity,"network serialization allocation failed");return STATUS_STORAGE;}
+    size_t count=network_json(config,true,data,4096);
     bool previous=a->command_active; a->command_active=true;
     bool ok=count && update_store(a,STORE_NETWORK_SETTINGS,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
-    a->command_active=previous; memset(data,0,sizeof(data));
+    a->command_active=previous;memset(data,0,4096);platform_free(data);
     if (!previous && a->disconnect_pending) { a->disconnect_pending=false; app_disconnect(a,a->upload_owner); }
     if (!ok) { snprintf(error,capacity,"network save failed; active settings retained"); return STATUS_STORAGE; }
     a->network.saved_valid=true; a->network_error[0]=0;
@@ -501,6 +517,8 @@ static void describe(App *a, uint16_t id) {
     literal(&w,"{\"version\":\"" LIGHTVM_VERSION "\",\"connections\":true,\"light_controls\":true,\"schema\":\"lightvm.config\",\"platform\":"); quoted(&w,info->platform);
     literal(&w,",\"controller_id\":"); quoted(&w,a->controller_id);
     literal(&w,",\"boot_id\":"); quoted(&w,a->boot_id);
+    literal(&w,",\"build_compiler\":");quoted(&w,__VERSION__);
+    literal(&w,",\"cpu_clock_hz\":");unsigned cpu=platform_cpu_hz();if(cpu)number(&w,cpu);else literal(&w,"null");
     literal(&w,",\"wifi_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"wifi_ap_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"recovery_supported\":"); literal(&w,LIGHTVM_POWER_RECOVERY?"true":"false");
@@ -515,6 +533,8 @@ static void describe(App *a, uint16_t id) {
 #endif
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
     literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
+    literal(&w,",\"preparation_memory_bytes\":");number(&w,(uint32_t)preparation_retained_bytes(a));
+    literal(&w,",\"preparation_pending\":");literal(&w,preparation_pending(a)?"true":"false");
     literal(&w,",\"board\":"); quoted(&w,info->board);
     literal(&w,",\"output_types\":[{\"type\":\"ws2812b\",\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}");
     if(platform_apa102_supported())literal(&w,",{\"type\":\"apa102\",\"required\":[\"data_pin\",\"clock_pin\",\"count\"],\"order_default\":\"BGR\",\"brightness_default\":255}");
@@ -569,7 +589,21 @@ static void describe(App *a, uint16_t id) {
     RenderStats render=render_executor_stats();
     literal(&w,",\"render_offloads\":");wide(&w,render.offloads);
     literal(&w,",\"render_worker_us\":");wide(&w,render.worker_us);
+    literal(&w,",\"render_pair_imbalance_us\":");wide(&w,render.pair_imbalance_us);
+    literal(&w,",\"render_join_wait_us\":");wide(&w,render.join_wait_us);
+    literal(&w,",\"render_max_job_us\":");wide(&w,render.max_job_us);
+
     literal(&w,",\"worker_stack_peak_bytes\":");number(&w,render.worker_stack_peak);
+    literal(&w,",\"main_stack_peak_bytes\":");unsigned main_stack=platform_main_stack_peak();if(main_stack)number(&w,main_stack);else literal(&w,"null");
+    RuntimeEpochStats epochs=runtime_epoch_stats();
+    literal(&w,",\"render_epoch_target_us\":");number(&w,LIGHTVM_RENDER_EPOCH_US);
+    literal(&w,",\"render_epochs\":");wide(&w,epochs.epochs);
+    literal(&w,",\"render_epoch_total_us\":");wide(&w,epochs.total_us);
+    literal(&w,",\"render_epoch_max_us\":");wide(&w,epochs.max_us);
+    literal(&w,",\"render_epoch_overruns\":");wide(&w,epochs.overruns);
+    literal(&w,",\"foreground_calls\":");wide(&w,epochs.foreground_calls);
+    literal(&w,",\"foreground_max_gap_us\":");wide(&w,epochs.max_foreground_gap_us);
+
     literal(&w,",\"instance_context_bytes\":"); number(&w,sizeof(VmInstance));
     literal(&w,",\"app_context_bytes\":"); number(&w,sizeof(App));
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
@@ -604,31 +638,30 @@ static const StoreEntry *find_program(const Store *store,StoreType type,const ch
     const StoreEntry *animation=store_find(store,STORE_ANIMATION,name),*transition=store_find(store,STORE_TRANSITION,name);
     return animation&&transition?NULL:animation?animation:transition;
 }
-static bool arguments(const uint8_t *p,size_t size,Arguments *args) {
-    Json j;
+static bool arguments(const Json *j,Arguments *args) {
     memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->slot,"A",2);
     static const char *const fields[]={"op","name","type","action","slot","output","expected_revision","expected_saved_revision","settings","inputs","command","delta_ms",NULL};
-    if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) || !json_string(&j,json_get(&j,0,"op"),args->op,sizeof(args->op))) return false;
-    if(json_get(&j,0,"settings")>=0&&strcmp(args->op,"program_activate"))return false;
-    if(json_get(&j,0,"inputs")>=0&&strcmp(args->op,"program_activate"))return false;
-    int type=json_get(&j,0,"type");char type_name[16];
-    if(type>=0&&(!json_string(&j,type,type_name,sizeof(type_name))||
+    if (!json_fields(j,0,fields) || !json_string(j,json_get(j,0,"op"),args->op,sizeof(args->op))) return false;
+    if(json_get(j,0,"settings")>=0&&strcmp(args->op,"program_activate"))return false;
+    if(json_get(j,0,"inputs")>=0&&strcmp(args->op,"program_activate"))return false;
+    int type=json_get(j,0,"type");char type_name[16];
+    if(type>=0&&(!json_string(j,type,type_name,sizeof(type_name))||
        ((args->type=store_type(type_name))!=STORE_ANIMATION&&args->type!=STORE_TRANSITION)))return false;
     if(type>=0&&strcmp(args->op,"program_list")&&strcmp(args->op,"program_get")&&strcmp(args->op,"program_save")&&strcmp(args->op,"program_delete"))return false;
-    int name=json_get(&j,0,"name"),action=json_get(&j,0,"action");
-    if (name>=0 && (!json_string(&j,name,args->name,sizeof(args->name)) || !object_name_valid(args->name))) return false;
-    if (action>=0 && !json_string(&j,action,args->action,sizeof(args->action))) return false;
-    int slot=json_get(&j,0,"slot");
-    if (slot>=0 && !json_string(&j,slot,args->slot,sizeof(args->slot))) return false;
-    int command=json_get(&j,0,"command"),delta=json_get(&j,0,"delta_ms");
-    if(command>=0&&!json_u32(&j,command,&args->command))return false;
-    if(delta>=0&&!json_u32(&j,delta,&args->delta_ms))return false;
+    int name=json_get(j,0,"name"),action=json_get(j,0,"action");
+    if (name>=0 && (!json_string(j,name,args->name,sizeof(args->name)) || !object_name_valid(args->name))) return false;
+    if (action>=0 && !json_string(j,action,args->action,sizeof(args->action))) return false;
+    int slot=json_get(j,0,"slot");
+    if (slot>=0 && !json_string(j,slot,args->slot,sizeof(args->slot))) return false;
+    int command=json_get(j,0,"command"),delta=json_get(j,0,"delta_ms");
+    if(command>=0&&!json_u32(j,command,&args->command))return false;
+    if(delta>=0&&!json_u32(j,delta,&args->delta_ms))return false;
     if(strcmp(args->slot,"A"))return false;
-    int output=json_get(&j,0,"output");
-    if(output>=0&&(!json_string(&j,output,args->output,sizeof(args->output))||!object_name_valid(args->output)))return false;
-    int revision=json_get(&j,0,"expected_revision"),saved=json_get(&j,0,"expected_saved_revision");
+    int output=json_get(j,0,"output");
+    if(output>=0&&(!json_string(j,output,args->output,sizeof(args->output))||!object_name_valid(args->output)))return false;
+    int revision=json_get(j,0,"expected_revision"),saved=json_get(j,0,"expected_saved_revision");
     args->has_revision=revision>=0; args->has_saved_revision=saved>=0;
-    return (!args->has_revision || json_u32(&j,revision,&args->revision)) && (!args->has_saved_revision || json_u32(&j,saved,&args->saved_revision));
+    return (!args->has_revision || json_u32(j,revision,&args->revision)) && (!args->has_saved_revision || json_u32(j,saved,&args->saved_revision));
 }
 static bool preset_references(App *a,StoreType type,const char *name) {
     uint32_t cursor=0;const StoreEntry *entry;
@@ -690,58 +723,8 @@ static bool layer_blend(const Json *j,int token,uint8_t *mode){
     for(unsigned n=0;n<DRAW_BLEND_COUNT;n++)if(json_equal(j,token,draw_blend_name((DrawBlend)n))){*mode=(uint8_t)n;return true;}
     return false;
 }
-static const char *prepare_layer(App *a,AppOutput *d,CompositionLayer *layer,const Json *j,int object,const LightControls *light){
-    static const char *const fields[]={"id","program","crc32","settings","inputs","opacity","blend",NULL};
-    if(!json_fields(j,object,fields)||
-       !json_string(j,json_get(j,object,"id"),layer->id,sizeof(layer->id))||!object_name_valid(layer->id)||
-       !json_string(j,json_get(j,object,"program"),layer->program,sizeof(layer->program))||!object_name_valid(layer->program))return "invalid composition layer";
-    uint32_t opacity=255;int alpha=json_get(j,object,"opacity");
-    if(alpha>=0&&(!json_u32(j,alpha,&opacity)||opacity>255))return "layer opacity must be 0..255";
-    layer->opacity=(uint8_t)opacity;
-    int blend=json_get(j,object,"blend");
-    if(blend>=0&&!layer_blend(j,blend,&layer->blend))return "layer blend must be over, add, screen or multiply";
-    const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,layer->program);
-    if(!entry||!strcmp(layer->program,STORE_CONFIG)||!strcmp(layer->program,STORE_NETWORK))return "layer program does not exist";
-    uint32_t crc;int fingerprint=json_get(j,object,"crc32");
-    if(fingerprint>=0&&(!json_u32(j,fingerprint,&crc)||crc!=entry->crc))return "layer program version differs from the saved preset";
-    if(d->layer_generation<d->vm.generation)d->layer_generation=d->vm.generation;
-    if(d->layer_generation==UINT32_MAX)return "layer generation exhausted";
-    vm_init(&layer->vm,&layer->target,vm_send,a);
-    layer->vm.generation=++d->layer_generation;
-    strcpy(layer->vm.output_id,d->hardware.id);strcpy(layer->vm.layer,layer->id);
-    layer->crc=entry->crc;
-    const char *error=prepare_instance(a,&layer->vm,entry,j,json_get(j,object,"settings"),json_get(j,object,"inputs"),light);
-    if(!error){layer->vm.playing=true;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame+FRAME_INTERVAL_US;}
-    return error;
-}
-static const char *prepare_composition_data(App *a,AppOutput *d,Composition **out,const void *data,uint32_t size,const char *schema,TransitionSpec *entry_transition,const LightControls *light){
-    *out=NULL;Json *j=platform_calloc(1,sizeof(*j));
-    if(!j)return "composition parser allocation failed";
-    static const char *const fields[]={"schema","layers","entry_transition",NULL};
-    const char *error="invalid composition document";
-    if(!json_parse(j,data,size)||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),schema))goto done;
-    int layers=json_get(j,0,"layers");
-    if(layers<0||j->tokens[layers].type!=JSON_ARRAY||(unsigned)j->tokens[layers].children>COMPOSITION_LAYER_LIMIT)goto done;
-    int transition=json_get(j,0,"entry_transition");
-    if(strcmp(schema,"lightvm.preset")&&transition>=0)goto done;
-    if(entry_transition){char message[160];if(!transition_spec_parse(j,transition,entry_transition,message,sizeof(message))){error="invalid preset entry transition";goto done;}}
-    if(!strcmp(schema,"lightvm.preset")){
-        if(!j->tokens[layers].children){error="preset requires at least one layer";goto done;}
-        for(int t=layers+1;t<j->tokens[layers].next;t=j->tokens[t].next)
-            if(json_get(j,t,"crc32")<0){error="preset layers require crc32 version references";goto done;}
-    }
-    Composition *candidate=composition_create(&d->pixels,(unsigned)j->tokens[layers].children);
-    if(!candidate){error="composition exceeds memory budget";goto done;}
-    *out=candidate;error=NULL;unsigned n=0;
-    for(int t=layers+1;t<j->tokens[layers].next;t=j->tokens[t].next,n++){
-        error=prepare_layer(a,d,&candidate->layers[n],j,t,light?light:&d->pixels.light);
-        if(error)break;
-        for(unsigned previous=0;previous<n;previous++)if(!strcmp(candidate->layers[previous].id,candidate->layers[n].id)){error="duplicate layer id";break;}
-        if(error)break;
-    }
-    if(!error)composition_prepare(candidate);
-done:platform_free(j);return error;
-}
+
+
 static void apply_composition(AppOutput *d,Composition *candidate){
     clear_output_composition(d);vm_output_cancel(&d->vm);d->vm.output=NULL;control_destroy(&d->vm);d->vm.playing=false;d->vm.ready=false;
     d->composition=candidate;candidate->revision=++d->composition_revision;d->active_program[0]=0;d->active_crc=0;
@@ -749,10 +732,10 @@ static void apply_composition(AppOutput *d,Composition *candidate){
 }
 /* Admit the presenter and any direct-to-composition wrapper before moving ownership. */
 static const char *prepare_presenter(AppOutput *d,Transition **out,Composition **wrapper){
-    *out=NULL;*wrapper=NULL;if(d->transition)return NULL;
+    *out=NULL;*wrapper=NULL;if(d->transition)return 0;
     Transition *t=transition_create(&d->pixels);if(!t)return "transition exceeds aggregate memory budget";
     if(!d->composition&&d->vm.ready){*wrapper=composition_create(&t->target,1);if(!*wrapper){transition_destroy(t);return "composition wrapper exceeds memory budget";}}
-    *out=t;return NULL;
+    *out=t;return 0;
 }
 static void attach_presenter(App *a,AppOutput *d,Transition *t,Composition *wrapper){
     vm_output_cancel(&d->vm);
@@ -776,13 +759,13 @@ static const char *ensure_transition(App *a,AppOutput *d){
 }
 
 static const char *apply_composition_slot(App *a,AppOutput *d,Composition *candidate,unsigned slot){
-    if(!slot&&!d->transition){apply_composition(d,candidate);return NULL;}
+    if(!slot&&!d->transition){apply_composition(d,candidate);return 0;}
     const char *error=ensure_transition(a,d);if(error)return error;
     Transition *t=d->transition;transition_invalidate(t);
-    composition_offscreen(candidate,&t->target);composition_prepare(candidate);composition_publish(candidate);
+    composition_install_prepared(candidate,&t->target);
     for(unsigned n=0;n<candidate->layer_count;n++)strcpy(candidate->layers[n].vm.slot,slot?"B":"A");
     Composition *old=t->compositions[slot];t->compositions[slot]=candidate;if(!slot)d->composition=candidate;
-    composition_destroy(old);transition_invalidate(t);candidate->revision=++d->composition_revision;d->recall_owned=false;d->power_on=true;return NULL;
+    composition_destroy(old);transition_invalidate(t);candidate->revision=++d->composition_revision;d->recall_owned=false;d->power_on=true;return 0;
 }
 static void activate_composition_slot(App *a,AppOutput *d,uint16_t id,const Json *j,unsigned slot){
     static const char *const fields[]={"op","name","output","slot","action","settings","inputs",NULL};
@@ -792,15 +775,8 @@ static void activate_composition_slot(App *a,AppOutput *d,uint16_t id,const Json
     const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,name);
     if(d->layer_generation<d->vm.generation)d->layer_generation=d->vm.generation;
     if(!entry||d->layer_generation==UINT32_MAX||d->composition_revision==UINT32_MAX){error_reply(a,id,STATUS_CONFIG,"preparation_failed","program missing or generation exhausted");return;}
-    Composition *candidate=composition_create(&d->pixels,1);
-    if(!candidate){error_reply(a,id,STATUS_LOAD,"preparation_failed","composition exceeds peak memory budget");return;}
-    CompositionLayer *layer=&candidate->layers[0];strcpy(layer->id,"main");strcpy(layer->program,name);layer->crc=entry->crc;
-    vm_init(&layer->vm,&layer->target,vm_send,a);layer->vm.generation=++d->layer_generation;
-    strcpy(layer->vm.output_id,d->hardware.id);strcpy(layer->vm.slot,slot?"B":"A");strcpy(layer->vm.layer,"main");
-    const char *error=prepare_instance(a,&layer->vm,entry,j,json_get(j,0,"settings"),json_get(j,0,"inputs"),&d->pixels.light);
-    if(!error){layer->vm.playing=true;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame+FRAME_INTERVAL_US;error=apply_composition_slot(a,d,candidate,slot);}
-    if(error){composition_destroy(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);return;}
-    reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"composition slot activated");
+    PreparationRequest pending={.kind=PREPARE_SLOT,.entry=*entry,.slot=slot,.play=true};strcpy(pending.name,name);
+    (void)submit_scene(a,d,id,pending,j->text,j->size);
 }
 static void real_number(Writer *w,double value){char text[40];snprintf(text,sizeof(text),"%.17g",value);literal(w,text);}
 static void binding_text(void *context,const char *text){literal(context,text);}
@@ -829,38 +805,8 @@ static void transition_state(Writer *w,AppOutput *d){
     literal(w,",\"program_crc32\":");number(w,t&&t->effect==TRANSITION_PROGRAM&&t->programs[0]?t->programs[0]->vm.code.crc:0);
     literal(w,",\"mask\":");quoted(w,t&&t->effect==TRANSITION_CUSTOM&&t->programs[0]?t->programs[0]->name:"");literal(w,",\"paint\":");quoted(w,t&&t->effect==TRANSITION_CUSTOM&&t->programs[1]?t->programs[1]->name:"");literal(w,"}");
 }
-static const char *prepare_transition_program(App *a,PixelBuffer *output,const Json *j,int token,uint32_t seed,bool transition_profile,TransitionProgram **out){
-    static const char *const fields[]={"program","settings","inputs",NULL};
-    TransitionProgram *program=demo_calloc(1,sizeof(*program));if(!program)return "transition program exceeds memory budget";
-    *out=program;
-    if((!transition_profile&&!json_fields(j,token,fields))||!json_string(j,json_get(j,token,"program"),program->name,sizeof(program->name))||!object_name_valid(program->name))return "transition requires program and optional settings";
-    const StoreEntry *entry=store_find(&a->store,transition_profile?STORE_TRANSITION:STORE_ANIMATION,program->name);if(!entry)return "transition program does not exist";
-    vm_init(&program->vm,output,vm_send,a);program->vm.output=NULL;
-    if(a->transition_program_generation==UINT32_MAX)return "transition program generation exhausted";
-    program->vm.generation=++a->transition_program_generation;
-    for(unsigned n=0;n<a->output_count;n++)if(&a->outputs[n]->pixels==output)strcpy(program->vm.output_id,a->outputs[n]->hardware.id);
-    const char *error=vm_bind_storage(&program->vm,&a->store,entry)?vm_load(&program->vm):"package reference limit exceeded";
-    if(!error&&program->vm.portable->profile!=(transition_profile?4u:3u))error=transition_profile?"program requires the transition profile":"custom mask and paint require animation profiles";
-    if(!error){program->vm.portable->deterministic_random=true;program->vm.portable->default_seed=seed;error=control_settings(&program->vm,j,json_get(j,token,"settings"));}
-    if(!error)inputs_attach(program->vm.portable,&a->inputs,&output->light);
-    if(!error)error=inputs_bind(program->vm.portable,j,json_get(j,token,"inputs"),0);
-    if(!error){program->vm.ready=true;error=control_prepare(&program->vm);}
-    if(!error&&!transition_program_capture(program))error="transition baseline exceeds memory budget";
-    return error;
-}
-static const char *prepare_recall_transition(App *a,PixelBuffer *output,const void *data,const TransitionSpec *spec,TransitionProgram **out){
-    *out=NULL;if(!spec->program[0])return NULL;
-    const StoreEntry *entry=store_find(&a->store,STORE_TRANSITION,spec->program);
-    if(!entry||entry->crc!=spec->crc)return "transition program missing or version differs from saved reference";
-    Json *j=platform_calloc(1,sizeof(*j));
-    const char *error="transition parser allocation failed";
-    if(j){
-        error=json_parse(j,(const uint8_t *)data+spec->offset,spec->size)?
-            prepare_transition_program(a,output,j,0,spec->seed,true,out):"invalid transition document";
-        platform_free(j);
-    }
-    return error;
-}
+
+
 static void bind_composition_slot(Composition *s,unsigned slot){
     if(s)for(unsigned n=0;n<s->layer_count;n++)strcpy(s->layers[n].vm.slot,slot?"B":"A");
 }
@@ -872,9 +818,9 @@ static void swap_compositions(AppOutput *d){
 }
 #define OUTPUT_STATE_NAME 9u
 #define OUTPUT_STATE_BYTES (OUTPUT_STATE_NAME + OBJECT_NAME_LIMIT + 1u)
-static const char *save_output_state(App *a,const AppOutput *d,bool on,const char *name,const LightControls *light){
-    if(a->booting||!store_info(&a->store).writable)return NULL;
-    uint8_t state[OUTPUT_STATE_BYTES]={0},previous[OUTPUT_STATE_BYTES];state[0]=on;
+static size_t output_state_document(App *a,const AppOutput *d,bool on,const char *name,const LightControls *light,uint8_t *state){
+    if(a->booting||!store_info(&a->store).writable)return 0;
+    uint8_t previous[OUTPUT_STATE_BYTES];memset(state,0,OUTPUT_STATE_BYTES);state[0]=on;
     const StoreEntry *entry=store_find(&a->store,STORE_OUTPUT_STATE,d->hardware.id);
     bool known=entry&&entry->size==sizeof(previous)&&store_read(&a->store,entry,0,previous,sizeof(previous));
     uint32_t brightness;memcpy(&brightness,&light->brightness,sizeof(brightness));
@@ -884,18 +830,25 @@ static const char *save_output_state(App *a,const AppOutput *d,bool on,const cha
         memcpy(state+OUTPUT_STATE_NAME,previous+OUTPUT_STATE_NAME,OBJECT_NAME_LIMIT+1);
         if(on)state[0]=previous[0];
     }else state[0]=0;
-    if(known&&!memcmp(state,previous,sizeof(state)))return NULL;
-    bool ok=store_put(&a->store,STORE_OUTPUT_STATE,d->hardware.id,state,sizeof(state));resume_clock(a);
+    if(known&&!memcmp(state,previous,OUTPUT_STATE_BYTES))return 0;
+    return OUTPUT_STATE_BYTES;
+}
+static const char *save_output_state(App *a,const AppOutput *d,bool on,const char *name,const LightControls *light){
+    uint8_t state[OUTPUT_STATE_BYTES];size_t size=output_state_document(a,d,on,name,light,state);if(!size)return NULL;
+    bool ok=store_put(&a->store,STORE_OUTPUT_STATE,d->hardware.id,state,(uint32_t)size);resume_clock(a);
     return ok?NULL:"could not persist output light state";
 }
 /* Everything that can fail is admitted before changing either live slot/driver.
  * No intermediate frame is required: the next fade starts at the old destination. */
-static const char *begin_recall(App *a,AppOutput *d,Composition *candidate,TransitionProgram *program,double duration,bool on,const char *name,uint32_t crc,const LightControls *light){
+static const char *begin_recall(App *a,AppOutput *d,Composition *candidate,TransitionProgram *program,double duration,bool on,const char *name,uint32_t crc,const LightControls *light,PreparedScene *prepared){
     if(d->composition_revision==UINT32_MAX||a->transition_sequence==UINT32_MAX)return "recall revision or assignment counter exhausted";
     bool was_on=app_output_power(d),owned=d->recall_owned;
     Transition *presenter=NULL;Composition *wrapper=NULL;
-    const char *error=prepare_presenter(d,&presenter,&wrapper);if(error)return error;
-    error=save_output_state(a,d,on,name,light?light:&d->pixels.light);
+    const char *error=NULL;
+    if(prepared){presenter=prepared->presenter;wrapper=prepared->wrapper;prepared->presenter=NULL;prepared->wrapper=NULL;}
+    else error=prepare_presenter(d,&presenter,&wrapper);
+    if(error)return error;
+    if(!prepared||!prepared->persisted)error=save_output_state(a,d,on,name,light?light:&d->pixels.light);
     if(error){composition_destroy(wrapper);transition_destroy(presenter);return error;}
     if(light){d->pixels.light=*light;d->light_revision++;}
     d->light_save_due=0;d->light_error[0]=0;
@@ -911,7 +864,7 @@ static const char *begin_recall(App *a,AppOutput *d,Composition *candidate,Trans
         t->progress=100;swap_compositions(d);
     }
     Composition *old=t->compositions[1];t->compositions[1]=NULL;composition_destroy(old);
-    if(candidate){composition_offscreen(candidate,&t->target);composition_prepare(candidate);composition_publish(candidate);bind_composition_slot(candidate,1);}
+    if(candidate){composition_install_prepared(candidate,&t->target);bind_composition_slot(candidate,1);}
     t->compositions[1]=candidate;
     for(unsigned n=0;n<2;n++){transition_program_destroy(t->programs[n]);t->programs[n]=NULL;}
     t->programs[0]=program;t->effect=program?TRANSITION_PROGRAM:TRANSITION_CROSSFADE;t->seed=program?program->vm.portable->default_seed:0;
@@ -922,6 +875,84 @@ static const char *begin_recall(App *a,AppOutput *d,Composition *candidate,Trans
     d->recall_owned=true;d->power_on=on;
     snprintf(d->selected_preset,sizeof(d->selected_preset),"%s",name?name:"");d->selected_preset_crc=crc;
     ++d->composition_revision;return NULL;
+}
+const char *app_preparation_admit(App *a,AppOutput *d,PreparedScene *s){
+    if(d->composition_revision!=s->request.revision)return "scene changed during preparation";
+    if(s->request.kind==PREPARE_RECALL){
+        if(d->composition_revision==UINT32_MAX||a->transition_sequence==UINT32_MAX)return "recall revision or assignment counter exhausted";
+        if(!s->presenter)return prepare_presenter(d,&s->presenter,&s->wrapper);
+    }
+    return NULL;
+}
+int app_preparation_persist(App *a,AppOutput *d,PreparedScene *s,StoreWrite *write,unsigned *index,uint8_t *scratch,const char **error){
+    PreparationRequest *r=&s->request;
+    if(write->store){int status=store_write_step(write);if(status<0)*error="scene persistence failed";if(status>0){(*index)++;s->persisted=true;}return status;}
+    if(*index){s->persisted=true;return 1;}
+    StoreType type;const char *name;const void *data;size_t size;
+    if(r->kind==PREPARE_PRESET_SAVE){
+        if(a->store.generation!=r->catalog_revision){*error="preset catalogue changed during preparation";return -1;}
+        type=STORE_PRESET;name=r->name;data=s->document;size=s->document_size;
+    }else if(r->kind==PREPARE_RECALL&&!r->boot){
+        type=STORE_OUTPUT_STATE;name=d->hardware.id;data=scratch;size=output_state_document(a,d,r->on,r->name,&r->light,scratch);
+        if(!size){s->persisted=true;return 1;}
+    }else{s->persisted=true;return 1;}
+    if(!store_write_begin(&a->store,write,type,name,data,(uint32_t)size)){*error="scene storage unavailable, busy or full";return -1;}
+    return 0;
+}
+const char *app_preparation_commit(App *a,AppOutput *d,PreparedScene *s){
+    PreparationRequest *r=&s->request;
+    if(d->composition_revision!=r->revision)return "scene changed during preparation";
+    if(r->kind==PREPARE_PRESET_SAVE){
+        if(!s->persisted)return "preset persistence incomplete";
+        bool ok=s->persisted;resume_clock(a);
+        return ok?NULL:"preset storage unavailable, full or write failed";
+    }
+    const LightControls *light=r->light_attached&&d->light_revision==r->light_revision?&r->light:NULL;
+    if(s->direct)inputs_attach(s->direct->portable,&a->inputs,&d->pixels.light);
+    if(s->composition)for(unsigned n=0;n<s->composition->layer_count;n++){
+        VmInstance *vm=&s->composition->layers[n].vm;inputs_attach(vm->portable,&a->inputs,&d->pixels.light);vm->send=vm_send;vm->transport=a;
+    }
+    if(s->transition){inputs_attach(s->transition->vm.portable,&a->inputs,&d->pixels.light);s->transition->vm.send=vm_send;s->transition->vm.transport=a;}
+    if(s->paint){inputs_attach(s->paint->vm.portable,&a->inputs,&d->pixels.light);s->paint->vm.send=vm_send;s->paint->vm.transport=a;}
+    if(r->kind==PREPARE_TRANSITION){
+        const char *error=ensure_transition(a,d);if(error)return error;
+        Transition *t=d->transition;transition_invalidate(t);
+        for(unsigned n=0;n<2;n++)transition_program_destroy(t->programs[n]);
+        t->programs[0]=s->transition;t->programs[1]=s->paint;s->transition=s->paint=NULL;
+        t->effect=r->effect;t->seed=r->seed;d->recall_owned=false;++d->composition_revision;return NULL;
+    }
+    if(r->kind==PREPARE_RECALL){
+        bool booting=a->booting;a->booting=r->boot;
+        const char *error=begin_recall(a,d,s->composition,s->transition,s->transition_spec.duration_ms,r->on,r->name,r->entry.crc,light,s);
+        a->booting=booting;
+        if(error)return error;
+        s->composition=NULL;s->transition=NULL;return NULL;
+    }
+    if(r->kind==PREPARE_LAYER||(r->kind==PREPARE_RESET&&r->layer[0])){
+        Composition *composition=output_composition(d,r->slot);CompositionLayer *layer=composition_layer(composition,r->layer);
+        if(!layer||layer->vm.generation!=r->generation)return "layer changed during preparation";
+        transition_invalidate(d->transition);composition_invalidate(composition);control_destroy(&layer->vm);
+        layer->vm=*s->direct;demo_free(s->direct);s->direct=NULL;
+        layer->vm.target=&layer->target;layer->vm.send=vm_send;layer->vm.transport=a;
+        strcpy(layer->vm.layer,layer->id);strcpy(layer->vm.slot,r->slot?"B":"A");vm_rebind(&layer->vm);
+        layer->vm.playing=r->play;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame;
+        strcpy(layer->program,r->name);layer->crc=r->entry.crc;composition_modified(composition);d->recall_owned=false;
+        if(r->kind==PREPARE_LAYER)composition->revision=++d->composition_revision;
+        return NULL;
+    }
+    if(r->kind==PREPARE_RESET&&d->vm.generation!=r->generation)return "program changed during preparation";
+    if(r->kind==PREPARE_DIRECT||r->kind==PREPARE_RESET){
+        bool uploading=d->vm.uploading;clear_output_composition(d);control_destroy(&d->vm);d->vm=*s->direct;d->vm.uploading=uploading;demo_free(s->direct);s->direct=NULL;
+        vm_rebind(&d->vm);d->vm.send=vm_send;d->vm.transport=a;d->vm.playing=r->play;
+        d->vm.last_frame=platform_time_us();d->vm.next_frame=d->vm.last_frame;
+        d->vm.frame_ready=d->vm.control.initialized;
+        if(r->play)d->power_on=true;
+        strcpy(d->active_program,r->name);d->active_crc=r->name[0]?r->entry.crc:0;
+        return NULL;
+    }
+    const char *error=apply_composition_slot(a,d,s->composition,r->slot);
+    if(!error)s->composition=NULL;
+    return error;
 }
 static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
     if(strncmp(op,"transition_",11))return false;
@@ -967,12 +998,11 @@ static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,cons
         if(!found)error="unknown transition effect";
         if(!named&&json_get(j,0,"settings")>=0)error="settings require a named transition program";
         int token=json_get(j,0,"seed");if(token>=0&&!json_u32(j,token,&seed))error="seed must be an unsigned integer";
-        if(!error&&named)error=prepare_transition_program(a,&d->pixels,j,0,seed,true,&programs[0]);
-        else if(!error&&effect==TRANSITION_CUSTOM){
-            for(unsigned n=0;n<2&&!error;n++){token=json_get(j,0,n?"paint":"mask");if(token>=0)error=prepare_transition_program(a,&d->pixels,j,token,seed,false,&programs[n]);}
-        }else if(json_get(j,0,"mask")>=0||json_get(j,0,"paint")>=0)error="mask and paint require the custom effect";
+        if(effect!=TRANSITION_CUSTOM&&(json_get(j,0,"mask")>=0||json_get(j,0,"paint")>=0))error="mask and paint require the custom effect";
+        if(!error){PreparationRequest pending={.kind=PREPARE_TRANSITION,.effect=effect,.seed=seed};(void)submit_scene(a,d,id,pending,j->text,j->size);return true;}
     }
     if(!error&&(swap||set||run||assign||hold||bind)&&a->transition_sequence==UINT32_MAX)error="driver assignment counter exhausted";
+    if(!error)preparation_cancel_output(a,d->hardware.id);
     if(!error)error=ensure_transition(a,d);
     if(!error){Transition *t=d->transition;
         if(swap||set||run||assign||hold||bind)t->assignment=a->transition_sequence;
@@ -994,36 +1024,8 @@ static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,cons
 }
 /* One saved preset invocation supplies selection, power and startup transitions.
  * OFF needs only that recipe's transition, without allocating its animation layers. */
-static const char *prepare_preset_recall(App *a,AppOutput *d,const char *name,bool on,Composition **candidate,TransitionProgram **program,double *duration,uint32_t *crc,const LightControls *light){
-    if(!on&&!name[0])return NULL;
-    const StoreEntry *entry=store_find(&a->store,STORE_PRESET,name);
-    if(!entry)return "stored preset does not exist";
-    uint32_t size=entry->size;*crc=entry->crc;
-    uint8_t *data=platform_calloc(1,size);TransitionSpec spec={0};
-    const char *error=!data||!store_read(&a->store,entry,0,data,size)?"preset read failed":NULL;
-    if(!error&&on){
-        error=prepare_composition_data(a,d,candidate,data,size,"lightvm.preset",&spec,light);
-        if(!error){strcpy((*candidate)->preset,name);(*candidate)->preset_crc=*crc;}
-    }else if(!error){
-        Json *j=platform_calloc(1,sizeof(*j));char message[160];
-        static const char *const fields[]={"schema","layers","entry_transition",NULL};
-        if(!j)error="preset parser allocation failed";
-        else if(!json_parse(j,data,size)||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),"lightvm.preset")||
-                !transition_spec_parse(j,json_get(j,0,"entry_transition"),&spec,message,sizeof(message)))error="invalid preset transition";
-        platform_free(j);
-    }
-    if(!error)error=prepare_recall_transition(a,&d->pixels,data,&spec,program);
-    *duration=spec.duration_ms;platform_free(data);return error;
-}
-static const char *validate_startup(App *a,const HardwareOutput *output){
-    if(output->startup_mode==STARTUP_RESTORE_LAST&&!store_info(&a->store).writable)return "restore_last requires writable storage";
-    if(output->startup_mode!=STARTUP_PRESET)return NULL;
-    AppOutput *d=platform_calloc(1,sizeof(*d));if(!d)return "startup allocation failed";
-    d->hardware=*output;d->pixels.count=output->pixels.count;d->pixels.light=(LightControls){.color=0xffffff,.brightness=1};
-    Composition *candidate=NULL;TransitionProgram *program=NULL;double duration=0;uint32_t crc=0;
-    const char *error=prepare_preset_recall(a,d,output->startup_preset,true,&candidate,&program,&duration,&crc,NULL);
-    composition_destroy(candidate);transition_program_destroy(program);platform_free(d);return error;
-}
+
+
 static void start_output(App *a,AppOutput *d){
     if(d->hardware.startup_mode==STARTUP_OFF)return;
     char name[OBJECT_NAME_LIMIT+1]="";bool on=true;const char *error=NULL;
@@ -1040,34 +1042,43 @@ static void start_output(App *a,AppOutput *d){
             on=state[0]!=0;memcpy(name,state+OUTPUT_STATE_NAME,sizeof(name));if((on||name[0])&&!object_name_valid(name))error="invalid saved preset name";
         }
     }
-    Composition *candidate=NULL;TransitionProgram *program=NULL;double duration=0;uint32_t crc=0;
     if(!error&&on){
-        error=prepare_preset_recall(a,d,name,true,&candidate,&program,&duration,&crc,NULL);
-        if(!error)error=begin_recall(a,d,candidate,program,duration,true,name,candidate->preset_crc,NULL);
+        const StoreEntry *entry=store_find(&a->store,STORE_PRESET,name);
+        if(!entry)error="stored preset does not exist";
+        else{
+            PreparationRequest pending={.kind=PREPARE_RECALL,.play=true,.on=true,.boot=true,.entry=*entry,.light=d->pixels.light,.revision=d->composition_revision,.light_revision=d->light_revision};strcpy(pending.name,name);uint32_t operation;
+            error=preparation_submit(a,d,&pending,NULL,0,&operation);
+        }
     }else if(!error){
         const StoreEntry *entry=store_find(&a->store,STORE_PRESET,name);
         if(name[0]&&!entry)error="stored preset does not exist";
         else{d->recall_owned=true;d->power_on=false;strcpy(d->selected_preset,name);d->selected_preset_crc=entry?entry->crc:0;}
     }
-    if(error){composition_destroy(candidate);transition_program_destroy(program);startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,error);}
+    if(error)startup_error(a->boot_error,sizeof(a->boot_error),&d->hardware,error);
 }
-static bool recall_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
-    bool power=!strcmp(op,"output_power"),recall=!strcmp(op,"preset_recall");
-    if(!power&&!recall)return false;
-    static const char *const fields[]={"op","output","name","action","expected_revision",NULL};
-    uint32_t revision;bool on=true;char name[OBJECT_NAME_LIMIT+1]="";
-    if(!json_fields(j,0,fields)||!d->pixels.count||
-       !json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=d->composition_revision){
+static bool submit_recall(App *a,AppOutput *d,uint16_t id,const char *name,bool on,const LightControls *light){
+    PreparationRequest pending={.kind=PREPARE_RECALL,.play=true,.on=on,.light_attached=light!=NULL};
+    if(light)pending.light=*light;
+    strcpy(pending.name,name);
+    const StoreEntry *entry=store_find(&a->store,STORE_PRESET,name);
+    if(entry)pending.entry=*entry;
+    else if(on||name[0]){error_reply(a,id,STATUS_LOAD,"recall_failed","stored preset does not exist");return false;}
+    return submit_scene(a,d,id,pending,NULL,0);
+}
+static bool recall_command(App *a,AppOutput *d,uint16_t id,const Command *command){
+    bool power=command->kind==COMMAND_POWER;
+    uint32_t revision=command->revision;bool on=command->on;char name[OBJECT_NAME_LIMIT+1]="";
+    if(!d->pixels.count||revision!=d->composition_revision){
         error_reply(a,id,STATUS_CONFIG,"stale_revision","valid output and current composition revision required");return true;
     }
     if(power){
-        if(!json_equal(j,json_get(j,0,"action"),"on")&&!json_equal(j,json_get(j,0,"action"),"off")){
-            error_reply(a,id,STATUS_CONFIG,"invalid_power","power action must be on or off");return true;
-        }
-        on=json_equal(j,json_get(j,0,"action"),"on");
+        if(!on)preparation_cancel_output(a,d->hardware.id);
         const char *selected=app_output_selected_preset(a,d);
-        if(on==app_output_power(d)){
-            const char *error=(!on||selected)?save_output_state(a,d,on,selected,&d->pixels.light):NULL;
+        if(on==app_output_power(d)&&(!on||!(command->fields&COMMAND_PRESET)||(selected&&!strcmp(selected,command->preset)))){
+            preparation_cancel_output(a,d->hardware.id);
+            const char *error=NULL;
+            if(a->store.writer)d->light_save_due=platform_time_us()+750000;
+            else if(!on||selected)error=save_output_state(a,d,on,selected,&d->pixels.light);
             if(error)error_reply(a,id,STATUS_STORAGE,"state_save_failed",error);
             else reply(a,id,STATUS_OK,(int32_t)revision,"power target unchanged");
             return true;
@@ -1075,28 +1086,23 @@ static bool recall_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const ch
         if(!selected&&d->transition&&d->transition->progress>0)selected=composition_preset(a,d->transition->compositions[1]);
         if(selected)snprintf(name,sizeof(name),"%s",selected);
         if(on){
-            int token=json_get(j,0,"name");
-            if(token>=0){if(!json_string(j,token,name,sizeof(name))||!object_name_valid(name)){error_reply(a,id,STATUS_CONFIG,"invalid_name","invalid power-on preset name");return true;}}
+            if(command->fields&COMMAND_PRESET)strcpy(name,command->preset);
             else if(!name[0])snprintf(name,sizeof(name),"%s",d->hardware.ha_default_preset);
         }
     }else{
-        if(json_get(j,0,"action")>=0||!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)){
-            error_reply(a,id,STATUS_CONFIG,"invalid_name","recall requires a stored preset name");return true;
-        }
+        strcpy(name,command->preset);
         const char *selected=app_output_selected_preset(a,d);
         if(app_output_power(d)&&selected&&!strcmp(selected,name)){
-            const char *error=save_output_state(a,d,true,name,&d->pixels.light);
+            preparation_cancel_output(a,d->hardware.id);
+            const char *error=NULL;
+            if(a->store.writer)d->light_save_due=platform_time_us()+750000;
+            else error=save_output_state(a,d,true,name,&d->pixels.light);
             if(error)error_reply(a,id,STATUS_STORAGE,"state_save_failed",error);
             else reply(a,id,STATUS_OK,(int32_t)revision,"preset target unchanged");
             return true;
         }
     }
-    Composition *candidate=NULL;TransitionProgram *program=NULL;
-    const char *error=NULL;uint32_t crc=0;double duration=0;
-    error=prepare_preset_recall(a,d,name,on,&candidate,&program,&duration,&crc,NULL);
-    if(!error)error=begin_recall(a,d,candidate,program,duration,on,name,crc,NULL);
-    if(error){composition_destroy(candidate);transition_program_destroy(program);error_reply(a,id,STATUS_LOAD,"recall_failed",error);}
-    else reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"recall started");
+    (void)submit_recall(a,d,id,name,on,NULL);
     return true;
 }
 static void refresh_light_frame(AppOutput *d){
@@ -1111,50 +1117,30 @@ static void refresh_light_frame(AppOutput *d){
     }
     snprintf(d->light_error,sizeof(d->light_error),"%s",pixels_show(&d->pixels)?"":"native light output failed");
 }
-static bool light_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
-    bool get=!strcmp(op,"output_light_get"),set=!strcmp(op,"output_light_set");
-    if(!get&&!set)return false;
-    static const char *const read_fields[]={"op","output",NULL};
-    static const char *const fields[]={"op","output","expected_revision","expected_composition_revision","brightness","color","power","preset",NULL};
-    if(!d->pixels.count||d->hardware.indicators||!json_fields(j,0,get?read_fields:fields)){
-        error_reply(a,id,STATUS_CONFIG,"invalid_light","light controls require an animation output and valid fields");return true;
+static bool light_command_execute(App *a,AppOutput *d,uint16_t id,const Command *command){
+    if(!d->pixels.count||d->hardware.indicators){
+        error_reply(a,id,STATUS_CONFIG,"invalid_light","light controls require an animation output");return true;
     }
-    if(set){
-        uint32_t revision;LightControls next=d->pixels.light;
-        if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=d->light_revision||revision==UINT32_MAX){
+    if(command->kind==COMMAND_LIGHT_SET){
+        if(command->revision!=d->light_revision||command->revision==UINT32_MAX){
             error_reply(a,id,STATUS_CONFIG,"stale_revision","expected light revision must match");return true;
         }
-        int brightness=json_get(j,0,"brightness"),color=json_get(j,0,"color"),power=json_get(j,0,"power"),preset=json_get(j,0,"preset");
-        double level;bool on=app_output_power(d);
-        char name[OBJECT_NAME_LIMIT+1]="";
+        LightControls next=d->pixels.light;bool on=app_output_power(d);
+        if(command->fields&COMMAND_BRIGHTNESS)next.brightness=command->brightness;
+        if(command->fields&COMMAND_COLOR)next.color=command->color;
+        if(command->fields&COMMAND_POWER_VALUE)on=command->on;
         const char *selected=app_output_selected_preset(a,d);
-        if(selected)snprintf(name,sizeof(name),"%s",selected);
-        const char *error=NULL;
-        if(brightness<0&&color<0&&power<0&&preset<0)error="at least one light property is required";
-        if(brightness>=0){
-            if(!json_f64(j,brightness,&level)||level<0||level>1)error="brightness must be in 0..1";
-            else next.brightness=(float)level;
+        char name[OBJECT_NAME_LIMIT+1]="";
+        if(selected)strcpy(name,selected);
+        if(command->fields&COMMAND_PRESET){strcpy(name,command->preset);if(!(command->fields&COMMAND_POWER_VALUE))on=true;}
+        bool scene=(command->fields&(COMMAND_POWER_VALUE|COMMAND_PRESET))!=0;
+        if(scene&&command->composition_revision!=d->composition_revision){
+            error_reply(a,id,STATUS_CONFIG,"invalid_light","expected composition revision must match");return true;
         }
-        if(color>=0&&(!json_u32(j,color,&next.color)||next.color>0xffffff))error="color must be RGB8";
-        if(power>=0&&!json_bool(j,power,&on))error="power must be boolean";
-        if(preset>=0){
-            if(!json_string(j,preset,name,sizeof(name))||!object_name_valid(name))error="preset requires a valid name";
-            if(power<0)on=true;
-        }
-        if(power>=0||preset>=0){
-            uint32_t composition;
-            if(!json_u32(j,json_get(j,0,"expected_composition_revision"),&composition)||composition!=d->composition_revision)
-                error="expected composition revision must match";
-        }
-        bool recall=(power>=0||preset>=0)&&(on!=app_output_power(d)||(preset>=0&&(!selected||strcmp(selected,name))));
-        if(recall&&on&&!name[0])snprintf(name,sizeof(name),"%s",d->hardware.ha_default_preset);
-        Composition *candidate=NULL;TransitionProgram *program=NULL;double duration=0;uint32_t crc=0;
-        if(!error&&recall)error=prepare_preset_recall(a,d,name,on,&candidate,&program,&duration,&crc,&next);
-        if(!error&&recall)error=begin_recall(a,d,candidate,program,duration,on,name,crc,&next);
-        if(error){
-            composition_destroy(candidate);transition_program_destroy(program);
-            error_reply(a,id,STATUS_CONFIG,"invalid_light",error);return true;
-        }
+        bool recall=scene&&(on!=app_output_power(d)||((command->fields&COMMAND_PRESET)&&(!selected||strcmp(selected,name))));
+        if(recall&&on&&!name[0])strcpy(name,d->hardware.ha_default_preset);
+        if(scene&&(!on||!recall))preparation_cancel_output(a,d->hardware.id);
+        if(recall){(void)submit_recall(a,d,id,name,on,&next);return true;}
         if(!recall){
             bool dimmer_changed=next.brightness!=d->pixels.light.brightness;
             d->pixels.light=next;++d->light_revision;
@@ -1164,6 +1150,17 @@ static bool light_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const cha
     }
     char state[384];size_t size=app_output_light_json(a,d,state,sizeof(state),false);
     Writer w={.app=a,.id=id};bytes(&w,state,size);flush(&w);reply(a,id,STATUS_OK,0,"output light state");return true;
+}
+static bool indicator_command(App *,AppOutput *,uint16_t,const Command *);
+static bool key_feedback_command(App *,uint16_t,const Command *);
+static void execute_command(App *a,uint16_t id,const Command *command){
+    if(command->kind==COMMAND_KEY_GET||command->kind==COMMAND_KEY_SET){key_feedback_command(a,id,command);return;}
+    AppOutput *d=app_output(a,command->output);
+    if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_output","output is not configured");return;}
+    if(command->kind>=COMMAND_INDICATOR_GET){indicator_command(a,d,id,command);return;}
+    if(d->hardware.indicators){error_reply(a,id,STATUS_CONFIG,"indicator_owned","indicator pixels are controlled through indicator_set");return;}
+    if(command->kind==COMMAND_RECALL||command->kind==COMMAND_POWER)recall_command(a,d,id,command);
+    else light_command_execute(a,d,id,command);
 }
 static bool preset_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
     if(strncmp(op,"preset_",7))return false;
@@ -1200,29 +1197,14 @@ static bool preset_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const ch
     if(!saving&&strcmp(op,"preset_activate")){error_reply(a,id,STATUS_PROTOCOL,"unknown_operation","unknown preset operation");return true;}
     if(!d->pixels.count||(!saving&&d->composition_revision==UINT32_MAX)){error_reply(a,id,STATUS_CONFIG,"invalid_output","configure an output before preparing a preset");return true;}
     if(saving&&(!a->staged||a->object_kind!=5||a->upload_owner!=a->source||strcmp(a->object_name,name))){error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage this named preset first");return true;}
-    /* Read saved documents outside staging so another session's candidate is untouched. */
-    uint8_t *data=NULL;const void *document=a->staging;uint32_t size=a->expected;
     if(!saving){
         if(!entry){error_reply(a,id,STATUS_STORAGE,"not_found","stored preset does not exist");return true;}
-        size=entry->size;data=platform_calloc(1,size);document=data;
-        if(!data||!store_read(&a->store,entry,0,data,size)){platform_free(data);error_reply(a,id,STATUS_STORAGE,"read_failed","preset read failed");return true;}
+        PreparationRequest pending={.kind=PREPARE_PRESET,.slot=request_slot(j),.play=true,.entry=*entry};strcpy(pending.name,name);
+        (void)submit_scene(a,d,id,pending,NULL,0);return true;
     }
-    TransitionSpec entry_transition;TransitionProgram *program=NULL;
-    Composition *candidate=NULL;const char *error=prepare_composition_data(a,d,&candidate,document,size,"lightvm.preset",&entry_transition,NULL);
-    if(!error&&saving)error=prepare_recall_transition(a,&d->pixels,document,&entry_transition,&program);
-    transition_program_destroy(program);
-    if(error){composition_destroy(candidate);platform_free(data);error_reply(a,id,STATUS_LOAD,"invalid_preset",error);return true;}
-    if(saving){
-        composition_destroy(candidate);bool ok=store_put(&a->store,STORE_PRESET,name,document,size);resume_clock(a);
-        if(ok){a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)a->store.generation,"preset saved; playback unchanged");}
-        else error_reply(a,id,STATUS_STORAGE,"save_failed","preset storage unavailable, full or write failed");
-    }else{
-        strcpy(candidate->preset,name);candidate->preset_crc=entry->crc;
-        error=apply_composition_slot(a,d,candidate,request_slot(j));
-        if(error){composition_destroy(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);}
-        else reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"preset activated");
-    }
-    platform_free(data);return true;
+    PreparationRequest pending={.kind=PREPARE_PRESET_SAVE,.catalog_revision=revision};strcpy(pending.name,name);
+    if(submit_scene(a,d,id,pending,a->staging,a->expected)){a->staged=false;a->upload_owner=0;}
+    return true;
 }
 static bool composition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
     if(strncmp(op,"composition_",12))return false;
@@ -1243,11 +1225,9 @@ static bool composition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,con
     if(!json_u32(j,json_get(j,0,"expected_revision"),&revision)||revision!=d->composition_revision||revision==UINT32_MAX){error_reply(a,id,STATUS_CONFIG,"stale_revision","expected composition revision must match");return true;}
     if(!strcmp(op,"composition_apply")){
         if(!a->staged||a->object_kind!=4||a->upload_owner!=a->source){error_reply(a,id,STATUS_CONFIG,"no_candidate","upload a composition document first");return true;}
-        Composition *candidate=NULL;const char *error=prepare_composition_data(a,d,&candidate,a->staging,a->expected,"lightvm.composition",NULL,NULL);
-        if(error){composition_destroy(candidate);error_reply(a,id,STATUS_LOAD,"composition_preparation_failed",error);return true;}
-        error=apply_composition_slot(a,d,candidate,slot);
-        if(error){composition_destroy(candidate);error_reply(a,id,STATUS_LOAD,"composition_preparation_failed",error);return true;}
-        a->staged=false;a->upload_owner=0;reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"composition applied in RAM");return true;
+        PreparationRequest pending={.kind=PREPARE_COMPOSITION,.slot=slot,.play=true};
+        if(submit_scene(a,d,id,pending,a->staging,a->expected)){a->staged=false;a->upload_owner=0;}
+        return true;
     }
     if(!strcmp(op,"composition_clear")){
         if(d->transition){transition_invalidate(d->transition);d->transition->compositions[slot]=NULL;if(!slot)d->composition=NULL;composition_destroy(s);}
@@ -1284,16 +1264,9 @@ static bool composition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,con
         if(!json_u32(j,json_get(j,0,"expected_generation"),&generation)||generation!=layer->vm.generation){error_reply(a,id,STATUS_CONFIG,"stale_generation","expected layer generation must match");return true;}
         if(!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)){error_reply(a,id,STATUS_CONFIG,"invalid_name","program name required");return true;}
         const StoreEntry *entry=store_find(&a->store,STORE_ANIMATION,name);
-        CompositionLayer *candidate=demo_calloc(1,sizeof(*candidate));
-        if(!entry||!candidate||d->layer_generation==UINT32_MAX){demo_free(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed","program missing or peak budget exceeded");return true;}
-        candidate->target.count=s->count;vm_init(&candidate->vm,&candidate->target,vm_send,a);candidate->vm.generation=++d->layer_generation;
-        strcpy(candidate->vm.output_id,d->hardware.id);strcpy(candidate->vm.layer,layer->id);strcpy(candidate->vm.slot,slot?"B":"A");
-        const char *error=prepare_instance(a,&candidate->vm,entry,j,json_get(j,0,"settings"),json_get(j,0,"inputs"),&d->pixels.light);
-        if(error){control_destroy(&candidate->vm);demo_free(candidate);error_reply(a,id,STATUS_LOAD,"preparation_failed",error);return true;}
-        transition_invalidate(d->transition);composition_invalidate(s);control_destroy(&layer->vm);layer->vm=candidate->vm;layer->vm.target=&layer->target;vm_rebind(&layer->vm);
-        layer->vm.playing=true;layer->vm.last_frame=platform_time_us();layer->vm.next_frame=layer->vm.last_frame;
-        strcpy(layer->program,name);layer->crc=entry->crc;demo_free(candidate);composition_modified(s);s->revision=++d->composition_revision;
-        reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"layer replaced; other layers retained");return true;
+        if(!entry){error_reply(a,id,STATUS_LOAD,"preparation_failed","program does not exist");return true;}
+        PreparationRequest pending={.kind=PREPARE_LAYER,.entry=*entry,.slot=slot,.play=true,.generation=generation};strcpy(pending.layer,layer->id);strcpy(pending.name,name);
+        (void)submit_scene(a,d,id,pending,j->text,j->size);return true;
     }
     error_reply(a,id,STATUS_PROTOCOL,"unknown_operation","unknown composition operation");return true;
 }
@@ -1329,32 +1302,18 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
     if(command==CMD_RESET){output_command_power(d,command);clear_output_composition(d);d->vm.output=&d->pixels;++d->composition_revision;pixels_clear(&d->pixels);pixels_show(&d->pixels);reply(a,id,STATUS_OK,0,"composition unloaded");return true;}
     return false;
 }
-static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
-    Arguments args;
-    if (!arguments(p,size,&args)) { error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management JSON or fields"); return; }
-    if(!strcmp(args.op,"output_command")){
-        AppOutput *d=app_output(a,args.output);
-        if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_output","output is not configured");return;}
-        if(args.command!=CMD_STATUS&&args.command!=CMD_PLAY&&args.command!=CMD_STOP&&args.command!=CMD_FRAME&&args.command!=CMD_RESET){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","unsupported output command");return;}
-        if(args.delta_ms>1000){error_reply(a,id,STATUS_PROTOCOL,"invalid_delta","FRAME requires 0..1000 milliseconds");return;}
-        if(composition_output_command(a,d,(uint8_t)args.command,id,args.delta_ms))return;
-        if(args.command==CMD_RESET){
-            d->active_program[0]=0;d->active_crc=0;
-            if(a->upload_owner&&a->upload_output==d&&d->vm.uploading){store_upload_cancel(&a->upload);a->upload_owner=0;d->vm.uploading=false;}
-        }
-        uint8_t delta[4];write_u32(delta,args.delta_ms);
-        vm_command(&d->vm,(uint8_t)args.command,id,args.command==CMD_FRAME?delta:NULL,args.command==CMD_FRAME?4:0);
-        if(a->last_code==STATUS_OK)output_command_power(d,(uint8_t)args.command);
-        return;
-    }
-    if (!strcmp(args.op,"session_close")) { app_disconnect(a,a->source); reply(a,id,STATUS_OK,0,"session closed; playback retained"); return; }
-    if (!strcmp(args.op,"describe")) { describe(a,id); return; }
-    if (!strcmp(args.op,"network_get")) {
-        char data[4096]; size_t count=network_json(a->network_pending?&a->pending_network:&a->network.config,false,data,sizeof(data));
-        Writer w={.app=a,.id=id}; bytes(&w,data,count); flush(&w);
-        reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,"network configuration; passwords omitted"); return;
-    }
-    if (!strcmp(args.op,"network_status")) {
+/* These independent commands must not keep network/configuration scratch
+ * live during an unrelated program activation or catalogue operation. */
+static __attribute__((noinline)) void network_get(App *a,uint16_t id){
+    /* This reply buffer must not remain on the network-validation call path. */
+    char *data=platform_calloc(4096,1);if(!data){reply(a,id,STATUS_CONFIG,0,"network reply allocation failed");return;}
+    size_t count=network_json(a->network_pending?&a->pending_network:&a->network.config,false,data,4096);
+    Writer w={.app=a,.id=id};bytes(&w,data,count);flush(&w);platform_free(data);
+    reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,"network configuration; passwords omitted");
+}
+static __attribute__((noinline)) bool manage_network(App *a,uint16_t id,const Arguments *args) {
+    if (!strcmp(args->op,"network_get")) {network_get(a,id);return true;}
+    if (!strcmp(args->op,"network_status")) {
         Network *n=&a->network; Writer w={.app=a,.id=id};
         literal(&w,"{\"state\":"); quoted(&w,a->network_pending?"reconfiguring":network_state_name(n->state));
         literal(&w,",\"mode\":"); quoted(&w,network_mode(n)==NET_MODE_AP?"ap":"station");
@@ -1367,23 +1326,84 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         literal(&w,",\"revision\":"); number(&w,a->store.network_revision); literal(&w,",\"http_port\":"); number(&w,network_http_port(n));
         literal(&w,",\"mqtt_connected\":");literal(&w,a->mqtt_connected?"true":"false");
         literal(&w,",\"mqtt_error\":");quoted(&w,a->mqtt_error);
-        literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"network status"); return;
+        literal(&w,"}"); flush(&w); reply(a,id,STATUS_OK,0,"network status"); return true;
     }
-    if (!strcmp(args.op,"network_validate") || !strcmp(args.op,"network_commit")) {
-        if (!a->staged || a->object_kind!=3 || a->upload_owner!=a->source) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage a network configuration in this session first"); return; }
+    if (!strcmp(args->op,"network_validate") || !strcmp(args->op,"network_commit")) {
+        if (!a->staged || a->object_kind!=3 || a->upload_owner!=a->source) { error_reply(a,id,STATUS_UPLOAD,"no_candidate","stage a network configuration in this session first"); return true; }
         NetworkConfig config; char error[160];
         if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error)) ||
             (config.wifi_enabled && !LIGHTVM_WIFI) || (config.http_enabled && !LIGHTVM_HTTP) || (config.mqtt.enabled && !LIGHTVM_MQTT) ||
             ((config.http_enabled || config.mqtt.enabled) && !config.wifi_enabled && strcmp(platform_info()->platform,"host"))) {
-            error_reply(a,id,STATUS_CONFIG,"invalid_network",error[0]?error:"selected network feature is unavailable or HTTP/MQTT requires Wi-Fi"); return;
+            error_reply(a,id,STATUS_CONFIG,"invalid_network",error[0]?error:"selected network feature is unavailable or HTTP/MQTT requires Wi-Fi"); return true;
         }
-        if (!strcmp(args.op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return; }
-        if (!args.has_revision) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return; }
-        enum Status status=app_save_network(a,&config,args.revision,a->source,error,sizeof(error));
-        if (status!=STATUS_OK) { error_reply(a,id,status,status==STATUS_STORAGE?"save_failed":status==STATUS_BUSY?"busy":"stale_revision",error); return; }
+        if (!strcmp(args->op,"network_validate")) { reply(a,id,STATUS_OK,0,"network configuration valid"); return true; }
+        if (!args->has_revision) { error_reply(a,id,STATUS_CONFIG,"stale_revision","network revision must match; wait for pending changes"); return true; }
+        enum Status status=app_save_network(a,&config,args->revision,a->source,error,sizeof(error));
+        if (status!=STATUS_OK) { error_reply(a,id,status,status==STATUS_STORAGE?"save_failed":status==STATUS_BUSY?"busy":"stale_revision",error); return true; }
         a->staged=false; a->upload_owner=0;
-        reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,a->network.recovery?"network saved for next boot; recovery AP retained":"network saved; reconnect after settings apply"); return;
+        reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,a->network.recovery?"network saved for next boot; recovery AP retained":"network saved; reconnect after settings apply"); return true;
     }
+    return false;
+}
+int app_preparation_config_persist(App *a,const PreparationRequest *r,const void *data,size_t size,StoreWrite *write,unsigned *index,uint8_t *scratch,const char **error){
+    if(r->kind!=PREPARE_CONFIG_SAVE)return 1;
+    if(r->active_revision!=a->revision||r->saved_revision!=a->store.config_revision){*error="configuration changed during preparation";return -1;}
+    if(write->store){
+        int status=store_write_step(write);if(status<0){*error="configuration persistence failed";return -1;}
+        if(!status)return 0;
+        if(*index==a->output_count)return 1;
+        (*index)++;return 0;
+    }
+    if(*index<a->output_count){
+        AppOutput *d=a->outputs[*index];
+        const char *selected=app_output_selected_preset(a,d);
+        if(a->network.recovery||d->hardware.startup_mode!=STARTUP_RESTORE_LAST||!d->recall_owned||!selected){(*index)++;return 0;}
+        size_t bytes=output_state_document(a,d,d->power_on,selected,&d->pixels.light,scratch);
+        if(!bytes){(*index)++;return 0;}
+        if(!store_write_begin(&a->store,write,STORE_OUTPUT_STATE,d->hardware.id,scratch,(uint32_t)bytes)){*error="output state storage unavailable or busy";return -1;}
+    }else if(!store_write_begin(&a->store,write,STORE_CONFIGURATION,STORE_CONFIG,data,(uint32_t)size)){*error="configuration storage unavailable or busy";return -1;}
+    return 0;
+}
+const char *app_preparation_config_commit(App *a,const PreparationRequest *r,HardwareConfig *config,const void *data,size_t size){
+    if(r->active_revision!=a->revision)return "active configuration changed during preparation";
+    if(r->kind==PREPARE_CONFIG_VALIDATE)return NULL;
+    if(r->kind==PREPARE_CONFIG_APPLY){
+        if(!config_apply(a,config,data,(uint32_t)size))return "native output initialization failed; active configuration is empty";
+        a->boot_error[0]=0;return NULL;
+    }
+    return NULL; /* Durable publication finished in the preceding bounded step. */
+}
+static __attribute__((noinline)) bool manage_configuration(App *a,uint16_t id,const Arguments *args) {
+    bool validate=!strcmp(args->op,"config_validate"),apply=!strcmp(args->op,"config_apply"),save=!strcmp(args->op,"config_save");
+    if(!validate&&!apply&&!save)return false;
+    if(!save&&(!a->staged||a->object_kind!=1||a->upload_owner!=a->source)){error_reply(a,id,STATUS_CONFIG,"no_candidate","upload and finish a configuration first");return true;}
+    if(!validate&&(!args->has_revision||args->revision!=a->revision||a->revision==UINT32_MAX||(save&&(!args->has_saved_revision||args->saved_revision!=a->store.config_revision)))){
+        error_reply(a,id,STATUS_CONFIG,"stale_revision","expected active and saved revisions must match");return true;
+    }
+    PreparationRequest pending={.kind=validate?PREPARE_CONFIG_VALIDATE:apply?PREPARE_CONFIG_APPLY:PREPARE_CONFIG_SAVE,.active_revision=a->revision,.saved_revision=a->store.config_revision};
+    if(submit_scene(a,app_output(a,NULL),id,pending,save?(const void *)a->config_json:a->staging,save?a->config_size:a->expected)&&!save&&!validate){a->staged=false;a->upload_owner=0;}
+    return true;
+}
+static void manage(App *a,uint16_t id,Arguments args) {
+    if(manage_network(a,id,&args)||manage_configuration(a,id,&args))return;
+    if(!strcmp(args.op,"output_command")){
+        AppOutput *d=app_output(a,args.output);
+        if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_output","output is not configured");return;}
+        if(args.command!=CMD_STATUS&&args.command!=CMD_PLAY&&args.command!=CMD_STOP&&args.command!=CMD_FRAME&&args.command!=CMD_RESET){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","unsupported output command");return;}
+        if(args.delta_ms>1000){error_reply(a,id,STATUS_PROTOCOL,"invalid_delta","FRAME requires 0..1000 milliseconds");return;}
+        if(args.command==CMD_PLAY||args.command==CMD_STOP||args.command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
+        if(composition_output_command(a,d,(uint8_t)args.command,id,args.delta_ms))return;
+        if(args.command==CMD_RESET){
+            d->active_program[0]=0;d->active_crc=0;
+            if(a->upload_owner&&a->upload_output==d&&d->vm.uploading){store_upload_cancel(&a->upload);a->upload_owner=0;d->vm.uploading=false;}
+        }
+        uint8_t delta[4];write_u32(delta,args.delta_ms);
+        vm_command(&d->vm,(uint8_t)args.command,id,args.command==CMD_FRAME?delta:NULL,args.command==CMD_FRAME?4:0);
+        if(a->last_code==STATUS_OK)output_command_power(d,(uint8_t)args.command);
+        return;
+    }
+    if (!strcmp(args.op,"session_close")) { app_disconnect(a,a->source); reply(a,id,STATUS_OK,0,"session closed; playback retained"); return; }
+    if (!strcmp(args.op,"describe")) { describe(a,id); return; }
     if (!strcmp(args.op,"config_get")) {
         Writer w={.app=a,.id=id}; bytes(&w,a->config_json,a->config_size); flush(&w); reply(a,id,STATUS_OK,(int32_t)a->revision,"active configuration"); return;
     }
@@ -1409,40 +1429,6 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
         const StoreEntry *entry=find_program(&a->store,args.type,args.name);
         if(!entry&&args.type==STORE_ANY&&store_find(&a->store,STORE_ANIMATION,args.name)&&store_find(&a->store,STORE_TRANSITION,args.name))error_reply(a,id,STATUS_STORAGE,"ambiguous_name","specify animation or transition type");
         else if(!entry)error_reply(a,id,STATUS_STORAGE,"not_found","stored program does not exist");else read_object(a,id,entry);
-        return;
-    }
-    if (!strcmp(args.op,"program_activate") && a->upload_output->vm.uploading) { error_reply(a,id,STATUS_BUSY,"upload_busy","finish or cancel the transient upload first"); return; }
-    if (!strcmp(args.op,"program_activate")) { Json request;if(!json_parse(&request,p,size))return;(void)activate(a,args.name,id,args.action,args.output,&request,json_get(&request,0,"settings")); return; }
-    if (!strcmp(args.op,"config_validate") || !strcmp(args.op,"config_apply")) {
-        if (!a->staged || a->object_kind!=1 || a->upload_owner!=a->source) { error_reply(a,id,STATUS_CONFIG,"no_candidate","upload and finish a configuration first"); return; }
-        HardwareConfig config; char error[160];
-        if (!config_validate(a,a->staging,a->expected,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
-        if (!strcmp(args.op,"config_validate")) { hardware_destroy(&config); reply(a,id,STATUS_OK,0,"configuration valid"); return; }
-        if (!args.has_revision || args.revision!=a->revision || a->revision==UINT32_MAX) { hardware_destroy(&config); error_reply(a,id,STATUS_CONFIG,"stale_revision","expected active revision is required and must match"); return; }
-        if (!config_apply(a,&config,a->staging,a->expected)) { error_reply(a,id,STATUS_CONFIG,"initialization_failed","native output initialization failed; active configuration is empty"); return; }
-        a->boot_error[0]=0; a->staged=false; a->upload_owner=0;
-        reply(a,id,STATUS_OK,(int32_t)a->revision,"configuration applied in RAM; unchanged outputs retained"); return;
-    }
-    if (!strcmp(args.op,"config_save")) {
-        if (!args.has_revision || args.revision!=a->revision || !args.has_saved_revision || args.saved_revision!=a->store.config_revision) {
-            error_reply(a,id,STATUS_CONFIG,"stale_revision","expected active and saved revisions are required and must match"); return;
-        }
-        HardwareConfig config; char error[160];
-        if (!config_validate(a,a->config_json,a->config_size,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
-        hardware_destroy(&config);
-        /* Choosing restore-last while a startup preset is running captures that
-         * target too. Recovery and temporary editor playback do not replace it. */
-        for(unsigned i=0;!a->network.recovery&&i<a->output_count;i++){
-            AppOutput *d=a->outputs[i];
-            if(d->hardware.startup_mode!=STARTUP_RESTORE_LAST||!d->recall_owned)continue;
-            const char *selected=app_output_selected_preset(a,d);
-            if(!selected)continue;
-            const char *failure=save_output_state(a,d,d->power_on,selected,&d->pixels.light);
-            if(failure){error_reply(a,id,STATUS_STORAGE,"state_save_failed",failure);return;}
-        }
-        bool ok=store_put_config(&a->store,a->config_json,a->config_size); resume_clock(a);
-        if (!ok) error_reply(a,id,STATUS_STORAGE,"save_failed","storage unavailable, full or write failed");
-        else reply(a,id,STATUS_OK,(int32_t)a->store.config_revision,"configuration saved");
         return;
     }
     if (!strcmp(args.op,"program_save") || !strcmp(args.op,"program_delete")) {
@@ -1472,22 +1458,39 @@ static void manage(App *a,uint16_t id,const uint8_t *p,size_t size) {
     }
     error_reply(a,id,STATUS_PROTOCOL,"unknown_operation","unknown management operation");
 }
-static bool object_begin(App *a,const uint8_t *p,size_t size) {
-    Json j; uint32_t expected,crc; char kind[16],name[33]="";
+static bool object_decode(App *a,const Json *j) {
+    uint32_t expected,crc; char kind[16],name[33]="";
     static const char *const fields[]={"kind","name","size","crc32",NULL};
-    if (!json_parse(&j,p,size) || !json_fields(&j,0,fields) ||
-        !json_string(&j,json_get(&j,0,"kind"),kind,sizeof(kind)) ||
-        !json_u32(&j,json_get(&j,0,"size"),&expected) || !json_u32(&j,json_get(&j,0,"crc32"),&crc)) return false;
+    if (!json_fields(j,0,fields) ||
+        !json_string(j,json_get(j,0,"kind"),kind,sizeof(kind)) ||
+        !json_u32(j,json_get(j,0,"size"),&expected) || !json_u32(j,json_get(j,0,"crc32"),&crc)) return false;
     unsigned object_kind=!strcmp(kind,"config") ? 1u : !strcmp(kind,"program") ? 2u : !strcmp(kind,"network") ? 3u : !strcmp(kind,"composition") ? 4u : !strcmp(kind,"preset") ? 5u : 0u;
     if (!object_kind || expected<(object_kind==2 ? 8u : 1u) || expected>(object_kind==2 ? MODULE_LIMIT : CONFIG_LIMIT)) return false;
-    int n=json_get(&j,0,"name");
-    if ((object_kind==2||object_kind==5) && (!json_string(&j,n,name,sizeof(name)) || !object_name_valid(name))) return false;
+    int n=json_get(j,0,"name");
+    if ((object_kind==2||object_kind==5) && (!json_string(j,n,name,sizeof(name)) || !object_name_valid(name))) return false;
     if (object_kind!=2 && object_kind!=5 && n>=0) return false;
     if(object_kind==2&&!store_upload_begin(&a->store,&a->upload,STORE_ANIMATION,name,expected,crc))return false;
     if(object_kind!=2)store_upload_cancel(&a->upload);
     a->object_kind=object_kind; a->expected=expected; a->expected_crc=crc; a->received=0;
     memcpy(a->object_name,name,sizeof(name)); a->uploading=true; a->staged=false;
     a->upload_deadline=platform_time_us()+30000000u; return true;
+}
+static __attribute__((noinline)) bool object_begin(App *a,const uint8_t *p,size_t size){
+    Json *j=platform_calloc(1,sizeof(*j));
+    bool ok=j&&json_parse(j,p,size)&&object_decode(a,j);
+    platform_free(j);return ok;
+}
+static __attribute__((noinline)) bool validate_object_document(App *a,uint16_t id){
+    char error[160];
+    if(a->object_kind==1){
+        HardwareConfig config;
+        if(!hardware_parse(a->staging,a->expected,&config,error,sizeof(error))){error_reply(a,id,STATUS_CONFIG,"invalid_config",error);return false;}
+        hardware_destroy(&config);
+    }else{
+        NetworkConfig config;
+        if(!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error))){a->upload_owner=0;error_reply(a,id,STATUS_CONFIG,"invalid_network",error);return false;}
+    }
+    return true;
 }
 static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p,size_t size) {
     App *a=context;
@@ -1518,13 +1521,8 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         if (size || !a->uploading || a->received!=a->expected) { error_reply(a,id,STATUS_UPLOAD,"incomplete_upload","object upload incomplete"); return; }
         a->uploading=false;
         if (a->object_kind==2?!store_upload_finish(&a->upload):crc32_bytes(a->staging,a->expected)!=a->expected_crc) { error_reply(a,id,STATUS_UPLOAD,"checksum_mismatch","object checksum mismatch"); return; }
-        if (a->object_kind==1) {
-            HardwareConfig config; char error[160];
-            if (!hardware_parse(a->staging,a->expected,&config,error,sizeof(error))) { error_reply(a,id,STATUS_CONFIG,"invalid_config",error); return; }
-            hardware_destroy(&config);
-        } else if (a->object_kind==3) {
-            NetworkConfig config; char error[160];
-            if (!network_parse(a->staging,a->expected,&a->network.config,&config,error,sizeof(error))) { a->upload_owner=0; error_reply(a,id,STATUS_CONFIG,"invalid_network",error); return; }
+        if (a->object_kind==1||a->object_kind==3) {
+            if(!validate_object_document(a,id))return;
         } else if(a->object_kind==2) {
             const char * error=vm_validate_stored(&a->store,&a->upload.entry);
             if (error) { error_reply(a,id,STATUS_LOAD,"invalid_module",error); return; }
@@ -1557,24 +1555,23 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     }
     if(type==CMD_FINISH){
         if(!a->upload_output->vm.uploading||a->upload.received!=a->upload.entry.size){reply(a,id,STATUS_UPLOAD,0,"upload incomplete");return;}
-        Json *request=NULL;int settings=-1;
+        Json *request=NULL;
         if(size){
             static const char *const fields[]={"settings","inputs",NULL};
             request=platform_calloc(1,sizeof(*request));
             if(!request||!json_parse(request,p,size)||!json_fields(request,0,fields)){
                 platform_free(request);reply(a,id,STATUS_CONFIG,0,"invalid upload activation settings");return;
             }
-            settings=json_get(request,0,"settings");
         }
-        const char *error=NULL;bool checksum_ok=false;
-        if(!store_upload_finish(&a->upload))error="module checksum or flash write failure";
-        else {checksum_ok=true;error=install(a,a->upload_output,&a->upload.entry,NULL,false,request,settings);}
         platform_free(request);
-        a->upload_output->vm.uploading=false;a->upload_owner=0;store_upload_cancel(&a->upload);
-        reply(a,id,error?(checksum_ok?STATUS_LOAD:STATUS_UPLOAD):STATUS_OK,0,error?error:"module loaded from flash");return;
+        if(!store_upload_finish(&a->upload)){reply(a,id,STATUS_UPLOAD,0,"module checksum or flash write failure");return;}
+        PreparationRequest pending={.kind=PREPARE_DIRECT,.entry=a->upload.entry};
+        (void)submit_scene(a,a->upload_output,id,pending,p,size);
+        a->upload_output->vm.uploading=false;a->upload_owner=0;store_upload_cancel(&a->upload);return;
     }
-    if(type==CMD_RESET&&!size){a->upload_output->vm.uploading=false;a->uploading=false;a->staged=false;app_output(a,NULL)->active_program[0]=0;app_output(a,NULL)->active_crc=0;a->upload_owner=0;store_upload_cancel(&a->upload);}
+    if(type==CMD_RESET&&!size){preparation_cancel_output(a,app_output(a,NULL)->hardware.id);a->upload_output->vm.uploading=false;a->uploading=false;a->staged=false;app_output(a,NULL)->active_program[0]=0;app_output(a,NULL)->active_crc=0;a->upload_owner=0;store_upload_cancel(&a->upload);}
     AppOutput *d=app_output(a,NULL);
+    if(type==CMD_PLAY||type==CMD_STOP||type==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
     if(d->hardware.indicators&&type!=CMD_STATUS){reply(a,id,STATUS_CONFIG,0,"indicator output is controlled through indicator_set");return;}
     if(d->composition||d->transition){
         if((type==CMD_FRAME&&size!=4)||(type!=CMD_FRAME&&size)){reply(a,id,STATUS_PROTOCOL,0,"invalid composition command payload");return;}
@@ -1591,57 +1588,35 @@ size_t app_indicator_json(const AppOutput *d,unsigned pixel,char *buffer,size_t 
     int n=snprintf(buffer,capacity,"{\"state\":\"%s\",\"brightness\":%u,\"color_mode\":\"rgb\",\"color\":{\"r\":%u,\"g\":%u,\"b\":%u},\"effect\":\"%s\"}",l->on?"ON":"OFF",l->brightness,l->rgb[0],l->rgb[1],l->rgb[2],indicator_effects[l->effect]);
     return n>0&&(size_t)n<capacity?(size_t)n:0;
 }
-static bool indicator_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op) {
-    if(strcmp(op,"indicator_set")&&strcmp(op,"indicator_get")&&strcmp(op,"indicator_snapshot"))return false;
-    if(!strcmp(op,"indicator_snapshot")){
-        static const char *const snapshot_fields[]={"op","output",NULL};
-        if(!d->indicators||!json_fields(j,0,snapshot_fields))goto invalid;
+static bool indicator_command(App *a,AppOutput *d,uint16_t id,const Command *command) {
+    if(command->kind==COMMAND_INDICATOR_SNAPSHOT){
+        if(!d->indicators)goto invalid;
         a->send(a->transport,RESP_PIXELS,id,d->pixels.rgb,d->pixels.count*3);reply(a,id,STATUS_OK,0,"indicator RGB frame");return true;
     }
-    static const char *const fields[]={"op","output","pixel","value",NULL};
-    uint32_t pixel;
-    if(!d->indicators||!json_fields(j,0,fields)||!json_u32(j,json_get(j,0,"pixel"),&pixel)||pixel>=d->pixels.count)goto invalid;
-    int value=json_get(j,0,"value");
-    if(!strcmp(op,"indicator_set")){
-        static const char *const light_fields[]={"state","brightness","color","effect",NULL};
-        static const char *const color_fields[]={"r","g","b",NULL};
-        if(!json_fields(j,value,light_fields)||!j->tokens[value].children)goto invalid;
+    unsigned pixel=command->pixel;
+    if(!d->indicators||pixel>=d->pixels.count)goto invalid;
+    if(command->kind==COMMAND_INDICATOR_SET){
         IndicatorLight next=d->indicators[pixel];
-        int state=json_get(j,value,"state"),brightness=json_get(j,value,"brightness"),color=json_get(j,value,"color");
-        if(state>=0){if(json_equal(j,state,"ON"))next.on=true;else if(json_equal(j,state,"OFF"))next.on=false;else goto invalid;}
-        uint32_t n;
-        if(brightness>=0){if(!json_u32(j,brightness,&n)||n>255)goto invalid;next.brightness=(uint8_t)n;}
-        if(color>=0){
-            if(!json_fields(j,color,color_fields))goto invalid;
-            const char *channels[]={"r","g","b"};
-            for(unsigned c=0;c<3;c++){if(!json_u32(j,json_get(j,color,channels[c]),&n)||n>255)goto invalid;next.rgb[c]=(uint8_t)n;}
-        }
-        int effect=json_get(j,value,"effect");
-        if(effect>=0){
-            unsigned e=0;while(e<sizeof(indicator_effects)/sizeof(indicator_effects[0])&&!json_equal(j,effect,indicator_effects[e]))e++;
-            if(e==sizeof(indicator_effects)/sizeof(indicator_effects[0]))goto invalid;
-            next.effect=(IndicatorEffect)e;
-        }
+        if(command->fields&COMMAND_POWER_VALUE)next.on=command->on;
+        if(command->fields&COMMAND_BRIGHTNESS)next.brightness=(uint8_t)command->brightness;
+        if(command->fields&COMMAND_COLOR)for(unsigned c=0;c<3;c++)next.rgb[c]=(uint8_t)(command->color>>(16-c*8));
+        if(command->fields&COMMAND_EFFECT)next.effect=(IndicatorEffect)command->effect;
         if(next.effect!=d->indicators[pixel].effect||(next.on&&!d->indicators[pixel].on))next.effect_started=platform_time_us();
         d->indicators[pixel]=next;d->indicator_dirty=true;
-    }else if(value>=0)goto invalid;
+    }
     char buffer[160];size_t size=app_indicator_json(d,pixel,buffer,sizeof(buffer));
     Writer w={.app=a,.id=id};bytes(&w,buffer,size);flush(&w);reply(a,id,STATUS_OK,0,"indicator state");return true;
 invalid:
     error_reply(a,id,STATUS_CONFIG,"invalid_indicator","expected indicator output, pixel and valid RGB light value");return true;
 }
-static bool key_feedback_manage(App *a,uint16_t id,const Json *j,const char *op) {
-    if(strcmp(op,"key_feedback_set")&&strcmp(op,"key_feedback_get"))return false;
-    static const char *const fields[]={"op","input","key","enabled",NULL};
-    char input[OBJECT_NAME_LIMIT+1];uint32_t key;bool enabled;
-    if(!json_fields(j,0,fields)||!json_string(j,json_get(j,0,"input"),input,sizeof(input))||
-       !json_u32(j,json_get(j,0,"key"),&key)||key<1||key>DIGITAL_INPUT_CHANNELS)goto invalid;
+static bool key_feedback_command(App *a,uint16_t id,const Command *command) {
+    const char *input=command->output;unsigned key=command->pixel;bool enabled=command->on;
+    if(key<1||key>DIGITAL_INPUT_CHANNELS)goto invalid;
     DigitalInput *d=NULL;
     for(unsigned n=0;n<a->digital_inputs.count;n++)if(!strcmp(a->digital_inputs.devices[n].config.id,input))d=&a->digital_inputs.devices[n];
     if(!d||!d->config.indicators[0])goto invalid;
     uint16_t bit=(uint16_t)(1u<<(key-1));
-    if(!strcmp(op,"key_feedback_set")){
-        if(!json_bool(j,json_get(j,0,"enabled"),&enabled))goto invalid;
+    if(command->kind==COMMAND_KEY_SET){
         uint16_t next=enabled?(uint16_t)(d->press_feedback|bit):(uint16_t)(d->press_feedback&~bit);
         if(next!=d->press_feedback){
             uint8_t mask[2]={(uint8_t)next,(uint8_t)(next>>8)};
@@ -1649,17 +1624,17 @@ static bool key_feedback_manage(App *a,uint16_t id,const Json *j,const char *op)
             if(!ok){error_reply(a,id,STATUS_STORAGE,"feedback_not_saved","could not persist key press feedback");return true;}
             d->press_feedback=next;
         }
-    }else if(json_get(j,0,"enabled")>=0)goto invalid;
+    }
     Writer w={.app=a,.id=id};literal(&w,"{\"enabled\":");literal(&w,d->press_feedback&bit?"true":"false");literal(&w,"}");flush(&w);
     reply(a,id,STATUS_OK,0,"key press feedback setting");return true;
 invalid:
     error_reply(a,id,STATUS_CONFIG,"invalid_key_feedback","expected bound input, key (1..16) and boolean enabled");return true;
 }
-__attribute__((noinline)) static AppOutput *request_output(App *a,const uint8_t *p,size_t size){
-    Json j;char output[OBJECT_NAME_LIMIT+1]="";if(!json_parse(&j,p,size))return NULL;
-    int slot=json_get(&j,0,"slot");if(slot>=0&&!json_equal(&j,slot,"A")&&!json_equal(&j,slot,"B"))return NULL;
-    int token=json_get(&j,0,"output");
-    if(token>=0&&(!json_string(&j,token,output,sizeof(output))||!object_name_valid(output)))return NULL;
+static AppOutput *request_output(App *a,const Json *j){
+    char output[OBJECT_NAME_LIMIT+1]="";
+    int slot=json_get(j,0,"slot");if(slot>=0&&!json_equal(j,slot,"A")&&!json_equal(j,slot,"B"))return NULL;
+    int token=json_get(j,0,"output");
+    if(token>=0&&(!json_string(j,token,output,sizeof(output))||!object_name_valid(output)))return NULL;
     return app_output(a,output);
 }
 static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
@@ -1696,18 +1671,29 @@ static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
     return true;
 }
 static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
-    AppOutput *d=request_output(a,p,size);
-    if(!d){error_reply(a,id,STATUS_PROTOCOL,"invalid_output","invalid request, unknown output or invalid A/B slot");return;}
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
-    if(key_feedback_manage(a,id,j,op)||indicator_manage(a,d,id,j,op)){platform_free(j);return;}
+    if(preparation_manage(a,id,j,op)){platform_free(j);return;}
+    AppOutput *d=request_output(a,j);
+    if(!d){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_output","invalid request, unknown output or invalid A/B slot");return;}
+    Command command;bool recognized;
+    const char *decode_error=command_decode(j,op,&command,&recognized);
+    if(recognized){
+        platform_free(j);
+        if(decode_error)error_reply(a,id,STATUS_CONFIG,
+            command.kind>=COMMAND_KEY_GET?"invalid_key_feedback":
+            command.kind>=COMMAND_INDICATOR_GET?"invalid_indicator":
+            command.kind==COMMAND_RECALL||command.kind==COMMAND_POWER?"invalid_recall":"invalid_light",decode_error);
+        else execute_command(a,id,&command);
+        return;
+    }
     if(d->hardware.indicators&&(!strncmp(op,"transition_",11)||!strncmp(op,"composition_",12)||
        !strcmp(op,"preset_activate")||!strcmp(op,"preset_recall")||!strcmp(op,"output_power")||
        !strcmp(op,"program_activate")||!strcmp(op,"program_reset")||!strcmp(op,"program_pause")||!strcmp(op,"program_resume")||!strcmp(op,"program_inputs")||!strcmp(op,"output_command"))){
         platform_free(j);error_reply(a,id,STATUS_CONFIG,"indicator_owned","indicator pixels are controlled through indicator_set");return;
     }
     if(input_manage(a,id,j,op)){platform_free(j);return;}
-    if(light_manage(a,d,id,j,op)||transition_manage(a,d,id,j,op)||recall_manage(a,d,id,j,op)||preset_manage(a,d,id,j,op)){platform_free(j);return;}
+    if(transition_manage(a,d,id,j,op)||preset_manage(a,d,id,j,op)){platform_free(j);return;}
     uint32_t before_revision=d->composition_revision;
     if(composition_manage(a,d,id,j,op)){if(d->composition_revision!=before_revision)d->recall_owned=false;platform_free(j);return;}
     unsigned slot=request_slot(j);Composition *s=output_composition(d,slot);
@@ -1739,20 +1725,32 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         bool valid=json_fields(j,0,fields)&&json_u32(j,json_get(j,0,"command"),&command)&&(dt<0||json_u32(j,dt,&delta))&&delta<=1000;
         platform_free(j);
         if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid composition slot command");return;}
+        if(command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
         const char *error=NULL;
-        if(command==CMD_PLAY||command==CMD_STOP){composition_play(s,command==CMD_PLAY);if(command==CMD_STOP){composition_invalidate(s);memset(s->front,0,(size_t)s->count*3);s->frames++;}}
+        if(command==CMD_PLAY||command==CMD_STOP){composition_play(s,command==CMD_PLAY);if(command==CMD_STOP){composition_invalidate(s);memset(s->front,0,(size_t)s->count*3);for(unsigned n=0;n<s->layer_count;n++)s->layers[n].front_stamp=(ContributionStamp){0};s->frames++;}}
         else if(command==CMD_FRAME){error=composition_frame(s,delta);if(!error)for(size_t offset=0;offset<(size_t)s->count*3;offset+=FRAME_LIMIT){size_t n=(size_t)s->count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,s->front+offset,n);}}
         else if(command==CMD_RESET){d->transition->compositions[1]=NULL;composition_destroy(s);++d->composition_revision;}
         else if(command!=CMD_STATUS)error="unsupported composition slot command";
         if(!error&&command!=CMD_STATUS&&command!=CMD_FRAME)d->recall_owned=false;
         transition_invalidate(d->transition);reply(a,id,error?STATUS_EXECUTION:STATUS_OK,0,error?error:"composition slot command complete");return;
     }
+    if(!strcmp(op,"program_reset")){
+        static const char *const fields[]={"op","output","slot","layer","expected_generation","settings","inputs",NULL};uint32_t generation;
+        if(!json_fields(j,0,fields)||!json_u32(j,json_get(j,0,"expected_generation"),&generation)||generation!=vm->generation||!vm->portable){
+            platform_free(j);error_reply(a,id,STATUS_CONFIG,"stale_generation","expected program generation must match");return;
+        }
+        PreparationRequest pending={.kind=PREPARE_RESET,.entry=vm->code,.slot=slot,.play=vm->playing,.generation=generation,.reset_from=vm};
+        if(s){CompositionLayer *l=layer_token>=0?composition_layer(s,layer_id):&s->layers[0];strcpy(pending.layer,l->id);strcpy(pending.name,l->program);}
+        else strcpy(pending.name,d->active_program);
+        (void)submit_scene(a,d,id,pending,j->text,j->size);platform_free(j);return;
+    }
     bool read_only=!strcmp(op,"program_state")||!strcmp(op,"program_snapshot"),input_update=!strcmp(op,"program_inputs");
     if(read_only||!strcmp(op,"program_reset")||!strcmp(op,"program_pause")||!strcmp(op,"program_resume")||!strcmp(op,"program_inputs")){
         if(!read_only&&!input_update){transition_invalidate(d->transition);composition_invalidate(s);}
-        platform_free(j);
         uint32_t generation=vm->generation,input_revision=vm->portable?vm->portable->input_revision:0;bool was_playing=vm->playing;
-        if(!control_manage(vm,id,p,size))manage(a,id,p,size);
+        (void)control_manage(vm,id,j,op);
+        platform_free(j);
+        if(!read_only&&a->last_code==STATUS_OK)preparation_cancel_output(a,d->hardware.id);
         if(a->last_code==STATUS_OK&&!s&&!transition_target&&(!strcmp(op,"program_resume")||!strcmp(op,"program_reset")))d->power_on=true;
         if(generation!=vm->generation||was_playing!=vm->playing||(vm->portable&&input_revision!=vm->portable->input_revision)){if(!transition_target)composition_modified(s);d->recall_owned=false;}
         if(vm->generation>d->layer_generation)d->layer_generation=vm->generation;
@@ -1768,16 +1766,30 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         valid=valid&&delta<=1000&&(command==CMD_STATUS||command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET||command==CMD_FRAME);
         platform_free(j);
         if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid layer command");return;}
+        if(command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
         if(command!=CMD_STATUS){transition_invalidate(d->transition);composition_invalidate(s);}
         uint32_t generation=vm->generation;bool was_playing=vm->playing;
         uint8_t bytes[4];write_u32(bytes,delta);vm_command(vm,(uint8_t)command,id,command==CMD_FRAME?bytes:NULL,command==CMD_FRAME?4:0);
         if(generation!=vm->generation||was_playing!=vm->playing){composition_modified(s);d->recall_owned=false;}
-        if(command==CMD_STOP&&vm->control.contribution_valid){memset(vm->control.committed,0,control_frame_bytes(vm));vm->control.contribution_frame++;}
+        if(command==CMD_STOP&&vm->control.contribution_valid){
+            memset(vm->control.committed,0,control_frame_bytes(vm));vm->control.contribution_frame++;
+            /* Keep the cleared frame readable, but it is no longer a guest
+               contribution eligible for unchanged-input reuse. */
+            vm->control.contribution=(ContributionStamp){0};
+        }
         if(vm->generation>d->layer_generation)d->layer_generation=vm->generation;
         if(command!=CMD_STATUS){transition_invalidate(d->transition);composition_invalidate(s);}
         return;
     }
-    platform_free(j);manage(a,id,p,size);
+    Arguments args;bool valid=arguments(j,&args);
+    if(valid&&!strcmp(args.op,"program_activate")){
+        if(a->upload_output->vm.uploading){platform_free(j);error_reply(a,id,STATUS_BUSY,"upload_busy","finish or cancel the transient upload first");return;}
+        (void)activate(a,args.name,id,args.action,args.output,j,json_get(j,0,"settings"));
+        platform_free(j);return;
+    }
+    platform_free(j);
+    if(valid)manage(a,id,args);
+    else error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management JSON or fields");
 }
 void app_command(void *context,uint8_t type,uint16_t id,const uint8_t *p,size_t size) {
     App *a=context; uint64_t previous=a->source; if (!a->source) a->source=1;
@@ -1803,6 +1815,15 @@ void app_dispatch(App *a,uint64_t source,SendMessage send,void *transport,uint8_
     a->command_active=false;
     if(a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
     a->send=previous_send; a->transport=previous_transport; a->source=previous_source;
+}
+void app_execute_command(App *a,uint64_t source,SendMessage send,void *transport,uint16_t id,const Command *command){
+    if(a->command_active){send_status(send,transport,id,STATUS_BUSY,0,"engine command in progress");return;}
+    SendMessage previous_send=a->send;void *previous_transport=a->transport;uint64_t previous_source=a->source;
+    a->command_active=true;a->send=send;a->transport=transport;a->source=source;
+    execute_command(a,id,command);
+    a->command_active=false;
+    if(a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
+    a->send=previous_send;a->transport=previous_transport;a->source=previous_source;
 }
 void app_disconnect(App *a,uint64_t source) {
     if (!source || a->upload_owner!=source) return;

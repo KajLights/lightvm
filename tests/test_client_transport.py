@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from client import SerialTransport
+from client import Client, ProtocolError, Reply, SerialTransport
 
 
 class FakeSerial:
@@ -42,3 +42,21 @@ class SerialPolicyTests(unittest.TestCase):
             transport = SerialTransport("pico-port")
         self.assertEqual(transport.serial.open_state, ("pico-port", True, True))
         self.assertEqual(transport.serial.reads, 0)
+
+
+class OperationWaitTests(unittest.TestCase):
+    def test_finish_upload_wait_has_a_deadline_and_keeps_operation_identity(self):
+        client = Client(None)
+        client.data_reply = b'{"operation":{"id":42,"boot_id":"boot-7","terminal":false}}'
+        with patch.object(client, 'command', return_value=Reply(0, 42, 'accepted')), \
+                patch('client.time.monotonic', side_effect=[0, 121]):
+            with self.assertRaisesRegex(ProtocolError, '42.*boot-7'):
+                client.finish_upload(require_ok=False)
+
+    def test_finish_upload_preserves_optional_terminal_error_inspection(self):
+        client = Client(None)
+        client.data_reply = b'{"operation":{"id":42,"terminal":true,"code":7,"value":0,"error":"cancelled","stage":"cancelled"}}'
+        with patch.object(client, 'command', return_value=Reply(0, 42, 'accepted')):
+            self.assertEqual(client.finish_upload(require_ok=False).code, 7)
+            with self.assertRaisesRegex(ProtocolError, 'cancelled'):
+                client.finish_upload()

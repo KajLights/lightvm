@@ -160,36 +160,126 @@ static bool finish(StoreUpload *u){
     return s->device.sync(s->device.context)&&extent_crc(s,u->entry.id,u->entry.size,u->entry.crc);
 }
 static void cancel(StoreUpload *u){platform_free(u->state);u->state=NULL;}
-static bool commit(Store *store,StoreEntry *entries,uint32_t count,StoreType changed){
+typedef struct {
+    StoreEntry *entries;
+    uint32_t count,catalog_offset,catalog_size,offset,crc,verified,generation,config,network,base;
+    unsigned stage,bank;
+    uint8_t root[1024],page[256];
+} ExtentCommit;
+static int commit_step(Store *store,ExtentCommit *c,StoreType changed){
     ExtentStore *s=store->state;StoreBlockDevice *d=&s->device;
-    if(store->generation==UINT32_MAX||(changed==STORE_CONFIGURATION&&store->config_revision==UINT32_MAX)||(changed==STORE_NETWORK_SETTINGS&&store->network_revision==UINT32_MAX))return false;
-    uint32_t catalog_size=count*RECORD_BYTES,catalog_offset=count?allocate(store,catalog_size):0,crc=0xffffffffu;
-    if(count&&!catalog_offset)return false;
-    uint8_t page[256];
-    for(uint32_t at=0;at<catalog_size;at+=256){
-        if(at%SECTOR==0&&!d->erase(d->context,catalog_offset+at,SECTOR))return false;
-        memset(page,0,sizeof(page));uint32_t n=catalog_size-at;if(n>256)n=256;
-        for(uint32_t k=0;k<n;k+=RECORD_BYTES)encode(page+k,&entries[(at+k)/RECORD_BYTES]);
-        crc=crc32_update(crc,page,n);
-        if(!d->write(d->context,catalog_offset+at,page,256))return false;
-        runtime_checkpoint();
+    switch(c->stage){
+    case 0:
+        if(store->generation==UINT32_MAX||(changed==STORE_CONFIGURATION&&store->config_revision==UINT32_MAX)||(changed==STORE_NETWORK_SETTINGS&&store->network_revision==UINT32_MAX))return -1;
+        c->catalog_size=c->count*RECORD_BYTES;c->catalog_offset=c->count?allocate(store,c->catalog_size):0;
+        if(c->count&&!c->catalog_offset)return -1;
+        c->crc=0xffffffffu;c->stage=1;return 0;
+    case 1:
+        if(c->offset==((c->catalog_size+255u)&~255u)){c->stage=3;return 0;}
+        if(c->offset%SECTOR==0&&!d->erase(d->context,c->catalog_offset+c->offset,SECTOR))return -1;
+        c->stage=2;return 0;
+    case 2:{
+        memset(c->page,0,256);uint32_t n=c->catalog_size-c->offset;if(n>256)n=256;
+        for(uint32_t k=0;k<n;k+=RECORD_BYTES)encode(c->page+k,&c->entries[(c->offset+k)/RECORD_BYTES]);
+        c->crc=crc32_update(c->crc,c->page,n);
+        if(!d->write(d->context,c->catalog_offset+c->offset,c->page,256))return -1;
+        c->offset+=256;c->stage=1;return 0;
     }
-    crc^=0xffffffffu;
-    if(!d->sync(d->context)||(count&&!extent_crc(s,catalog_offset,catalog_size,crc)))return false;
-    uint8_t root[1024]={0};unsigned bank=s->bank==0?1:0;uint32_t base=bank_offset(s,bank),generation=store->generation+1;
-    uint32_t config=store->config_revision+(changed==STORE_CONFIGURATION),network=store->network_revision+(changed==STORE_NETWORK_SETTINGS);
-    memcpy(root,"LVS2",4);write_u32(root+4,1);write_u32(root+8,generation);write_u32(root+12,count);write_u32(root+16,config);write_u32(root+20,network);
-    write_u32(root+24,d->capacity);write_u32(root+28,catalog_offset);write_u32(root+32,catalog_size);write_u32(root+36,crc);write_u32(root+1020,crc32_bytes(root,1020));
-    if(!d->erase(d->context,base,SECTOR))return false;
-    runtime_checkpoint();
-    for(unsigned at=0;at<1024;at+=256){if(!d->write(d->context,base+at,root+at,256))return false;runtime_checkpoint();}
-    if(!d->sync(d->context))return false;
-    for(unsigned at=0;at<1024;at+=256)if(!d->read(d->context,base+at,page,256)||memcmp(page,root+at,256))return false;
-    memset(page,255,256);write_u32(page,COMMIT_MAGIC);write_u32(page+4,generation);write_u32(page+8,read_u32(root+1020));write_u32(page+12,crc32_bytes(page,12));
-    if(!d->write(d->context,base+COMMIT_OFFSET,page,256)||!d->sync(d->context))return false;
-    uint8_t check[256];if(!d->read(d->context,base+COMMIT_OFFSET,check,256)||memcmp(check,page,256))return false;
-    platform_free(s->entries);s->entries=entries;s->count=count;s->bank=(int)bank;s->catalog_offset=catalog_offset;s->catalog_size=catalog_size;
-    store->generation=generation;store->config_revision=config;store->network_revision=network;return true;
+    case 3:
+        if(!d->sync(d->context))return -1;
+        c->offset=0;c->verified=0xffffffffu;c->stage=4;return 0;
+    case 4:
+        if(c->offset<c->catalog_size){
+            uint32_t n=c->catalog_size-c->offset;if(n>256)n=256;
+            if(!d->read(d->context,c->catalog_offset+c->offset,c->page,n))return -1;
+            c->verified=crc32_update(c->verified,c->page,n);c->offset+=n;return 0;
+        }
+        if(c->crc!=c->verified)return -1;
+        c->bank=s->bank==0?1:0;c->base=bank_offset(s,c->bank);c->generation=store->generation+1;
+        c->config=store->config_revision+(changed==STORE_CONFIGURATION);c->network=store->network_revision+(changed==STORE_NETWORK_SETTINGS);
+        memset(c->root,0,1024);memcpy(c->root,"LVS2",4);write_u32(c->root+4,1);write_u32(c->root+8,c->generation);write_u32(c->root+12,c->count);
+        write_u32(c->root+16,c->config);write_u32(c->root+20,c->network);write_u32(c->root+24,d->capacity);write_u32(c->root+28,c->catalog_offset);
+        write_u32(c->root+32,c->catalog_size);write_u32(c->root+36,c->crc^0xffffffffu);write_u32(c->root+1020,crc32_bytes(c->root,1020));
+        c->stage=5;return 0;
+    case 5:
+        if(!d->erase(d->context,c->base,SECTOR))return -1;
+        c->offset=0;c->stage=6;return 0;
+    case 6:
+        if(!d->write(d->context,c->base+c->offset,c->root+c->offset,256))return -1;
+        c->offset+=256;if(c->offset==1024)c->stage=7;return 0;
+    case 7:
+        if(!d->sync(d->context))return -1;
+        c->offset=0;c->stage=8;return 0;
+    case 8:
+        if(!d->read(d->context,c->base+c->offset,c->page,256)||memcmp(c->page,c->root+c->offset,256))return -1;
+        c->offset+=256;if(c->offset==1024)c->stage=9;return 0;
+    case 9:{
+        /* This final durable publication is indivisible. No cancellation point
+           separates the marker from the corresponding in-memory catalogue. */
+        memset(c->page,255,256);write_u32(c->page,COMMIT_MAGIC);write_u32(c->page+4,c->generation);write_u32(c->page+8,read_u32(c->root+1020));write_u32(c->page+12,crc32_bytes(c->page,12));
+        if(!d->write(d->context,c->base+COMMIT_OFFSET,c->page,256)||!d->sync(d->context))return -1;
+        uint8_t check[256];if(!d->read(d->context,c->base+COMMIT_OFFSET,check,256)||memcmp(check,c->page,256))return -1;
+        platform_free(s->entries);s->entries=c->entries;c->entries=NULL;s->count=c->count;s->bank=(int)c->bank;s->catalog_offset=c->catalog_offset;s->catalog_size=c->catalog_size;
+        store->generation=c->generation;store->config_revision=c->config;store->network_revision=c->network;return 1;
+    }
+    default:return -1;
+    }
+}
+static bool commit(Store *store,StoreEntry *entries,uint32_t count,StoreType changed){
+    ExtentCommit *c=platform_calloc(1,sizeof(*c));if(!c)return false;
+    c->entries=entries;c->count=count;int result;
+    do{result=commit_step(store,c,changed);runtime_checkpoint();}while(!result);
+    platform_free(c);return result>0;
+}
+/* One 256-byte payload/verification unit or one catalogue/root flash operation
+ * per call. The final marker write+sync+readback is the only indivisible group. */
+typedef struct { StoreUpload upload;ExtentCommit commit;uint32_t offset,crc;unsigned stage; } ExtentWrite;
+static void write_cancel(StoreWrite *w){
+    ExtentWrite *x=w->state;if(!x)return;
+    if(x->upload.state)cancel(&x->upload);
+    store_unpin(w->store,x->upload.pin);platform_free(x->commit.entries);platform_free(x);w->state=NULL;
+}
+static int write_step(StoreWrite *w){
+    Store *store=w->store;ExtentStore *s=store->state;StoreBlockDevice *d=&s->device;ExtentWrite *x=w->state;
+    if(!x){x=platform_calloc(1,sizeof(*x));if(!x)return -1;x->upload.pin=-1;x->crc=0xffffffffu;w->state=x;return 0;}
+    switch(x->stage){
+    case 0:
+        if(x->offset<w->entry.size){uint32_t n=w->entry.size-x->offset;if(n>256)n=256;x->crc=crc32_update(x->crc,w->data+x->offset,n);x->offset+=n;return 0;}
+        w->entry.crc=x->crc^0xffffffffu;x->upload.store=store;x->upload.entry=w->entry;
+        if(!begin(store,&x->upload))return -1;
+        w->entry=x->upload.entry;x->upload.pin=store_pin(store,&w->entry);if(x->upload.pin<0)return -1;
+        x->offset=0;x->stage=1;return 0;
+    case 1:{
+        ExtentUpload *u=x->upload.state;
+        if(x->offset==w->entry.size){x->stage=3;return 0;}
+        if(x->offset>=u->erased){if(!d->erase(d->context,w->entry.id+u->erased,SECTOR))return -1;u->erased+=SECTOR;return 0;}
+        uint32_t n=w->entry.size-x->offset;if(n>256)n=256;memset(u->page,255,256);memcpy(u->page,w->data+x->offset,n);
+        if(!d->write(d->context,w->entry.id+x->offset,u->page,256))return -1;
+        x->offset+=n;return 0;
+    }
+    case 3:
+        if(!d->sync(d->context))return -1;
+        x->offset=0;x->crc=0xffffffffu;x->stage=4;return 0;
+    case 4:
+        if(x->offset<w->entry.size){uint32_t n=w->entry.size-x->offset;if(n>256)n=256;
+            if(!d->read(d->context,w->entry.id+x->offset,x->commit.page,n))return -1;
+            x->crc=crc32_update(x->crc,x->commit.page,n);x->offset+=n;return 0;
+        }
+        if((x->crc^0xffffffffu)!=w->entry.crc)return -1;
+        x->offset=0;x->stage=5;return 0;
+    case 5:{
+        uint32_t index=0;while(index<s->count&&(s->entries[index].type!=w->entry.type||strcmp(s->entries[index].name,w->entry.name)))index++;
+        x->commit.count=s->count+(index==s->count);if(x->commit.count>d->capacity/SECTOR)return -1;
+        x->commit.entries=platform_calloc(x->commit.count,sizeof(StoreEntry));if(!x->commit.entries)return -1;
+        x->offset=0;x->stage=6;return 0;
+    }
+    case 6:
+        if(x->offset<s->count){x->commit.entries[x->offset]=s->entries[x->offset];x->offset++;return 0;}
+        for(uint32_t index=0;index<x->commit.count;index++)if(index==s->count||(s->entries[index].type==w->entry.type&&!strcmp(s->entries[index].name,w->entry.name))){x->commit.entries[index]=w->entry;break;}
+        x->stage=7;return 0;
+    case 7:return commit_step(store,&x->commit,w->entry.type);
+    default:return -1;
+    }
 }
 static bool publish(Store *store,const StoreEntry *entry){
     ExtentStore *s=store->state;if(!extent_crc(s,entry->id,entry->size,entry->crc))return false;
@@ -208,4 +298,4 @@ static bool remove_entry(Store *store,const StoreEntry *entry){
     bool ok=commit(store,entries,count,type);if(!ok)platform_free(entries);return ok;
 }
 const StoreBackend store_extent_backend={.name="extent",.mount=mount,.destroy=destroy,.entry=entry,.read=read_bytes,.info=info,.retain=retain,
-    .begin=begin,.chunk=chunk,.finish=finish,.cancel=cancel,.publish=publish,.remove=remove_entry};
+    .begin=begin,.chunk=chunk,.finish=finish,.cancel=cancel,.publish=publish,.remove=remove_entry,.write_step=write_step,.write_cancel=write_cancel};

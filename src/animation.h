@@ -2,6 +2,14 @@
 #define LIGHTVM_ANIMATION_PROFILE_H
 #include "vm.h"
 const char *animation_validate(Portable *program);
+typedef struct AnimationPreparation {
+    unsigned stage;
+    size_t cleared;
+    bool buffers_ready;
+    PbcPreparation resources;
+    const char *error;
+} AnimationPreparation;
+int animation_prepare_step(AnimationPreparation *,VmInstance *);
 const char *animation_prepare(VmInstance *vm);
 const char *animation_preflight(VmInstance *vm,uint64_t delta);
 const char *animation_advance(VmInstance *vm,uint64_t delta,bool manual);

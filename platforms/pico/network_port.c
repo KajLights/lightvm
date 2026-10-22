@@ -306,3 +306,15 @@ void pico_mqtt_poll(void) {
     ha_tick(&ha,network_online(&engine->network),platform_time_us());
 #endif
 }
+
+/* CYW43 can deliver a link event while waiting for TX credits. lwIP may send
+ * from that event, recursively entering the same driver. A failed nested send
+ * is retryable by lwIP and keeps this callback path at one driver invocation. */
+int __real_cyw43_send_ethernet(cyw43_t *,int,size_t,const void *,bool);
+int __wrap_cyw43_send_ethernet(cyw43_t *self,int itf,size_t size,const void *data,bool is_pbuf){
+    static bool sending;
+    if(sending)return -1;
+    sending=true;
+    int result=__real_cyw43_send_ethernet(self,itf,size,data,is_pbuf);
+    sending=false;return result;
+}

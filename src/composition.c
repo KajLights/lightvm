@@ -6,6 +6,7 @@
 #include "vm_allocator.h"
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 Composition *composition_create(PixelBuffer *output,unsigned layers) {
     if(!output||!output->count||layers>COMPOSITION_LAYER_LIMIT)return NULL;
@@ -32,7 +33,19 @@ void composition_offscreen(Composition *s,PixelBuffer *target) {
     s->output=target;composition_invalidate(s);
 }
 void composition_publish(Composition *s) {
+    for(unsigned i=0;i<s->layer_count;i++)s->layers[i].front_stamp=s->layers[i].sampled;
     uint8_t *old=s->front;s->front=s->working;s->working=old;s->prepared=false;s->frames++;
+}
+void composition_install_prepared(Composition *s,PixelBuffer *target){
+    /* A candidate already owns a complete first composite. Retargeting that
+       buffer does not change its pixels or require another composition pass. */
+    assert(s->prepared&&!s->pending&&!s->composing&&target->count==s->count&&!target->type);
+    if(s->output->type)vm_heap_uncharge((size_t)s->count*3);
+    s->output=target;s->dirty=false;composition_publish(s);
+}
+void composition_presented(Composition *s,const ContributionStamp *stamps,uint64_t now){
+    if(s)for(unsigned i=0;i<s->layer_count;i++)
+        control_contribution_presented(&s->layers[i].vm,stamps?stamps[i]:s->layers[i].front_stamp,now);
 }
 CompositionLayer *composition_layer(Composition *s,const char *id) {
     if(!s)return NULL;
@@ -42,7 +55,10 @@ CompositionLayer *composition_layer(Composition *s,const char *id) {
 void composition_invalidate(Composition *s) { if(s){s->composing=false;s->prepared=false;s->dirty=true;} }
 static void compose_start(Composition *s) {
     s->pixel=0;s->composing=true;s->dirty=false;
-    for(unsigned i=0;i<s->layer_count;i++)s->layers[i].sampled_frame=s->layers[i].vm.control.contribution_frame;
+    for(unsigned i=0;i<s->layer_count;i++){
+        CompositionLayer *l=&s->layers[i];l->sampled_frame=l->vm.control.contribution_frame;
+        l->sampled=l->opacity?l->vm.control.contribution:(ContributionStamp){0};
+    }
 }
 static void compose_pixels(void *context,unsigned first,unsigned end){
     Composition *s=context;
@@ -62,9 +78,14 @@ static void compose_slice(Composition *s) {
     s->pixel=end;s->composite_us+=platform_time_us()-started;
     if(end==s->count){s->composing=false;s->prepared=true;s->composite_frames++;}
 }
+bool composition_prepare_step(Composition *s){
+    if(s->prepared)return true;
+    if(!s->composing)compose_start(s);
+    compose_slice(s);return s->prepared;
+}
 void composition_prepare(Composition *s) {
-    compose_start(s);
-    while(s->composing){compose_slice(s);runtime_checkpoint();}
+    composition_invalidate(s);
+    while(!composition_prepare_step(s))runtime_checkpoint();
 }
 static void complete_output(Composition *s) {
     if(!s->pending)return;
@@ -73,6 +94,7 @@ static void complete_output(Composition *s) {
     s->pending=false;
     if(status<0){s->output->type->cancel(s->output->driver);snprintf(s->error,sizeof(s->error),"native composition output failed; retrying");s->dirty=true;return;}
     memcpy(s->output->rgb,s->front,(size_t)s->count*3);
+    composition_presented(s,NULL,platform_time_us());
     s->frames++;s->output_us+=platform_time_us()-s->output_started;s->error[0]=0;
 }
 static void composition_tick_impl(Composition *s,unsigned budget) {
@@ -80,7 +102,7 @@ static void composition_tick_impl(Composition *s,unsigned budget) {
     if(s->command_active||!s->playing)return;
     /* A composite pins every committed layer. Autonomous writers are deferred
        until the bounded composite finishes; management invalidates it first. */
-    if(s->composing){compose_slice(s);return;}
+    if(s->composing){if(runtime_epoch_available())compose_slice(s);return;}
     /* The completed composite no longer reads the layer contributions. Let
        suspended renders finish while it waits, without starting another frame
        on fast layers. Both composite buffers remain stable for their readers. */
@@ -92,18 +114,20 @@ static void composition_tick_impl(Composition *s,unsigned budget) {
         if(s->pending||platform_time_us()<s->next_present)return;
         if(!s->output->type){if(!s->front_pinned)composition_publish(s);return;}
         uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
+        for(unsigned i=0;i<s->layer_count;i++)s->layers[i].front_stamp=s->layers[i].sampled;
         s->output_started=platform_time_us();
         if(pixels_submit(s->output,s->front,s->count)){s->pending=true;s->next_present=s->output_started+FRAME_INTERVAL_US;complete_output(s);}
         else{snprintf(s->error,sizeof(s->error),"native composition output failed; retrying");s->dirty=true;}
     }
-    unsigned first=s->layer_count?s->cursor++%s->layer_count:0;
+    unsigned first=s->layer_count?s->cursor%s->layer_count:0;
+    if(!vm_tick_batching())s->cursor++;
     for(unsigned i=0;i<s->layer_count;i++){
         CompositionLayer *l=&s->layers[(first+i)%s->layer_count];
         if(!runtime_owns(&l->vm))vm_tick_budget(&l->vm,budget);
         if(l->vm.control.contribution_frame!=l->sampled_frame)s->dirty=true;
     }
     uint64_t now=platform_time_us();
-    if(!s->prepared&&s->dirty&&now>=s->next_frame){s->next_frame=now+FRAME_INTERVAL_US;compose_start(s);compose_slice(s);}
+    if(!s->prepared&&s->dirty&&now>=s->next_frame&&runtime_epoch_available()){s->next_frame=now+FRAME_INTERVAL_US;compose_start(s);compose_slice(s);}
 }
 void composition_tick(Composition *s,unsigned budget) {
     if(s->ticking)return;
@@ -130,7 +154,10 @@ const char *composition_frame(Composition *s,uint32_t delta_ms) {
         if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}
         if(!s->output->type)composition_publish(s);
         else if(!pixels_show_frame(s->output,s->working,s->count))error="native composition output failed";
-        else{memcpy(s->output->rgb,s->working,(size_t)s->count*3);s->frames++;s->prepared=false;}
+        else{
+            memcpy(s->output->rgb,s->working,(size_t)s->count*3);s->frames++;s->prepared=false;
+            for(unsigned i=0;i<s->layer_count;i++)control_contribution_presented(&s->layers[i].vm,s->layers[i].sampled,platform_time_us());
+        }
     }
     s->command_active=false;return error;
 }

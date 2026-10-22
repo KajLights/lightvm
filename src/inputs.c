@@ -65,51 +65,48 @@ static void default_driver(InputPort *port){
     port->driver.duration=port->default_duration;
     port->driver.mode=port->default_mode;port->driver.easing=port->default_easing;
 }
-const char *inputs_load(Portable *p){
-    uint8_t *data=demo_calloc(1,p->manifest_size);
-    if(!data)return "input metadata exceeds peak memory budget";
-    Json j;const char *error="invalid input declarations";
-    if(!p->read(p->context,p->manifest_offset,data,p->manifest_size)||!json_parse(&j,data,p->manifest_size))goto done;
-    int declarations=json_get(&j,0,"inputs");
+const char *inputs_load(Portable *p,const Json *j){
+    const char *error="invalid input declarations";
+    int declarations=json_get(j,0,"inputs");
     if(declarations<0){error=NULL;goto done;}
-    if(j.tokens[declarations].type!=JSON_ARRAY||(unsigned)j.tokens[declarations].children>INPUT_LIMIT)goto done;
-    p->ninputs=(unsigned)j.tokens[declarations].children;
+    if(j->tokens[declarations].type!=JSON_ARRAY||(unsigned)j->tokens[declarations].children>INPUT_LIMIT)goto done;
+    p->ninputs=(unsigned)j->tokens[declarations].children;
     if(p->ninputs){p->inputs=demo_calloc(p->ninputs,sizeof(*p->inputs));if(!p->inputs){error="inputs exceed memory budget";goto done;}}
     unsigned index=0;
-    for(int t=declarations+1;t<j.tokens[declarations].next;t=j.tokens[t].next,index++){
+    for(int t=declarations+1;t<j->tokens[declarations].next;t=j->tokens[t].next,index++){
         static const char *const fields[]={"name","type","default","minimum","maximum","unit","driver","control",NULL};
         InputPort *port=&p->inputs[index];
-        if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"name"),port->name,sizeof(port->name))||!object_name_valid(port->name)||
-           !(port->type=scalar_type(&j,json_get(&j,t,"type")))||!input_value_parse(&j,json_get(&j,t,"default"),port->type,&port->initial))goto done;
+        if(!json_fields(j,t,fields)||!json_string(j,json_get(j,t,"name"),port->name,sizeof(port->name))||!object_name_valid(port->name)||
+           !(port->type=scalar_type(j,json_get(j,t,"type")))||!input_value_parse(j,json_get(j,t,"default"),port->type,&port->initial))goto done;
         for(unsigned n=0;n<index;n++)if(!strcmp(port->name,p->inputs[n].name))goto done;
-        int unit=json_get(&j,t,"unit");
+        int unit=json_get(j,t,"unit");
         if(unit>=0){
-            if(!json_string(&j,unit,port->unit,sizeof(port->unit)))goto done;
+            if(!json_string(j,unit,port->unit,sizeof(port->unit)))goto done;
             for(const char *s=port->unit;*s;s++)if(!((*s>='a'&&*s<='z')||(*s>='A'&&*s<='Z')||(*s>='0'&&*s<='9')||strchr("_./%-",*s)))goto done;
         }
         const char *const bounds[]={"minimum","maximum"};
         for(unsigned n=0;n<2;n++){
-            int bound=json_get(&j,t,bounds[n]);if(bound<0)continue;
-            if((port->type!=T_INT&&port->type!=T_FLOAT)||!input_value_parse(&j,bound,port->type,n?&port->maximum:&port->minimum))goto done;
+            int bound=json_get(j,t,bounds[n]);if(bound<0)continue;
+            if((port->type!=T_INT&&port->type!=T_FLOAT)||!input_value_parse(j,bound,port->type,n?&port->maximum:&port->minimum))goto done;
             port->bounds|=1u<<n;
         }
         if(!in_bounds(port,port->initial))goto done;
-        int control=json_get(&j,t,"control");
-        if(control>=0&&!light_control(&j,control,port,&port->default_control))goto done;
-        int driver=json_get(&j,t,"driver");
+        int control=json_get(j,t,"control");
+        if(control>=0&&!light_control(j,control,port,&port->default_control))goto done;
+        int driver=json_get(j,t,"driver");
         if(driver>=0){
             if(control>=0)goto done;
             static const char *const driver_fields[]={"kind","duration","mode","easing",NULL};
-            if(port->type!=T_FLOAT||!json_fields(&j,driver,driver_fields)||!json_equal(&j,json_get(&j,driver,"kind"),"ramp")||
-               !json_f64(&j,json_get(&j,driver,"duration"),&port->default_duration)||port->default_duration<=0||port->default_duration>1e9||
-               !mode(&j,json_get(&j,driver,"mode"),&port->default_mode)||!easing(&j,json_get(&j,driver,"easing"),&port->default_easing)||
+            if(port->type!=T_FLOAT||!json_fields(j,driver,driver_fields)||!json_equal(j,json_get(j,driver,"kind"),"ramp")||
+               !json_f64(j,json_get(j,driver,"duration"),&port->default_duration)||port->default_duration<=0||port->default_duration>1e9||
+               !mode(j,json_get(j,driver,"mode"),&port->default_mode)||!easing(j,json_get(j,driver,"easing"),&port->default_easing)||
                !in_bounds(port,(InputValue){.f=0})||!in_bounds(port,(InputValue){.f=1}))goto done;
         }
         port->snapshot=port->last=port->initial;default_driver(port);
     }
     error=NULL;
 done:
-    demo_free(data);return error;
+    return error;
 }
 void inputs_attach(Portable *p,InputRegistry *registry,const LightControls *light){
     p->input_registry=registry;
@@ -271,6 +268,13 @@ bool input_port_capture(InputRegistry *registry,InputPort *port,uint64_t time){
     InputValue previous=port->snapshot;bool fallback=port->fallback;
     port->snapshot=evaluate(registry,port,time,platform_time_us(),&port->fallback);
     return previous.u!=port->snapshot.u||fallback!=port->fallback;
+}
+void inputs_sample(Portable *p,uint64_t time,uint32_t *values,uint8_t *fallbacks){
+    uint64_t now=platform_time_us();*fallbacks=0;
+    for(unsigned n=0;n<p->ninputs;n++){
+        bool fallback;values[n]=evaluate(p->input_registry,&p->inputs[n],time,now,&fallback).u;
+        if(fallback)*fallbacks|=(uint8_t)(1u<<n);
+    }
 }
 bool inputs_changed(Portable *p,uint64_t time){
     uint64_t now=platform_time_us();

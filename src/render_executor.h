@@ -12,7 +12,10 @@ typedef struct {
     void *context;
     uint64_t elapsed_us;
 } RenderJob;
-typedef struct { uint64_t offloads, worker_us;unsigned worker_stack_peak; } RenderStats;
+typedef struct {
+    uint64_t offloads,worker_us,pair_imbalance_us,join_wait_us,max_job_us;
+    unsigned worker_stack_peak;
+} RenderStats;
 typedef void (*RenderRange)(void *context,unsigned first,unsigned end);
 
 void render_executor_init(void);

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ControllerService } from './controller-service';
-import { createAppStore, controllerActions } from './store';
+import { createAppStore, controllerActions, activityActions } from './store';
 import type { Description, NetworkConfig } from './types';
 import type { LightVMClient } from '../protocol.mjs';
 import { LightVMClient as Client } from '../protocol.mjs';
@@ -123,6 +123,22 @@ describe('network commit', () => {
 });
 
 describe('selected preview output', () => {
+  it('keeps polling live state after disconnected operation history expires', async () => {
+    const store = createAppStore(), service = new ControllerService(store);
+    const description = { controller_id: 'pico', boot_id: 'boot', active_revision: 0, saved_revision: 0 } as Description;
+    const client = { closed: false, describe: vi.fn().mockResolvedValue(description), operation: vi.fn().mockRejectedValue(Object.assign(new Error('operation unknown or expired'), { code: 7 })) } as unknown as LightVMClient;
+    service.paths.attach('usb', client, description);
+    store.dispatch(controllerActions.description(description));
+    store.dispatch(activityActions.scene({ boot_id: 'boot', id: 4, output: 'lights', stage: 'verify', terminal: false, code: 0, value: 0, error: '', units: 1, accepted_us: 1, activated_us: 0, first_presented_us: 0, fade_completed_us: 0, finished_us: 0, max_step_us: 0 }));
+    const read = vi.spyOn(service, 'readProgramState').mockResolvedValue();
+    vi.spyOn(service, 'readConfig').mockResolvedValue();
+    await service.poll();
+    expect(read).toHaveBeenCalledOnce();
+    expect(store.getState().activity.scene?.lookup_error).toContain('expired');
+    await service.poll();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(client.operation).toHaveBeenCalledOnce();
+  });
   it('leaves an unconfigured controller connected without querying playback', async () => {
     const store = createAppStore(), service = new ControllerService(store);
     const client = { closed: false, json: vi.fn(), transition: vi.fn() } as unknown as LightVMClient;

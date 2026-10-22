@@ -60,6 +60,24 @@ export class ControllerService {
       this.store.dispatch(activityActions.notice(message)); this.log(problem.message, 'error'); return false;
     } finally { this.store.dispatch(activityActions.operation(null)); this.store.dispatch(activityActions.progress(null)); }
   }
+  async cancelScene() {
+    const scene = this.snapshot.activity.scene, client = this.client;
+    if (!scene || scene.terminal || !client) return;
+    try {
+      const state = await client.operation(scene.boot_id, scene.id, true);
+      this.store.dispatch(activityActions.scene(serializable(state)));
+    } catch (error) { this.store.dispatch(activityActions.notice((error as Error).message)); }
+  }
+  async checkScene() {
+    const scene = this.snapshot.activity.scene;
+    if (!scene) return;
+    return this.run('Checking preparation', async connection => {
+      const client = this.require(connection);
+      const state = await client.operation(scene.boot_id, scene.id);
+      this.store.dispatch(activityActions.scene(serializable(state)));
+      if (!state.terminal) await client.waitOperation(state);
+    });
+  }
   require(client: LightVMClient | null): LightVMClient {
     if (!client || client.closed) throw new Error('Select a connected command path before sending commands.');
     return client;
@@ -77,6 +95,7 @@ export class ControllerService {
       let candidate: LightVMClient | undefined;
       const clientFor = (transport: SerialTransport | HttpTransport | WebSocketTransport): LightVMClient => {
         const client = new LightVMClient(transport, {
+          onOperation: state => this.store.dispatch(activityActions.scene(serializable(state))),
           onDisconnect: (error: Error) => {
             if (this.paths.paths.get(key)?.client !== client) return;
             const selected = this.paths.selected === key;
@@ -232,6 +251,18 @@ export class ControllerService {
         }
         if (connection.client !== this.client) continue;
         const state = this.store.getState().controller;
+        const scene = this.snapshot.activity.scene;
+        if (scene && !scene.terminal && !scene.lookup_error && scene.boot_id === description.boot_id) {
+          try {
+            const latest = await connection.client.operation(scene.boot_id, scene.id);
+            this.store.dispatch(activityActions.scene(serializable(latest)));
+          } catch (error) {
+            if (connection.client.closed || (error as { code?: number }).code !== 7) throw error;
+            // The finite controller history can expire while disconnected.
+            // Retain the identity for inspection without blocking live refresh.
+            this.store.dispatch(activityActions.scene({ ...scene, lookup_error: (error as Error).message }));
+          }
+        }
         this.store.dispatch(controllerActions.description(description));
         if (description.active_revision !== state.configRevision || description.saved_revision !== state.savedRevision) await this.readConfig(connection.client);
         if (!this.store.getState().activity.operation && description.catalog_revision !== state.description?.catalog_revision) { await this.readPrograms(connection.client); await this.readPresets(connection.client); }

@@ -18,10 +18,12 @@ static void startup_transition_clock(void){
     size=snprintf(config,sizeof(config),"{\"schema\":\"lightvm.config\",\"outputs\":[{\"id\":\"lights\",\"type\":\"ws2812b\",\"config\":{\"pin\":\"GP16\",\"count\":5},\"startup\":{\"mode\":\"preset\",\"preset\":\"scene\"}}]}");
     CHECK(size>0&&(size_t)size<sizeof(config));CHECK(store_put_config(&store,config,(uint32_t)size));store_destroy(&store);
     static App app;Capture reply={.marker=0x12345678u};app_init(&app,capture,&reply);
-    CHECK(!app.boot_error[0]&&app.output_count==1);Transition *t=app.outputs[0]->transition;CHECK(t&&t->driver==TRANSITION_TIMED);
-    /* CYW43/network setup can take longer than the entire configured fade.
-       Neither that gap nor cooperative ingress work may consume startup time. */
-    clock_now=5000000;runtime_checkpoint();transition_update(t,clock_now);
+    CHECK(!app.boot_error[0]&&app.output_count==1&&!app.outputs[0]->transition&&preparation_pending(&app));
+    /* Network setup precedes preparation; it must not consume the fade clock. */
+    clock_now=5000000;runtime_checkpoint();
+    for(unsigned n=0;n<10000&&preparation_pending(&app);n++)app_tick(&app);
+    CHECK(!preparation_pending(&app)&&!app.boot_error[0]);
+    Transition *t=app.outputs[0]->transition;CHECK(t&&t->driver==TRANSITION_TIMED);
     CHECK(t->progress==0&&t->frames==0);
     app_tick(&app);CHECK(t->progress==0&&t->driver==TRANSITION_TIMED);
     for(unsigned n=0;n<30&&t->frames<1;n++)app_tick(&app);
@@ -141,12 +143,18 @@ static void transition_contract(void){
     delayed_output=true;output_ready=false;
     for(unsigned n=0;n<100&&!(t->pending&&t->prepared);n++){clock_now+=20000;transition_test_tick(t,64);}
     CHECK(t->pending&&t->prepared);
+    ContributionStamp submitted[2]={t->front_stamps[0][0],t->front_stamps[1][0]};
     uint32_t front_crc=crc32_bytes(t->front,131*3),back_crc=crc32_bytes(t->working,131*3);
     s=t->compositions[1];composition_invalidate(s);s->layers[0].vm.next_frame=0;
     renders=s->layers[0].vm.portable->render_count;
     for(unsigned n=0;n<20;n++){clock_now+=20000;transition_test_tick(t,64);}
     CHECK(s->layers[0].vm.portable->render_count>renders);
     CHECK(crc32_bytes(t->front,131*3)==front_crc&&crc32_bytes(t->working,131*3)==back_crc);
+    output_ready=true;t->command_active=true;transition_test_tick(t,64);t->command_active=false;
+    for(unsigned side=0;side<2;side++){
+        CHECK(t->compositions[side]->layers[0].vm.control.displayed.frame==submitted[side].frame);
+        CHECK(t->compositions[side]->layers[0].vm.control.displayed.captured_us==submitted[side].captured_us);
+    }
     CHECK(allocations==allocation_count);deny_allocation=false;
     transition_invalidate(t);composition_destroy(t->compositions[0]);composition_destroy(t->compositions[1]);
     transition_destroy(t);delayed_output=false;pixels_destroy(&physical);CHECK(vm_heap_used()==0);

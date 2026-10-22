@@ -1,4 +1,5 @@
 #include "network.h"
+#include "platform.h"
 #include "json.h"
 #include <stdio.h>
 #include <string.h>
@@ -64,54 +65,54 @@ bool network_wifi_valid(const WifiNetwork *n,char *error,size_t capacity) {
     }
     return true;
 }
-bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity) {
-    Json j; memset(out,0,sizeof(*out)); strcpy(out->country,"XX"); out->port=80;
+static bool network_decode(const Json *j,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity) {
+    memset(out,0,sizeof(*out)); strcpy(out->country,"XX"); out->port=80;
     static const char *const root[]={"schema","wifi","http","mqtt",NULL};
     static const char *const wifi[]={"enabled","country","networks","mode","ap",NULL};
     static const char *const ap_fields[]={"ssid","password",NULL};
     static const char *const http[]={"enabled","port",NULL};
     static const char *const item[]={"ssid","password","hidden",NULL};
-    if (size>CONFIG_LIMIT || !json_parse(&j,bytes,size) || !json_fields(&j,0,root) || !json_equal(&j,json_get(&j,0,"schema"),"lightvm.network"))
+    if (!json_fields(j,0,root) || !json_equal(j,json_get(j,0,"schema"),"lightvm.network"))
         return fail(error,capacity,"network: expected bounded lightvm.network JSON");
-    int w=json_get(&j,0,"wifi"),h=json_get(&j,0,"http");
-    if (!json_fields(&j,w,wifi) || !json_fields(&j,h,http) || !optional_bool(&j,w,"enabled",&out->wifi_enabled) || !optional_bool(&j,h,"enabled",&out->http_enabled))
+    int w=json_get(j,0,"wifi"),h=json_get(j,0,"http");
+    if (!json_fields(j,w,wifi) || !json_fields(j,h,http) || !optional_bool(j,w,"enabled",&out->wifi_enabled) || !optional_bool(j,h,"enabled",&out->http_enabled))
         return fail(error,capacity,"network: invalid wifi/http fields");
-    int mode=json_get(&j,w,"mode"),ap=json_get(&j,w,"ap");
+    int mode=json_get(j,w,"mode"),ap=json_get(j,w,"ap");
     if (mode>=0) {
-        if (json_equal(&j,mode,"ap")) out->mode=NET_MODE_AP;
-        else if (!json_equal(&j,mode,"station")) return fail(error,capacity,"wifi.mode: expected station or ap");
+        if (json_equal(j,mode,"ap")) out->mode=NET_MODE_AP;
+        else if (!json_equal(j,mode,"station")) return fail(error,capacity,"wifi.mode: expected station or ap");
     }
     if (previous) {
         strcpy(out->ap_ssid,previous->ap_ssid);
         strcpy(out->ap_password,previous->ap_password);
     }
     if (ap>=0) {
-        if (!json_fields(&j,ap,ap_fields)) return fail(error,capacity,"wifi.ap: invalid fields");
-        int ssid=json_get(&j,ap,"ssid"),password=json_get(&j,ap,"password");
+        if (!json_fields(j,ap,ap_fields)) return fail(error,capacity,"wifi.ap: invalid fields");
+        int ssid=json_get(j,ap,"ssid"),password=json_get(j,ap,"password");
         out->ap_ssid[0]=0; // An explicitly supplied AP object defaults to the controller name.
-        if (ssid>=0 && !json_string(&j,ssid,out->ap_ssid,sizeof(out->ap_ssid))) return fail(error,capacity,"wifi.ap.ssid: expected at most 32 UTF-8 bytes; empty selects controller name");
-        if (password>=0 && !json_string(&j,password,out->ap_password,sizeof(out->ap_password))) return fail(error,capacity,"wifi.ap.password: invalid string");
+        if (ssid>=0 && !json_string(j,ssid,out->ap_ssid,sizeof(out->ap_ssid))) return fail(error,capacity,"wifi.ap.ssid: expected at most 32 UTF-8 bytes; empty selects controller name");
+        if (password>=0 && !json_string(j,password,out->ap_password,sizeof(out->ap_password))) return fail(error,capacity,"wifi.ap.password: invalid string");
     }
     size_t ap_length=strlen(out->ap_password);
     if (ap_length && ap_length<8) return fail(error,capacity,"wifi.ap.password: expected 8..63 printable ASCII characters or empty for open");
     for (size_t i=0;i<ap_length;i++) if ((unsigned char)out->ap_password[i]<32 || (unsigned char)out->ap_password[i]>126)
         return fail(error,capacity,"wifi.ap.password: expected printable ASCII");
-    int country=json_get(&j,w,"country");
-    if (country>=0 && (!json_string(&j,country,out->country,sizeof(out->country)) || !network_country_valid(out->country)))
+    int country=json_get(j,w,"country");
+    if (country>=0 && (!json_string(j,country,out->country,sizeof(out->country)) || !network_country_valid(out->country)))
         return fail(error,capacity,"wifi.country: expected two uppercase letters or XX");
-    uint32_t port=80; int p=json_get(&j,h,"port");
-    if (p>=0 && (!json_u32(&j,p,&port) || !port || port>65535)) return fail(error,capacity,"http.port: expected 1..65535");
+    uint32_t port=80; int p=json_get(j,h,"port");
+    if (p>=0 && (!json_u32(j,p,&port) || !port || port>65535)) return fail(error,capacity,"http.port: expected 1..65535");
     out->port=(uint16_t)port;
-    int list=json_get(&j,w,"networks");
-    if ((list<0 && out->mode!=NET_MODE_AP && !previous) || (list>=0 && (j.tokens[list].type!=JSON_ARRAY || j.tokens[list].children>(int)NETWORK_LIMIT))) return fail(error,capacity,"wifi.networks: expected at most eight entries");
+    int list=json_get(j,w,"networks");
+    if ((list<0 && out->mode!=NET_MODE_AP && !previous) || (list>=0 && (j->tokens[list].type!=JSON_ARRAY || j->tokens[list].children>(int)NETWORK_LIMIT))) return fail(error,capacity,"wifi.networks: expected at most eight entries");
     if (list<0 && previous) { out->count=previous->count; memcpy(out->networks,previous->networks,sizeof(out->networks)); }
-    for (int t=list<0?0:list+1;list>=0 && t<j.tokens[list].next;t=j.tokens[t].next) {
+    for (int t=list<0?0:list+1;list>=0 && t<j->tokens[list].next;t=j->tokens[t].next) {
         WifiNetwork *n=&out->networks[out->count++];
-        if (!json_fields(&j,t,item) || !json_string(&j,json_get(&j,t,"ssid"),n->ssid,sizeof(n->ssid)) || !n->ssid[0] || !optional_bool(&j,t,"hidden",&n->hidden))
+        if (!json_fields(j,t,item) || !json_string(j,json_get(j,t,"ssid"),n->ssid,sizeof(n->ssid)) || !n->ssid[0] || !optional_bool(j,t,"hidden",&n->hidden))
             return fail(error,capacity,"wifi.networks: SSID must be 1..32 UTF-8 bytes");
         for (unsigned i=0;i+1<out->count;i++) if (!strcmp(n->ssid,out->networks[i].ssid)) return fail(error,capacity,"wifi.networks: duplicate SSID");
-        int password=json_get(&j,t,"password");
-        if (password>=0) { if (!json_string(&j,password,n->password,sizeof(n->password))) return fail(error,capacity,"wifi.password: invalid string"); }
+        int password=json_get(j,t,"password");
+        if (password>=0) { if (!json_string(j,password,n->password,sizeof(n->password))) return fail(error,capacity,"wifi.password: invalid string"); }
         else {
             bool found=false;
             if (previous) for (unsigned i=0;i<previous->count;i++) if (!strcmp(n->ssid,previous->networks[i].ssid)) { strcpy(n->password,previous->networks[i].password); found=true; }
@@ -122,17 +123,17 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
     if (out->wifi_enabled && out->mode==NET_MODE_STATION && !out->count) return fail(error,capacity,"wifi.networks: enabled station Wi-Fi needs an SSID");
     if(previous)out->mqtt=previous->mqtt;
     else out->mqtt.port=1883;
-    int mqtt=json_get(&j,0,"mqtt");
+    int mqtt=json_get(j,0,"mqtt");
     if(mqtt>=0){
         static const char *const fields[]={"enabled","host","port","username","password",NULL};
-        if(!json_fields(&j,mqtt,fields) || !optional_bool(&j,mqtt,"enabled",&out->mqtt.enabled))
+        if(!json_fields(j,mqtt,fields) || !optional_bool(j,mqtt,"enabled",&out->mqtt.enabled))
             return fail(error,capacity,"mqtt: invalid fields");
-        int host=json_get(&j,mqtt,"host"),user=json_get(&j,mqtt,"username"),password=json_get(&j,mqtt,"password"),port_token=json_get(&j,mqtt,"port");
-        if(host>=0 && !json_string(&j,host,out->mqtt.host,sizeof(out->mqtt.host)))return fail(error,capacity,"mqtt.host: expected IPv4 address or DNS hostname (at most 127 bytes)");
-        if(user>=0 && !json_string(&j,user,out->mqtt.username,sizeof(out->mqtt.username)))return fail(error,capacity,"mqtt.username: expected at most 64 UTF-8 bytes");
-        if(password>=0 && !json_string(&j,password,out->mqtt.password,sizeof(out->mqtt.password)))return fail(error,capacity,"mqtt.password: expected at most 64 UTF-8 bytes");
+        int host=json_get(j,mqtt,"host"),user=json_get(j,mqtt,"username"),password=json_get(j,mqtt,"password"),port_token=json_get(j,mqtt,"port");
+        if(host>=0 && !json_string(j,host,out->mqtt.host,sizeof(out->mqtt.host)))return fail(error,capacity,"mqtt.host: expected IPv4 address or DNS hostname (at most 127 bytes)");
+        if(user>=0 && !json_string(j,user,out->mqtt.username,sizeof(out->mqtt.username)))return fail(error,capacity,"mqtt.username: expected at most 64 UTF-8 bytes");
+        if(password>=0 && !json_string(j,password,out->mqtt.password,sizeof(out->mqtt.password)))return fail(error,capacity,"mqtt.password: expected at most 64 UTF-8 bytes");
         uint32_t mqtt_port=out->mqtt.port;
-        if(port_token>=0 && (!json_u32(&j,port_token,&mqtt_port)||!mqtt_port||mqtt_port>65535))return fail(error,capacity,"mqtt.port: expected 1..65535");
+        if(port_token>=0 && (!json_u32(j,port_token,&mqtt_port)||!mqtt_port||mqtt_port>65535))return fail(error,capacity,"mqtt.port: expected 1..65535");
         out->mqtt.port=(uint16_t)mqtt_port;
     }
     if(out->mqtt.enabled){
@@ -141,6 +142,13 @@ bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,N
     }
     error[0]=0; return true;
 }
+bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity){
+    Json *j=platform_calloc(1,sizeof(*j));bool ok=false;
+    if(!j||size>CONFIG_LIMIT||!json_parse(j,bytes,size))fail(error,capacity,"network: expected bounded lightvm.network JSON");
+    else ok=network_decode(j,previous,out,error,capacity);
+    platform_free(j);return ok;
+}
+
 typedef struct { char *out; size_t used,capacity; bool failed; } Writer;
 static void put(Writer *w,const char *fmt,...) {
     if (w->failed) return;

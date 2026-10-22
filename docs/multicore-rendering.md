@@ -33,12 +33,34 @@ may finish an already-started slow layer while its front is pinned, but does not
 start more fast-layer frames until it can publish. Composition slices still pin
 the committed layer contributions they are reading.
 
-These execution epochs are deliberately synchronous and bounded. No job survives
-the return to command processing. This supplies the lifetime fence for reset,
-replacement, configuration changes, storage relocation and destruction, without
-an asynchronous command protocol or a second set of application state. Existing
-cooperative checkpoints still service unrelated work during long management
-operations. Checkpoints are deferred inside an epoch, and never run on core 1.
+Execution epochs have a 4 ms admission target, with half initially reserved for
+composition and presentation. Output, layer and A/B cursors rotate across epochs;
+an instance receives at most one scheduled slice per epoch. A native operation,
+final join or output packing can overrun the target. Measure the whole epoch and
+foreground service gap; the target is not a proven maximum command latency.
+No job survives the return to command processing. This supplies the lifetime
+fence for reset, replacement, configuration changes, storage relocation and
+destruction. Checkpoints are deferred inside an epoch and never run on core 1.
+Within the rotating layer traversal, unfinished work and old dynamic/dirty
+contributions receive priority relative to measured render cost. A valid cached
+layer accumulates no freshness debt; rotation supplies a first opportunity so
+cost estimates cannot starve a layer.
+
+[Scene preparation](scene-preparation.md) now uses resumable controller-owned
+operations. Parsing, verification, resource initialization, first render,
+composition, baseline capture and persistence unwind between bounded units.
+Old playback continues, and clients can query/cancel after reconnect. Preparing
+one candidate globally limits peak memory. Native operations and flash units
+still require measured hardware service bounds.
+
+After preparation, verified straight-line render programs can reuse their
+committed contribution while effective input values are unchanged. The device
+proves eligibility from bytecode. It rejects clocks, RNG, persistent writes,
+sprite lifecycle work, feedback, branches/maps and unsupported effects. Private
+colour styles are allowed only when fully reconstructed before use. There is no
+extra pixel cache. The virtual clock continues, input ramps and source expiry are
+polled, and manual `FRAME` always executes. A sleeping valid background is useful
+saved work, not a stalled layer.
 
 The same executor also divides:
 
@@ -98,6 +120,7 @@ the serial executor; this change does not introduce an ESP32 worker task.
 | `LIGHTVM_RENDER_WORKERS` | 1 or 2; default 2 where a concurrent executor exists |
 | `LIGHTVM_MAX_REFRESH_HZ` | 0 for readiness-driven output; optional 1–1000 Hz cap |
 | `LIGHTVM_RENDER_SLICE_US` | Target yield interval at VM operation boundaries; Pico W defaults to 2000 µs, other profiles to 500 µs |
+| `LIGHTVM_RENDER_EPOCH_US` | Coordinator admission target, default 4000 µs; valid range 100–100000 µs |
 | `LIGHTVM_INVOCATION_LIMIT` | Total dispatch limit per initialization/render; default 10,000,000 |
 
 For example, append these options to the normal Pico 2 W configuration command:
@@ -118,11 +141,22 @@ Headroom is a reservation, not an enforced malloc partition; stack and native
 allocation peaks still need workload testing. Changing storage size remains a
 separate flash-layout choice documented in the board guide.
 
-MQTT-enabled Pico builds also emit `ha-stack-report.json` and bound the HA
-callback frames using compiler stack-usage data. The large HA JSON parser must
-return before preset activation loads program manifests; retaining both parser
-frames can overflow the 16 KiB main stack. These checks cover that regression,
-not the complete application call graph.
+MQTT-enabled Pico builds emit `ha-stack-report.json` for the original callback
+regression. Every Pico build also runs the strict `stack-paths.json` gate, using
+GCC frames, linked machine calls, audited callback/recursion contracts, assembly
+bounds and interrupt allowances. Unknown edges, source fingerprint changes or
+insufficient margin fail the build. Both configured W profiles pass the software
+gate. External ROM allowances and stress watermarks still require physical
+validation; this is not a physical stack certificate. See the
+[accounting method and results](design/pico-stack-accounting.md). Core-0 watermark
+initialization marks only unused stack below the live frame and excludes the guard.
+
+HA light/key adapters produce owned typed commands and return from parsing before
+execution. Management requests share one heap parser. Program admission parses
+its manifest once for both settings and inputs, charging parser/document scratch
+to the VM budget and freeing it before verification checkpoints or VM execution.
+That temporary peak may reject a replacement that cannot coexist with its old
+scene; the old scene remains usable.
 
 ## Pico 2 W math and measurement
 
@@ -136,10 +170,24 @@ the compiled choice.
 
 `describe` reports the worker count, refresh cap, slice/invocation limits,
 instruction-cache size, connection budget, native headroom, cumulative worker
-assignments/time, and `worker_stack_peak_bytes`. Pico samples stack high water
+assignments/time, `worker_stack_peak_bytes` and `main_stack_peak_bytes`. Pico samples stack high water
 using a canary scan on the worker when requested; this is an observed watermark,
-not a proof that every possible workload fits. The host reports zero stack
-watermark. Output `frames` counts completed presentations.
+not a proof that every possible workload fits. The host reports zero for the
+worker watermark and null for the unavailable main watermark. Output `frames`
+counts completed presentations. Additional counters report job maximum duration,
+paired-job imbalance, coordinator join wait, epoch total/maximum/overruns and the
+maximum interval between top-level `app_tick` calls. That interval includes long
+commands and storage, and is only a proxy for ingress service opportunities.
+
+Composition status includes a server sample time and each layer's render count,
+distinct presented contribution count, displayed frame, age and completion-to-first-
+presentation delay. Stamps follow the actual sampled buffers through composition
+and transitions; a newly finished layer cannot relabel an older in-flight image.
+These are software presentation provenance, not optical measurements or proof
+that a layer was unoccluded. Zero-opacity layers and unused endpoint scenes are
+excluded; opaque overlays and arbitrary custom transitions are not analysed for
+visibility. `dependency_current` describes the reusable **committed contribution**,
+which may still be waiting to appear on the output.
 
 Use `tools/benchmark_controller.py` for comparable single-animation timing,
 including `--board pico2_w`. Compare one/two-worker builds with identical
@@ -158,3 +206,18 @@ layer/transition/output cases with `tools/benchmark_multicore.py`, and compare
 transform/math frame hashes with `tools/check_render_math.py`. Both tools restore
 the active hardware configuration and remove their temporary named programs.
 Visible LED acceptance requires strips.
+
+`tools/replay_performance.py --process build/host/lightvm --output replay.json`
+performs exact fixed-step comparisons using preserved original fixtures, fixed
+populations and 300 seeded animated frames with brightness changes. Dispatch
+reductions do not predict the same percentage increase in Pico throughput.
+`benchmark_multicore.py` defaults to seven seconds of warm-up and five 30-second
+samples, recreates scenes between trials and reverses case order on alternating
+rounds. It records source/bytecode hashes, settings, raw status latencies, firmware
+identity (when supplied), clocks, compiler and both stack watermarks. Use
+`--network-regime` to record actual traffic conditions and `--firmware` only for
+the image verified as flashed. Use `--layer-samples` in a separate diagnostic run
+to retain contribution snapshots; measure that observer's overhead separately.
+The time-indexed sprite fixture supports autonomous comparisons; probabilistic
+stars require fixed-step replay for exact equivalence. The remaining board gates
+are tracked in the [performance plan](design/pico-performance-plan.md).

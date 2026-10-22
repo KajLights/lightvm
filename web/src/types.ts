@@ -57,13 +57,17 @@ export interface ProgramState {
 }
 export interface NearbyController { controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { blockId?: string; message: string; line: number; column: number; end_line?: number; end_column?: number }
-export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[] }
+export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[]; advisories?: Diagnostic[] }
 export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', outputs: [] };
 export const DEFAULT_SOURCE = DEFAULT_EXAMPLE.source;
 
 export interface CompositionState {
   active: boolean; preset?: string | null; revision?: number; playing?: boolean;
-  layers?: { id: string; program: string; generation?: number }[];
+  sampled_at_us?: number;
+  layers?: { id: string; program: string; generation?: number; frames?: number; distinct_presentations?: number;
+    dirty_to_display_us?: number; dirty_age_us?: number | null; runnable_wait_us?: number; composite_wait_us?: number; output_wait_us?: number;
+    render_reusable?: boolean; dependency_current?: boolean | null; displayed_sample_age_us?: number | null;
+    completion_to_display_us?: number | null }[];
 }
 
 export interface TransitionState {
@@ -74,4 +78,13 @@ export interface TransitionState {
   A: CompositionState;
   B: CompositionState;
   error: string;
+}
+
+export interface SceneOperation {
+  boot_id: string; id: number; output: string; stage: string; terminal: boolean;
+  code: number; value: number; error: string; units: number;
+  stage_us?: Record<string, number | string>;
+  accepted_us: number | string; finished_us: number | string; max_step_us: number | string;
+  activated_us: number | string; first_presented_us: number | string; fade_completed_us: number | string;
+  lookup_error?: string;
 }

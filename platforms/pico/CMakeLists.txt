@@ -5,6 +5,8 @@ if(LIGHTVM_WIFI AND NOT PICO_BOARD MATCHES "^(pico_w|pico2_w)$")
     message(FATAL_ERROR "Wi-Fi requires PICO_BOARD=pico_w or pico2_w")
 endif()
 pico_sdk_init()
+target_compile_options(lightvm_core PRIVATE -fstack-usage -fcallgraph-info=su)
+target_compile_options(lightvm PRIVATE -fstack-usage -fcallgraph-info=su)
 option(LIGHTVM_OUTPUT_PROBE "Build the Pico hardware output verification image" OFF)
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
     "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/peripherals.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S"
@@ -18,7 +20,7 @@ math(EXPR worker_stack_remainder "${LIGHTVM_WORKER_STACK_BYTES} % 32")
 if(worker_stack_remainder)
     message(FATAL_ERROR "LIGHTVM_WORKER_STACK_BYTES must be a multiple of 32")
 endif()
-target_compile_definitions(lightvm PRIVATE PICO_STACK_SIZE=16384 PICO_CORE1_STACK_SIZE=${LIGHTVM_WORKER_STACK_BYTES})
+target_compile_definitions(lightvm PRIVATE PICO_PANIC_FUNCTION=lightvm_panic PICO_STACK_SIZE=16384 PICO_CORE1_STACK_SIZE=${LIGHTVM_WORKER_STACK_BYTES})
 # Both stacks are excluded from the contiguous heap and checked in the RAM gate.
 pico_set_linker_script_var(lightvm RAM_LENGTH "RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384-${LIGHTVM_WORKER_STACK_BYTES}")
 pico_set_linker_script_var(lightvm SCRATCH_X_ORIGIN "RAM_ORIGIN_DEFAULT+RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384-${LIGHTVM_WORKER_STACK_BYTES}")
@@ -46,6 +48,9 @@ if(PICO_RP2350 AND NOT PICO_RISCV AND LIGHTVM_PICO2_DCP)
         target_link_options(lightvm PRIVATE "LINKER:--wrap=__aeabi_${operation}")
     endforeach()
 endif()
+if(LIGHTVM_WIFI)
+    target_link_options(lightvm PRIVATE "LINKER:--wrap=cyw43_send_ethernet")
+endif()
 pico_enable_stdio_usb(lightvm 1)
 pico_enable_stdio_uart(lightvm 0)
 pico_add_extra_outputs(lightvm)
@@ -56,6 +61,13 @@ add_custom_command(TARGET lightvm POST_BUILD
 add_custom_command(TARGET lightvm POST_BUILD
     COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/check_pico_ram.py"
         "${CMAKE_NM}" "$<TARGET_FILE:lightvm>")
+add_custom_command(TARGET lightvm POST_BUILD
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/audit_pico_stack.py"
+        "${CMAKE_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/stack-paths.json" --elf "$<TARGET_FILE:lightvm>" --objdump "${CMAKE_OBJDUMP}")
+add_custom_target(pico_stack_audit
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/audit_pico_stack.py"
+        "${CMAKE_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/stack-paths.json" --elf "$<TARGET_FILE:lightvm>" --objdump "${CMAKE_OBJDUMP}"
+    DEPENDS lightvm)
 
 # Reserve the configured region relative to the SDK board flash geometry.
 configure_file("${CMAKE_CURRENT_LIST_DIR}/storage.ld" "${CMAKE_CURRENT_BINARY_DIR}/storage.ld" COPYONLY)

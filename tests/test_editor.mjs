@@ -318,3 +318,17 @@ test('recall clients keep preset/power recalls separate from fixed-slot loading'
   await client.savePreset('blue', [], 'desk', spec);
   assert.deepEqual(document, { schema: 'lightvm.preset', layers: [], entry_transition: spec });
 });
+
+
+test("operation polling reports progress and cancellation without holding the command queue", async () => {
+  const client = new LightVMClient({ write: async () => {}, close: async () => {} });
+  const progress = [];
+  const pending = { boot_id: 'boot', id: 4, terminal: false, code: 0, value: 0, stage: 'verify' };
+  let queried = 0;
+  client.operation = async (boot, id) => {
+    assert.equal(boot, 'boot'); assert.equal(id, 4); queried++;
+    return { ...pending, terminal: true, code: 7, stage: 'cancelled', error: '' };
+  };
+  await assert.rejects(client.waitOperation(pending, { onProgress: state => progress.push(state.stage) }), error => error.operation.stage === 'cancelled');
+  assert.equal(queried, 1); assert.deepEqual(progress, ['verify', 'cancelled']);
+});

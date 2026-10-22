@@ -39,7 +39,7 @@ class BootSequenceTests(unittest.TestCase):
             self.skipTest("Requires LIGHTVM_BOOT_SEQUENCE=ON")
 
     def test_capability_and_disabled_storage(self):
-        description = self.client.describe()
+        description = self.client.wait_preparation()
         if self.supported:
             self.assertEqual(description["boot_sequence"], {"count": 1, "triggered": False, "error": ""})
             self.assertEqual(self.sidecar.stat().st_size, 8192)
@@ -87,7 +87,7 @@ class BootSequenceTests(unittest.TestCase):
         snapshot = self.storage.read_bytes()
         for count in (2, 3, 3):
             self.restart()
-            description = self.client.describe()
+            description = self.client.wait_preparation()
             self.assertEqual(description["boot_sequence"]["count"], count)
             recovery = description.get("recovery_supported", False) and count >= 3
             self.assertEqual(description["outputs"][0]["selected_preset"], None if recovery else "startup")
@@ -107,7 +107,7 @@ class BootSequenceTests(unittest.TestCase):
         self.transport.close(); self.transport = None
         self.sidecar.write_bytes(b"invalid length")
         self.restart()
-        description = self.client.describe()
+        description = self.client.wait_preparation()
         self.assertTrue(description["boot_sequence"]["error"])
         self.assertEqual(description["boot_error"], "")
         self.assertTrue(description["storage_available"])

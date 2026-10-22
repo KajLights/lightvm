@@ -264,12 +264,59 @@ class Client:
             reply = self.require_ok(self.command(CHUNK, struct.pack("<I", offset) + chunk))
             if reply.value != offset + len(chunk):
                 raise ProtocolError("receiver acknowledged an unexpected upload offset")
-        return self.require_ok(self.command(FINISH, arguments))
+        reply = self.require_ok(self.command(FINISH, arguments))
+        if self.data_reply.startswith(b'{"operation":'):
+            reply = self.wait_operation(json.loads(self.data_reply)["operation"])
+        return reply
 
 
     def manage(self, operation, **fields):
         payload = json.dumps({"op": operation, **fields}, separators=(",", ":")).encode()
-        return self.require_ok(self.command(MANAGE, payload))
+        reply = self.require_ok(self.command(MANAGE, payload))
+        if not operation.startswith("operation_") and self.data_reply.startswith(b'{"operation":'):
+            state = json.loads(self.data_reply)["operation"]
+            reply = self.wait_operation(state)
+            if operation == "transition_select":
+                return self.manage("transition_get", **({"output": fields["output"]} if "output" in fields else {}))
+            if operation == "program_reset":
+                return self.manage("program_state", **{key: fields[key] for key in ("output", "slot", "layer") if key in fields})
+            if operation == "output_light_set":
+                return self.manage("output_light_get", **({"output": fields["output"]} if "output" in fields else {}))
+        return reply
+
+    def operation(self, boot_id, operation_id, cancel=False):
+        self.manage("operation_cancel" if cancel else "operation_get", boot_id=boot_id, id=operation_id)
+        return json.loads(self.data_reply)["operation"]
+
+    def wait_operation(self, state, timeout=120, on_progress=None, *, require_ok=True):
+        deadline = time.monotonic() + timeout
+        while not state["terminal"]:
+            if on_progress:
+                on_progress(state)
+            if time.monotonic() >= deadline:
+                raise ProtocolError(f"Scene operation {state['id']} is still pending; query it with boot_id {state['boot_id']}")
+            time.sleep(.005)
+            state = self.operation(state["boot_id"], state["id"])
+        reply = Reply(state["code"], state["value"], state["error"] or state["stage"])
+        return self.require_ok(reply) if require_ok else reply
+
+    def finish_upload(self, arguments=b'', require_ok=True):
+        reply = self.command(FINISH, arguments)
+        if not reply.code and self.data_reply.startswith(b'{"operation":'):
+            state = json.loads(self.data_reply)["operation"]
+            reply = self.wait_operation(state, require_ok=False)
+        return self.require_ok(reply) if require_ok else reply
+
+    def wait_preparation(self, timeout=120):
+        """Wait for all controller-owned work, including boot restoration."""
+        deadline = time.monotonic() + timeout
+        while True:
+            description = self.describe()
+            if not description["preparation_pending"]:
+                return description
+            if time.monotonic() >= deadline:
+                raise ProtocolError("Scene preparation remains pending")
+            time.sleep(.005)
 
     def describe(self):
         self.manage("describe")

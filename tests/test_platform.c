@@ -1,6 +1,7 @@
 #include "release.h"
 // Link the real engine against a test port, without host or Pico native code.
 #include "session.h"
+#include "preparation.h"
 #include "pixels.h"
 #include "vm_allocator.h"
 #include "runtime.h"
@@ -20,6 +21,7 @@
 static uint64_t clock_now, clock_step;
 static unsigned shows, allocations;
 static bool deny_allocation;
+static unsigned fail_allocation_at;
 static bool deny_show;
 static bool delayed_output, output_ready, output_failed;
 static bool cooperative_show, secondary_output_allowed;
@@ -140,11 +142,11 @@ static void storage_faults(void) {
 }
 void *platform_calloc(size_t count, size_t size) {
     ++allocations;
-    return deny_allocation ? NULL : calloc(count, size);
+    return deny_allocation || allocations==fail_allocation_at ? NULL : calloc(count, size);
 }
 void *platform_realloc(void *memory, size_t size) {
     ++allocations;
-    return deny_allocation ? NULL : realloc(memory, size);
+    return deny_allocation || allocations==fail_allocation_at ? NULL : realloc(memory, size);
 }
 void platform_free(void *memory) { free(memory); }
 
@@ -179,6 +181,14 @@ static void input(void *context, const uint8_t *bytes, size_t size) {
 static void command(Session *session, uint8_t type, const uint8_t *bytes, size_t size) {
     // write_frame delivers header and payload separately, exercising the session.
     write_frame(input, session, type, 42, bytes, size);
+    Capture *reply=session->transport;
+    if(reply->code==STATUS_OK&&!strcmp(reply->message,"scene operation state")){
+        uint32_t operation=(uint32_t)reply->value;const char *error;unsigned ticks=0;
+        while(!preparation_result(session->app,operation,&reply->code,&reply->value,&error)){
+            CHECK(++ticks<200000);app_tick(session->app);
+        }
+        snprintf(reply->message,sizeof(reply->message),"%s",error);
+    }
 }
 static void upload(Session *session, Capture *reply, const uint8_t *bytecode, size_t size) {
     uint8_t begin[8], chunk[FRAME_LIMIT];
@@ -257,6 +267,7 @@ static void network_transactions(void) {
 #include "composition_contract.inc"
 #include "transition_contract.inc"
 #include "light_controls_contract.inc"
+#include "preparation_contract.inc"
 
 static unsigned service_calls;
 static void advance_service(void *context) { (void)context;service_calls++;clock_now+=100; }
@@ -398,7 +409,7 @@ int main(void) {
     const char *apply="{\"op\":\"config_apply\",\"expected_revision\":0}";
     command(&session,CMD_MANAGE,(const uint8_t *)apply,strlen(apply)); CHECK(reply.code==STATUS_OK);
     CHECK(shows==1 && displayed[0]==0);
-    size_t physical_heap=vm_heap_used();CHECK(physical_heap>=PIXEL_BYTES);
+    size_t physical_heap=vm_heap_used()-preparation_retained_bytes(&app);CHECK(physical_heap>=PIXEL_BYTES);
     command(&session, CMD_STATUS, NULL, 0);
     CHECK(reply.code == STATUS_OK && reply.id == 42);
     CHECK(strstr(reply.message, "version=" LIGHTVM_VERSION " protocol=1 platform=test board=virtual output=capture"));
@@ -411,7 +422,7 @@ int main(void) {
     command(&session, 10, NULL, 0);
     CHECK(reply.code == STATUS_PROTOCOL && !strcmp(reply.message, "unknown command"));
     CHECK(shows == 1);
-    upload(&session, &reply, render_lbc, sizeof(render_lbc));
+    upload(&session, &reply, active_render_lbc, sizeof(active_render_lbc));
     CHECK(reply.code == STATUS_OK && vm_heap_used() > 0);
     command(&session, CMD_PLAY, NULL, 0);
     CHECK(reply.code == STATUS_OK);
@@ -461,11 +472,11 @@ int main(void) {
     command(&session, CMD_FRAME, delta, sizeof(delta));
     CHECK(reply.code == STATUS_EXECUTION);
     command(&session, CMD_RESET, NULL, 0);
-    CHECK(reply.code == STATUS_OK && vm_heap_used() == physical_heap);
+    CHECK(reply.code == STATUS_OK && vm_heap_used() == physical_heap+preparation_retained_bytes(&app));
     deny_allocation = true;
     write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));
     command(&session,CMD_BEGIN,begin,sizeof(begin));
-    CHECK(reply.code == STATUS_STORAGE && !app.upload_owner && vm_heap_used() == physical_heap);
+    CHECK(reply.code == STATUS_STORAGE && !app.upload_owner && vm_heap_used() == physical_heap+preparation_retained_bytes(&app));
     deny_allocation = false;
     upload(&session, &reply, render_lbc, sizeof(render_lbc));
     CHECK(reply.code == STATUS_OK);
@@ -497,7 +508,7 @@ int main(void) {
     CHECK(displayed[2]==220 && app_output(&app,NULL)->pixels.rgb[2]==220);
     CHECK(app_output(&app,NULL)->vm.control.committed[2]==7); // successful batch survives driver failure
     deny_show=false; deny_allocation=false;
-    command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==physical_heap);
+    command(&session,CMD_RESET,NULL,0); CHECK(vm_heap_used()==physical_heap+preparation_retained_bytes(&app));
     // Allocation failure during control preparation leaves management usable.
     vm_init(&app_output(&app,NULL)->vm,&app_output(&app,NULL)->pixels,capture,&reply);app_output(&app,NULL)->vm.memory=control_lbc;app_output(&app,NULL)->vm.expected=sizeof(control_lbc);
     CHECK(!vm_load(&app_output(&app,NULL)->vm));app_output(&app,NULL)->vm.ready=true;
@@ -612,6 +623,7 @@ int main(void) {
     transition_contract();
     light_controls_contract();
     startup_transition_clock();
+    preparation_contract();
     indicator_contract();indicator_effect_contract();
     return 0;
 }

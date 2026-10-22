@@ -46,7 +46,13 @@ class ConfigurationTests(unittest.TestCase):
         self.client = Client(self.transport)
 
     def raw_manage(self, operation, **fields):
-        return self.client.command(MANAGE, json.dumps({"op": operation, **fields}).encode())
+        reply = self.client.command(MANAGE, json.dumps({"op": operation, **fields}).encode())
+        if reply.code == 0 and self.client.data_reply.startswith(b'{"operation":'):
+            state = json.loads(self.client.data_reply)["operation"]
+            while not state["terminal"]:
+                state = self.client.operation(state["boot_id"], state["id"])
+            reply.code, reply.value, reply.message = state["code"], state["value"], state["error"]
+        return reply
 
     def test_blank_boot_and_missing_target(self):
         description = self.client.describe()
@@ -207,7 +213,7 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(self.client.status_fields()["heap"], "0")
         with self.assertRaises(ProtocolError):
             self.client.activate("trap")
-        self.assertEqual(self.client.status_fields()["heap"], "0")
+        self.assertEqual(int(self.client.status_fields()["heap"]), self.client.describe()["preparation_memory_bytes"])
         self.assertEqual(self.client.get_program("trap"), data)
 
     def test_repeated_activation_releases_memory(self):

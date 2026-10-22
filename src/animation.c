@@ -37,12 +37,13 @@ static bool invoke(VmInstance *a,unsigned entry,uint64_t time,uint64_t delta){
 }
 static const char *finish(VmInstance *a){
     Control *c=&a->control;Portable *p=a->portable;
-    if(p->render_count==UINT64_MAX)return fault(a,"render counter overflow");
+    if(p->render_count==UINT64_MAX||c->contribution_frame==UINT32_MAX)return fault(a,"render counter overflow");
     c->program_us=p->now_us;p->render_count++;
     memcpy(c->committed,c->working,control_frame_bytes(a));
     a->render_us=(uint32_t)(a->render_cpu_us>UINT32_MAX?UINT32_MAX:a->render_cpu_us);
     a->render_total_us+=a->render_cpu_us;
     c->contribution_valid=true;c->contribution_frame++;c->in_step=false;
+    c->contribution=(ContributionStamp){.captured_us=c->capture_started_us,.completed_us=platform_time_us(),.dirty_since_us=c->captured_dirty_since_us,.generation=a->generation,.frame=c->contribution_frame,.dependency_revision=c->captured_revision};
     return NULL;
 }
 static const char *start(VmInstance *a,uint64_t delta,bool manual){
@@ -51,6 +52,8 @@ static const char *start(VmInstance *a,uint64_t delta,bool manual){
     if(delta>INT64_MAX||c->program_us>(uint64_t)INT64_MAX-delta)return "program clock overflow";
     if(!manual&&p->active_wall_us>UINT64_MAX-delta)return "wall clock overflow";
     memset(c->working,0,control_frame_bytes(a));
+    control_observe(a,c->program_us+delta);c->captured_revision=c->dependency_revision;c->captured_dirty_since_us=c->dirty_since_us;
+    c->capture_started_us=platform_time_us();
     a->render_cpu_us=0;
     /* A transition owner captures progress, fronts and live controls together.
        Its preparation uses defaults; subsequent evaluations retain that capture. */
@@ -61,21 +64,50 @@ static const char *start(VmInstance *a,uint64_t delta,bool manual){
 }
 static const char *complete_render(VmInstance *a){
     int status;
-    do{uint64_t started=platform_time_us();status=pbc_resume(a->portable,64);a->render_cpu_us+=platform_time_us()-started;runtime_checkpoint();}while(!status);
+    /* Resume already enforces the board's wall-time quantum. A tiny secondary
+       instruction quota repeatedly ran whole service epochs during preparation.
+       Finish the invocation before returning to its caller when it is done. */
+    do{uint64_t started=platform_time_us();status=pbc_resume(a->portable,4096);a->render_cpu_us+=platform_time_us()-started;if(!status)runtime_checkpoint();}while(!status);
     return status<0?fault(a,"portable execution fault"):finish(a);
 }
-const char *animation_prepare(VmInstance *a){
-    if(a->portable->profile==4)a->portable->input_epoch=platform_time_us();
-    const char *error=pbc_prepare(a->portable,&a->view);
-    if(!error&&!invoke(a,0,0,0))error="portable invocation rejected";
-    if(!error){
-        int status;
-        do{status=pbc_resume(a->portable,64);runtime_checkpoint();}while(!status);
-        if(status<0)error="portable initialization fault";
+int animation_prepare_step(AnimationPreparation *s,VmInstance *a){
+    const char *error=NULL;int status;
+    switch(s->stage){
+    case 0:
+        if(a->portable->profile==4&&!s->resources.stage)a->portable->input_epoch=platform_time_us();
+        status=pbc_prepare_step(&s->resources,a->portable,&a->view);
+        if(status<0){error=s->resources.error;break;}
+        if(status>0)s->stage=1;
+        return 0;
+    case 1:
+        if(!invoke(a,0,0,0)){error="portable invocation rejected";break;}
+        s->stage=2;return 0;
+    case 2:
+        status=pbc_resume(a->portable,256);
+        if(status<0){error="portable initialization fault";break;}
+        if(status>0)s->stage=3;
+        return 0;
+    case 3:
+        error=start(a,0,true);if(error)break;
+        s->stage=4;return 0;
+    case 4:{
+        uint64_t began=platform_time_us();status=pbc_resume(a->portable,256);
+        a->render_cpu_us+=platform_time_us()-began;
+        if(status<0){error="portable execution fault";break;}
+        if(status>0){error=finish(a);if(error)break;s->stage=5;}
+        return 0;
     }
-    if(!error)error=start(a,0,true);
-    if(!error)error=complete_render(a);
-    return fault(a,error);
+    case 5:
+        a->portable->render_reusable=pbc_render_reusable(a->portable);s->stage=6;return 1;
+    case 6:return 1;
+    default:error="invalid animation preparation stage";
+    }
+    s->error=fault(a,error);return -1;
+}
+const char *animation_prepare(VmInstance *a){
+    AnimationPreparation s={0};int status;
+    do{status=animation_prepare_step(&s,a);if(!status)runtime_checkpoint();}while(!status);
+    return status<0?s.error:NULL;
 }
 const char *animation_preflight(VmInstance *a,uint64_t delta){
     if(delta>INT64_MAX||a->control.program_us>(uint64_t)INT64_MAX-delta)return "program clock overflow";

@@ -19,6 +19,7 @@ typedef struct {
     App *app;
     Mqtt mqtt;
     uint64_t source;
+    uint32_t last_operation;
     uint32_t generation, catalog_generation;
     unsigned phase;
     bool available;
@@ -36,5 +37,5 @@ void ha_close(HomeAssistant *);
 void ha_keys_reconcile(HomeAssistant *);
 void ha_keys_refresh(HomeAssistant *);
 bool ha_keys_tick(HomeAssistant *,uint64_t now);
-bool ha_keys_command(HomeAssistant *,const char *,const uint8_t *,size_t,char *,size_t);
+bool ha_keys_command(HomeAssistant *,const char *,const uint8_t *,size_t,Command *);
 #endif

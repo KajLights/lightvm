@@ -6,6 +6,7 @@
 #include "network.h"
 #include "composition.h"
 #include "transition.h"
+#include "command.h"
 #if LIGHTVM_BOOT_SEQUENCE
 #include "boot_sequence.h"
 #endif
@@ -17,7 +18,7 @@ typedef struct {
     IndicatorEffect effect;
     uint64_t effect_started;
 } IndicatorLight;
-typedef struct {
+typedef struct AppOutput {
     HardwareOutput hardware;
     VmInstance vm;
     PixelBuffer pixels;
@@ -32,6 +33,7 @@ typedef struct {
     uint32_t active_crc;
     /* Power is a latched output target, independent of VM clocks or pixel content.
        Recall separately owns destination semantics until a manual edit. */
+    bool startup_pending;
     bool recall_owned, power_on;
     char selected_preset[OBJECT_NAME_LIMIT + 1];
     uint32_t selected_preset_crc;
@@ -39,7 +41,8 @@ typedef struct {
     bool indicator_dirty,indicator_pending,indicator_fault;
     uint64_t indicator_retry;
 } AppOutput;
-typedef struct {
+typedef struct App {
+    struct PreparationQueue *preparation;
 #if LIGHTVM_BOOT_SEQUENCE
     BootSequence boot_sequence;
 #endif
@@ -92,6 +95,7 @@ void app_tick(App *app);
 bool app_boot_sequence_triggered(const App *app);
 void app_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 void app_dispatch(App *, uint64_t source, SendMessage, void *, uint8_t, uint16_t, const uint8_t *, size_t);
+void app_execute_command(App *,uint64_t source,SendMessage,void *,uint16_t,const Command *);
 void app_disconnect(App *, uint64_t source);
 void app_reply_delivered(App *, uint64_t source);
 // Save an already validated network configuration on the engine owner.

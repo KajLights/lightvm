@@ -6,6 +6,7 @@
 
 typedef union { max_align_t alignment; size_t size; } Allocation;
 static size_t used, peak;
+size_t demo_allocation_bytes(const void *p){return p?((const Allocation *)p-1)->size:0;}
 size_t vm_heap_used(void) { return used; }
 size_t vm_heap_peak(void) { return peak; }
 bool vm_heap_charge(size_t bytes) {
@@ -13,15 +14,18 @@ bool vm_heap_charge(size_t bytes) {
     used+=bytes; if (used>peak) peak=used; return true;
 }
 void vm_heap_uncharge(size_t bytes) { used-=bytes; }
-void *demo_calloc(size_t count, size_t size) {
-    if (count && size>SIZE_MAX/count) return NULL;
-    size*=count;
+void *demo_alloc(size_t size) {
     if (size>VM_HEAP_LIMIT-used || sizeof(Allocation)>VM_HEAP_LIMIT-used-size) return NULL;
-    Allocation *a=platform_calloc(1,sizeof(*a)+size);
+    Allocation *a=platform_realloc(NULL,sizeof(*a)+size);
     if (!a) return NULL;
     a->size=sizeof(*a)+size; used+=a->size;
     if (used>peak) peak=used;
     return a+1;
+}
+void *demo_calloc(size_t count, size_t size) {
+    if (count && size>SIZE_MAX/count) return NULL;
+    size*=count;
+    void *p=demo_alloc(size);if(p)memset(p,0,size);return p;
 }
 void demo_free(void *p) {
     if (!p) return;

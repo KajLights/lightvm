@@ -123,7 +123,9 @@ has `.count`. `pixels.fill(color, { start, stop })` uses half-open ranges.
 Sprites use named module helper callbacks and fixed capacities:
 
 ```javascript
-function starStart(s, runtime, position) { s.position = position; }
+function starStart(s, runtime, position) {
+  s.transform = new Transform({ translate: position, origin: 1 });
+}
 function starDraw(s, runtime, pixels) { pixels.fill(rgb(255, 80, 0)); }
 const star = new Sprite(3, { init: starStart, render: starDraw });
 
@@ -141,7 +143,7 @@ helper functions, retained images and transitions.
 
 ## Blocks: explore by connecting
 
-Start with the Rainbow, Breathe or Wipe example. Open a toolbox category and
+Start with the Rainbow, Breathe, Stars or Wipe example. Open a toolbox category and
 drag blocks into the workspace. Value blocks fit into sockets; drawing and
 control blocks connect vertically. **When starting** runs once. **Every frame**
 runs for each animation frame or transition evaluation. Unpainted pixels remain
@@ -156,6 +158,9 @@ The palette includes:
   counted loops, while loops and loop control.
 - Local variables, remembered state, frozen settings and live inputs.
 - Fixed numeric arrays, retained images, fading trails and transformed drawing.
+- Sprite definitions with **when created** and **each frame** sections, bounded
+  batches, creation arguments, transforms, colour/opacity and explicit removal.
+- Shared immutable RGBA artwork, supplied as comma-separated channel bytes.
 - Reusable one-argument functions with a return value.
 - Crossfades, wipes and explicit composition range copies.
 
@@ -167,10 +172,25 @@ for array and image lengths. Blocks use float numbers by default and convert
 indices to integers; modulo follows the positive wrapping convention for a
 positive divisor. The JavaScript view spells out that wrapping operation.
 
+Sprite definitions and shared artwork sit beside the program block. Create a
+batch directly in the program's **When starting** section. A sprite definition
+takes one creation argument, accessible with a local-variable block. Remembered
+values inside its callbacks belong to that sprite. Set fixed geometry/style in
+**when created**; its **each frame** clock measures time since birth. Remove a
+sprite explicitly when its lifetime ends. Shared artwork accepts 1–1024 RGBA
+pixels (four integer bytes from 0 to 255 per pixel). The Stars example demonstrates
+creation, fading, expiry, slot reuse and a live brightness input.
+
 Errors show a warning on the relevant block. **Show block** centres it in the
 workspace. Incomplete sockets or loose blocks are diagnosed; disabled blocks
 are not compiled. **Explore the JavaScript** shows a reading guide to the
 program. It does not replace the editable workspace or drive its compilation.
+
+Successful compilation can also show **Performance notes**. These are advisory;
+they do not disable preview or upload. Notes link to the Python/JavaScript source
+or the responsible block. Mixer **Layer performance** separates completed layer
+updates from distinct presented contributions and identifies valid cached images.
+Rates need two samples from the same generation; neither rate predicts maximum FPS.
 
 ## Compiler design and validation
 

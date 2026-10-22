@@ -113,6 +113,8 @@ static bool sample_add(Portable *p,PbcResource *src,double x,bool linear,float s
 typedef struct {
     Portable *p;PbcResource *r,*src,*style,*palette;const PbcValue *a;
     unsigned id;double period,wrapped_translate,wrapped_origin;
+    bool integer_mapping;
+    int offset;
 } DrawKernel;
 /* Keep solid-span scratch out of the transformed-image loop's register/stack
    allocation. These operations have no position-dependent sampling. */
@@ -185,6 +187,14 @@ static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
                 float sum[5]={0};
                 if(!sample_add(p,src,x,a[3].u!=0,sum)||!sample_add(p,src,x-period,a[3].u!=0,sum))return false;
                 for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(sum[c]);
+            }else if(k->integer_mapping){
+                /* Under these bounds, each original float operation is an
+                   exact integer. Preserve package reads (and their faults),
+                   including the zero-weight neighbour of linear sampling. */
+                int x=(int)i+k->offset;
+                if(x < -1 || x > (int)src->count)continue;
+                if(!sample(p,src,x,left))return false;
+                if(a[3].u&&!src->data&&!sample(p,src,x+1,right))return false;
             }else{
                 float x=((float)i-s->translate)/s->scale+s->origin;
                 if(!isfinite(x))return false;
@@ -325,7 +335,15 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
        VM workers need small serial chunks to keep their time slices balanced. */
     bool parallel=p->output&&r->data==p->output->data&&(!src||src->data)&&render_executor_can_split();
     unsigned cursor=p->bulk?p->bulk:start,end=cursor+(parallel?128u:32u);if(end>stop)end=stop;
-    DrawKernel kernel={p,r,src,style,palette,a,id,period,wrapped_translate,wrapped_origin};
+    DrawKernel kernel={.p=p,.r=r,.src=src,.style=style,.palette=palette,.a=a,.id=id,
+        .period=period,.wrapped_translate=wrapped_translate,.wrapped_origin=wrapped_origin};
+    if(id==31){
+        DrawStyle *s=(DrawStyle *)style->data;
+        kernel.integer_mapping=s->scale==1&&r->count<=65535&&src->count<=65535&&
+            fabsf(s->translate)<=65535&&fabsf(s->origin)<=65535&&
+            truncf(s->translate)==s->translate&&truncf(s->origin)==s->origin;
+        if(kernel.integer_mapping)kernel.offset=(int)s->origin-(int)s->translate;
+    }
     unsigned middle=parallel&&end-cursor>=64?cursor+(end-cursor)/2:end;
     DrawTask tasks[2]={{&kernel,cursor,middle,false},{&kernel,middle,end,false}};
     RenderJob jobs[2]={{draw_task,&tasks[0],0},{draw_task,&tasks[1],0}};

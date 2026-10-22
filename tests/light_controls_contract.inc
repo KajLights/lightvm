@@ -8,7 +8,7 @@ static void light_controls_contract(void){
     app.hardware.default_output=0;app.upload_output=&output;strcpy(output.hardware.id,"lights");
     PixelConfig config={.pin=16,.count=3,.brightness=7,.order="RGB",.clock_pin=-1,.enable_pin=-1};
     CHECK(pixels_init(&output.pixels,&config,output_type("ws2812b")));
-    portable_load(&output.vm,&output.pixels,&reply,render_lbc,sizeof(render_lbc));
+    portable_load(&output.vm,&output.pixels,&reply,active_render_lbc,sizeof(active_render_lbc));
     output.vm.output=&output.pixels;
     uint8_t delta[4]={0};
     app_command(&app,CMD_FRAME,42,delta,sizeof(delta));

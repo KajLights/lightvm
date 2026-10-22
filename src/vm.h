@@ -50,5 +50,6 @@ void vm_tick_begin(void);
 void vm_tick_collect(VmInstance *,unsigned budget);
 void vm_tick_flush(void);
 void vm_tick_end(void);
+bool vm_tick_batching(void);
 void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *payload, size_t size);
 #endif

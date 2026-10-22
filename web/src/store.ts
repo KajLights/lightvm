@@ -1,6 +1,6 @@
 import { configureStore, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
-import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyController, NetworkConfig, NetworkStatus, ProgramState, Path, Program } from './types';
+import type { Description, Diagnostic, HardwareConfig, Manifest, NearbyController, NetworkConfig, NetworkStatus, ProgramState, Path, Program, SceneOperation } from './types';
 import { DEFAULT_SOURCE } from './types';
 import { DEFAULT_EXAMPLE, defaultExample } from './examples';
 import { languageForFilename, type Language } from './languages/source';
@@ -57,11 +57,11 @@ const controllerSlice = createSlice({
 interface EditorState {
   source: string; filename: string; language: Language; drafts: Partial<Record<Language, { source: string; filename: string }>>; revision: number;
   compiler: 'idle' | 'loading' | 'ready' | 'error'; message: string; checking: boolean;
-  diagnostics: Diagnostic[]; artifact: { revision: number; bytes: number; manifest: Manifest } | null;
+  diagnostics: Diagnostic[]; advisories: Diagnostic[]; artifact: { revision: number; bytes: number; manifest: Manifest } | null;
 }
 const initialEditor: EditorState = {
   source: DEFAULT_SOURCE, filename: DEFAULT_EXAMPLE.filename, language: 'python', drafts: {}, revision: 0, compiler: 'idle', message: 'Open Editor to load the compiler.',
-  checking: false, diagnostics: [], artifact: null,
+  checking: false, diagnostics: [], advisories: [], artifact: null,
 };
 const editorSlice = createSlice({
   name: 'editor', initialState: initialEditor,
@@ -72,32 +72,33 @@ const editorSlice = createSlice({
         state.filename = action.payload.filename; state.language = languageForFilename(state.filename);
       }
       state.source = action.payload.source;
-      state.revision++; state.artifact = null; state.diagnostics = []; state.checking = true;
+      state.revision++; state.artifact = null; state.diagnostics = []; state.advisories = []; state.checking = true;
     },
     languageChanged(state, action: PayloadAction<Language>) {
       if (state.language === action.payload) return;
       state.drafts[state.language] = { source: state.source, filename: state.filename };
       const next = state.drafts[action.payload] ?? defaultExample(action.payload);
       state.language = action.payload; state.source = next.source; state.filename = next.filename;
-      state.revision++; state.artifact = null; state.diagnostics = []; state.checking = true;
+      state.revision++; state.artifact = null; state.diagnostics = []; state.advisories = []; state.checking = true;
     },
-    targetChanged(state) { state.revision++; state.artifact = null; state.diagnostics = []; state.checking = true; },
+    targetChanged(state) { state.revision++; state.artifact = null; state.diagnostics = []; state.advisories = []; state.checking = true; },
     compiler(state, action: PayloadAction<{ status: EditorState['compiler']; message: string }>) {
       state.compiler = action.payload.status; state.message = action.payload.message;
       if (state.compiler !== 'ready') state.artifact = null;
       if (state.compiler === 'error') state.checking = false;
     },
-    compiled(state, action: PayloadAction<{ revision: number; bytes: number; manifest: Manifest; diagnostics: Diagnostic[] }>) {
+    compiled(state, action: PayloadAction<{ revision: number; bytes: number; manifest: Manifest; diagnostics: Diagnostic[]; advisories?: Diagnostic[] }>) {
       if (action.payload.revision !== state.revision) return;
-      state.checking = false; state.diagnostics = action.payload.diagnostics;
+      state.checking = false; state.diagnostics = action.payload.diagnostics; state.advisories = action.payload.advisories ?? [];
       state.artifact = action.payload.diagnostics.length ? null : { revision: action.payload.revision, bytes: action.payload.bytes, manifest: action.payload.manifest };
     },
   },
 });
 const activitySlice = createSlice({
   name: 'activity',
-  initialState: { operation: null as string | null, notice: '', progress: null as number | null, entries: [{ id: 0, text: 'Workspace opened.', kind: '' }], sequence: 0 },
+  initialState: { scene: null as SceneOperation | null, operation: null as string | null, notice: '', progress: null as number | null, entries: [{ id: 0, text: 'Workspace opened.', kind: '' }], sequence: 0 },
   reducers: {
+    scene(state, action: PayloadAction<SceneOperation | null>) { state.scene = action.payload; },
     operation(state, action: PayloadAction<string | null>) { state.operation = action.payload; },
     notice(state, action: PayloadAction<string>) { state.notice = action.payload; },
     progress(state, action: PayloadAction<number | null>) { state.progress = action.payload; },

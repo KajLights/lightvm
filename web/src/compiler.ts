@@ -48,7 +48,7 @@ export class Compiler {
           if (data.type === 'failed') { this.fail(data.message); return; }
           const editor = this.store.getState().editor;
           this.artifact = data.diagnostics.length ? null : { ...data, source: editor.source };
-          this.store.dispatch(editorActions.compiled({ revision: data.id, bytes: data.bytecode.length, manifest: data.manifest, diagnostics: data.diagnostics }));
+          this.store.dispatch(editorActions.compiled({ revision: data.id, bytes: data.bytecode.length, manifest: data.manifest, diagnostics: data.diagnostics, advisories: data.advisories }));
         }
       };
     } catch (error) { this.fail((error as Error).message); return; }

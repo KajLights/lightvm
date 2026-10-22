@@ -39,6 +39,51 @@ static void inputs_contract(void){
     for(unsigned n=0;!ready&&n<1000;n++)CHECK(!animation_poll_budget(&vm,0,&ready,1));
     CHECK(ready);for(unsigned n=0;n<3;n++)CHECK(vm.control.committed[n*4]==30);
     CHECK(!control_step(&vm,0));for(unsigned n=0;n<3;n++)CHECK(vm.control.committed[n*4]==90);
+    /* Submitted snapshots retain their input revision across delayed output.
+       Displaying an older revision cannot clear newer dirty input; unchanged
+       dynamic frames cannot inflate the last input-to-display latency. */
+    clock_now=100;clock_step=0;control_observe(&vm,0);
+    ContributionStamp old_stamp=vm.control.contribution;
+    old_stamp.generation=vm.generation;old_stamp.frame=100;
+    old_stamp.dependency_revision=vm.control.dependency_revision;old_stamp.dirty_since_us=100;
+    vm.control.dirty=true;vm.control.dirty_since_us=100;
+    light.brightness=0.4;clock_now=200;control_observe(&vm,0);
+    CHECK(vm.control.dependency_revision>old_stamp.dependency_revision);
+    control_contribution_presented(&vm,old_stamp,300);
+    CHECK(vm.control.dirty&&vm.control.dirty_to_display_us==200);
+    ContributionStamp current=old_stamp;current.frame++;
+    current.dependency_revision=vm.control.dependency_revision;
+    control_contribution_presented(&vm,current,400);
+    CHECK(!vm.control.dirty&&vm.control.dirty_to_display_us==300);
+    current.frame++;control_contribution_presented(&vm,current,900);
+    CHECK(vm.control.dirty_to_display_us==300);
+    uint64_t runnable=vm.control.wait_us[1],output_wait=vm.control.wait_us[3];
+    clock_now=1000;control_wait(&vm,1);clock_now=1100;control_wait(&vm,3);clock_now=1300;control_wait(&vm,0);
+    CHECK(vm.control.wait_us[1]==runnable+100&&vm.control.wait_us[3]==output_wait+200);
+    vm_destroy(&vm);input_registry_destroy(&registry);CHECK(vm_heap_used()==0);
+
+    /* Sleeping contributions still have a live clock. New ramps begin at the
+       binding time, and external timeout invalidation works without renders. */
+    clock_now=0;clock_step=0;vm_init(&vm,&target,NULL,NULL);vm.output=NULL;
+    vm.memory=reusable_inputs_lbc;vm.expected=sizeof(reusable_inputs_lbc);
+    CHECK(!vm_load(&vm));vm.ready=true;CHECK(!control_prepare(&vm));
+    CHECK(vm.portable->render_reusable);vm.playing=true;
+    uint32_t initial_frame=vm.control.contribution_frame;
+    for(unsigned n=1;n<=30;n++){clock_now=n*1000000u;vm_tick(&vm);}
+    CHECK(vm.control.program_us==30000000&&vm.control.contribution_frame==initial_frame);
+    const char *ramp="{\"level\":{\"driver\":{\"kind\":\"ramp\",\"duration\":1.0,\"from\":0.0,\"to\":1.0,\"restart\":true}}}";
+    CHECK(json_parse(&j,ramp,strlen(ramp)));CHECK(!inputs_bind(vm.portable,&j,0,vm.control.program_us));
+    clock_now+=50000;vm_tick(&vm);CHECK(vm.control.committed[0]==5);
+    clock_now+=450000;vm_tick(&vm);CHECK(vm.control.committed[0]==50);
+    vm.portable->input_registry=&registry;
+    CHECK(json_parse(&j,claim,strlen(claim)));CHECK(!input_registry_claim(&registry,&j,0,&publisher));
+    const char *expires="{\"level\":{\"source\":\"test.level\",\"timeout_ms\":100}}";
+    CHECK(json_parse(&j,expires,strlen(expires)));CHECK(!inputs_bind(vm.portable,&j,0,vm.control.program_us));
+    CHECK(json_parse(&j,second,strlen(second)));CHECK(!input_registry_publish(&registry,&j,0,publisher,1));
+    clock_now+=20000;vm_tick(&vm);CHECK(vm.control.committed[0]==80);
+    initial_frame=vm.control.contribution_frame;clock_now+=20000;vm_tick(&vm);
+    CHECK(vm.control.contribution_frame==initial_frame);
+    clock_now+=100000;vm_tick(&vm);CHECK(vm.control.committed[0]==20&&vm.control.contribution_frame>initial_frame);
     vm_destroy(&vm);input_registry_destroy(&registry);CHECK(vm_heap_used()==0);
 
     /* Management must not cancel an unfinished transition on every slider update. */

@@ -8,12 +8,33 @@
 #include <stdio.h>
 #include "hardware/flash.h"
 #include "hardware/sync.h"
+#include "hardware/clocks.h"
 #include <stdlib.h>
 #include <string.h>
 static const PlatformInfo info={"pico",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
+unsigned platform_cpu_hz(void){return clock_get_hz(clk_sys);}
 uint64_t platform_time_us(void) { return time_us_64(); }
-void pico_port_init(void) {}
+extern uint8_t __StackBottom[],__StackTop[];
+static unsigned main_stack_peak;
+void pico_port_init(void) {
+    /* Seed unused stack only, below the live frame and a conservative scratch
+       gap. Interrupts cannot consume the region while it is being marked. */
+    uint32_t interrupts=save_and_disable_interrupts();uintptr_t sp;
+    __asm volatile("mov %0, sp":"=r"(sp));
+    volatile uint8_t *p=(uint8_t *)(((uintptr_t)__StackBottom+31u)&~(uintptr_t)31u)+32;
+    uintptr_t limit=sp>256?sp-256:0;
+    while((uintptr_t)p<limit)*p++=0xa5;
+    main_stack_peak=(unsigned)((uintptr_t)__StackTop-limit);
+    restore_interrupts(interrupts);
+}
+unsigned platform_main_stack_peak(void){
+    const volatile uint8_t *p=(uint8_t *)(((uintptr_t)__StackBottom+31u)&~(uintptr_t)31u)+32;
+    while(p<__StackTop&&*p==0xa5)p++;
+    unsigned used=(unsigned)(__StackTop-p);
+    if(used>main_stack_peak)main_stack_peak=used;
+    return main_stack_peak;
+}
 void platform_identity(char *controller,size_t capacity,char *boot,size_t boot_capacity) {
     char unique[2*PICO_UNIQUE_BOARD_ID_SIZE_BYTES+1]; pico_get_unique_board_id_string(unique,sizeof(unique));
     snprintf(controller,capacity,"pico-%s",unique);
@@ -85,3 +106,13 @@ bool platform_boot_storage_sync(void) { return true; }
 void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
 void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }
+
+/* Panic paths must not re-enter USB/printf while handling a USB/allocator fault.
+ * Retain the format string for a debugger and halt with interrupts disabled. */
+const char *volatile lightvm_panic_message;
+__attribute__((noreturn)) void lightvm_panic(const char *format, ...) {
+    lightvm_panic_message=format;
+    (void)save_and_disable_interrupts();
+    __breakpoint();
+    for(;;)__wfe();
+}

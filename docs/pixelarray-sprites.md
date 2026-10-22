@@ -108,6 +108,7 @@ See [the Stars example](../examples/animations/stars.py) for a complete animatio
 ```python
 def star_init(s, runtime, position, duration):
     s.position = position
+    s.transform = Transform(translate=s.position, origin=1.0)
     s.duration = duration
 
 
@@ -116,7 +117,6 @@ def star_render(s, runtime, pixels):
         s.remove()
         return
     pixels.draw(ART)
-    s.transform = Transform(translate=s.position, origin=1.0)
     s.color = ColorTransform(alpha=1.0 - runtime.time / s.duration)
 
 
@@ -133,8 +133,10 @@ ctx.stars.render(runtime, pixels)
 A definition has a positive literal width, an optional init function and a render
 function. `Definition.width` exposes its literal width, including in declarations.
 Declare callbacks before their Sprite definition. Callbacks use ordinary
-functions, making the contract suitable for future JS functions and Blocks event
-sections. Python classes and the other frontends are not implemented here.
+functions. [JavaScript and Blocks](javascript-and-blocks.md) expose the same
+creation/frame split through the shared compiler. Python classes are unsupported.
+Keep geometry and styles whose values are fixed for the sprite lifetime in its
+initializer. Dynamic opacity, brightness, movement and expiry belong in render.
 
 `spawn(...)` accepts the initializer's extra arguments, positionally or by name.
 It reserves a free slot, resets its state and transforms, and calls init exactly
@@ -178,6 +180,11 @@ existing layer scheduling/fault-publication contract.
 The optimizer folds built-in transform and colour fields that every callback
 leaves at their reservation defaults, avoiding native reads for those fields.
 Conditional changes and persistent non-default values retain ordinary field reads.
+Unused callback time/delta calculations are omitted. A reachable conditional or
+helper read of delta preserves timestamp updates on every invocation, including
+invocations that do not take that branch. Compiler performance notes explain
+omitted clocks and suggest moving potentially fixed geometry/styles to creation;
+they do not automatically hoist expressions with unproven lifetimes or effects.
 
 ## Package extension
 

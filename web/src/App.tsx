@@ -41,6 +41,13 @@ export function App() {
     </header>
     <main>
       {activity.notice && <div id="notice" className="notice" role="alert"><span>{activity.notice}</span><button className="quiet" aria-label="Dismiss notice" onClick={() => dispatch(activityActions.notice(''))}>×</button></div>}
+      {activity.scene && <section className="notice" role="status" aria-label="Scene preparation">
+        <span>{activity.scene.output || 'Controller'} · {({ accepted: 'Waiting to prepare', load: 'Loading', decode: 'Reading scene', verify: 'Checking programs', admit: 'Allocating scene', initialise: 'Preparing', first_render: 'Drawing first frame', compose: 'Composing', refresh: 'Updating controls', ready: 'Ready to activate', persist: 'Saving state', complete: 'Preparation complete', failed: 'Preparation failed', cancelled: 'Cancelled', superseded: 'Replaced by a newer request' } as Record<string, string>)[activity.scene.stage] || activity.scene.stage}{activity.scene.error ? ` · ${activity.scene.error}` : ''}</span>
+        {activity.scene.lookup_error && <span>Result unavailable · {activity.scene.lookup_error}</span>}
+        {!activity.scene.terminal && !activity.scene.lookup_error && <button className="quiet" disabled={!controller.selectedPath} onClick={() => void controllers.cancelScene()}>Cancel preparation</button>}
+        {!busy && <button className="quiet" disabled={!controller.selectedPath} onClick={() => void controllers.checkScene()}>Check status</button>}
+        {(activity.scene.terminal || activity.scene.lookup_error) && <button className="quiet" aria-label="Dismiss preparation status" onClick={() => dispatch(activityActions.scene(null))}>×</button>}
+      </section>}
       {workspace && description && <>
         <section className="controller-bar" aria-label="Selected controller">
           <div><p className="eyebrow">CONTROLLER WORKSPACE</p><strong id="board">{description.board}</strong><span className="controller-id">{description.controller_id} · LightVM {description.version}</span><p id="output-binding" className="helper">{controller.config?.outputs.find(item => item.id === controller.selectedOutput) ? controller.config.outputs.find(item => item.id === controller.selectedOutput)!.config.count + ' pixels · ' + controller.selectedOutput : 'Output is not configured'}</p></div>

@@ -38,6 +38,13 @@ def draw(ctx, runtime, pixels):
  for i in range(2000): ctx.x+=1
  pixels.fill(rgb(ctx.x%256,0,0))
 '''),
+ 'cycling_lbc':program(prefix+'''@init
+def setup(ctx,runtime): ctx.x=0
+@render
+def draw(ctx,runtime,pixels):
+ ctx.x=(ctx.x+1)%256
+ pixels.fill(rgb(ctx.x,0,0))
+'''),
  'counter_lbc':program(prefix+'''@init
 def setup(ctx, runtime):
  ctx.bad=setting(False)

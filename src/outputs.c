@@ -149,71 +149,71 @@ static bool validate_pixels(const Json *j, int c, PixelConfig *cfg, char *error,
         return failure(error, capacity, "outputs[0].config.order: expected a permutation of RGB");
     return true;
 }
-static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,size_t capacity){
-    Json j;memset(cfg,0,sizeof(*cfg));
+static bool parse(const Json *j,HardwareConfig *cfg,char *error,size_t capacity){
+    memset(cfg,0,sizeof(*cfg));
     cfg->default_output=-1;
     static const char *const root[]={"schema","outputs","inputs",NULL};
-    if(size>CONFIG_LIMIT||!json_parse(&j,bytes,size)||!json_fields(&j,0,root))
+    if(j->size>CONFIG_LIMIT||!json_fields(j,0,root))
         return failure(error,capacity,"config: invalid JSON, duplicate/unknown fields or configuration limit");
-    if(!json_equal(&j,json_get(&j,0,"schema"),"lightvm.config"))return failure(error,capacity,"schema: expected lightvm.config");
-    int list=json_get(&j,0,"outputs");
-    if(list<0||j.tokens[list].type!=JSON_ARRAY)
+    if(!json_equal(j,json_get(j,0,"schema"),"lightvm.config"))return failure(error,capacity,"schema: expected lightvm.config");
+    int list=json_get(j,0,"outputs");
+    if(list<0||j->tokens[list].type!=JSON_ARRAY)
         return failure(error,capacity,"outputs: array exceeds output capacity");
-    cfg->outputs=platform_calloc((size_t)j.tokens[list].children,sizeof(*cfg->outputs));
-    if(j.tokens[list].children&&!cfg->outputs)return failure(error,capacity,"outputs: allocation failed");
-    for(int t=list+1;t<j.tokens[list].next;t=j.tokens[t].next){
+    cfg->outputs=platform_calloc((size_t)j->tokens[list].children,sizeof(*cfg->outputs));
+    if(j->tokens[list].children&&!cfg->outputs)return failure(error,capacity,"outputs: allocation failed");
+    for(int t=list+1;t<j->tokens[list].next;t=j->tokens[t].next){
         HardwareOutput *d=&cfg->outputs[cfg->count];
         static const char *const fields[]={"id","type","config","mode","startup","home_assistant",NULL};
-        if(!json_fields(&j,t,fields)||!json_string(&j,json_get(&j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id))
+        if(!json_fields(j,t,fields)||!json_string(j,json_get(j,t,"id"),d->id,sizeof(d->id))||!object_name_valid(d->id))
             return failure(error,capacity,"outputs.id: missing or invalid identifier/fields");
-        if(!json_string(&j,json_get(&j,t,"type"),d->type,sizeof(d->type))||!output_type(d->type))
+        if(!json_string(j,json_get(j,t,"type"),d->type,sizeof(d->type))||!output_type(d->type))
             return failure(error,capacity,"outputs.type: unsupported output type");
-        int ha=json_get(&j,t,"home_assistant");
+        int ha=json_get(j,t,"home_assistant");
         if(ha>=0){
             static const char *const ha_fields[]={"default_preset","presets","name",NULL};
-            if(!json_fields(&j,ha,ha_fields) ||
-               !json_string(&j,json_get(&j,ha,"default_preset"),d->ha_default_preset,sizeof(d->ha_default_preset)) ||
+            if(!json_fields(j,ha,ha_fields) ||
+               !json_string(j,json_get(j,ha,"default_preset"),d->ha_default_preset,sizeof(d->ha_default_preset)) ||
                !object_name_valid(d->ha_default_preset))
                 return failure(error,capacity,"home_assistant.default_preset: expected a stored preset name (1..32 bytes)");
-            int presets=json_get(&j,ha,"presets");bool has_default=false;
-            if(presets<0||j.tokens[presets].type!=JSON_ARRAY||!j.tokens[presets].children||(unsigned)j.tokens[presets].children>HA_PRESET_LIMIT)
+            int presets=json_get(j,ha,"presets");bool has_default=false;
+            if(presets<0||j->tokens[presets].type!=JSON_ARRAY||!j->tokens[presets].children||(unsigned)j->tokens[presets].children>HA_PRESET_LIMIT)
                 return failure(error,capacity,"home_assistant.presets: expected 1..16 unique preset names");
-            for(int p=presets+1;p<j.tokens[presets].next;p=j.tokens[p].next){
+            for(int p=presets+1;p<j->tokens[presets].next;p=j->tokens[p].next){
                 char *name=d->ha_presets[d->ha_preset_count];
-                if(!json_string(&j,p,name,OBJECT_NAME_LIMIT+1)||!object_name_valid(name)||!strcmp(name,"off")||!strcmp(name,"Custom"))
+                if(!json_string(j,p,name,OBJECT_NAME_LIMIT+1)||!object_name_valid(name)||!strcmp(name,"off")||!strcmp(name,"Custom"))
                     return failure(error,capacity,"home_assistant.presets: invalid preset name");
                 for(unsigned n=0;n<d->ha_preset_count;n++)if(!strcmp(name,d->ha_presets[n]))
                     return failure(error,capacity,"home_assistant.presets: duplicate preset name");
                 has_default|=!strcmp(name,d->ha_default_preset);d->ha_preset_count++;
             }
             if(!has_default)return failure(error,capacity,"home_assistant.default_preset: must appear in presets");
-            int name=json_get(&j,ha,"name");
-            if(name>=0 && (!json_string(&j,name,d->ha_name,sizeof(d->ha_name)) || !d->ha_name[0]))
+            int name=json_get(j,ha,"name");
+            if(name>=0 && (!json_string(j,name,d->ha_name,sizeof(d->ha_name)) || !d->ha_name[0]))
                 return failure(error,capacity,"home_assistant.name: expected 1..64 UTF-8 bytes");
             unsigned exposed=1;
             for(unsigned n=0;n<cfg->count;n++)if(cfg->outputs[n].ha_default_preset[0])exposed++;
             if(exposed>8)return failure(error,capacity,"home_assistant: at most eight exposed outputs");
         }
-        int startup=json_get(&j,t,"startup");
+        int startup=json_get(j,t,"startup");
         if(startup>=0){
             static const char *const startup_fields[]={"mode","preset",NULL};
-            int mode=json_get(&j,startup,"mode"),preset=json_get(&j,startup,"preset");
-            bool valid=json_fields(&j,startup,startup_fields);
-            if(json_equal(&j,mode,"off"))d->startup_mode=STARTUP_OFF;
-            else if(json_equal(&j,mode,"restore_last"))d->startup_mode=STARTUP_RESTORE_LAST;
-            else if(json_equal(&j,mode,"preset"))d->startup_mode=STARTUP_PRESET;
+            int mode=json_get(j,startup,"mode"),preset=json_get(j,startup,"preset");
+            bool valid=json_fields(j,startup,startup_fields);
+            if(json_equal(j,mode,"off"))d->startup_mode=STARTUP_OFF;
+            else if(json_equal(j,mode,"restore_last"))d->startup_mode=STARTUP_RESTORE_LAST;
+            else if(json_equal(j,mode,"preset"))d->startup_mode=STARTUP_PRESET;
             else valid=false;
             if(d->startup_mode==STARTUP_PRESET)
-                valid=valid&&json_string(&j,preset,d->startup_preset,sizeof(d->startup_preset))&&object_name_valid(d->startup_preset);
+                valid=valid&json_string(j,preset,d->startup_preset,sizeof(d->startup_preset))&&object_name_valid(d->startup_preset);
             else if(preset>=0)valid=false;
             if(!valid){snprintf(error,capacity,"outputs[%s].startup: expected mode off, restore_last, or preset with a preset name",d->id);return false;}
         }
-        int mode=json_get(&j,t,"mode");
-        d->indicators=json_equal(&j,mode,"indicators");
-        if(mode>=0&&!d->indicators&&!json_equal(&j,mode,"animation"))return failure(error,capacity,"outputs.mode: expected animation or indicators");
+        int mode=json_get(j,t,"mode");
+        d->indicators=json_equal(j,mode,"indicators");
+        if(mode>=0&&!d->indicators&&!json_equal(j,mode,"animation"))return failure(error,capacity,"outputs.mode: expected animation or indicators");
         if(d->indicators&&(startup>=0||ha>=0))return failure(error,capacity,"indicator outputs cannot have startup or presets");
         d->pixels.pin=-1;d->pixels.clock_pin=-1;d->pixels.enable_pin=-1;d->pixels.brightness=255;memcpy(d->pixels.order,"GRB",4);
-        if(!output_type(d->type)->validate(&j,json_get(&j,t,"config"),&d->pixels,error,capacity))return false;
+        if(!output_type(d->type)->validate(j,json_get(j,t,"config"),&d->pixels,error,capacity))return false;
         if(d->indicators&&d->pixels.count>16)return failure(error,capacity,"indicator outputs support at most sixteen pixels");
         for(unsigned n=0;n<cfg->count;n++){
             if(!strcmp(d->id,cfg->outputs[n].id))return failure(error,capacity,"outputs.id: duplicate identifier");
@@ -224,12 +224,18 @@ static bool parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,
         cfg->count++;
     }
     if(cfg->count)cfg->default_output=0;
-    if(!parse_inputs(&j,cfg,error,capacity))return false;
+    if(!parse_inputs(j,cfg,error,capacity))return false;
     error[0]=0;return true;
 }
 
 void hardware_destroy(HardwareConfig *cfg){platform_free(cfg->outputs);memset(cfg,0,sizeof(*cfg));cfg->default_output=-1;}
-bool hardware_parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,size_t capacity){
-    if(parse(bytes,size,cfg,error,capacity))return true;
+bool hardware_decode(const Json *j,HardwareConfig *cfg,char *error,size_t capacity){
+    if(parse(j,cfg,error,capacity))return true;
     hardware_destroy(cfg);return false;
+}
+bool hardware_parse(const void *bytes,size_t size,HardwareConfig *cfg,char *error,size_t capacity){
+    Json *j=platform_calloc(1,sizeof(*j));bool ok=false;memset(cfg,0,sizeof(*cfg));cfg->default_output=-1;
+    if(!j||size>CONFIG_LIMIT||!json_parse(j,bytes,size))failure(error,capacity,"config: invalid JSON or parser allocation failed");
+    else ok=hardware_decode(j,cfg,error,capacity);
+    platform_free(j);return ok;
 }

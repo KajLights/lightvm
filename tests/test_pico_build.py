@@ -13,6 +13,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from check_pico_ram import ram_report
 from check_pico_ha_stack import stack_report
+from audit_pico_stack import audit, parse_graph, cmake_enabled
+from pico_stack_paths import parse_machine, path_audit, account, EXTRA_ROOTS, IRQ_ROOTS
+from pico_stack_fingerprints import verify_files
+from pico_stack_contracts import enabled_target
+from unittest.mock import patch
 from package_web_firmware import package, validate_pico_uf2
 
 
@@ -84,6 +89,130 @@ class PicoUf2Tests(unittest.TestCase):
                 layout_file.write_text(json.dumps({**layout, key: value}))
                 with self.subTest(key=key), self.assertRaisesRegex(ValueError, "layout"):
                     package(root / "out", {}, {"pico2_w": image})
+
+
+class PicoStackInventoryTests(unittest.TestCase):
+    def test_feature_flags_follow_cmake_false_constants(self):
+        for value in ('', '0', 'OFF', 'no', 'FALSE', 'N', 'IGNORE', 'NOTFOUND', 'library-NOTFOUND'):
+            self.assertFalse(cmake_enabled(value), value)
+        for value in ('ON', 'true', '1', '2', 'YES', 'Y'):
+            self.assertTrue(cmake_enabled(value), value)
+
+    def test_unknown_and_recursive_edges_are_not_certified_as_zero(self):
+        text='''graph: { title: "test"
+node: { title: "root" label: "root\\ntest.c:1:1\\n64 bytes (static)" }
+node: { title: "child" label: "child\\ntest.c:2:1\\n128 bytes (static)" }
+edge: { sourcename: "root" targetname: "child" }
+edge: { sourcename: "child" targetname: "child" }
+edge: { sourcename: "child" targetname: "__indirect_call" }
+}'''
+        report=audit(*parse_graph([text]),roots=('root','missing'))
+        self.assertFalse(report['certified'])
+        root=report['roots']['root']
+        self.assertFalse(root['complete'])
+        self.assertEqual(root['known_frame_sum_bytes'],192)
+        self.assertTrue(any('indirect' in item for item in root['unresolved']))
+        self.assertTrue(any('recursive' in item for item in root['unresolved']))
+        self.assertIsNone(report['roots']['missing']['known_frame_sum_bytes'])
+
+
+class PicoClosedStackTests(unittest.TestCase):
+    def test_disabled_features_only_remove_their_known_registrations(self):
+        minimal=dict.fromkeys(('LIGHTVM_WIFI','LIGHTVM_HTTP','LIGHTVM_MQTT'),False)
+        for name in ('http_tick','ha_tick','mqtt_tick','src/home_assistant.c:response','src/http.c:capture','platforms/pico/network_port.c:scan','cyw43_gpio_irq_handler'):
+            self.assertFalse(enabled_target(name,minimal),name)
+        self.assertTrue(enabled_target('new_unknown_callback',minimal))
+        http={**minimal,'LIGHTVM_WIFI':True,'LIGHTVM_HTTP':True}
+        self.assertTrue(enabled_target('src/http.c:capture',http))
+        self.assertFalse(enabled_target('src/home_assistant.c:response',http))
+
+    def test_machine_boundaries_returns_veneers_and_dynamic_reservations(self):
+        text = """00001000 <caller>:
+1000:\tb510      \tpush\t{r4, lr}
+1002:\tb088      \tsub\tsp, #0x20
+1004:\tf000 f804 \tbl\t1010 <callee>
+1008:\tbd10      \tpop\t{r4, pc}
+00001010 <callee>:
+1010:\tb500      \tpush\t{lr}
+1012:\tbc08      \tpop\t{r3}
+1014:\tb002      \tadd\tsp, #8
+1016:\t4718      \tbx\tr3
+00001020 <dynamic>:
+1020:\tebad 0d00 \tsub.w\tsp, sp, r0
+1024:\t4798      \tblx\tr3
+00001030 <__callee_veneer>:
+1030:\tb401      \tpush\t{r0}
+1032:\t4802      \tldr\tr0, [pc, #8]
+1034:\t4684      \tmov\tip, r0
+1036:\tbc01      \tpop\t{r0}
+1038:\t4760      \tbx\tip
+103a:\tbf00      \tnop
+103c:\t00001011  \t.word\t0x00001011
+"""
+        frames,edges,indirect,unsafe,_=parse_machine(text,[(0x1000,10,'caller'),(0x1010,8,'callee'),(0x1020,6,'dynamic'),(0x1030,16,'__callee_veneer')])
+        self.assertEqual(frames[0x1000],40)
+        self.assertEqual(edges[0x1000],{0x1010})
+        self.assertEqual(edges[0x1030],{0x1010})
+        self.assertEqual(indirect,{0x1020})
+        self.assertEqual(unsafe,{0x1020})
+
+    def test_unknown_dynamic_and_unguarded_recursion_fail_closed(self):
+        frames={'root':64,'child':128,'runtime_checkpoint':16}
+        edges={'root':{'child'},'child':{'child','__indirect_call'}}
+        result=path_audit(frames,edges,{k:'static' for k in frames},('root',))['root']
+        self.assertFalse(result['complete'])
+        self.assertTrue(any('recursive' in e for e in result['unresolved']))
+        self.assertTrue(any('indirect' in e for e in result['unresolved']))
+        result=path_audit({'root':64},{},{'root':'dynamic'},('root',))['root']
+        self.assertFalse(result['complete'])
+        # Real deferred preparation must not recursively run the service hook.
+        frames={'preparation_tick':64,'runtime_checkpoint':16}
+        result=path_audit(frames,{'preparation_tick':{'runtime_checkpoint'},'runtime_checkpoint':{'preparation_tick'}},{k:'static' for k in frames},('preparation_tick',))['preparation_tick']
+        self.assertTrue(result['complete'])
+        self.assertEqual(result['foreground_bytes'],80)
+
+    def test_context_dependent_printf_paths_do_not_share_short_memo_entries(self):
+        frames={'root':1,'printf:_ftoa':2,'printf:_etoa':3}
+        edges={'root':{'printf:_ftoa','printf:_etoa'},'printf:_ftoa':{'printf:_etoa'},'printf:_etoa':{'printf:_ftoa'}}
+        report=path_audit(frames,edges,dict.fromkeys(frames,'static'),('root',))['root']
+        self.assertTrue(report['complete'])
+        self.assertEqual(report['foreground_bytes'],8)
+
+    def test_interrupts_and_full_path_overflow_are_in_the_gate(self):
+        roots=('main','platforms/pico/render_executor.c:worker_main')
+        frames={name:32 for name in roots+EXTRA_ROOTS+IRQ_ROOTS}
+        frames['main']=15000
+        with tempfile.TemporaryDirectory() as directory:
+            elf=Path(directory)/'app.elf';elf.write_bytes(b'fixture')
+            with patch('pico_stack_paths.close_graph',return_value=(frames,{},dict.fromkeys(frames,'static'),[],'fixture')), patch('pico_stack_paths.read_symbols',return_value={'__StackTop':16384,'__StackBottom':0,'__StackOneTop':8192,'__StackOneBottom':0}):
+                report=account({}, {}, {},None,elf,roots)
+        self.assertTrue(report['software_accounting_complete'])
+        self.assertFalse(report['software_gate_passed'])
+        self.assertGreater(report['main']['with_interrupts_bytes'],15000)
+        self.assertFalse(report['certified'])
+
+    def test_worker_gate_uses_the_linked_reservation(self):
+        roots=('main','platforms/pico/render_executor.c:worker_main')
+        frames={name:32 for name in roots+EXTRA_ROOTS+IRQ_ROOTS}
+        frames[roots[1]]=4096
+        with tempfile.TemporaryDirectory() as directory:
+            elf=Path(directory)/'app.elf';elf.write_bytes(b'fixture')
+            with patch('pico_stack_paths.close_graph',return_value=(frames,{},dict.fromkeys(frames,'static'),[],'fixture')), patch('pico_stack_paths.read_symbols') as symbols:
+                symbols.return_value={'__StackTop':16384,'__StackBottom':0,'__StackOneTop':8192,'__StackOneBottom':0}
+                self.assertTrue(account({}, {}, {},None,elf,roots)['software_gate_passed'])
+                symbols.return_value['__StackOneTop']=4096
+                report=account({}, {}, {},None,elf,roots)
+                self.assertFalse(report['software_gate_passed'])
+                self.assertEqual(report['worker']['reservation_bytes'],4096)
+
+    def test_audited_source_edits_require_review(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);source=root/'callback.c';source.write_text('first')
+            manifest={'project':{'callback.c':hashlib.sha256(source.read_bytes()).hexdigest()},'sdk':{}}
+            self.assertFalse(verify_files(manifest,root,root))
+            source.write_text('new callback')
+            self.assertEqual(len(verify_files(manifest,root,root)),1)
 
 
 class PicoHaStackTests(unittest.TestCase):

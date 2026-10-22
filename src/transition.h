@@ -15,7 +15,8 @@ typedef struct {
     PixelBuffer *output, target;
     Composition *compositions[2];
     uint8_t *allocation, *working, *front;
-    unsigned pixel, phase, restore_offset;
+    ContributionStamp sampled[2][COMPOSITION_LAYER_LIMIT],front_stamps[2][COMPOSITION_LAYER_LIMIT];
+    unsigned pixel, phase, restore_offset, schedule_slot;
     uint32_t frames, composite_frames, sampled_frames[2], seed, assignment;
     uint64_t started, output_started, composite_us, output_us, next_frame, next_present;
     double progress, sampled_progress, start, target_progress, duration, interval;
@@ -35,6 +36,7 @@ const char *transition_effect_name(TransitionEffect);
 bool transition_percentage(double);
 Transition *transition_create(PixelBuffer *);
 void transition_program_destroy(TransitionProgram *);
+int transition_program_capture_step(TransitionProgram *,size_t *);
 bool transition_program_capture(TransitionProgram *);
 void transition_destroy(Transition *);
 void transition_invalidate(Transition *);

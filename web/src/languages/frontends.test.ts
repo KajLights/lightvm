@@ -13,7 +13,7 @@ import sys, json
 from dataclasses import asdict
 from lightvm.compiler import compile_source
 r = compile_source(sys.stdin.read())
-print(json.dumps({'diagnostics': [asdict(d) for d in r.diagnostics], 'manifest': r.manifest, 'bytes': len(r.bytecode)}))
+print(json.dumps({'diagnostics': [asdict(d) for d in r.diagnostics], 'advisories': [asdict(d) for d in r.advisories], 'manifest': r.manifest, 'bytes': len(r.bytecode)}))
 `], { cwd: root, input: lowered.python, encoding: 'utf8' }));
   expect(result.diagnostics, lowered.python).toEqual([]); expect(result.bytes).toBeGreaterThan(96); return result;
 }
@@ -90,6 +90,18 @@ describe('independent blocks frontend', () => {
     const doc = parseBlocks(blockExample()); doc.blocks!.blocks![0].fields!.PROFILE = 'animation")\nimport os';
     expect(() => lowerBlocks(JSON.stringify(doc))).toThrow();
   });
+  it('compiles explicit sprite creation, frame callbacks and shared artwork', () => {
+    const lowered = lowerBlocks(blockExample('stars'));
+    const result = compile(lowered); compile(lowerJavaScript(lowered.javascript));
+    expect(lowered.python).toContain('def sprite_star_init');
+    expect(lowered.python).toContain('state.transform = Transform');
+    expect(result.advisories.some((d: { message: string }) => d.message.includes('delta'))).toBe(true);
+    expect(lowered.locations.length).toBe(lowered.python.trimEnd().split('\n').length);
+  });
+  it.each(['1,2,3', '256,0,0,255', '1,2,3,4); import os'])('rejects invalid artwork bytes: %s', data => {
+    const doc = parseBlocks(blockExample('stars')); doc.blocks!.blocks![0].fields!.DATA = data;
+    expect(() => lowerBlocks(JSON.stringify(doc))).toThrow();
+  });
 });
 
 describe.skipIf(!process.env.LIGHTVM_RECEIVER)('native bytecode execution', () => {
@@ -135,6 +147,12 @@ describe.skipIf(!process.env.LIGHTVM_RECEIVER)('native bytecode execution', () =
   it.each(['rainbow', 'pulse'] as const)('matches the blocks %s animation to its JavaScript learning view', kind => {
     const blocks = lowerBlocks(blockExample(kind));
     expect(replay(blocks, { frames: [0, 100, 1000] })).toEqual(replay(lowerJavaScript(blocks.javascript), { frames: [0, 100, 1000] }));
+  });
+  it('matches sprite creation, fading, expiry and slot reuse in Blocks and JavaScript', () => {
+    const blocks = lowerBlocks(blockExample('stars')), frames = Array.from({ length: 45 }, () => 100);
+    const pixels = replay(blocks, { frames });
+    expect(pixels).toEqual(replay(lowerJavaScript(blocks.javascript), { frames }));
+    expect(new Set(pixels.map(frame => JSON.stringify(frame))).size).toBeGreaterThan(20);
   });
 });
 

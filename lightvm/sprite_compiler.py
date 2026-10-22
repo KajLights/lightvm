@@ -236,6 +236,27 @@ class SpriteCompiler:
             out=self.reg(I);j=self.emit('JZ',value);self.emit('MOV',out,self.literal(1));end=self.emit('JMP');self.code[j][4]=len(self.code);self.emit('MOV',out,self.literal(0));self.code[end][4]=len(self.code);value=out
         self.native('batch_set_f' if typ==F else 'batch_set_i',[batch['ref'],slot,self.literal(index),value],node)
 
+    def callback_clocks(self,fn):
+        """Conservative use scan, including helpers and conditional reads.
+
+        Delta mutates the callback's previous timestamp. If any path reads it,
+        retain the unconditional update on every invocation, even when that path
+        is not taken. Only a completely unobserved clock may be removed.
+        """
+        clocks=set();pending=[fn];seen=set()
+        while pending:
+            current=pending.pop()
+            if id(current) in seen:continue
+            seen.add(id(current))
+            for node in ast.walk(current):
+                if isinstance(node,ast.Attribute) and node.attr in ('time','delta'):
+                    clocks.add(node.attr)
+                if isinstance(node,ast.Call) and isinstance(node.func,ast.Name):
+                    name=self.imports.get(node.func.id,node.func.id)
+                    helper=self.helpers.get(name) or self.helpers.get(node.func.id)
+                    if helper is not None:pending.append(helper)
+        return clocks
+
     def callback(self,batch,slot,role,args,now):
         fn=batch['definition'][role]
         if fn is None:return
@@ -244,8 +265,10 @@ class SpriteCompiler:
         self.inputs={**self.inputs,'pixel_count':self.literal(batch['definition']['width'])}
         if role=='render':
             if 'time' in self.inputs:
-                self.inputs['time']=self.native('batch_time',[batch['ref'],slot,now],fn)
-                self.inputs['delta']=self.native('batch_delta',[batch['ref'],slot,now],fn)
+                clocks=self.callback_clocks(fn) if self.optimize else {'time','delta'}
+                for clock in ('time','delta'):
+                    if clock in clocks:
+                        self.inputs[clock]=self.native('batch_'+clock,[batch['ref'],slot,now],fn)
             self.caps[fn.args.args[2].arg]='pixels';self.output=batch['scratch']
         else:
             if 'time' in self.inputs:

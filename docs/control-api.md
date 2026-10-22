@@ -16,8 +16,9 @@ python tools/client.py --port PORT --store-program rainbow build/examples/rainbo
 python tools/client.py --port PORT --activate rainbow
 ```
 
-`compile_source(source, filename, target)` returns bytecode, manifest, diagnostics
-and success. The CLI writes `.lbc` plus a JSON manifest. The browser uses the same
+`compile_source(source, filename, target)` returns bytecode, manifest, diagnostics,
+advisories and success. Advisories are source-located performance notes and do not
+make a compilation fail. The CLI writes `.lbc` plus a JSON manifest. The browser uses the same
 compiler. Target checks use the controller’s `version`, the program’s `requires`,
 and the controller’s module limit.
 Compilation never executes source.
@@ -26,14 +27,17 @@ Compilation never executes source.
 
 Each native instance owns registers and a checked view of a native RGBA working
 buffer. Guest numbers cannot become pointers. Admission checks instruction types,
-register write permissions, branch/entry boundaries, palette sizes, setting declarations and the manifest before execution. A resume slice executes at
-most 64 instructions; native fill writes at most 32 pixels per dispatch. Slices yield and resume without a cumulative instruction cutoff or timed
-execution watchdog. Output transfer failures do not fault the animation; playback
+register write permissions, branch/entry boundaries, palette sizes, setting declarations and the manifest before execution. A normal resume slice executes at
+most 4096 dispatches and also yields at the configured wall-time quantum;
+cooperative servicing can request smaller slices. The per-invocation dispatch
+limit faults runaway initialization/rendering. Native operations use bounded
+chunks, with their size depending on worker availability. Output transfer failures do not fault the animation; playback
 continues and retries output on subsequent frames.
-The renderer retains its execution state and returns to the event loop after at
-most 4096 dispatches. Validation, preparation,
-manual execution and persistence also service native ingress and the existing
-animation between bounded pieces of work. Commands remain serialized.
+The renderer retains its execution state across slices. Scene preparation is a
+controller-owned operation that returns to foreground ingress between bounded
+units; explicit manual execution and ordinary storage commands retain cooperative
+checkpoints. See [scene preparation](scene-preparation.md) for acceptance,
+query/cancel, progress, persistence and completion semantics.
 
 Both named and transient packages execute from immutable flash extents through
 a bounded reader/cache. Uploads use one shared 256-byte page buffer, and
@@ -41,8 +45,8 @@ a bounded reader/cache. Uploads use one shared 256-byte page buffer, and
 replacing a catalogue name cannot overwrite their code.
 
 FINISH prepares a transient candidate when a target is configured. Named save
-validates without executing; activation prepares and presents a candidate before
-replacing the old instance. Failed upload, validation or preparation retains the
+validates without executing; activation prepares a candidate before replacing the
+old instance and queues its first presentation. Failed upload, validation or preparation retains the
 old instance and generation. Each output’s `startup` selects off, restore last
 state or a saved preset. Presets supply their layers’ settings and input bindings.
 Boot resolves the current preset definition; activation does not update configuration or select a separate boot revision.
@@ -85,6 +89,21 @@ generation, settings and playback state.
   fresh instance and replaces the old instance only after preparation succeeds.
 - `program_pause` / `program_resume`: expected_generation; retain initialized state.
 - `program_snapshot`: passive RGB output and contribution/output validity/counters.
+
+`program_state` also reports `render_reusable`, `displayed_frame`,
+`distinct_presentations`, `displayed_sample_age_us` and
+`completion_to_display_us`. The latter is the last displayed contribution's delay
+from completion to its first successful physical presentation. Repeated output
+refreshes do not increment the distinct count or replace that timestamp.
+`dependency_revision`, `dirty_age_us` and `dirty_to_display_us` distinguish
+observed input changes from the first output carrying them. Repeated frames with
+the same dependency revision do not inflate the last dirty delay. Cumulative
+`runnable_wait_us`, `composite_wait_us` and `output_wait_us` report coordinator
+wait categories (closed at the next category observation).
+`composition_get` adds `sampled_at_us` and these metrics per layer, plus
+`dependency_current` (null when reuse is unsupported). Use differences between
+server sample times and matching layer generations to calculate rates. See
+[multicore measurements](multicore-rendering.md) for provenance and visibility limits.
 
 Management uses `LVM1` magic, framing version 1, a 16-byte header and CRC32.
 Client and firmware compatibility follows the application release contract.

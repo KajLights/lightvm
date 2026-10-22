@@ -268,7 +268,7 @@ def draw(ctx, runtime, pixels):
         self.client.close()
         self.client = Client(ProcessTransport(self.receiver, self.storage))
         self.broker.wait(f'{self.root}/availability', b'online')
-        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['state'], 'ON')
+        self.wait_light(output='desk', state='ON', effect='blue')
         self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['effect'], 'blue')
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
         self.wait_light(output='desk', state='OFF')
@@ -355,6 +355,9 @@ def draw(ctx, runtime, pixels):
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'missing'}))
         self.wait_light(effect='blue')
         self.assertEqual(self.client.composition('desk')['revision'], before)
+        deadline = time.monotonic() + 5
+        while 'does not exist' not in self.client.network_status()['mqtt_error'] and time.monotonic() < deadline:
+            time.sleep(.01)
         self.assertIn('does not exist', self.client.network_status()['mqtt_error'])
 
     def test_preset_identity_across_ab_mix_and_initialization_reset(self):
@@ -524,6 +527,9 @@ def draw(ctx, runtime, pixels):
         self.client.configure(self.config)
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
         self.wait_light(output='desk', state='OFF')
+        deadline = time.monotonic() + 5
+        while 'does not exist' not in self.client.network_status()['mqtt_error'] and time.monotonic() < deadline:
+            time.sleep(.01)
         self.assertIn('does not exist', self.client.network_status()['mqtt_error'])
         self.assertFalse(self.client.composition('desk')['active'])
 

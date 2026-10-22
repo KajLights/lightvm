@@ -1,0 +1,185 @@
+{
+  "date": "2026-10-20",
+  "source_commit": "59b7c5239be022f9ee51b76ad4dd87acc1a8be64",
+  "platform": "host simulator; rebuilt build/multicore-host/lightvm",
+  "host_executable_sha256": "d5097b98836ed4c3361855aa3ce5f855f8b6755873cbe1bc7094d38dbdeb5073",
+  "scope": "VM dispatch counts and pixel equivalence; host microsecond samples are not Pico performance predictions",
+  "fixed_sprites": {
+    "source": "tools/benchmark_multicore.py SOURCES[sprites]",
+    "pixels": 200,
+    "sprite_population": 12,
+    "frames_per_variant": 10,
+    "delta_ms": 16,
+    "edits": {
+      "geometry_at_spawn": "Move s.transform=Transform(translate=s.position,origin=1.0) from draw_star to setup_star, after s.position=position.",
+      "constant_style_at_spawn": "Also move s.color=ColorTransform(alpha=0.75) from draw_star to setup_star."
+    },
+    "results": {
+      "baseline": {
+        "bytecode_bytes": 1681,
+        "static_instructions": 52,
+        "registers": 35,
+        "per_manual_frame": {
+          "dispatch_count": 381.0,
+          "slice_count": 6.0,
+          "render_total_us": 490.0,
+          "native_draw_us": 104.6
+        },
+        "crc32": [
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798
+        ],
+        "static_native_sites": {
+          "batch_reserve": 1,
+          "batch_set_i": 2,
+          "batch_next": 1,
+          "image_fill": 1,
+          "batch_time": 1,
+          "batch_delta": 1,
+          "style_geometry": 2,
+          "style_color": 2,
+          "image_draw": 2,
+          "batch_get_i": 1,
+          "batch_set_f": 7,
+          "color_int": 1,
+          "batch_alive": 1,
+          "batch_get_f": 3
+        }
+      },
+      "geometry_at_spawn": {
+        "bytecode_bytes": 1681,
+        "static_instructions": 52,
+        "registers": 35,
+        "per_manual_frame": {
+          "dispatch_count": 321.0,
+          "slice_count": 6.0,
+          "render_total_us": 389.1,
+          "native_draw_us": 78.0
+        },
+        "crc32": [
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798
+        ],
+        "static_native_sites": {
+          "batch_reserve": 1,
+          "batch_set_i": 2,
+          "batch_get_i": 1,
+          "batch_set_f": 7,
+          "batch_next": 1,
+          "image_fill": 1,
+          "batch_time": 1,
+          "batch_delta": 1,
+          "style_geometry": 2,
+          "style_color": 2,
+          "image_draw": 2,
+          "color_int": 1,
+          "batch_alive": 1,
+          "batch_get_f": 3
+        }
+      },
+      "constant_style_at_spawn": {
+        "bytecode_bytes": 1681,
+        "static_instructions": 52,
+        "registers": 35,
+        "per_manual_frame": {
+          "dispatch_count": 249.0,
+          "slice_count": 4.0,
+          "render_total_us": 269.2,
+          "native_draw_us": 42.2
+        },
+        "crc32": [
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798,
+          552113798
+        ],
+        "static_native_sites": {
+          "batch_reserve": 1,
+          "batch_set_i": 2,
+          "batch_get_i": 1,
+          "batch_set_f": 7,
+          "color_int": 1,
+          "batch_next": 1,
+          "image_fill": 1,
+          "batch_time": 1,
+          "batch_delta": 1,
+          "style_geometry": 2,
+          "style_color": 2,
+          "image_draw": 2,
+          "batch_alive": 1,
+          "batch_get_f": 3
+        }
+      }
+    },
+    "all_frames_equal": true
+  },
+  "animated_stars": {
+    "source": "examples/animations/stars.py",
+    "pixels": 200,
+    "random_seed": 7,
+    "frames_per_variant": 300,
+    "delta_ms": 16,
+    "settings": {
+      "capacity": 20,
+      "duration": 2.0,
+      "probability": 5.0,
+      "color": 16777215,
+      "random_colors": false
+    },
+    "brightness_changes": [
+      {
+        "frame_index": 100,
+        "value": 0.4
+      },
+      {
+        "frame_index": 200,
+        "value": 1.0
+      }
+    ],
+    "edit": "Move s.transform = Transform(translate=s.position, origin=1.0) from star_render into star_init after s.position = position. Both variants replace random.seed() with random.seed(7).",
+    "results": {
+      "baseline": {
+        "bytecode_bytes": 2880,
+        "frames": 300,
+        "dispatches": 97410,
+        "sha256_all_frames": "7b9e75d072e4222c88432dc763acae1312938506eebe62f801c8cc87dbd0097d"
+      },
+      "geometry_at_spawn": {
+        "bytecode_bytes": 2880,
+        "frames": 300,
+        "dispatches": 86985,
+        "sha256_all_frames": "7b9e75d072e4222c88432dc763acae1312938506eebe62f801c8cc87dbd0097d"
+      }
+    },
+    "all_frames_equal": true
+  },
+  "reproduction": {
+    "build": "build/pico-async-output/tooling/cmake/data/bin/cmake --build build/multicore-host -j 6",
+    "local_scripts": [
+      "build/performance-review/inspect_compiler.py",
+      "build/performance-review/check_stars.py"
+    ]
+  }
+}

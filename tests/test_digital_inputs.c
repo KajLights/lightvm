@@ -106,8 +106,25 @@ static void gestures(void) {
     CHECK(!strcmp(digital_input_event_name(DIGITAL_MULTI_PRESS_END),"multi_press_end"));
     CHECK(!digital_input_event_name((DigitalInputEventType)99));
 }
+static void configuration_permutations(void){
+    DigitalInputConfig configs[3]={config,config,config};
+    for(unsigned n=0;n<3;n++)snprintf(configs[n].id,sizeof(configs[n].id),"keys%u",n);
+    digital_inputs_apply(&inputs,configs,3);digital_inputs_tick(&inputs,0);
+    for(unsigned n=0;n<3;n++)inputs.devices[n].stable=(uint16_t)(100+n);
+    unsigned before_open=opened,before_close=closed;
+    DigitalInputConfig reordered[3]={configs[2],configs[0],configs[1]};
+    digital_inputs_apply(&inputs,reordered,3);
+    CHECK(inputs.devices[0].stable==102&&inputs.devices[1].stable==100&&inputs.devices[2].stable==101);
+    CHECK(opened==before_open&&closed==before_close);
+    reordered[0]=configs[1];reordered[1]=configs[2];strcpy(reordered[2].id,"new");
+    digital_inputs_apply(&inputs,reordered,3);
+    CHECK(inputs.devices[0].stable==101&&inputs.devices[1].stable==102&&!inputs.devices[2].bus);
+    CHECK(closed==before_close+1);
+    digital_inputs_apply(&inputs,reordered+1,1);CHECK(inputs.devices[0].stable==102);
+    CHECK(closed==before_close+2);digital_inputs_destroy(&inputs);CHECK(opened==closed);
+}
 int main(void) {
-    gestures();
+    gestures();configuration_permutations();
     // APA102 wire format: start frame, BGR, brightness multiplier, and enough
     // trailing clocks for strips longer than this keypad.
     PixelConfig pixels={.count=33,.brightness=128,.order="BGR"};uint8_t rgb[99],wire[139];memset(rgb,0,sizeof(rgb));

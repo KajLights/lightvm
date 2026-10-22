@@ -249,7 +249,7 @@ def draw(ctx,runtime,pixels):
         self.assertEqual(self.client.status_fields()['uploading'],'1')
         for at in range(100,len(data),508):
             self.client.require_ok(self.client.command(CHUNK,struct.pack('<I',at)+data[at:at+508]))
-        self.client.require_ok(self.client.command(FINISH))
+        self.client.require_ok(self.client.finish_upload(require_ok=False))
         self.assertEqual(self.client.status_fields()['uploading'],'0')
         self.reset()
         self.assertEqual(self.client.status_fields()['code_storage'], 'flash')

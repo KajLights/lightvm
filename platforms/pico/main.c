@@ -26,9 +26,9 @@ static void service_io(void *context) {
 int main(void) {
     static App app;
     static Session session;
+    pico_port_init();
     stdio_init_all();
     stdio_set_translate_crlf(&stdio_usb, false);
-    pico_port_init();
     app_init(&app, output_message, NULL);
     session_init(&session, &app, 1, output_message, NULL);
 #if LIGHTVM_WIFI

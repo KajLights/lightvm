@@ -2,8 +2,10 @@
 #include "animation.h"
 #include "portable_fixtures.h"
 typedef struct { const uint8_t *bytes; size_t size; } PortableBytes;
+static unsigned manifest_reads;
 static bool portable_read(void *context,uint32_t offset,void *bytes,size_t size){
     PortableBytes *source=context;if(offset>source->size||size>source->size-offset)return false;
+    if(source->size>=96&&size==lbc_u32(source->bytes+76)&&offset==source->size-size)manifest_reads++;
     memcpy(bytes,source->bytes+offset,size);return true;
 }
 static void portable_finish(Portable *p,unsigned quantum){
@@ -18,6 +20,9 @@ static void portable_load(VmInstance *vm,PixelBuffer *canvas,Capture *reply,cons
 static void portable_contract(void){
     clock_now=0;clock_step=0;storage_available=false;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
+    PortableBytes metadata={library_lbc,sizeof(library_lbc)};Portable *loaded=NULL;manifest_reads=0;
+    CHECK(!pbc_open(&loaded,portable_read,&metadata,metadata.size));CHECK(manifest_reads==1);
+    pbc_destroy(loaded);CHECK(vm_heap_used()==0);
     // Generic typed entries are not required to have any animation lifecycle.
     PortableBytes callback={callback_lbc,sizeof(callback_lbc)};Portable *p=NULL;
     CHECK(!pbc_open(&p,portable_read,&callback,callback.size));CHECK(animation_validate(p));
@@ -58,7 +63,8 @@ static void portable_contract(void){
     deny_allocation=true;vm.playing=true;vm.last_frame=0;vm.next_frame=20000;clock_now=20000;
     vm_tick(&vm);CHECK(vm.control.in_step&&vm.control.program_us==0&&vm.control.committed[0]==first);
     unsigned pc=p->pc;static const char snapshot[]="{\"op\":\"program_snapshot\"}";
-    CHECK(control_manage(&vm,77,(const uint8_t*)snapshot,strlen(snapshot)));CHECK(p->pc==pc&&reply.code==STATUS_OK);
+    Json snapshot_json;CHECK(json_parse(&snapshot_json,(const uint8_t*)snapshot,strlen(snapshot)));
+    CHECK(control_manage(&vm,77,&snapshot_json,"program_snapshot"));CHECK(p->pc==pc&&reply.code==STATUS_OK);
     // STOP finishes a partially executed update, then clears; no partial render.
     vm_command(&vm,CMD_STOP,77,NULL,0);CHECK(!vm.playing&&!vm.control.in_step&&vm.control.program_us==20000&&p->render_count==2);
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(reply.code==STATUS_OK&&vm.control.committed[0]==(4000%256));
@@ -75,7 +81,8 @@ static void portable_contract(void){
     // A passive device snapshot remains RGB before the first presentation.
     static const char physical_snapshot[]="{\"op\":\"program_snapshot\"}";
     reply.snapshot_size=0;
-    CHECK(control_manage(&vm,77,(const uint8_t *)physical_snapshot,strlen(physical_snapshot)));
+    CHECK(json_parse(&snapshot_json,(const uint8_t*)physical_snapshot,strlen(physical_snapshot)));
+    CHECK(control_manage(&vm,77,&snapshot_json,"program_snapshot"));
     CHECK(reply.code==STATUS_OK&&reply.snapshot_size==9);
     CHECK(!memcmp(reply.snapshot,physical.rgb,9)&&!vm.control.output_valid);
     vm_command(&vm,CMD_PLAY,77,NULL,0);CHECK(displayed[0]==1);

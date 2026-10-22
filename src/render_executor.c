@@ -34,10 +34,21 @@ void render_execute(RenderJob *jobs,size_t count){
             occupied=true;
             render_platform_submit(&jobs[i]);
             render_job_execute(&jobs[i+1]);
+            uint64_t joining=platform_time_us();
             render_platform_join();
+            stats.join_wait_us+=platform_time_us()-joining;
+            uint64_t a=jobs[i].elapsed_us,b=jobs[i+1].elapsed_us;
+            stats.pair_imbalance_us+=a>b?a-b:b-a;
+            if(a>stats.max_job_us)stats.max_job_us=a;
+            if(b>stats.max_job_us)stats.max_job_us=b;
             stats.offloads++;stats.worker_us+=jobs[i].elapsed_us;
             occupied=false;i+=2;
-        }else render_job_execute(&jobs[i++]);
+        }else{
+            render_job_execute(&jobs[i]);
+            /* Nested jobs belong to the enclosing job's elapsed interval. */
+            if(!occupied&&jobs[i].elapsed_us>stats.max_job_us)stats.max_job_us=jobs[i].elapsed_us;
+            i++;
+        }
     }
 }
 typedef struct { RenderRange fn;void *context;unsigned first,end; } Range;

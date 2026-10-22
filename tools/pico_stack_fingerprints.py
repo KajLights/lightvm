@@ -1,0 +1,61 @@
+"""Source identity guard for manually audited stack callback/assembly contracts.
+
+Recording is an explicit maintainer action after reviewing changed call targets,
+assembly bounds and recursion guards. Firmware builds only verify; they never
+regenerate this file to make a failing check pass.
+"""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+ROOT=Path(__file__).resolve().parents[1]
+MANIFEST=Path(__file__).with_name('pico-stack-contracts.json')
+PROJECT=(
+    'src/runtime.c','src/app.c','src/preparation.c','src/render_executor.c',
+    'platforms/pico/render_executor.c','platforms/pico/network_port.c',
+    'platforms/pico/main.c','platforms/pico/platform.c','platforms/pico/CMakeLists.txt',
+    'platforms/pico/lwipopts.h','platforms/pico/tusb_config.h',
+)
+
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def dependencies(build,sdk):
+    result=set()
+    for file in build.rglob('*.o.d'):
+        for word in file.read_text().replace('\\\n',' ').split():
+            path=Path(word)
+            if path.is_relative_to(sdk) and path.is_file():result.add(path.relative_to(sdk).as_posix())
+    return result
+
+def verify_files(manifest,sdk,root=ROOT):
+    errors=[]
+    for group,base in (('sdk',sdk),('project',root)):
+        for name,expected in manifest[group].items():
+            path=base/name
+            if not path.is_file() or digest(path)!=expected:errors.append(f'changed audited {group} source: {name}')
+    return errors
+
+def verify(build):
+    cache=(build/'CMakeCache.txt').read_text()
+    sdk=next((Path(line.split('=',1)[1]) for line in cache.splitlines() if line.startswith('PICO_SDK_PATH:')),None)
+    if sdk is None:return {'complete':False,'errors':['PICO_SDK_PATH missing from build cache']}
+    manifest=json.loads(MANIFEST.read_text())
+    errors=verify_files(manifest,sdk)
+    errors.extend('unaudited SDK dependency: '+name for name in sorted(dependencies(build,sdk)-manifest['sdk'].keys()))
+    return {'complete':not errors,'manifest_sha256':digest(MANIFEST),'sdk_files':len(manifest['sdk']),
+            'project_files':len(manifest['project']),'errors':errors}
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--record',action='store_true',required=True)
+    parser.add_argument('sdk',type=Path)
+    parser.add_argument('builds',type=Path,nargs='+')
+    args=parser.parse_args();sdk=args.sdk.resolve()
+    names=set().union(*(dependencies(build,sdk) for build in args.builds))
+    if not names:parser.error('no SDK dependencies found in these builds')
+    manifest={'note':'Reviewed configured SDK callback targets, assembly bounds and project recursion guards; see docs/design/pico-stack-accounting.md.',
+              'sdk':{n:digest(sdk/n) for n in sorted(names)},
+              'project':{n:digest(ROOT/n) for n in PROJECT if (ROOT/n).is_file()}}
+    MANIFEST.write_text(json.dumps(manifest,indent=2)+'\n')
+    print(f'Recorded {len(names)} SDK dependencies and {len(manifest["project"])} project sources after review')

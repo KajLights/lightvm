@@ -20,10 +20,12 @@ def draw(ctx,runtime,pixels):
  ctx.brushes.render(runtime,pixels)
 '''
 fixtures = {
+    "reusable_inputs_lbc": program(PREFIX + 'from lightvm import Input\nLEVEL=Input("level",default=0.2,minimum=0.0,maximum=1.0)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),0,0))\n'),
     "inputs_lbc": program(inputs_source),
     "transition_inputs_lbc": program(inputs_source.replace('profile("animation")','profile("transition")')),
     "fault_lbc": fault(),
     "render_lbc": color(255, 128, 0),
+    "active_render_lbc": program(PREFIX + "@init\ndef setup(ctx,runtime):\n ctx.calls=0\n@render\ndef draw(ctx,runtime,pixels):\n ctx.calls+=1\n pixels.fill(rgb(255,128,0))\n"),
     "control_lbc": program(PREFIX + "@render\ndef draw(ctx,runtime,pixels):\n ms=int(runtime.delta*1000.0)\n pixels[0]=rgb(0,ms//256,ms%256)\n"),
     "slot_lbc": program(PREFIX + "from lightvm import setting\n@init\ndef setup(ctx,runtime):\n ctx.seed=setting(4)\n ctx.phase=-1\n@render\ndef draw(ctx,runtime,pixels):\n ctx.phase+=1\n pixels[pixels.count-1]=rgb(0,0,ctx.phase+int(runtime.delta*1000.0)+ctx.seed)\n"),
 }

@@ -59,6 +59,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         self.inputs = {name: self.reg(typ, INPUT) for name, typ in
                        arguments}
         self.resources, self.settings, self.expressions, self.calls = [], [], [], []
+        self.map_reports = []
         self.resource_names, self.setting_names = {}, {}
         self.helpers, self.call_stack, self.return_stack, self.loop_stack = {}, [], [], []
         self.fields, self.caps, self.declarations, self.imports = {}, {}, {}, {}
@@ -525,6 +526,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 for j in breaks + [end]: self.code[j][4] = len(self.code)
                 if self.optimize and not breaks and not continues:
                     self.optimize_pixel_loop(head, loop, bound)
+                self.map_reports.append((n, self.code[head][0] == P_OP['PIXEL_MAP']))
             elif isinstance(n, (ast.Break, ast.Continue)):
                 if not self.loop_stack: self.fail(n, 'loop control outside loop')
                 self.loop_stack[-1][isinstance(n, ast.Continue)].append(self.emit('JMP'))

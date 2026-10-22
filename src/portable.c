@@ -97,6 +97,50 @@ static bool instruction(Portable *p,unsigned pc,uint8_t out[8]){
     memcpy(out,p->cache+(offset-p->cache_offset),8);return true;
 }
 bool pbc_read_instruction(Portable *p,unsigned pc,uint8_t out[8]){return pc<p->ncode&&instruction(p,pc,out);}
+
+/* First proof deliberately accepts only straight-line output expressions.
+ * Locals must be defined in this invocation. Private styles may be rebuilt,
+ * but persistent writes, feedback, clocks, RNG and unsupported effects cannot
+ * be skipped. Every opcode/native not explicitly covered is non-reusable. */
+bool pbc_render_reusable(Portable *p){
+    if(p->profile!=3||p->nregs>128||p->nresources>16)return false;
+    bool defined[128]={0};uint8_t styles[16]={0};
+    for(unsigned r=0;r<p->nregs;r++)defined[r]=pbc_role(p,r)==R_CONST||pbc_role(p,r)==R_STATE||pbc_role(p,r)==P_SETTING||r==0;
+    PbcFunction fn=pbc_function(p,p->entries[1]);
+    for(unsigned pc=fn.first;pc<fn.end;pc++){
+        uint8_t q[8];if(!instruction(p,pc,q))return false;
+        unsigned op=q[0],a=q[1],b=q[2],c=q[3],d=lbc_u32(q+4),reads[8],count=0;
+        bool writes=true;
+        if(op==END)continue;
+        if(op==P_NATIVE){
+            PbcCall call=pbc_call(p,d);unsigned id=call.binding;
+            count=call.argc;for(unsigned n=0;n<count;n++)reads[n]=call.args[n];
+            writes=a!=255;
+            if(id>=55&&id<=58){} /* Captured live input; checked before reuse. */
+            else if(id>=7&&id<=16){} /* Pure arithmetic/assertions. */
+            else if(id==32||id==33){
+                unsigned resource=pbc_initial(p,call.args[0]);
+                if(resource>=p->nresources)return false;
+                styles[resource]|=id==32?1:2;
+            }else if(id==34||id==36||id==48||id==49||id==51){
+                if(pbc_initial(p,call.args[0])!=0)return false;
+                if(id==36){unsigned style=pbc_initial(p,call.args[1]);if(style>=p->nresources||styles[style]!=3)return false;}
+            }else return false;
+        }else if(op==P_FILL||op==P_STORE){
+            if(pbc_initial(p,a)!=0)return false;
+            reads[count++]=a;reads[count++]=b;reads[count++]=c;
+            if(op==P_FILL)reads[count++]=d;
+            writes=false;
+        }else if(op==P_LEN){reads[count++]=b;}
+        else if(op==MOV||op==ITOF||op==FTOI){reads[count++]=b;}
+        else if((op>=IADD&&op<=FMOD)||op==ILT||op==FLT||op==EQ||op==IMIN||op==IMAX||op==FMIN||op==FMAX||op==HASH){reads[count++]=b;reads[count++]=c;}
+        else if(op==RGB||op==HSV){reads[count++]=b;reads[count++]=c;reads[count++]=d;}
+        else return false;
+        for(unsigned n=0;n<count;n++)if(reads[n]>=p->nregs||!defined[reads[n]])return false;
+        if(writes){if(a>=p->nregs||pbc_role(p,a)!=R_LOCAL)return false;defined[a]=true;}
+    }
+    return !p->io_fault;
+}
 static unsigned element_type(unsigned kind){return kind==7||kind==8||kind==11?T_INT:draw_channels(kind)?T_COLOR:kind;}
 static unsigned element_size(unsigned kind){
     if(kind>=DRAW_IMAGE_RGB&&kind<=DRAW_IMAGE_RGBWA)return draw_stride(kind);
@@ -196,24 +240,29 @@ static bool valid_expressions(Portable *p){
             if((type!=T_INT&&type!=T_FLOAT)||(t!=type&&!(type==T_FLOAT&&t==T_INT))||(dependencies[bounds[k]]&~allowed))return false;
         }
     }
-    runtime_checkpoint();return true;
+    return true;
 }
 void pbc_destroy(Portable *p){if(p){demo_free(p->inputs);demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
-const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
+void pbc_open_cancel(PbcLoader *loader){demo_free(loader->manifest);loader->manifest=NULL;}
+int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,size_t size){
+    Portable *p=*out;const char *error="invalid portable declarations";
+    switch(loader->stage){
+    case 0:{
     *out=NULL;uint8_t h[96];
-    if(size<96||size>32768||!read(context,0,h,96)||memcmp(h,"LBC1",4)||lbc_u32(h+4)!=4)return "invalid portable header";
-    for(unsigned n=80;n<96;n+=4)if(lbc_u32(h+n))return "reserved portable header field";
-    Portable *p=demo_calloc(1,sizeof(*p));if(!p)return "portable context exceeds memory budget";
+    if(size<96||size>32768||!read(context,0,h,96)||memcmp(h,"LBC1",4)||lbc_u32(h+4)!=4){loader->error="invalid portable header";return -1;};
+    for(unsigned n=80;n<96;n+=4)if(lbc_u32(h+n)){loader->error="reserved portable header field";return -1;};
+    Portable *p=demo_calloc(1,sizeof(*p));if(!p){loader->error="portable context exceeds memory budget";return -1;};
+    *out=p;
     p->read=read;p->context=context;p->size=(uint32_t)size;
     p->nregs=lbc_u32(h+8);p->ncode=lbc_u32(h+12);p->ncolors=lbc_u32(h+16);
     p->nfunctions=lbc_u32(h+20);p->nresources=lbc_u32(h+24);p->nexpressions=lbc_u32(h+28);
     p->ncalls=lbc_u32(h+32);p->nsettings=lbc_u32(h+36);
     for(unsigned n=0;n<2;n++)p->entries[n]=lbc_u32(h+40+4*n);
-    for(unsigned n=48;n<72;n+=4)if(lbc_u32(h+n)){pbc_destroy(p);return "obsolete animation lifecycle; recompile source";}
+    for(unsigned n=48;n<72;n+=4)if(lbc_u32(h+n)){loader->error="obsolete animation lifecycle; recompile source";return -1;}
     p->profile=lbc_u32(h+72);p->manifest_size=lbc_u32(h+76);
-    const char *error="invalid portable limits or profile";
+    loader->error="invalid portable limits or profile";
     if(!p->nregs||p->nregs>128||!p->ncode||p->ncode>2048||p->ncolors>1024||!p->nfunctions||p->nfunctions>16||
-        p->nresources>16||!p->nexpressions||p->nexpressions>128||p->ncalls>256||p->nsettings>16||!p->manifest_size||p->manifest_size>8192)goto fail;
+        p->nresources>16||!p->nexpressions||p->nexpressions>128||p->ncalls>256||p->nsettings>16||!p->manifest_size||p->manifest_size>PBC_MANIFEST_LIMIT)return -1;
     p->code_offset=96+p->nregs*8;p->palette_offset=p->code_offset+p->ncode*8;
     p->functions_offset=p->palette_offset+p->ncolors*4;
     p->specs_offset=p->functions_offset+p->nfunctions*24;
@@ -221,14 +270,19 @@ const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
     p->calls_offset=p->expressions_offset+p->nexpressions*16;
     p->settings_offset=p->calls_offset+p->ncalls*16;
     p->manifest_offset=p->settings_offset+p->nsettings*16;
-    if(p->manifest_offset+p->manifest_size!=size)goto fail;
+    if(p->manifest_offset+p->manifest_size!=size)return -1;
     /* Only compact active type/layout bindings live in RAM. All immutable
        descriptors, templates and tables remain in the pinned package. */
     unsigned binding_bytes=(p->nregs+1u)&~1u;
     p->metadata_bytes=binding_bytes+p->nregs*sizeof(uint16_t);
-    p->metadata=demo_calloc(1,p->metadata_bytes);if(!p->metadata){error="portable bindings exceed memory budget";goto fail;}
+    p->metadata=demo_calloc(1,p->metadata_bytes);if(!p->metadata){loader->error="portable bindings exceed memory budget";return -1;}
     p->descriptors=p->metadata;p->register_offsets=(uint16_t*)(p->metadata+binding_bytes);
-    for(unsigned r=0;r<p->nregs;r++){
+
+        loader->stage=1;return 0;
+    }
+    case 1:{
+        unsigned limit=loader->index+16;if(limit>p->nregs)limit=p->nregs;
+        for(unsigned r=loader->index;r<limit;r++){
         uint8_t q[8];if(!read_at(p,96+r*8,q,8))goto fail;
         unsigned type=q[0],role=q[1];uint32_t value=lbc_u32(q+4);
         if(!type||type==5||type>P_REF||role==4||role==5||role>P_SETTING||q[2]||q[3]||!finite_value(type,value))goto fail;
@@ -237,39 +291,92 @@ const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
         if(role!=R_CONST)p->register_bytes+=4;
         if(type==P_REF&&((role==R_CONST&&value>=p->nresources)||(role!=R_CONST&&role!=R_INPUT&&role!=R_LOCAL)||(role!=R_CONST&&value)))goto fail;
         if(role==P_SETTING&&(type>T_BOOL||value))goto fail;
+
+        }
+        loader->index=limit;if(limit<p->nregs)return 0;
+        loader->index=0;loader->stage=2;return 0;
     }
-    error=inputs_load(p);if(error)goto fail;
-    error="invalid input read site";
-    for(unsigned n=0;n<p->ncalls;n++){
+    case 2:
+        loader->manifest=demo_calloc(1,sizeof(Json)+p->manifest_size);
+        if(!loader->manifest){error="manifest parser exceeds peak memory budget";goto fail;}
+        loader->stage=3;return 0;
+    case 3:{
+        unsigned n=p->manifest_size-loader->loaded;if(n>256)n=256;
+        if(!p->read(p->context,p->manifest_offset+loader->loaded,(uint8_t *)(loader->manifest+1)+loader->loaded,n)){error="manifest read failed";goto fail;}
+        loader->loaded+=n;if(loader->loaded<p->manifest_size)return 0;
+        json_begin(&loader->parser,loader->manifest,loader->manifest+1,p->manifest_size);
+        loader->stage=4;return 0;
+    }
+    case 4:{
+        int status=json_step(&loader->parser,256);if(!status)return 0;
+        if(status<0){error="invalid LightVM manifest";goto fail;}
+        loader->stage=5;return 0;
+    }
+    case 5:
+        error=pbc_manifest_decode(p,loader->manifest);pbc_open_cancel(loader);
+        if(error)goto fail;
+        loader->stage=6;return 0;
+    case 6:
+        error="invalid input read site";
+        if(loader->index<p->ncalls){unsigned n=loader->index++;
         PbcCall item=pbc_call(p,n);const PbcCall *call=&item;
         if((call->binding<3||(call->binding>=18&&call->binding<=26))||call->binding>=sizeof(natives)/sizeof(*natives)){error="invalid native binding";goto fail;}
         const NativeSignature *sig=&natives[call->binding];
         if(call->argc!=sig->argc)goto fail;
         for(unsigned k=0;k<8;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
         if(call->binding>=55&&!inputs_call_valid(p,call->binding,call->args[0]))goto fail;
-    }
-    error="invalid portable declarations";
-    if(!valid_expressions(p))goto fail;
-    for(unsigned n=0;n<p->nresources;n++){
+
+            return 0;
+        }
+        loader->index=0;loader->stage=7;return 0;
+    case 7:
+        if(!valid_expressions(p))goto fail;
+        loader->stage=8;return 0;
+    case 8:
+        if(loader->index<p->nresources){unsigned n=loader->index++;
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;
         if(!s->kind||s->kind==3||s->kind==4||s->kind==5||s->kind==6||s->kind==9||s->kind==10||s->kind==13||s->kind>DRAW_STYLE||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
         if(pbc_expression((Portable*)p,s->length).type!=T_INT||pbc_expression((Portable*)p,s->seed).type!=T_INT||pbc_expression((Portable*)p,s->stream).type!=T_INT)goto fail;
         unsigned fill_type=pbc_expression((Portable*)p,s->fill).type;
         if(fill_type!=(s->kind==DRAW_BATCH||s->kind==DRAW_STYLE?T_INT:element_type(s->kind)))goto fail;
-    }
-    unsigned previous=0;
-    for(unsigned n=0;n<p->nfunctions;n++){
+
+            return 0;
+        }
+        loader->stage=9;return 0;
+    case 9:
+        if(loader->function<p->nfunctions){unsigned n=loader->function++;
         PbcFunction fn_value=pbc_function(p,n);const PbcFunction *fn=&fn_value;
-        if(fn->first!=previous||fn->end<=fn->first||fn->end>p->ncode||(fn->rights&~13u)||(fn->result==5||fn->result>P_REF)||fn->arg_count>8||fn->arg_start>p->nregs||fn->arg_count>p->nregs-fn->arg_start)goto fail;
+        if(fn->first!=loader->previous||fn->end<=fn->first||fn->end>p->ncode||(fn->rights&~13u)||(fn->result==5||fn->result>P_REF)||fn->arg_count>8||fn->arg_start>p->nregs||fn->arg_count>p->nregs-fn->arg_start)goto fail;
         for(unsigned k=0;k<fn->arg_count;k++)if(pbc_role(p,fn->arg_start+k)!=R_INPUT)goto fail;
-        previous=fn->end;
-        for(unsigned pc=fn->first;pc<fn->end;pc++){if(!valid_instruction(p,pc,fn)){error="invalid portable instruction or effect permission";goto fail;}if((pc&31u)==31u)runtime_checkpoint();}
+
+            loader->previous=fn->end;loader->current=*fn;loader->pc=fn->first;
+            loader->stage=10;return 0;
+        }
+        if(loader->previous!=p->ncode)goto fail;
+        loader->index=0;loader->stage=11;return 0;
+    case 10:{
+        unsigned limit=loader->pc+32;if(limit>loader->current.end)limit=loader->current.end;
+        while(loader->pc<limit)if(!valid_instruction(p,loader->pc++,&loader->current)){error="invalid portable instruction or effect permission";goto fail;}
+        if(loader->pc==loader->current.end)loader->stage=9;
+        return 0;
     }
-    if(previous!=p->ncode)goto fail;
-    for(unsigned n=0;n<p->ncolors;n++){uint8_t q[4];if(!read_at(p,p->palette_offset+4*n,q,4)||lbc_u32(q)>0xffffff)goto fail;}
-    if(p->io_fault)goto fail;
-    p->status=1;*out=p;return NULL;
-fail:pbc_destroy(p);return error;
+    case 11:{
+        unsigned limit=loader->index+32;if(limit>p->ncolors)limit=p->ncolors;
+        while(loader->index<limit){uint8_t q[4];if(!read_at(p,p->palette_offset+4*loader->index++,q,4)||lbc_u32(q)>0xffffff)goto fail;}
+        if(loader->index<p->ncolors)return 0;
+        if(p->io_fault)goto fail;
+        p->status=1;loader->stage=12;return 1;
+    }
+    case 12:return 1;
+    default:error="invalid loading stage";
+    }
+fail:loader->error=error;pbc_open_cancel(loader);return -1;
+}
+const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size){
+    PbcLoader loader={0};*out=NULL;int status;
+    do{status=pbc_open_step(&loader,out,read,context,size);if(!status)runtime_checkpoint();}while(!status);
+    if(status<0){pbc_destroy(*out);*out=NULL;return loader.error;}
+    return NULL;
 }
 static double number(PbcValue value,unsigned type){return type==T_FLOAT?value.f:value.i;}
 static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bindings,PbcValue *out){
@@ -347,73 +454,122 @@ static bool resolve_settings(Portable *p,unsigned count,PbcValue *bindings){
     return true;
 }
 static void random_default(Portable *p);
-const char *pbc_prepare(Portable *p,LbcBuffer *output){
-    if(p->initialized||p->state||(output&&(!output->data||!output->count||output->count>65535||output->sealed)))return "invalid resource preparation";
+int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
+    const char *error="invalid setting or resource expression";
     unsigned count=output?output->count:0;
+    switch(s->stage){
+    case 0:{
+    if(p->initialized||p->state||(output&&(!output->data||!output->count||output->count>65535||output->sealed))){s->error="invalid resource preparation";return -1;};
     size_t resource_offset=(p->register_bytes+_Alignof(PbcResource)-1)&~(size_t)(_Alignof(PbcResource)-1);
     p->state_bytes=resource_offset+p->nresources*sizeof(PbcResource);
     p->state_bytes=(p->state_bytes+7u)&~(size_t)7u;
-    p->state=demo_calloc(1,p->state_bytes);if(!p->state)return "portable state exceeds memory budget";
+    p->state=demo_calloc(1,p->state_bytes);if(!p->state){s->error="portable state exceeds memory budget";return -1;};
     p->values=p->state;p->resources=(PbcResource*)(p->values+resource_offset);p->generation=output?output->generation:0;p->output=output;
     for(unsigned r=0;r<p->nregs;r++)pbc_set_value(p,r,(PbcValue){.u=pbc_initial(p,r)});
-    const char *error="invalid setting or resource expression";
-    if(!resolve_settings(p,count,NULL))goto fail;
-    size_t payload=0;
-    for(unsigned n=0;n<p->nresources;n++){
-        PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;PbcResource *r=&p->resources[n];PbcValue length,fill,seed,stream;
-        if(!evaluate(p,s->length,count,NULL,&length)||length.i<0||length.i>65535||!evaluate(p,s->fill,count,NULL,&fill))goto fail;
-        r->kind=s->kind;r->count=(uint32_t)length.i;r->generation=p->generation;
-        if(s->flags&1u){
-            if(!output||s->kind!=DRAW_RGBA||r->count!=output->count)goto fail;
-            r->data=output->data;continue;
+
+    s->resource_offset=resource_offset;
+
+        s->stage=1;return 0;
+    }
+    case 1:
+        if(!resolve_settings(p,count,NULL))goto fail;
+        s->stage=2;return 0;
+    case 2:
+        if(s->index<p->nresources){unsigned n=s->index++;
+        PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *spec=&s_value;PbcResource *r=&p->resources[n];PbcValue length,fill,seed,stream;
+        if(!evaluate(p,spec->length,count,NULL,&length)||length.i<0||length.i>65535||!evaluate(p,spec->fill,count,NULL,&fill))goto fail;
+        r->kind=spec->kind;r->count=(uint32_t)length.i;r->generation=p->generation;
+        if(spec->flags&1u){
+            if(!output||spec->kind!=DRAW_RGBA||r->count!=output->count)goto fail;
+            r->data=output->data;return 0;
         }
-        if(s->kind==DRAW_BATCH||s->kind==DRAW_STYLE){
-            if(!r->count||r->count>65535||!evaluate(p,s->seed,count,NULL,&seed)||!evaluate(p,s->stream,count,NULL,&stream))goto fail;
-            if(s->kind==DRAW_BATCH&&(seed.u<8||seed.u>24||pbc_expression(p,s->stream).op!=0||(stream.u>>seed.u)))goto fail;
-            if(s->kind==DRAW_STYLE&&r->count!=1)goto fail;
-            r->random_state=seed.u;payload=(payload+7u)&~(size_t)7u;
-            size_t bytes=s->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,seed.u);
-            if(payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-payload)goto fail;
-            payload+=bytes;
-        }else if(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA){
-            if(!evaluate(p,s->seed,count,NULL,&seed)||!evaluate(p,s->stream,count,NULL,&stream)||seed.u>p->ncolors)goto fail;
-            size_t bytes=(size_t)r->count*draw_stride(s->kind);
+        if(spec->kind==DRAW_BATCH||spec->kind==DRAW_STYLE){
+            if(!r->count||r->count>65535||!evaluate(p,spec->seed,count,NULL,&seed)||!evaluate(p,spec->stream,count,NULL,&stream))goto fail;
+            if(spec->kind==DRAW_BATCH&&(seed.u<8||seed.u>24||pbc_expression(p,spec->stream).op!=0||(stream.u>>seed.u)))goto fail;
+            if(spec->kind==DRAW_STYLE&&r->count!=1)goto fail;
+            r->random_state=seed.u;s->payload=(s->payload+7u)&~(size_t)7u;
+            size_t bytes=spec->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,seed.u);
+            if(s->payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-s->payload)goto fail;
+            s->payload+=bytes;
+        }else if(spec->kind>=DRAW_IMAGE_RGB&&spec->kind<=DRAW_IMAGE_RGBWA){
+            if(!evaluate(p,spec->seed,count,NULL,&seed)||!evaluate(p,spec->stream,count,NULL,&stream)||seed.u>p->ncolors)goto fail;
+            size_t bytes=(size_t)r->count*draw_stride(spec->kind);
             if(stream.u&&((size_t)stream.u!=bytes||(bytes+2)/3>p->ncolors-seed.u))goto fail;
-            r->random_state=seed.u;r->sealed=s->flags==2;
+            r->random_state=seed.u;r->sealed=spec->flags==2;
             if(r->sealed&&!stream.u)goto fail;
-            if(!r->sealed){if(payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-payload)goto fail;payload+=bytes;}
+            if(!r->sealed){if(s->payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-s->payload)goto fail;s->payload+=bytes;}
         }else{
             size_t bytes=r->count*element_size(r->kind);
-            if(bytes>VM_HEAP_LIMIT-payload)goto fail;
-            payload+=bytes;
+            if(bytes>VM_HEAP_LIMIT-s->payload)goto fail;
+            s->payload+=bytes;
         }
-    }
-    /* Reallocate once at admission to include payload; no execution-time heap. */
-    if(payload){
-        void *larger=demo_calloc(1,p->state_bytes+payload);if(!larger){error="portable resources exceed peak memory budget";goto fail;}
-        memcpy(larger,p->state,p->state_bytes);demo_free(p->state);p->state=larger;
-        p->values=p->state;p->resources=(PbcResource*)(p->values+resource_offset);
-    }
-    p->payload_bytes=payload;uint8_t *cursor=(uint8_t*)p->state+p->state_bytes;p->state_bytes+=payload;
-    for(unsigned n=0;n<p->nresources;n++){
-        PbcResource *r=&p->resources[n];if(pbc_spec((Portable*)p,n).flags)continue;
-        if(r->kind==DRAW_BATCH||r->kind==DRAW_STYLE){cursor=(uint8_t*)(((uintptr_t)cursor+7u)&~(uintptr_t)7u);r->data=cursor;cursor+=r->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,r->random_state);continue;}
-        if(r->kind>=DRAW_IMAGE_RGB&&r->kind<=DRAW_IMAGE_RGBWA){
-            r->data=cursor;unsigned stride=draw_stride(r->kind);cursor+=(size_t)r->count*stride;PbcValue bytes;
-            if(!evaluate(p,pbc_spec(p,n).stream,count,NULL,&bytes))goto fail;
-            if(bytes.u){PbcResource source=*r;source.data=NULL;for(unsigned k=0;k<r->count;k++){uint8_t v[5];if(!pbc_image_read(p,&source,k,v))goto fail;for(unsigned c=0;c<5;c++){int at=draw_channel(r->kind,c);if(at>=0)r->data[(size_t)k*stride+at]=v[c];}if((k&31u)==31u)runtime_checkpoint();}}
-            continue;
+
+            return 0;
         }
-        if(!element_size(r->kind))continue;
-        r->data=cursor;cursor+=r->count*element_size(r->kind);PbcValue fill;
-        if(!evaluate(p,pbc_spec((Portable*)p,n).fill,count,NULL,&fill))goto fail;
-        for(unsigned k=0;k<r->count;k++){if(!store_value(r,k,fill))goto fail;if((k&31u)==31u)runtime_checkpoint();}
+        s->stage=3;return 0;
+    case 3:
+        if(s->payload){
+            /* Allocate without clearing an entire scene in one slice. The header
+             * is always valid for cancellation; payload is inaccessible until done. */
+            void *larger=demo_alloc(p->state_bytes+s->payload);
+            if(!larger){error="portable resources exceed peak memory budget";goto fail;}
+            memcpy(larger,p->state,p->state_bytes);demo_free(p->state);p->state=larger;
+            p->values=p->state;p->resources=(PbcResource*)(p->values+s->resource_offset);
+        }
+        p->payload_bytes=s->payload;s->cursor=p->state_bytes;s->zeroed=p->state_bytes;
+        p->state_bytes+=s->payload;s->stage=4;return 0;
+    case 4:{
+        size_t n=p->state_bytes-s->zeroed;if(n>256)n=256;
+        memset((uint8_t *)p->state+s->zeroed,0,n);s->zeroed+=n;
+        if(s->zeroed==p->state_bytes){s->stage=5;s->index=0;}
+        return 0;
     }
-    /* Admission is coordinator-only. Runtime reseeding belongs to this VM. */
-    static uint64_t sequence;
-    p->seed_sequence=++sequence;
-    random_default(p);p->initialized=true;return NULL;
-fail:demo_free(p->state);p->state=NULL;p->values=NULL;p->resources=NULL;p->state_bytes=0;return error;
+    case 5:
+        if(s->index<p->nresources){
+            PbcResource *r=&p->resources[s->index];PbcResourceSpec spec=pbc_spec(p,s->index);
+            if(spec.flags){s->index++;return 0;}
+            if(r->kind==DRAW_BATCH||r->kind==DRAW_STYLE){
+                s->cursor=(s->cursor+7u)&~(size_t)7u;r->data=(uint8_t*)p->state+s->cursor;
+                s->cursor+=r->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,r->random_state);
+                s->index++;return 0;
+            }
+            r->data=(uint8_t*)p->state+s->cursor;s->pixel=0;s->image=r->kind>=DRAW_IMAGE_RGB&&r->kind<=DRAW_IMAGE_RGBWA;
+            if(s->image){
+                s->cursor+=(size_t)r->count*draw_stride(r->kind);PbcValue bytes;
+                if(!evaluate(p,spec.stream,count,NULL,&bytes))goto fail;
+                if(!bytes.u){s->index++;return 0;}
+            }else{
+                s->cursor+=(size_t)r->count*element_size(r->kind);
+                if(!evaluate(p,spec.fill,count,NULL,&s->fill))goto fail;
+            }
+            s->stage=6;return 0;
+        }
+        {static uint64_t sequence;p->seed_sequence=++sequence;}
+        random_default(p);p->initialized=true;s->stage=7;return 1;
+    case 6:{
+        PbcResource *r=&p->resources[s->index];unsigned limit=s->pixel+32;if(limit>r->count)limit=r->count;
+        while(s->pixel<limit){
+            unsigned k=s->pixel++;
+            if(s->image){
+                PbcResource source=*r;source.data=NULL;uint8_t v[5];
+                if(!pbc_image_read(p,&source,k,v))goto fail;
+                for(unsigned c=0;c<5;c++){int at=draw_channel(r->kind,c);if(at>=0)r->data[(size_t)k*draw_stride(r->kind)+at]=v[c];}
+            }else if(!store_value(r,k,s->fill))goto fail;
+        }
+        if(s->pixel==r->count){s->index++;s->stage=5;}
+        return 0;
+    }
+    case 7:return 1;
+    default:error="invalid resource preparation stage";
+    }
+fail:s->error=error;return -1;
+}
+const char *pbc_prepare(Portable *p,LbcBuffer *output){
+    PbcPreparation state={0};int status;
+    do{status=pbc_prepare_step(&state,p,output);if(!status)runtime_checkpoint();}while(!status);
+    if(status>0)return NULL;
+    demo_free(p->state);p->state=NULL;p->values=NULL;p->resources=NULL;p->state_bytes=0;
+    return state.error;
 }
 bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned count){
     if(!p->initialized||p->status==0||function>=p->nfunctions)return false;

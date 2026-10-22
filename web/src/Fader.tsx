@@ -6,6 +6,7 @@ import { activityActions, useAppDispatch, useAppSelector } from './store';
 import { type SettingsValues } from './program';
 import { OutputLight } from './OutputLight';
 import { LiveInputs } from './LiveInputs';
+import { LayerPerformance } from './LayerPerformance';
 import { FADER_SOURCE, TransitionFaderInput } from './transition-fader';
 import { TransitionProgram } from './TransitionProgram';
 import type { TransitionState } from './types';
@@ -139,6 +140,7 @@ export function Fader() {
             <p className="fader-slot-name">{loading === slot ? 'Loading…' : compositionLabel(slot)}</p>
             <div className="bus-level"><meter aria-label={'Bus ' + slot + ' mix contribution'} min="0" max="100" value={amount} /><output>{amount.toFixed(0)}%</output></div>
             <p className="helper">Mix position · transition effects may reveal pixels differently.</p>
+            <LayerPerformance composition={state?.[slot]} />
             <div className="preset-bank" aria-label={'Bus ' + slot + ' presets'}>{controller.presets.map((preset, index) => <button key={preset.name} className={'cue-key' + (state?.[slot].preset === preset.name ? ' selected' : '')} disabled={busy} aria-label={'Load ' + preset.name + ' into ' + slot} onClick={() => void loadAnimation('preset:' + preset.name, slot)}><small>{String(index + 1).padStart(2, '0')}</small>{preset.name}</button>)}</div>
             {!controller.presets.length && <p className="helper">Create presets in Configuration to fill this bus.</p>}
           </section>;

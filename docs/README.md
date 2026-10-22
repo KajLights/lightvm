@@ -22,6 +22,8 @@ animation. The guides below describe the current implementation.
 - [Multicore hardware measurements and validation](multicore-validation.md)
 - [Original Pico W multicore measurements and comparison](multicore-rp2040-validation.md)
 - [Multicore design research and decisions](design/feature-proposal-pico-multicore.md)
+- [Pico regression review and optimisation priorities](design/pico-performance-review.md)
+- [Pico performance and command-lifetime implementation plan](design/pico-performance-plan.md)
 - [MQTT, Home Assistant lights and keypad inputs](mqtt.md)
 - [Boot sequence and power recovery](boot-sequence.md)
 - [Browser workspace](web-editor.md)
@@ -49,3 +51,6 @@ current contract. Superseded implementations are available through Git history.
 [Versioning](versioning.md) defines the shared application release and minimum program requirements.
 
 - [JavaScript and blocks authoring](javascript-and-blocks.md): editor modes, APIs, language coverage and compiler design.
+
+- [Scene preparation and operation lifetime](scene-preparation.md)
+- [Pico stack-path accounting](design/pico-stack-accounting.md)

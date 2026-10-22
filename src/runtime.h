@@ -12,4 +12,13 @@ bool runtime_owns(const void *owner);
 uint64_t runtime_service_count(void);
 void runtime_defer_begin(void);
 void runtime_defer_end(void);
+typedef struct { uint64_t epochs,total_us,max_us,overruns,foreground_calls,max_foreground_gap_us; } RuntimeEpochStats;
+void runtime_foreground(uint64_t now);
+void runtime_epoch_begin(void);
+void runtime_epoch_end(void);
+bool runtime_epoch_available(void);
+bool runtime_epoch_can_collect(void);
+RuntimeEpochStats runtime_epoch_stats(void);
+unsigned platform_main_stack_peak(void);
+unsigned platform_cpu_hz(void);
 #endif

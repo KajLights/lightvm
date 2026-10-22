@@ -83,6 +83,32 @@ static void failures(StoreType type){
     f.deny_reads=true;StoreBlockDevice d=device(&f);CHECK(!store_mount_with(&s,&store_extent_backend,&d)&&!s.available);store_destroy(&s);
     free(baseline);free(f.bytes);
 }
+static void cancellable_writes(void){
+    Flash f=flash_new(128*1024);Store s;mount_flash(&s,&f);
+    CHECK(store_put(&s,STORE_PRESET,"scene","old",3));
+    unsigned boundary=0;
+    for(;;boundary++){
+        StoreWrite write={0};uint32_t generation=s.generation,revision=s.preset_revision;
+        uint32_t free_before=store_info(&s).free_bytes;
+        CHECK(store_write_begin(&s,&write,STORE_PRESET,"scene","new",3));
+        CHECK(!store_put(&s,STORE_PRESET,"other","x",1));
+        CHECK(!store_delete(&s,STORE_PRESET,"scene"));
+        StoreUpload upload={.pin=-1};CHECK(!store_upload_begin(&s,&upload,STORE_ANIMATION,"x",1,0));
+        int status=0;
+        for(unsigned n=0;n<boundary&&!status;n++){
+            unsigned writes=f.writes;status=store_write_step(&write);
+            CHECK(f.writes-writes<=2); /* final marker write + sync only */
+            if(!status){CHECK(s.generation==generation&&s.preset_revision==revision);expect(&s,store_find(&s,STORE_PRESET,"scene"),"old");}
+        }
+        CHECK(status>=0);store_write_cancel(&write);CHECK(!s.writer);
+        if(status){CHECK(s.generation==generation+1&&s.preset_revision==revision+1);break;}
+        CHECK(store_info(&s).free_bytes==free_before);
+        store_destroy(&s);mount_flash(&s,&f);expect(&s,store_find(&s,STORE_PRESET,"scene"),"old");
+        CHECK(boundary<200);
+    }
+    CHECK(boundary>20);expect(&s,store_find(&s,STORE_PRESET,"scene"),"new");
+    store_destroy(&s);mount_flash(&s,&f);expect(&s,store_find(&s,STORE_PRESET,"scene"),"new");store_destroy(&s);free(f.bytes);
+}
 static void readonly_assets(void){
     StoreAsset assets[]={{STORE_ANIMATION,"wipe",slot_lbc,sizeof(slot_lbc)},{STORE_TRANSITION,"wipe","transition",10}};
     StoreAssets configuration={assets,2};Store s;CHECK(store_mount_with(&s,&store_assets_backend,&configuration));
@@ -93,4 +119,4 @@ static void readonly_assets(void){
     CHECK(vm_heap_used()==0);store_destroy(&s);
     assets[1].type=STORE_ANIMATION;CHECK(!store_mount_with(&s,&store_assets_backend,&configuration));store_destroy(&s);
 }
-int main(void){catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);failures(STORE_KEY_FEEDBACK);readonly_assets();puts("storage backends passed");return 0;}
+int main(void){cancellable_writes();catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);failures(STORE_KEY_FEEDBACK);readonly_assets();puts("storage backends passed");return 0;}

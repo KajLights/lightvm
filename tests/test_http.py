@@ -77,6 +77,43 @@ class HttpTests(unittest.TestCase):
             self.assertLess(time.monotonic(), deadline)
             time.sleep(.01)
 
+    def accept_scene(self, client, **fields):
+        from client import MANAGE
+        client.require_ok(client.command(MANAGE, json.dumps(fields).encode()))
+        return json.loads(client.data_reply)['operation']
+
+    def test_scene_operation_survives_disconnect_and_supersedes_without_stale_activation(self):
+        from lightvm.compiler import compile_source
+        self.http.configure(self.config())
+        self.http.save_program('red', color(21))
+        slow = compile_source('from lightvm import profile,init,render,rgb\nprofile("animation")\n'
+            '@init\ndef setup(ctx,runtime):\n ctx.n=0\n for i in range(1000000):\n  ctx.n=ctx.n+1\n'
+            '@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(99,0,0))\n')
+        self.assertTrue(slow.success, slow.diagnostics)
+        self.http.save_program('slow', slow.bytecode)
+        self.http.activate('red')
+        before = self.pipe.program_state()['generation']
+        accepted = self.accept_scene(self.http, op='program_activate', name='slow', output='lights')
+        self.assertFalse(accepted['terminal'])
+        self.http.transport.close()
+        connected = self.connect()
+        pending = connected.operation(accepted['boot_id'], accepted['id'])
+        self.assertFalse(pending['terminal'])
+        self.assertEqual(self.pipe.program_state()['generation'], before)
+        replacement = self.accept_scene(connected, op='program_activate', name='red', output='lights')
+        connected.wait_operation(replacement)
+        old = connected.operation(accepted['boot_id'], accepted['id'])
+        self.assertTrue(old['terminal'])
+        self.assertEqual(old['stage'], 'superseded')
+        self.assertNotEqual(old['code'], 0)
+        self.assertEqual(self.pipe.program_state()['program_crc32'], zlib.crc32(color(21)))
+        with self.assertRaises(ProtocolError):
+            connected.operation('previous-boot', replacement['id'])
+        accepted = self.accept_scene(connected, op='program_activate', name='slow', output='lights')
+        connected.operation(accepted['boot_id'], accepted['id'], cancel=True)
+        self.pipe.wait_preparation()
+        self.assertEqual(connected.operation(accepted['boot_id'], accepted['id'])['stage'], 'cancelled')
+
     def test_ab_timed_routine_survives_browser_disconnect_and_source_reassignment(self):
         from lightvm.compiler import compile_source
         self.http.configure(self.config())
@@ -245,7 +282,8 @@ class HttpTests(unittest.TestCase):
         from bytecode_fixtures import color, sample, padded_program
         self.http.configure(self.config())
         self.http.save_program('large', padded_program(min(27000, self.http.describe()['module_limit'])))
-        self.http.activate('large')
+        self.http.save_program('moving', sample('rainbow'))
+        self.http.activate('moving')
         other = self.connect()
         port = int(self.url.rsplit(':', 1)[1])
         stalled = socket.socket()

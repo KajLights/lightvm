@@ -6,6 +6,7 @@
 #include "bytecode_core.h"
 #include "inputs.h"
 #include "config.h"
+#define PBC_MANIFEST_LIMIT 8192u
 typedef InputValue PbcValue;
 typedef struct { uint32_t first,end,rights,result,arg_start,arg_count; } PbcFunction;
 typedef struct { uint32_t kind,length,fill,seed,stream,flags; } PbcResourceSpec;
@@ -47,10 +48,31 @@ typedef struct Portable {
     const uint8_t *composition_frames[2];
     float progress;
     bool initialized;
+    bool render_reusable; /* Derived from verified operations, never a manifest claim. */
     _Alignas(4) uint8_t cache[LIGHTVM_BYTECODE_CACHE_BYTES]; uint32_t cache_offset,cache_size;
 } Portable;
+typedef struct {
+    unsigned stage,index,function,pc,previous,loaded;
+    PbcFunction current;
+    Json *manifest;
+    JsonParser parser;
+    const char *error;
+} PbcLoader;
+/* Returns 0 while pending, 1 on completion, -1 on failure. The caller owns
+ * *out from its first allocation, including on failure/cancellation. */
+int pbc_open_step(PbcLoader *,Portable **out,LbcRead,void *,size_t);
+void pbc_open_cancel(PbcLoader *);
 const char *pbc_open(Portable **out,LbcRead read,void *context,size_t size);
+const char *pbc_manifest_decode(Portable *,const Json *);
 void pbc_destroy(Portable *p);
+typedef struct {
+    unsigned stage,index,pixel;
+    size_t resource_offset,payload,zeroed,cursor;
+    PbcValue fill;
+    bool image;
+    const char *error;
+} PbcPreparation;
+int pbc_prepare_step(PbcPreparation *,Portable *,LbcBuffer *);
 const char *pbc_prepare(Portable *p,LbcBuffer *output);
 bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned count);
 int pbc_resume(Portable *p,unsigned quota);
@@ -65,4 +87,5 @@ PbcSetting pbc_setting(Portable *, unsigned);
 PbcValue pbc_value(const Portable *, unsigned);
 void pbc_set_value(Portable *,unsigned,PbcValue);
 bool pbc_read_instruction(Portable *,unsigned,uint8_t out[8]);
+bool pbc_render_reusable(Portable *);
 #endif

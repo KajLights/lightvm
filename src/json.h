@@ -11,6 +11,18 @@ typedef struct {
     JsonToken tokens[256];
     int count;
 } Json;
+/* Caller owns both parser and immutable source until step returns +/-1.
+ * Each unit consumes one byte, delimiter, or duplicate-key comparison. */
+typedef struct {
+    Json *json;
+    int parents[17], token, key, sibling;
+    uint8_t phases[17], depth, lex, escape, unicode, number, literal;
+    bool root_done;
+    int status;
+    char key_name[128];
+} JsonParser;
+void json_begin(JsonParser *,Json *,const void *,size_t);
+int json_step(JsonParser *,unsigned units);
 bool json_parse(Json *json, const void *bytes, size_t size);
 int json_get(const Json *json, int object, const char *key);
 bool json_string(const Json *json, int token, char *out, size_t capacity);

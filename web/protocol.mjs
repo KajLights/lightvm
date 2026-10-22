@@ -79,10 +79,10 @@ export class FrameDecoder {
 
 export class LightVMClient {
   /** @param {any} transport
-   *  @param {{ timeout?: number, onDisconnect?: (error: Error) => void }} [options] */
-  constructor(transport, { timeout = 5000, onDisconnect = () => {} } = {}) {
+   *  @param {{ timeout?: number, onDisconnect?: (error: Error) => void, onOperation?: (state: any) => void }} [options] */
+  constructor(transport, { timeout = 5000, onDisconnect = () => {}, onOperation = () => {} } = {}) {
     this.transport = transport; this.timeout = timeout;
-    this.onDisconnect = onDisconnect; this.requestId = 0; this.pending = null;
+    this.onOperation = onOperation; this.onDisconnect = onDisconnect; this.requestId = 0; this.pending = null;
     this.closed = false; this.queue = Promise.resolve();
     this.decoder = new FrameDecoder(message => this.receive(message));
     transport.onData = bytes => {
@@ -147,7 +147,32 @@ export class LightVMClient {
   }
 
   async manage(op, fields = {}) {
-    return this.command(COMMAND.MANAGE, encoder.encode(encodeJSON({ op, ...fields })));
+    let reply = await this.command(COMMAND.MANAGE, encoder.encode(encodeJSON({ op, ...fields })));
+    if (!op.startsWith('operation_') && decoder.decode(reply.data).startsWith('{"operation":')) {
+      reply = await this.waitOperation(parseJSON(decoder.decode(reply.data)).operation);
+      if (op === 'transition_select') return this.manage('transition_get', { output: fields.output });
+      if (op === 'program_reset') return this.manage('program_state', { output: fields.output, slot: fields.slot, layer: fields.layer });
+      if (op === 'output_light_set') return this.manage('output_light_get', { output: fields.output });
+    }
+    return reply;
+  }
+
+  async operation(boot_id, id, cancel = false) {
+    const reply = await this.manage(cancel ? 'operation_cancel' : 'operation_get', { boot_id, id });
+    return parseJSON(decoder.decode(reply.data)).operation;
+  }
+
+  async waitOperation(state, { timeout = 120000, onProgress = this.onOperation } = {}) {
+    const deadline = Date.now() + timeout;
+    while (!state.terminal) {
+      onProgress?.(state);
+      if (Date.now() >= deadline) throw new Error(`Scene operation ${state.id} is still pending; reconnect and query ${state.boot_id}.`);
+      await new Promise(resolve => setTimeout(resolve, 10));
+      state = await this.operation(state.boot_id, state.id);
+    }
+    onProgress?.(state);
+    if (state.code) throw Object.assign(new Error(state.error || state.stage), { code: state.code, operation: state });
+    return { code: state.code, value: state.value, message: state.stage, data: encoder.encode(encodeJSON({ operation: state })), pixels: new Uint8Array() };
   }
 
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionsSupported = description.connections; return description; }
@@ -179,7 +204,8 @@ export class LightVMClient {
         }
         onProgress((offset + part.length) / bytecode.length);
       }
-      await this.command(COMMAND.FINISH, argumentsBytes);
+      const installed = await this.command(COMMAND.FINISH, argumentsBytes);
+      if (decoder.decode(installed.data).startsWith('{"operation":')) await this.waitOperation(parseJSON(decoder.decode(installed.data)).operation);
     } catch (error) {
       if (started && !this.closed) await this.command(COMMAND.OBJECT_CANCEL).catch(() => {});
       throw error;
