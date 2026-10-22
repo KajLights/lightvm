@@ -13,26 +13,131 @@ freshness and command completion are separate measures. There is no new global
 
 ## Implementation tracker — reviewed 22 October 2026
 
-The software continuation is complete, including C3 and closed software stack-path
-accounting. The remaining acceptance work requires a physical Pico W/Pico 2 W.
-No USB Pico is currently enumerated. The fixed-sprite **8.7% historical hardware
-deficit is not claimed closed** by host tests, dispatch counts or successful builds.
+The implementation continuation is complete, including C3 and closed software
+stack-path accounting. Hardware measurements have reopened the throughput,
+freshness and preparation/recall latency acceptance gates below. Comparison completed on 22 October with the attached Pico W
+(RP2040 B2, serial E6614103E7236D37), 200 WS2812 pixels on GP16. A verified 2 MiB
+flash backup preserves the exact pre-optimisation firmware and all 13 saved
+objects. Its firmware reports SDK 2.3.1, two workers and a 2000 µs slice. Pico 2 W
+and electrical-probe acceptance still need their hardware. The matched fixed-sprite gate now passes with a 50.1% hardware gain; the historical
+8.7% single-core deficit uses a different fixture/build and remains historical
+context, not the comparison denominator.
 
 | Item | Software disposition | Evidence / physical follow-up |
 | --- | --- | --- |
-| P0 | Complete | Preserved fixed/seeded/time-indexed fixtures, exact replays, raw contribution samples and repeated benchmark runner; matched board baseline pending |
-| P1 | Complete | Captured/completed/submitted/displayed stamps, dependency revisions, first-dirty/display delay, runnable/composite/output waits, pair imbalance/join and epoch/foreground counters; observer overhead and distributions need boards |
+| P0 | Complete on attached Pico W | Verified baseline backup, five-trial primary baseline, fixed/seeded/time-indexed hardware replays, 200/500/1024 pixels and eight layers; final candidate comparison and restoration complete |
+| P1 | Implemented; overhead gate open | Real dirty/display, wait and epoch measurements recorded; 20 Hz observer overhead measured separately from still-unisolated internal telemetry cost |
 | P2 | Complete with conservative scope | Stars geometry moved to creation; unused callback clocks omitted; helper delta history preserved; broader automatic setter hoisting declined as described below |
 | C1 | Complete | Owned typed HA light/recall/power/key/indicator requests; shared management parser; scene/reset/configuration ownership now supplied by C3 |
-| C2 | Software audit complete | Both linked graphs close with callbacks, library/assembly paths, interrupts and guarded recursion; strict build gate and source fingerprints; ROM allowances and stress watermarks remain physical gates |
+| C2 | Software audit complete | Both linked graphs close with callbacks, library/assembly paths, interrupts and guarded recursion; strict build gate and source fingerprints; attached B2 ROM and stress watermarks pass their scoped checks; Pico 2 W physical follow-up remains |
 | P3 | Complete with conservative proof | Verified straight-line unchanged-input reuse, live virtual clocks/ramps/timeouts and manual FRAME; broader branch/map/resource proof deliberately not inferred |
 | P4 | Selected fast paths complete | Exact endpoint span copies, integer image mapping and repeated-colour transform reuse; fused fill/transform reserved for a demonstrated residual board hotspot |
-| P5 | Complete | 4 ms epoch admission, output/A-B/layer rotation, unfinished/dirty/dynamic age and measured-cost ordering, no cached-valid freshness debt; physical service/throughput acceptance pending |
-| C3 | Complete | Bounded preparation/persistence, atomic scene ownership transfer, boot/configuration paths, query/cancel/supersession/history, milestones, stage timings and UI/HA outcomes |
-| P6 | Existing executor retained | No evidence yet justifies a shared batch; board quantum/chunk calibration and the ≥10% pair-wait decision gate remain |
-| P7 | Existing shared artwork retained | No extra residency/map/composite/instruction cache or RAM placement without the specified hardware benefit and memory evidence |
+| P5 | Hardware acceptance failed on some workloads | 4 ms admission/fairness is implemented; image/scalar throughput and input-readback latency regressions reopen tuning. Preserve the original gates |
+| C3 | Atomicity passes; latency and admission reopened | Ten hardware cancellations preserve the old scene; fast acceptance is offset by slow completion/recall and failure to replace a large live scene |
+| P6 | Shared-batch investigation gate opened | Image-pair join waiting exceeds 10% in calibration; 6 ms/512-byte variants do not recover image throughput. No replacement executor is claimed implemented |
+| P7 | Existing shared artwork retained | Larger instruction-cache calibration rejected as a default change: insufficient end-to-end gain; other caches still require measured hotspots/admission evidence |
 | P8 | Complete with conservative scope | Source-mapped map/reuse/resource advice, creation/frame Blocks controls and shared artwork, generation-aware rates/dirty delay, preparation progress/cancel/reconnect; speculative source rewrites and optional rate caps declined |
-| V | Software validation complete | Host suites, sanitizers, exact replay, both W Release builds and the no-network Pico build pass; physical acceptance matrix remains open |
+| V | Attached-board comparison complete; candidate unaccepted | Full evidence and restoration recorded; failed software gates and the remaining hardware matrix stay open |
+
+### Hardware comparison completed — 22 October 2026
+
+The [full hardware report](pico-performance-hardware-2026-10-22.md),
+[structured results](../benchmarks/pico-performance-hardware-2026-10-22.json),
+[raw evidence](../benchmarks/pico-performance-hardware-2026-10-22-raw.tar.gz) and
+[hash manifest](../benchmarks/pico-performance-hardware-2026-10-22-manifest.json)
+record the comparison, unsuccessful attempts, limits and restoration. The
+candidate **does not pass overall optimisation acceptance**.
+
+The attached Pico W (RP2040 B2, 125 MHz, 200 WS2812 pixels on GP16) was compared
+with its verified exact pre-optimisation image, associated with `59b7c52`.
+Primary tests reuse identical archived bytecode, two workers, a 2 ms slice and
+256-byte cache. The initial `1d9b7ea` candidate and the final candidate with the
+output-ownership fix have separate identities; hashes/build options are in the
+report. Flash extent addresses were not pinned across firmware blocks, so the
+comparison does not causally separate scheduling, instrumentation and cache
+layout effects.
+
+- **Completed:** five 30-second trials per primary case after seven-second
+  warm-up, 3,005 USB latency samples per case/image; fixed sprites, timed births,
+  balanced images/scalars, asymmetric layers and A/B scenes.
+- **Completed:** three 20-second secondary trials at 500/1,024 pixels and eight
+  map layers; five trials of creation-time source variants and unchanged saved
+  stars; boundary-only and diagnostic polling comparisons.
+- **Completed:** 4,200 hardware manual frames across baseline and both candidate
+  compiler sets. Exact pixels and observable clocks/counters/inputs/settings
+  match; private guest arrays/internal RNG state are not exposed.
+- **Completed:** five heavy-preparation trials, ten safe-boundary cancellations,
+  100 dirty-input events, authenticated 62-command recall/power scenarios,
+  1,000 alternating dimming controls, and 62.55 minutes on one candidate boot
+  spanning USB, HTTP, MQTT, uploads/deletes, replacements and rendering.
+- **Restored and verified:** the exact original full-flash image and all 13
+  saved objects. Ten public program/preset hashes were checked again over USB;
+  original configuration/light controls, connected MQTT and running rainbow
+  were verified. Private backups and credentials remain outside published data.
+
+| Finding | Result / disposition |
+| --- | --- |
+| Matched fixed twelve | 26.65 → 40.01 updates/s, **+50.1%**; controlled fixed gate passes. This is not an identical rerun of the historical single-core measurement |
+| Timed births | 32.18 → 46.30/s, **+43.9%** |
+| Balanced images | 46.83 → 34.14–34.17/s, **−27.1%**; throughput acceptance fails |
+| Scalar / asymmetric / A-B | Required dynamic contributions lose roughly 11–21%; explicit lower latency does not automatically accept that tradeoff |
+| Eight identical map layers | 28.56–29.41 → 18.63–24.87/s; no starvation, but fairness ratio worsens 1.030 → 1.335 |
+| USB | Six primary cases meet p95 ≤15/p99 ≤25 ms. Two-map p95 rises 10.25 → 11.47 ms; busy-preparation p95 is 17.13 ms under the heavier defined observer load |
+| Preparation | Median acceptance 2,020.61 → 9.42 ms; median completion **2,020.61 → 3,590.44 ms**. Ten cancellations preserve the old scene and complete within 20.28 ms |
+| HA | Dimming p95 62.42 → 58.38 ms; recall/power scenario p95 **300.18 → 1,349.81 ms**. Recall latency remains unacceptable |
+| Input freshness proxy | Composite-readback p95 61.99 → 78.29 ms. Candidate internal output-completion p95 43.93 ms is a different boundary and cannot substitute for the baseline comparison |
+| Creation-time work | Fixed geometry **+8.9%**, geometry plus constant style **+31.0%**, independently measured over five trials |
+| Reuse / saved stars | Saved-stars median 25.87 → 32.34/s; background goes from about 101 renders/s to zero further renders while valid |
+| Observation | 20 Hz STATUS costs about 8–10% baseline / 7–9% candidate in descriptive boundary-only comparisons; detailed polls cost more. Internal telemetry ≤2% remains unisolated |
+| Epoch / pair waiting | Image epoch reaches 10.53 ms. Pair joins exceed the 10% P6 investigation gate; cumulative foreground maxima include flash/setup |
+
+**Hardware-discovered output ownership fix:** rapid baseline dimming exposed
+`native transition output failed; retrying` at ten sampled checks. Synchronous
+light refresh previously allowed its own physical output to resubmit from a
+nested render checkpoint. Guarding that output while permitting other output
+service fixes direct/composition/transition cases. The native regression fails
+before the fix and passes after it. The final candidate has zero sampled retry
+errors in both HA stress runs. All 16 native CTests, the Python suite (309 tests,
+two skips), and strict Pico W/Pico 2 W/no-network Pico builds pass.
+
+**Replacement-admission failure:** four scalar layers at 1,024 pixels occupy
+58,200/65,536 heap bytes, with a 64,604-byte observed peak. Even validating an
+empty replacement fails: the 5,136-byte parser and 2,512-byte decoded configuration
+coexist before parser release. Explicitly clearing the composition reduces live
+heap to 6,600 bytes and allows replacement without reset. The remaining 1,024-pixel
+timing trials label this explicit release regime; atomic replacement did not pass.
+
+**C2 evidence:** actual B2 ROM SHA256
+`ef07d54bdd259c7858483606118a3c704976801823c38ac5a2fcdffacd2d83fe`.
+80/83 exported entries close; relevant flash/float/memory/reset paths use at most
+88/68/12/16 bytes, within existing allowances. Debug trampolines and vector
+transfer remain explicit unresolved non-helper entries. The same-boot stress
+watermarks are 5,740/16,384 main and 2,684/8,192 worker bytes. Linked bounds with
+interrupts remain 12,152/5,300 bytes. Pico 2 W still requires its own physical ROM
+and stress evidence; neither watermarks nor build success certify all hardware.
+
+### Work reopened by measured failures
+
+1. **C3/resources:** reserve or reduce parser/decoded-configuration workspace so
+   an admitted scene can safely be replaced or cleared; add the 1,024-pixel,
+   four-scalar reproduction to admission contracts.
+2. **C3:** profile and coalesce cheap preparation units under a shared foreground
+   budget. Judge acceptance, total completion, old-scene progress and busy control
+   latency together; preserve cancellation, atomicity and stack tests.
+3. **P5/P6:** isolate native image/map execution, epoch admission and code/data
+   layout effects, then prototype a bounded shared batch because pair waiting
+   crossed the plan's gate. Repeat balanced/asymmetric and fixed-sprite cases.
+4. **P1/P5:** recover the input-readback tail and two-map control regression;
+   measure steady ingress gaps separately from flash and isolate internal
+   telemetry overhead. Keep all original numeric gates.
+5. **V:** repeat the accepted candidate matrix after those changes. Pico 2 W,
+   APA102/electrical probes, multiple physical outputs, exhaustive admission and
+   one/two-worker/quantum sweeps remain outside this attached-board campaign.
+
+The 6 ms and 6 ms/512-byte cache calibrations did not recover image throughput;
+no default change was adopted. Optional caches/fusion remain gated by measured
+benefit and simultaneous-scene memory. Completing this comparison does not mark
+those failed software acceptance gates complete.
 
 ### Full-diff review — 22 October 2026
 
@@ -132,8 +237,8 @@ Stack results include two worst interrupt paths plus 256 bytes per level:
 | Pico, networking disabled | 11,932 / 16,384 bytes | 5,300 / 8,192 bytes | 22,400 bytes |
 
 HA `light_command` / `message` / `ha_tick` frames are **24 / 184 / 656 bytes** on
-both W profiles. All three graphs have zero unresolved paths. Explicit ROM allowances
-remain conditional until board/ROM identity and stress margins are verified.
+both W profiles. All three graphs have zero unresolved paths. Attached RP2040 B2 ROM and stress evidence now supports its scoped allowances.
+RP2350 ROM and physical stress margins remain conditional.
 See [stack-path accounting](pico-stack-accounting.md); these are not physical
 stack certificates or measurements of actual free heap.
 
@@ -165,7 +270,7 @@ original measurement gates:
   reuse and truthful rates are shipped; a new user rate policy is not required
   to remove redundant work.
 
-### Remaining work — physical validation only
+### Acceptance work reopened by hardware measurements
 
 1. Identify/flash both boards and ROM revisions. Verify the external ROM stack
    allowances and record both core watermarks under the HA/control/flash stress

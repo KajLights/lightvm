@@ -541,7 +541,7 @@
   },
   "project": {
     "src/runtime.c": "3fca0160ff37ec5bf33948ba6631899c577cad8d6373386af2f05293e5b28536",
-    "src/app.c": "0e277c3d27a7251fdef0166444107179847ea000d9fb91f00cacc89649b16b94",
+    "src/app.c": "6546506d183f8363c2e8c4228701747925518df82dff18f97f3538f398e71e02",
     "src/preparation.c": "b92e31f90a7744ab5666940a605fa4c6ea890e5c66f013c76b1df0951a5bd487",
     "src/render_executor.c": "68321a5d5c1949e72afb99fdc9a2262cab961c40af1bc11db736fa47a0a11e86",
     "platforms/pico/render_executor.c": "6b195ad70aa147f2fffd510343e63eb8ec2bd8afdc189bb375e5ca93f75feeba",

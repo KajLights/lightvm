@@ -79,12 +79,41 @@ External boundaries have explicit conservative engineering allowances:
 | ROM memory/bit helper | 128 |
 | ROM information/reset helper | 512 |
 
-These bytes are **assumptions**, not measured stack maxima of an identified board's
-ROM. The primary ROM sources are [RP2040 boot ROM](https://github.com/raspberrypi/pico-bootrom-rp2040)
+These are conservative allowances, not runtime stack measurements. The attached
+RP2040 B2 ROM was checked against them on 22 October 2026 as described below;
+the RP2350 allowances still need that board's physical follow-up.
+The primary ROM sources are [RP2040 boot ROM](https://github.com/raspberrypi/pico-bootrom-rp2040)
 and [RP2350 boot ROM](https://github.com/raspberrypi/pico-bootrom-rp2350).
 Identify the actual silicon/ROM version and verify the matching ROM implementation
 or stress margin before closing physical acceptance. The SDK-supplied boot2 and
 ROM dispatch glue are also present in the linked evidence.
+
+### Attached RP2040 B2 ROM audit
+
+The Pico W with serial `E6614103E7236D37` reports ROM version 3. Its captured
+16 KiB ROM SHA256 is
+`ef07d54bdd259c7858483606118a3c704976801823c38ac5a2fcdffacd2d83fe`.
+`tools/audit_rp2040_rom.py` checks every disassembled instruction's bytes against
+that dump and follows direct calls and branch alternatives while tracking stack
+depth. Unknown indirect calls, recursive calls and unbounded stack growth fail
+closed. The B2 double high-register save/restore helpers, multiply LR scratch use
+and byte-tail memory dispatch have explicit contracts guarded by the exact dump hash, checked against
+Raspberry Pi's B2 source at `ef22cd8ede5bc007f81d7f2416b48db90f313434`.
+
+| Firmware boundary | Largest audited ROM path | Existing allowance |
+| --- | ---: | ---: |
+| Table lookup | 0 bytes | 64 bytes |
+| Flash | 88 bytes | 512 bytes |
+| Float/double | 68 bytes | 256 bytes |
+| Memory/bit helpers | 12 bytes | 128 bytes |
+| USB boot reset | 16 bytes | 512 bytes |
+
+80 of 83 exported entries close. Debug trampolines `DT`/`DE` and vector transfer
+`WV` remain explicitly unresolved; they are not firmware helper calls covered by
+these allowances. This audit excludes interrupt nesting and does not replace the
+linked software graph, the separate boot2 allowance or stress watermarks. Seven
+regression tests cover nested calls, alternative paths, unknown calls, stack
+growth, stack-register writes, data directives and mismatched dump/disassembly.
 
 ## Build evidence
 
@@ -119,7 +148,16 @@ including interrupts, changed linker reservations and optional feature targets.
 Native allocation/cancellation and integration tests cover
 the corresponding project lifetime guards.
 
-Physical follow-up is the plan's alternating-scene/control stress, flash/network
-load and endurance matrix on both boards. Record both core watermarks and ROM
+The attached Pico W completed a 62.55-minute same-boot campaign with USB, HTTP,
+authenticated MQTT, program writes/deletes, scene replacements and control stress.
+Observed main/worker peaks were **5,740 / 2,684 bytes**, leaving **10,644 / 5,508
+bytes** in the standard reservations. Linked bounds including interrupts remain
+12,152 / 5,300 bytes. The corrected output-ownership path passes all three build
+gates; the relevant guarded-source fingerprint was refreshed after reviewing its
+nested-service ownership. See the [hardware report](pico-performance-hardware-2026-10-22.md)
+for raw evidence and the independent performance/admission failures.
+
+Physical follow-up still includes Pico 2 W, additional output types and the full
+multi-output stress matrix. Record both core watermarks and ROM
 identity, keep the required margins, and investigate any disagreement with this
 conditional accounting rather than enlarging reservations without evidence.

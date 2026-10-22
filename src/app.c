@@ -1108,6 +1108,11 @@ static bool recall_command(App *a,AppOutput *d,uint16_t id,const Command *comman
 static void refresh_light_frame(AppOutput *d){
     /* Release the physical transfer, keeping every unscaled scene buffer and
        invocation intact. A paused scene can therefore be dimmed immediately. */
+    const void *previous=runtime_enter(&d->vm);
+    bool composition_active=d->composition&&d->composition->command_active;
+    bool transition_active=d->transition&&d->transition->command_active;
+    if(d->composition)d->composition->command_active=true;
+    if(d->transition)d->transition->command_active=true;
     vm_output_cancel(&d->vm);
     if(d->composition&&d->composition->pending){
         d->pixels.type->cancel(d->pixels.driver);d->composition->pending=false;
@@ -1116,6 +1121,11 @@ static void refresh_light_frame(AppOutput *d){
         d->pixels.type->cancel(d->pixels.driver);d->transition->pending=false;
     }
     snprintf(d->light_error,sizeof(d->light_error),"%s",pixels_show(&d->pixels)?"":"native light output failed");
+    /* A synchronous driver can service other outputs while draining. This
+       output must not submit a second frame from that nested checkpoint. */
+    if(d->composition)d->composition->command_active=composition_active;
+    if(d->transition)d->transition->command_active=transition_active;
+    runtime_leave(previous);
 }
 static bool light_command_execute(App *a,AppOutput *d,uint16_t id,const Command *command){
     if(!d->pixels.count||d->hardware.indicators){

@@ -1,4 +1,40 @@
 /* Assert the bytes borrowed by the native driver, not the unscaled snapshot. */
+static void light_refresh_checkpoint(void *context){
+    AppOutput *d=context;
+    if(d->transition)transition_tick(d->transition,4096);
+    else if(d->composition)composition_tick(d->composition,4096);
+    else if(!runtime_owns(&d->vm))vm_tick(&d->vm);
+}
+static void light_refresh_ownership(void){
+    for(unsigned mode=0;mode<3;mode++){
+        CHECK(vm_heap_used()==0);clock_now=20000;clock_step=0;
+        Capture reply={.marker=0x12345678u};AppOutput output={0};AppOutput *outputs[]={&output};
+        App app={.outputs=outputs,.output_count=1,.send=capture,.transport=&reply};
+        app.hardware.default_output=0;app.upload_output=&output;strcpy(output.hardware.id,"lights");
+        PixelConfig config={.pin=16,.count=3,.brightness=255,.order="RGB",.clock_pin=-1,.enable_pin=-1};
+        CHECK(pixels_init(&output.pixels,&config,output_type("ws2812b")));
+        if(!mode){
+            portable_load(&output.vm,&output.pixels,&reply,active_render_lbc,sizeof(active_render_lbc));
+            output.vm.output=&output.pixels;output.vm.playing=true;output.vm.frame_ready=true;
+        }else if(mode==1){
+            output.composition=composition_create(&output.pixels,0);CHECK(output.composition);
+            composition_prepare(output.composition);
+        }else{
+            output.transition=transition_create(&output.pixels);CHECK(output.transition);
+            for(unsigned n=0;n<20&&!output.transition->prepared;n++)transition_tick(output.transition,4096);
+            CHECK(output.transition->prepared);
+        }
+        unsigned before=reentrant_submits;
+        runtime_services(light_refresh_checkpoint,&output);cooperative_show=true;
+        const char *set="{\"op\":\"output_light_set\",\"expected_revision\":0,\"brightness\":0.5}";
+        app_command(&app,CMD_MANAGE,42,(const uint8_t *)set,strlen(set));
+        cooperative_show=false;runtime_services(NULL,NULL);
+        CHECK(reply.code==STATUS_OK&&reentrant_submits==before);
+        if(output.composition){CHECK(!output.composition->command_active);composition_destroy(output.composition);}
+        if(output.transition){CHECK(!output.transition->command_active);transition_destroy(output.transition);}
+        vm_destroy(&output.vm);pixels_destroy(&output.pixels);CHECK(vm_heap_used()==0);
+    }
+}
 static void light_controls_contract(void){
     clock_now=0;clock_step=0;storage_available=false;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
@@ -64,4 +100,5 @@ static void light_controls_contract(void){
     for(unsigned n=0;n<2;n++)composition_destroy(t->compositions[n]);
     transition_destroy(t);output.transition=NULL;pixels_destroy(&output.pixels);
     CHECK(vm_heap_used()==0);
+    light_refresh_ownership();
 }

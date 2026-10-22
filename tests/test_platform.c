@@ -25,6 +25,8 @@ static unsigned fail_allocation_at;
 static bool deny_show;
 static bool delayed_output, output_ready, output_failed;
 static bool cooperative_show, secondary_output_allowed;
+static void *synchronous_driver;
+static unsigned reentrant_submits;
 static const uint8_t *borrowed_output;
 static void *borrowed_driver;
 static size_t borrowed_count;
@@ -50,10 +52,11 @@ bool platform_pixels_show(void *driver,const uint8_t *rgb,size_t count) {
     CHECK(driver && count==((PixelConfig *)driver)->count);
     CHECK(count*3<=sizeof(displayed));
     if (deny_show) return false;
-    if(cooperative_show)runtime_checkpoint();
+    if(cooperative_show){void *previous=synchronous_driver;synchronous_driver=driver;runtime_checkpoint();synchronous_driver=previous;}
     memcpy(displayed,rgb,count*3); ++shows; return true;
 }
 bool platform_pixels_submit(void *driver,const uint8_t *rgb,size_t count) {
+    if(driver==synchronous_driver){reentrant_submits++;return false;}
     CHECK(!borrowed_output);
     if(!delayed_output)return platform_pixels_show(driver,rgb,count);
     borrowed_output=rgb;borrowed_driver=driver;borrowed_count=count;
