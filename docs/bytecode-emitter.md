@@ -1,7 +1,7 @@
 # Independent bytecode emission
 
 22 October 2026. Baseline: validated Pico repair `a9c8611`. This document records
-the current container and the S1–S4 encodings for the
+the current container and the S1–S5 contract for the
 [numeric foundation](numeric-types.md). The shared core adds numeric operations
 under application feature floors 1.2.0 and 1.3.0. The container layout remains unchanged.
 
@@ -62,7 +62,23 @@ gaps. A void function ends in END and a valued function in RETURN. Branch target
 stay in their function. Arguments occupy the declared contiguous input-register
 range, with at most eight arguments. Profile bindings impose further rules for
 entry arguments and resources; see [animation](animation-profile.md) and
-[transition](transition-profile.md), and the native profile validators.
+[transition](transition-profile.md).
+
+For an animation, exactly two void functions bind init/render through distinct
+header entry indices. Their permissions must be 9/13, argument start 0 and
+argument count 3. Registers 0..2 are zero-initialized invocation inputs with
+types i32/f32/f32 (count, seconds, delta); no other register has input role.
+Resource 0 is output kind 12 (premultiplied RGBA), flags 1, with a length
+expression of opcode 1 (pixel count). All other resources have no output flag.
+Output fill is a colour expression; seed/stream are i32 expressions. Fixed-array
+resources use kind 20 and flags 0. Their constant reference registers contain
+the resource-table index in `initial_bits`.
+
+Literal declaration expressions use opcode 0, `a=b=0` and raw `value` bits.
+Pixel count uses opcode 1, type i32 and zero `a,b,value`. The fixed expression
+encodings below refer to earlier expression indices; they cannot read executable
+locals. This is sufficient to allocate an output and a fixed array initialized
+by a pure fixed expression, without calling any compiler implementation.
 
 Permission bits are persistent-state writes=1, output access=4 and stateful
 RNG=8; other bits are rejected. Current compiler initialization/render functions
@@ -94,6 +110,29 @@ including generic typed callbacks. The loader rejects a falsely lowered floor
 even on newer firmware. Existing programs retain their earlier feature floors.
 
 ## S1 scalar numeric encoding
+
+The [independent emitter fixture](../tests/fixtures/independent_emitter.py) also
+uses these existing instructions. Every unused operand is zero. Registers are
+8-bit indices; branch PCs and map end PCs are absolute instruction indices.
+
+| ID | Operation | Operand layout |
+| --- | --- | --- |
+| 0 | END | All operands zero |
+| 2 | MOV | `a` result, `b` same-type source |
+| 3 | IADD | `a,b,c` i32 result/left/right, wrapping |
+| 14 | FTOI | `a` i32 result, `b` finite f32 source; truncation and range check |
+| 15 | ILT | `a` bool result, `b,c` i32 operands |
+| 18 | JZ | `a` bool condition, `d` target when false |
+| 19 | JMP | `d` target |
+| 20 | RGB | `a` colour result; `b,c,d` i32 red/green/blue registers |
+| 33 | LOAD_ELEM | `a` element result, `b` constant resource reference, `c` i32 index |
+| 34 | STORE_ELEM | `a` constant resource reference, `b` i32 index, `c` element value |
+| 35 | LENGTH | `a` i32 result, `b` constant resource reference |
+
+Element operations use the declared resource element type, fault on invalid
+indices, and check mutability/permissions. RGB clamps each channel to 0..255.
+These operation IDs alone retain floor 1.0.0; using fixed values still requires
+1.2.0, and including gathers/branches in a map requires 1.3.0.
 
 For binary instructions, `a` is the result register, `b` and `c` are operand
 registers, and `d` is zero. Unary instructions use `a` and `b`; `c` and `d` are
@@ -196,11 +235,14 @@ Resource generations and the executor lifetime fence remain enforced.
 4. Exercise yields, cancellation and allocation failure. Charge prepared plans
    and scratch before activation, preserve generations and the active scene on
    rejection, and retain ordered partial writes for persistent destinations.
-5. Add an independently encoded fixture that imports no Python compiler code.
-   It must pass admission and rendering on host and intended targets, then fail
-   cleanly when its required application feature floor is unsupported. This
-   full-emitter fixture remains an S5 gate. S1 already has independent C-encoded
-   scalar callback fixtures; those do not establish all frontend/profile parity.
+5. The [standalone emitter](../tests/fixtures/independent_emitter.py) imports only
+   the Python standard library and writes full profile packages using the wire
+   tables above. Scalar/bulk versions share expected raw state, fixed arrays and
+   pixels. Invalid variants cover types, identities, flags, permissions, CFG,
+   source mutation, reserved operands and declared feature floors. It passes
+   host and attached-Pico admission/rendering; the older 1.1.0 application
+   rejects both valid new packages before replacing a live scene. See the
+   [S5 validation record](design/numeric-s5-validation-2026-10-22.md).
 6. Run Python, JavaScript and Blocks emission through native execution. Recompute
    complete stack paths, admitted heap peaks and board timing after linking the
    new operations. Keep the Pico repair's archived packages and baseline results
@@ -209,3 +251,11 @@ Resource generations and the executor lifetime fence remain enforced.
 If integration requires an incompatible experimental encoding, document source
 recompilation and clean provisioning. Do not retain an obsolete decoder or add
 automatic migration solely to preserve earlier experiments.
+
+Reproduce the independent corpus and native checks with:
+
+```sh
+python3 tests/fixtures/independent_emitter.py build/independent-emitter
+LIGHTVM_NUMERIC_RUNTIME=build/host/test_platform \
+  python3 -m unittest discover -s tests -p test_independent_emitter.py -v
+```

@@ -13,7 +13,7 @@ export class SourceError extends Error {
 export function sourceDiagnostic(error: unknown): Diagnostic {
   return { message: error instanceof Error ? error.message : String(error), ...(error instanceof SourceError ? error.location : { line: 1, column: 1 }) };
 }
-export const SDK_IMPORTS = `from lightvm import profile, setting, Input, Ramp, rgb, hsv, hash01, init, render, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform, red, green, blue, colorwheel, pico_colorwheel, hue_degrees, floor, ceil, trunc
+export const SDK_IMPORTS = `from lightvm import profile, setting, Input, Ramp, rgb, hsv, hash01, init, render, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform, red, green, blue, colorwheel, pico_colorwheel, hue_degrees, floor, ceil, trunc, fixed, fixed_bits, fixed_from_bits, fixed_sqrt, FixedArray
 from lightvm.motion import repeat, pingpong, clamp01, lerp, fit_start, fit_end
 from lightvm.easing import linear, smoothstep, quadratic_in, quadratic_out, quadratic_in_out, cubic_in, cubic_out, cubic_in_out
 from lightvm.transitions import crossfade, wipe

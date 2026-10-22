@@ -1,5 +1,5 @@
 {
-  "status": "S1-S4 scalar and prepared-kernel encodings assigned; target validation is recorded separately",
+  "status": "S1-S5 scalar/kernel encodings and frontend/emitter integration complete; target validation is recorded separately",
   "operations": [
     {
       "name": "q16.literal",

@@ -72,10 +72,10 @@ numbers and fixed resource types; it is not a general browser JavaScript engine.
 | Functions | Named functions, function expressions and arrow functions assigned to module constants; nonrecursive helpers returning a value on every path |
 | Callbacks | Exported `init` / `render` functions or const functions; `animation({...})` / `transition({...})` with methods or named callbacks |
 | Control flow | `if` / `else`, ternaries, C-style `for`, `while`, `for…of` over managed typed arrays, `break`, `continue`, early render return |
-| Operators | `+ - * / %`, comparisons, `=== !==`, unary `+ - !`, standalone `++ --`, assignments and `+= -= *= /=` |
+| Operators | `+ - * / %`, comparisons, `=== !==`, unary `+ - !`, explicit i32 `& \| ^ ~ << >>`, standalone `++ --`, assignments and `+= -= *= /=` |
 | Logical operators | `&&` / `||` short circuit and return operand values; result branches must have the same LightVM type. Store an effectful left operand in a local first. |
 | Maths | `Math.sin/cos/sqrt/log/exp/pow/abs/min/max/floor/ceil/round/trunc/random`, `Math.PI`, `Math.E`; `Number`, `float` and `int` |
-| Collections | `new Float32Array`, `Int32Array`, `Uint32Array`, `Uint8Array`, `Uint16Array` with a length or literal array, indexing, element writes, `.length` |
+| Collections | `new Float32Array`, `Int32Array`, `Uint32Array`, `Uint8Array`, `Uint16Array` with a length and optional `{ fill }` or a literal array; `new FixedArray(length, { fill })`; indexing, element writes, `.length` |
 | SDK descriptions | `new PixelArray`, `Sprite`, `SpriteBatch`, `Transform`, `ColorTransform`; `input` / `Input`, `ramp` / `Ramp` |
 
 Values have fixed types. Numeric literals are floats by default, including `1`;
@@ -145,6 +145,62 @@ export function render(state, runtime, pixels) {
 
 See the bundled Rainbow, Breathe, Comet and Wipe examples for live inputs,
 helper functions, retained images and transitions.
+
+## Explicit numeric values
+
+Use `fixed(decimal)` for Q16.16. The compiler retains the original decimal
+token, including digits beyond JavaScript Number precision, and rounds once to
+the [fixed-point contract](numeric-types.md). `fixed(0.00000762939453125)` rounds
+to zero; `fixed(0.0000076293945312500000001)` rounds to one raw unit. An expression
+such as `fixed(runtime.delta)` converts its finite f32 value instead.
+
+`int(q)` truncates fixed toward zero; `float(q)` converts to f32. `fixedBits(q)`
+and `fixedFromBits(i)` preserve the raw 32-bit word; `fixedSqrt(q)` returns fixed.
+Mixed fixed/float/integer arithmetic needs an explicit conversion. Fixed settings
+and live-input wire types are unsupported; convert their values at the boundary.
+
+Bitwise operations require i32 operands, such as `int(31) & int(7)`. Right shift
+is signed and shift counts must be 0..31; invalid counts fault. `>>>`, automatic
+JavaScript bitwise coercion and masked shift counts are unsupported. These are
+the shared core's typed operations. JavaScript `%` retains dividend sign for
+all supported numeric types; Python and Blocks modulo retain divisor sign.
+The Blocks learning view explicitly lowers that difference.
+
+```javascript
+export function init(state, runtime) {
+  state.levels = new FixedArray(runtime.pixelCount, { fill: fixed(0.25) });
+  state.copy = new FixedArray(runtime.pixelCount);
+}
+export function render(state, runtime, pixels) {
+  state.levels.fill(fixed(0.5), { start: int(0), stop: runtime.pixelCount });
+  state.copy.copyFrom(state.levels);
+  for (let i = int(0); i < pixels.count; i++) {
+    const q = state.copy[i];
+    pixels[i] = rgb(int(q * fixed(255)), i & int(31), 0);
+  }
+}
+```
+
+Fixed-array fills/copies are checked and resumable. Copies require equal lengths.
+Integer array fills also check the destination range: Uint8 0..255, Uint16
+0..65535 and Uint32 0..2147483647 within the shared signed i32 domain. They never
+silently wrap narrow stores.
+
+For a bulk-eligible JavaScript loop, declare `let i = int(0)`, use `i++`, and
+compare `i < pixels.count`, `i < runtime.pixelCount` or a nonnegative literal
+bound. A literal without `int(...)` must be at most 16777216, where conversion
+to f32 remains exact. Mutable bounds, modified counters, break/continue or
+effects can keep the loop scalar. Ordinary `let i = 0` loops retain their f32
+counter behavior. Compiler advice reports kernel selection or a specific reason
+a range loop stays scalar, plus resource/plan estimates; it is not an FPS claim.
+
+Blocks offers exact decimal fixed literals in a text field, signed integer
+literals, conversion and bitwise blocks, all six numeric array kinds, array
+length, fixed fill/copy, native math and power. Pixel/repeat loop counters are
+i32 in both direct Blocks compilation and the optional JavaScript learning view.
+This keeps eligible numeric gathers and conditional pixel work on the same bulk
+path. Fixed/scalar bitwise features need 1.2.0; extended maps and new native math
+need 1.3.0. Target checks run before deployment.
 
 ## Blocks: explore by connecting
 
@@ -226,3 +282,11 @@ bytecode in the native VM, including numerical semantics, persistent state,
 loop control, animation equivalence and transition seeking. `npm run test:browser`
 checks language switching, the real browser worker, preview, and editable blocks
 file round trips alongside the existing controller workflow.
+
+For the numeric contract, set `LIGHTVM_NUMERIC_RUNTIME` to the native
+`test_platform` executable. `numeric-frontends.test.ts` compares raw words,
+arrays, pixels, faults and scalar/bulk selection, including the Blocks learning
+view. `tools/check_numeric_frontends.mjs` checks the built production worker in
+Chrome/Pyodide and executes each emitted package in that native VM. The shared
+compiler file manifest includes `numeric.py` for both packaging and worker fetch;
+an isolated import test prevents either list from silently omitting a dependency.

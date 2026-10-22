@@ -1,10 +1,12 @@
 # Core numeric types, bulk kernels and native math
 
-22 October 2026. **Status: S0–S4 implemented.** Stable numeric gathers, lazy
+22 October 2026. **Status: S0–S5 implemented.** Stable numeric gathers, lazy
 conditional kernels and native f32 math join the scalar fixed-point foundation.
-Full frontend parity (S5) and the complete multi-board release matrix (S6) remain
-separate stages. See the [S2–S4 validation record](numeric-s234-validation-2026-10-22.md)
-for the measured attached-Pico scope and remaining target limits.
+Python, JavaScript and Blocks share the explicit numeric contract, with an
+independent full-profile emitter fixture. See the
+[S2–S4 validation record](numeric-s234-validation-2026-10-22.md) and
+[S5 integration record](numeric-s5-validation-2026-10-22.md) for measured
+attached-Pico scope. The complete multi-board release matrix (S6) remains open.
 
 The [numeric contract](../numeric-types.md),
 [operation catalogue](numeric-operations.json),
@@ -119,7 +121,7 @@ actually reused. Do not claim that existing effects already use new arithmetic.
   work resumable. Straight-line invariants retain ordered first evaluation.
 - The shared finite-f32 math set includes abs, rounding, sin/cos, sqrt, log/exp,
   pow and min/max. JavaScript and Blocks route supported math to this evaluator;
-  complete fixed authoring parity is still S5 work.
+  complete fixed authoring parity is covered by S5.
 - Packages admit at most 128 registers, 2,048 instructions, 16 resources and
   32 KiB. Retain these limits in the first delivery; use evidence before raising
   them. Native math should reduce instruction pressure rather than conceal it.
@@ -137,7 +139,7 @@ as a resource handle or pointer.
 
 S1 provides explicit `fixed(...)` construction and `FixedArray(count, fill=...)`
 initialization descriptions in the Python SDK. Equivalent explicit
-JavaScript/Blocks authoring follows in S5. These describe compiled operations;
+JavaScript/Blocks authoring joins the same contract in S5. These describe compiled operations;
 there is no new runtime object system. Array sizes remain i32 and are resolved
 during admission. Array handles remain static in this delivery.
 
@@ -425,12 +427,13 @@ sampling.
 
 ## Delivery sequence
 
-S0 and S1 are complete for the foundational numeric/scalar scope, with
-[S1 evidence](numeric-s1-validation-2026-10-22.md) recorded separately from the
-Pico repair baseline. S2-S6 remain pending. New numeric operations are not admitted
-to bulk maps yet. Native f32 vectors and accuracy envelopes are requirements for
-S4, not evidence that its implementation has shipped. Full frontend/emitter parity
-remains S5; optional procedural sampling remains its own evaluation.
+S0–S5 are complete for the specified numeric, kernel and frontend scope.
+[S1 evidence](numeric-s1-validation-2026-10-22.md),
+[S2–S4 evidence](numeric-s234-validation-2026-10-22.md) and
+[S5 evidence](numeric-s5-validation-2026-10-22.md) are separate from the Pico repair
+archive. S6's full board/workload release matrix remains open; the recorded
+RP2040 measurements do not establish RP2350 or ESP32 physical results.
+Optional procedural sampling remains its own evaluation.
 
 | Stage | Deliverable and likely files | Completion gate |
 | --- | --- | --- |

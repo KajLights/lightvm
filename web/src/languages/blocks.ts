@@ -14,6 +14,12 @@ const statement = { previousStatement: null, nextStatement: null, colour: 170 };
 export const BLOCK_DEFINITIONS = [
   { type: 'lm_program', message0: '%1', args0: [dropdown('PROFILE', [['Animation', 'animation'], ['Transition A → B', 'transition']])], message1: 'when starting %1', args1: [statements('INIT')], message2: 'every frame %1', args2: [statements('RENDER')], colour: 280, tooltip: 'Starting runs once. Every frame draws your lights. Transitions use progress instead of time.' },
   { type: 'lm_number', message0: '%1', args0: [number('VALUE')], ...output },
+  { type: 'lm_integer', message0: 'integer %1', args0: [number('VALUE')], ...output },
+  { type: 'lm_fixed', message0: 'fixed %1', args0: [field('VALUE', '0')], ...output, tooltip: 'Exact decimal Q16.16 literal. All entered digits are preserved; rounding is nearest, ties to even.' },
+  { type: 'lm_convert', message0: '%1 %2', args0: [dropdown('FUNCTION', [['convert to fixed', 'fixed'], ['convert to float', 'float'], ['convert to integer', 'int'], ['fixed raw bits', 'fixed_bits'], ['fixed from raw bits', 'fixed_from_bits'], ['fixed square root', 'fixed_sqrt']]), value('VALUE')], ...output },
+  { type: 'lm_negate', message0: 'negative of %1', args0: [value('VALUE')], ...output },
+  { type: 'lm_bitwise', message0: '%1 %2 %3', args0: [value('A'), dropdown('OP', [['bitwise AND', '&'], ['bitwise OR', '|'], ['bitwise XOR', '^'], ['shift left', '<<'], ['signed shift right', '>>']]), value('B')], ...output, inputsInline: true },
+  { type: 'lm_bit_not', message0: 'invert integer bits %1', args0: [value('VALUE')], ...output },
   { type: 'lm_bool', message0: '%1', args0: [dropdown('VALUE', [['true', 'TRUE'], ['false', 'FALSE']])], ...output },
   { type: 'lm_runtime', message0: '%1', args0: [dropdown('PROPERTY', [['elapsed seconds', 'time'], ['seconds since last frame', 'delta'], ['transition progress (0–1)', 'progress'], ['number of pixels', 'count']])], ...output },
   { type: 'lm_rgb', message0: 'RGB red %1 green %2 blue %3', args0: [value('R'), value('G'), value('B')], ...output, colour: 30, inputsInline: false },
@@ -55,9 +61,12 @@ export const BLOCK_DEFINITIONS = [
   { type: 'lm_artwork', message0: 'shared artwork %1 RGBA bytes %2', args0: [field('NAME', 'star_image'), field('DATA', '64,64,64,255,255,255,255,255,64,64,64,255')], colour: 30, tooltip: 'Comma-separated red, green, blue, alpha bytes (0–255) for each pixel. Artwork is immutable and shared by every sprite.' },
   { type: 'lm_artwork_draw', message0: 'draw shared artwork %1', args0: [field('NAME', 'star_image')], ...statement, colour: 30 },
   { type: 'lm_call', message0: '%1 with %2', args0: [field('NAME', 'breathe'), value('VALUE')], ...output, colour: 290 },
-  { type: 'lm_array', message0: 'remember %1 as %2 array of length %3', args0: [field('NAME', 'values'), dropdown('TYPE', [['decimal', 'f'], ['integer', 'i']]), value('LENGTH')], ...statement, colour: 330 },
+  { type: 'lm_array', message0: 'remember %1 as %2 array of length %3 fill %4', args0: [field('NAME', 'values'), dropdown('TYPE', [['decimal', 'f'], ['integer', 'i'], ['unsigned byte', 'B'], ['unsigned 16-bit', 'H'], ['32-bit words', 'I'], ['fixed', 'q']]), value('LENGTH'), value('FILL')], ...statement, colour: 330, tooltip: 'Create in when starting. An empty fill socket uses zero of the selected type.' },
   { type: 'lm_array_get', message0: 'remembered array %1 at %2', args0: [field('NAME', 'values'), value('INDEX')], ...output, colour: 330 },
+  { type: 'lm_array_length', message0: 'length of remembered array %1', args0: [field('NAME', 'values')], ...output, colour: 330 },
   { type: 'lm_array_set', message0: 'set remembered array %1 at %2 to %3', args0: [field('NAME', 'values'), value('INDEX'), value('VALUE')], ...statement, colour: 330 },
+  { type: 'lm_fixed_fill', message0: 'fill fixed array %1 from %2 up to %3 with %4', args0: [field('NAME', 'values'), value('START'), value('STOP'), value('VALUE')], ...statement, colour: 330 },
+  { type: 'lm_fixed_copy', message0: 'copy fixed array %1 into %2', args0: [field('SOURCE', 'values'), field('NAME', 'copy')], ...statement, colour: 330 },
   { type: 'lm_image', message0: 'remember image %1 with %2 pixels', args0: [field('NAME', 'image'), value('LENGTH')], ...statement, colour: 30 },
   { type: 'lm_image_point', message0: 'paint image %1 at %2 colour %3', args0: [field('NAME', 'image'), value('INDEX'), value('COLOR')], ...statement, colour: 30 },
   { type: 'lm_image_fade', message0: 'fade image %1 by multiplier %2', args0: [field('NAME', 'image'), value('VALUE')], ...statement, colour: 30 },
@@ -84,8 +93,11 @@ export function parseBlocks(source: string): BlockDocument {
       if (!arg) fail(`Unknown field “${name}”.`);
       if (arg.type === 'field_dropdown' && !arg.options.some((o: string[]) => o[1] === v)) fail(`Invalid choice for ${name}.`);
       if (arg.type === 'field_number' && (typeof v !== 'number' || !Number.isFinite(v))) fail('Number fields must be finite.');
+      if (b.type === 'lm_integer' && (!Number.isInteger(v) || Number(v) < -2147483648 || Number(v) > 2147483647)) fail('Integer literals must be whole signed 32-bit values.');
       if (arg.type === 'field_input') {
-        if (b.type === 'lm_artwork' && name === 'DATA') {
+        if (b.type === 'lm_fixed' && name === 'VALUE') {
+          if (typeof v !== 'string' || v.length > 128 || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(v)) fail('Fixed literals need a decimal number, with an optional sign or exponent.');
+        } else if (b.type === 'lm_artwork' && name === 'DATA') {
           if (typeof v !== 'string' || !/^\s*\d+(?:\s*,\s*\d+)*\s*$/.test(v)) fail('Artwork needs comma-separated RGBA bytes.');
           const bytes = String(v).split(',').map(Number);
           if (bytes.length % 4 || bytes.length > 4096 || bytes.some(n => !Number.isInteger(n) || n > 255)) fail('Use 1–1024 RGBA pixels with channel bytes from 0 to 255.');
@@ -112,7 +124,9 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
   const f = (b: Block, name: string) => String(fieldValue(b, name));
   const child = (b: Block, name: string) => b.inputs?.[name]?.block ?? b.inputs?.[name]?.shadow;
   const inputs = new Map<string, { value: number; block: Block }>();
-  let stage = '', loopDepth = 0;
+  let stage = '', loopDepth = 0, usesModulo = false;
+  let moduloName = '_blocks_modulo';
+  while (functions.some(fn => f(fn, 'NAME') === moduloName)) moduloName += '_';
   let declared = new Set<string>();
   const line = (py: string, javascript: string, b: Block, depth: number) => { lines.push('    '.repeat(depth) + py); js.push('  '.repeat(depth) + javascript); locations.push({ line: 1, column: 1, blockId: b.id }); };
   type Pair = [string, string];
@@ -121,18 +135,25 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
     const v = (name: string) => expression(child(b, name));
     switch (b.type) {
       case 'lm_number': { const n = Number(b.fields?.VALUE ?? 0); return [Number.isInteger(n) ? `${n}.0` : String(n), String(n)]; }
+      case 'lm_integer': { const n = Number(b.fields?.VALUE ?? 0); return [String(n), `int(${n})`]; }
+      case 'lm_fixed': return [`fixed(${f(b, 'VALUE')})`, `fixed(${f(b, 'VALUE')})`];
+      case 'lm_convert': { const a = v('VALUE'), name = f(b, 'FUNCTION'); return [`${name}(${a[0]})`, `${name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}(${a[1]})`]; }
+      case 'lm_negate': case 'lm_bit_not': { const a = v('VALUE'), op = b.type === 'lm_negate' ? '-' : '~'; return [`(${op}${a[0]})`, `(${op}${a[1]})`]; }
       case 'lm_bool': return f(b, 'VALUE') === 'TRUE' ? ['True', 'true'] : ['False', 'false'];
       case 'lm_runtime': { const p = f(b, 'PROPERTY'); return p === 'count' ? (stage.endsWith('init') ? ['runtime.pixel_count', 'runtime.pixelCount'] : ['pixels.count', 'pixels.count']) : [`runtime.${p}`, `runtime.${p}`]; }
       case 'lm_rgb': case 'lm_hsv': { const name = b.type === 'lm_rgb' ? 'rgb' : 'hsv', a = (name === 'rgb' ? ['R', 'G', 'B'] : ['H', 'S', 'V']).map(v); return [`${name}(${a.map((p, i) => name === 'rgb' && child(b, ['R', 'G', 'B'][i])?.type === 'lm_number' ? String(Number(child(b, ['R', 'G', 'B'][i])?.fields?.VALUE ?? 0)) : p[0]).join(', ')})`, `${name}(${a.map(p => p[1]).join(', ')})`]; }
       case 'lm_call': { const a = v('VALUE'), name = f(b, 'NAME'); return [`fn_${name}(${a[0]})`, `${name}(${a[1]})`]; }
       case 'lm_array_get': { const i = v('INDEX'), name = f(b, 'NAME'); return [`state.${name}[int(${i[0]})]`, `state.${name}[${i[1]}]`]; }
+      case 'lm_array_length': return [`len(state.${f(b, 'NAME')})`, `int(state.${f(b, 'NAME')}.length)`];
       case 'lm_colorwheel': { const a = v('VALUE'); return [`colorwheel(${a[0]})`, `colorwheel(${a[1]})`]; }
-      case 'lm_math': case 'lm_compare': case 'lm_logic': {
+      case 'lm_math': case 'lm_compare': case 'lm_logic': case 'lm_bitwise': {
         const a = v('A'), c = v('B'), op = f(b, 'OP');
         if (['min', 'max'].includes(op)) return [`${op}(${a[0]}, ${c[0]})`, `Math.${op}(${a[1]}, ${c[1]})`];
         const jsOp = ({ '==': '===', '!=': '!==', and: '&&', or: '||' } as Record<string, string>)[op] ?? op;
-        // Blocks modulo is Euclidean. The learning view spells this out.
-        return [`(${a[0]} ${op} ${c[0]})`, op === '%' ? `(((${a[1]} % ${c[1]}) + ${c[1]}) % ${c[1]})` : `(${a[1]} ${jsOp} ${c[1]})`];
+        // Correct the sign only when needed; unconditional addition can wrap
+        // fixed/i32 values or overflow finite f32 values near their limits.
+        if (op === '%') usesModulo = true;
+        return [`(${a[0]} ${op} ${c[0]})`, op === '%' ? `${moduloName}(${a[1]}, ${c[1]})` : `(${a[1]} ${jsOp} ${c[1]})`];
       }
       case 'lm_not': { const a = v('VALUE'); return [`(not ${a[0]})`, `(!${a[1]})`]; }
       case 'lm_motion': { const a = v('VALUE'), name = f(b, 'FUNCTION'), jsName = name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()); return [`${name === 'sin' ? 'math.sin' : name}(${a[0]})`, `${name === 'sin' ? 'Math.sin' : jsName}(${a[1]})`]; }
@@ -193,15 +214,25 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
           const length = child(b, 'LENGTH');
           // Resource sizes are declaration expressions, known before render.
           let size: string;
-          if (length?.type === 'lm_number' && Number.isInteger(Number(length.fields?.VALUE))) size = String(length.fields!.VALUE);
+          if (['lm_number', 'lm_integer'].includes(length?.type ?? '') && Number.isInteger(Number(length?.fields?.VALUE))) size = String(length!.fields!.VALUE);
           else if (length?.type === 'lm_runtime' && f(length, 'PROPERTY') === 'count') size = 'runtime.pixel_count';
           else fail(b, 'Use a whole number or “number of pixels” for the initial length.');
           const name = f(b, 'NAME');
           if (b.type === 'lm_image') emit(`state.${name} = PixelArray(${size!})`, `state.${name} = new PixelArray(${size! === 'runtime.pixel_count' ? 'runtime.pixelCount' : size!});`);
-          else emit(`state.${name} = array("${f(b, 'TYPE')}", [${f(b, 'TYPE') === 'f' ? '0.0' : '0'}] * ${size!})`, `state.${name} = new ${f(b, 'TYPE') === 'f' ? 'Float32Array' : 'Int32Array'}(${size! === 'runtime.pixel_count' ? 'runtime.pixelCount' : size!});`);
+          else {
+            const kind = f(b, 'TYPE'), fill = child(b, 'FILL') ? v('FILL') : kind === 'q' ? ['fixed(0)', 'fixed(0)'] : kind === 'f' ? ['0.0', '0'] : ['0', 'int(0)'];
+            const lengthJS = size! === 'runtime.pixel_count' ? 'runtime.pixelCount' : size!;
+            if (kind === 'q') emit(`state.${name} = FixedArray(${size!}, fill=${fill[0]})`, `state.${name} = new FixedArray(${lengthJS}, { fill: ${fill[1]} });`);
+            else {
+              const constructor = ({ f: 'Float32Array', i: 'Int32Array', B: 'Uint8Array', H: 'Uint16Array', I: 'Uint32Array' } as Record<string, string>)[kind];
+              emit(`state.${name} = array("${kind}", [${fill[0]}] * ${size!})`, `state.${name} = new ${constructor}(${lengthJS}, { fill: ${fill[1]} });`);
+            }
+          }
           break;
         }
         case 'lm_array_set': { const i = v('INDEX'), a = v('VALUE'), name = f(b, 'NAME'); emit(`state.${name}[int(${i[0]})] = ${a[0]}`, `state.${name}[${i[1]}] = ${a[1]};`); break; }
+        case 'lm_fixed_fill': { const a = v('VALUE'), start = v('START'), stop = v('STOP'), name = f(b, 'NAME'); emit(`state.${name}.fill(${a[0]}, start=int(${start[0]}), stop=int(${stop[0]}))`, `state.${name}.fill(${a[1]}, { start: int(${start[1]}), stop: int(${stop[1]}) });`); break; }
+        case 'lm_fixed_copy': emit(`state.${f(b, 'NAME')}.copy_from(state.${f(b, 'SOURCE')})`, `state.${f(b, 'NAME')}.copyFrom(state.${f(b, 'SOURCE')});`); break;
         case 'lm_image_point': { const i = v('INDEX'), c = v('COLOR'), name = f(b, 'NAME'); emit(`state.${name}.point(${i[0]}, ${c[0]})`, `state.${name}.point(${i[1]}, ${c[1]});`); break; }
         case 'lm_image_fade': { const a = v('VALUE'), name = f(b, 'NAME'); emit(`state.${name}.multiply_alpha(${a[0]})`, `state.${name}.multiplyAlpha(${a[1]});`); break; }
         case 'lm_image_draw': { const at = v('POSITION'), scale = v('SCALE'), name = f(b, 'NAME'); emit(`pixels.draw(state.${name}, transform=Transform(translate=${at[0]}, scale=${scale[0]}))`, `pixels.draw(state.${name}, { transform: new Transform({ translate: ${at[1]}, scale: ${scale[1]} }) });`); break; }
@@ -219,7 +250,7 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
         }
         case 'lm_each': case 'lm_repeat': {
           const name = f(b, 'NAME'), bound = b.type === 'lm_each' ? ['pixels.count', 'pixels.count'] : v('COUNT');
-          emit(`for v_${name} in range(int(${bound[0]})):`, `for (let ${name} = 0; ${name} < ${bound[1]}; ${name}++) {`);
+          emit(`for v_${name} in range(int(${bound[0]})):`, `for (let ${name} = int(0); ${name} < int(${bound[1]}); ${name}++) {`);
           loopDepth++; body('DO'); loopDepth--; js.push('  '.repeat(depth) + '}'); break;
         }
         case 'lm_while': { const a = v('TEST'); emit(`while ${a[0]}:`, `while (${a[1]}) {`); loopDepth++; body('DO'); loopDepth--; js.push('  '.repeat(depth) + '}'); break; }
@@ -278,6 +309,7 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
   const declarations = [...inputs].map(([name, { value }]) => `input_${name} = Input("${name}", default=${Number.isInteger(value) ? value + '.0' : value})`);
   const prelude = [...SDK_IMPORTS.split('\n'), `profile("${f(root!, 'PROFILE')}")`, ...declarations];
   const jsPrelude = [`export const profile = "${f(root!, 'PROFILE')}";`, ...[...inputs].map(([name, { value }]) => `const input_${name} = input("${name}", { default: ${value} });`)];
+  if (usesModulo) jsPrelude.push(`function ${moduloName}(a, b) { const zero = a - a; const r = a % b; return r !== zero && ((r < zero) !== (b < zero)) ? r + b : r; }`);
   return { python: [...prelude, ...lines].join('\n') + '\n', locations: [...prelude.map(() => ({ line: 1, column: 1, blockId: root!.id })), ...locations], javascript: [...jsPrelude, ...js].join('\n') + '\n' };
 }
 

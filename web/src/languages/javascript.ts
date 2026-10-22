@@ -10,14 +10,26 @@ const aliases: Record<string, string> = {
   fitStart: 'fit_start', fitEnd: 'fit_end', quadraticIn: 'quadratic_in', quadraticOut: 'quadratic_out', quadraticInOut: 'quadratic_in_out',
   cubicIn: 'cubic_in', cubicOut: 'cubic_out', cubicInOut: 'cubic_in_out', copyComposition: 'copy_composition',
   hasChannel: 'has_channel', setChannel: 'set_channel', setAlpha: 'set_alpha', multiplyAlpha: 'multiply_alpha',
+  fixedBits: 'fixed_bits', fixedFromBits: 'fixed_from_bits', fixedSqrt: 'fixed_sqrt',
+  copyFrom: 'copy_from',
 };
-const calls = new Set('setting Input Ramp rgb hsv hash01 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out crossfade wipe'.split(' '));
+const calls = new Set('setting Input Ramp rgb hsv hash01 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out crossfade wipe fixed fixed_bits fixed_from_bits fixed_sqrt FixedArray floor ceil trunc'.split(' '));
 const keywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
-const methods = new Set('input fill clear draw copy transform point colorwheel gradient palette mix copy_composition has_channel set_channel set_alpha multiply_alpha spawn render remove'.split(' '));
+const methods = new Set('input fill clear draw copy copy_from transform point colorwheel gradient palette mix copy_composition has_channel set_channel set_alpha multiply_alpha spawn render remove'.split(' '));
+// Equal-sign operands avoid losing a tiny f32 remainder when correcting a
+// floored result. Only minimum i32/fixed values wrap under negation; that arm
+// uses exact integer-backed correction. Multiplying by zero retains f32 sign.
 const helperSource = `
 def _js_remainder(a, b):
-    denominator = b if b >= 0.0 else -b
-    return (a % denominator) if a >= 0.0 else -((-a) % denominator)
+    zero = a - a
+    if a == zero or ((a < zero) == (b < zero)):
+        remainder = a % b
+        return a * zero if remainder == zero else remainder
+    opposite = -a
+    if opposite < zero and a < zero:
+        remainder = a % b
+        return remainder - b if remainder != zero else remainder
+    return (a * zero) - (opposite % b)
 `;
 
 export function lowerJavaScript(source: string): LoweredSource {
@@ -92,7 +104,8 @@ class JavaScriptFrontend {
         else if (['CallExpression', 'NewExpression'].includes(d.init.type) && ['Input', 'PixelArray', 'Sprite'].includes(this.callName(d.init.callee))) {
           b.kind = 'resource'; this.globals.push({ binding: b, node: d.init });
         } else {
-          const pure = (v: Node): boolean => Boolean(v && (['Literal', 'Identifier'].includes(v.type) || v.type === 'UnaryExpression' && pure(v.argument) || v.type === 'BinaryExpression' && pure(v.left) && pure(v.right) || v.type === 'ArrayExpression' && v.elements.every(pure)));
+          const pure = (v: Node): boolean => Boolean(v && (['Literal', 'Identifier'].includes(v.type) || v.type === 'UnaryExpression' && pure(v.argument) || v.type === 'BinaryExpression' && pure(v.left) && pure(v.right) || v.type === 'ArrayExpression' && v.elements.every(pure) ||
+            v.type === 'CallExpression' && ['int', 'float', 'Number', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'].includes(this.callName(v.callee)) && v.arguments.every(pure)));
           if (!pure(d.init)) this.fail(d.init, 'Module constants need literal values or arithmetic. Create settings and mutable resources in init().');
           b.node = d.init;
         }
@@ -150,6 +163,7 @@ class JavaScriptFrontend {
       case 'WhileStatement':
         this.emit(`while ${this.expr(n.test)}:`, n); this.depth++; this.loops.push(null); this.block(n.body); this.loops.pop(); this.depth--; break;
       case 'ForStatement':
+        if (this.rangeLoop(n)) break;
         this.scopes.push(new Map());
         if (n.init) n.init.type === 'VariableDeclaration' ? this.statement(n.init) : this.expressionStatement(n.init);
         this.emit(`while ${n.test ? this.expr(n.test) : 'True'}:`, n); this.depth++; this.loops.push(n.update);
@@ -169,6 +183,28 @@ class JavaScriptFrontend {
       case 'ReturnStatement': this.emit(n.argument ? `return ${this.expr(n.argument)}` : 'return', n); break;
       default: this.fail(n, `${n.type} is not supported. Try a helper function, if, for or while.`);
     }
+  }
+  rangeLoop(n: Node): boolean {
+    // Capture only immutable literal/pixel-count bounds, and only an explicitly
+    // i32 counter. Ordinary JS-number loops retain their f32 while semantics.
+    const d = n.init?.type === 'VariableDeclaration' && n.init.kind === 'let' && n.init.declarations.length === 1 ? n.init.declarations[0] : undefined;
+    const integerZero = d?.init?.type === 'CallExpression' && this.callName(d.init.callee) === 'int' && d.init.arguments.length === 1 && d.init.arguments[0].type === 'Literal' && d.init.arguments[0].value === 0;
+    const update = n.update?.type === 'UpdateExpression' && n.update.operator === '++' && n.update.argument.name === d?.id.name;
+    if (!integerZero || !update || n.test?.type !== 'BinaryExpression' || n.test.operator !== '<' || n.test.left.type !== 'Identifier' || n.test.left.name !== d.id.name) return false;
+    const safeBound = (b: Node, integerBound = false): boolean => b?.type === 'Literal' && Number.isInteger(b.value) && b.value >= 0 && b.value <= (integerBound ? 2147483647 : 16777216) ||
+      b?.type === 'CallExpression' && this.callName(b.callee) === 'int' && b.arguments.length === 1 && safeBound(b.arguments[0], true) ||
+      b?.type === 'MemberExpression' && !b.computed && (this.binding(b.object.name)?.kind === 'pixels' && b.property.name === 'count' || this.binding(b.object.name)?.kind === 'runtime' && b.property.name === 'pixelCount');
+    if (!safeBound(n.test.right)) return false;
+    const changesCounter = (v: any): boolean => v && typeof v === 'object' && (
+      (v.type === 'AssignmentExpression' && v.left?.name === d.id.name) ||
+      (v.type === 'UpdateExpression' && v.argument?.name === d.id.name) ||
+      (v.type === 'VariableDeclarator' && v.id?.name === d.id.name) ||
+      Object.values(v).some(child => Array.isArray(child) ? child.some(changesCounter) : changesCounter(child)));
+    if (changesCounter(n.body)) return false;
+    const bound = this.expr(n.test.right, true);
+    this.scopes.push(new Map()); const b = this.declare(d.id, false);
+    this.emit(`for ${b.name} in range(${bound}):`, n); this.depth++; this.loops.push(null);
+    this.block(n.body); this.loops.pop(); this.depth--; this.scopes.pop(); return true;
   }
   expressionStatement(n: Node) {
     if (n.type === 'AssignmentExpression') {
@@ -248,12 +284,12 @@ class JavaScriptFrontend {
         return `${object}.${property === 'pixelCount' ? 'pixel_count' : property}`;
       }
       case 'UnaryExpression':
-        if (!['+', '-', '!'].includes(n.operator)) this.fail(n, 'Use numeric + / - or boolean !.');
-        return n.operator === '+' ? this.expr(n.argument, integer) : `(${n.operator === '!' ? 'not ' : '-'}${this.expr(n.argument, integer)})`;
+        if (!['+', '-', '!', '~'].includes(n.operator)) this.fail(n, 'Use numeric + / -, boolean ! or i32 ~.');
+        return n.operator === '+' ? this.expr(n.argument, integer) : `(${n.operator === '!' ? 'not ' : n.operator}${this.expr(n.argument, integer)})`;
       case 'BinaryExpression': {
-        const ops: Record<string, string> = { '+': '+', '-': '-', '*': '*', '/': '/', '<': '<', '<=': '<=', '>': '>', '>=': '>=', '===': '==', '!==': '!=' };
+        const ops: Record<string, string> = { '+': '+', '-': '-', '*': '*', '/': '/', '<': '<', '<=': '<=', '>': '>', '>=': '>=', '===': '==', '!==': '!=', '&': '&', '|': '|', '^': '^', '<<': '<<', '>>': '>>' };
         if (n.operator === '%') return `_js_remainder(${this.expr(n.left)}, ${this.expr(n.right)})`;
-        if (!ops[n.operator]) this.fail(n, 'Use arithmetic, comparisons, === or !==. Coercing equality, bitwise operators and exponentiation are not supported.');
+        if (!ops[n.operator]) this.fail(n, 'Use arithmetic, comparisons, === / !== or signed i32 bitwise operations. Coercing equality, >>> and exponentiation are not supported.');
         return `(${this.expr(n.left, integer)} ${ops[n.operator]} ${this.expr(n.right, integer)})`;
       }
       case 'LogicalExpression': {
@@ -298,21 +334,36 @@ class JavaScriptFrontend {
     }
     const typed: Record<string, string> = { Int32Array: 'i', Uint32Array: 'I', Float32Array: 'f', Uint8Array: 'B', Uint16Array: 'H' };
     if (typed[name]) {
-      if (args.length !== 1) this.fail(n, 'Typed arrays take a length or a literal array.');
-      const data = args[0].type === 'ArrayExpression' ? this.expr(args[0]) : `[${name === 'Float32Array' ? '0.0' : '0'}] * ${this.expr(args[0], true)}`;
+      if (args.length < 1 || args.length > 2 || args.length === 2 && args[0].type === 'ArrayExpression') this.fail(n, 'Typed arrays take a length with optional { fill }, or a literal array.');
+      const options = args.length === 2 ? this.properties(args[1]) : [];
+      if (options.some(p => this.key(p) !== 'fill')) this.fail(n, 'Typed array options support only fill.');
+      const fill = options.length ? this.expr(options[0].value) : name === 'Float32Array' ? '0.0' : '0';
+      const data = args[0].type === 'ArrayExpression' ? this.expr(args[0]) : `[${fill}] * ${this.expr(args[0], true)}`;
       return `array("${typed[name]}", ${data})`;
     }
     if (name === 'Number') name = 'float';
+    if (name === 'fixed') {
+      if (n.type === 'NewExpression') this.fail(n, 'Use fixed(value) for a number or new FixedArray(length) for storage.');
+      if (args.length !== 1) this.fail(n, 'fixed takes one number.');
+      const literal = (v: Node): string | undefined => v.type === 'Literal' && typeof v.value === 'number' && Number.isFinite(v.value) ? v.raw :
+        v.type === 'UnaryExpression' && ['+', '-'].includes(v.operator) && literal(v.argument) !== undefined ? v.operator + literal(v.argument) : undefined;
+      // Keep every decimal digit: Acorn's binary64 value can erase which side
+      // of a Q16.16 halfway boundary the original source token occupied.
+      return `fixed(${literal(args[0]) ?? this.expr(args[0])})`;
+    }
     if (name === 'int' || name === 'float') {
       if (args.length !== 1) this.fail(n, `${name} takes one number.`);
       // Fold literal conversions so declaration expressions remain static.
+      if (name === 'int' && args[0].type === 'UnaryExpression' && ['+', '-'].includes(args[0].operator) && args[0].argument.type === 'Literal' && Number.isInteger(args[0].argument.value)) {
+        return String((args[0].operator === '-' ? -1 : 1) * args[0].argument.value);
+      }
       if (args[0].type === 'Literal' && typeof args[0].value === 'number' && (name !== 'int' || Number.isInteger(args[0].value))) return this.expr(args[0], name === 'int');
       return `${name}(${this.expr(args[0])})`;
     }
     if (!member && !calls.has(name) && this.binding(n.callee.name)?.kind !== 'function') this.fail(n, `Unknown function “${n.callee.name}”.`);
-    if (n.type === 'NewExpression' && !['PixelArray', 'Sprite', 'SpriteBatch', 'Transform', 'ColorTransform', 'Input', 'Ramp'].includes(name)) this.fail(n, 'new is only supported for LightVM resources and typed arrays.');
+    if (n.type === 'NewExpression' && !['PixelArray', 'FixedArray', 'Sprite', 'SpriteBatch', 'Transform', 'ColorTransform', 'Input', 'Ramp'].includes(name)) this.fail(n, 'new is only supported for LightVM resources and typed arrays.');
     const options = args.at(-1)?.type === 'ObjectExpression' ? this.properties(args.pop()) : [];
-    const intPositions: Record<string, number[]> = { PixelArray: [0], Sprite: [0], SpriteBatch: [1], rgb: [0, 1, 2], hash01: [0, 1], pico_colorwheel: [0] };
+    const intPositions: Record<string, number[]> = { PixelArray: [0], FixedArray: [0], Sprite: [0], SpriteBatch: [1], rgb: [0, 1, 2], hash01: [0, 1], pico_colorwheel: [0] };
     const integerSetting = name === 'setting' && (args[0]?.callee?.name === 'int' ||
       args[0]?.type === 'MemberExpression' && ['pixelCount', 'count'].includes(args[0].property?.name));
     const positional = args.map((a, i) => {

@@ -66,6 +66,25 @@ class PerformanceTests(unittest.TestCase):
         _,optimized=replay(self.executable,source,650,optimize=True)
         self.assertEqual(reference,optimized)
 
+    def test_map_advice_names_the_effect_that_prevents_selection(self):
+        prefix = ('from lightvm import profile,init,render,rgb,FixedArray,fixed\n'
+                  'import random\nprofile("animation")\n@init\ndef setup(ctx,runtime):\n'
+                  ' ctx.n=0\n ctx.table=FixedArray(runtime.pixel_count)\n'
+                  '@render\ndef draw(ctx,runtime,pixels):\n for i in range(pixels.count):\n')
+        cases = [('  ctx.n=ctx.n+1\n  pixels[i]=rgb(1,2,3)\n', 'persistent state writes'),
+                 ('  ctx.table[i]=fixed(1)\n  pixels[i]=rgb(1,2,3)\n', 'numeric source mutation'),
+                 ('  pixels[(i+1)%pixels.count]=rgb(1,2,3)\n', 'scatter store'),
+                 ('  pixels[i]=pixels[i]\n', 'feedback and aliasing'),
+                 ('  pixels[i]=rgb(random.randint(0,255),0,0)\n', 'state/RNG effects'),
+                 ('  break\n', 'break/continue')]
+        for body, reason in cases:
+            with self.subTest(reason=reason):
+                artifact=compile_source(prefix+body)
+                self.assertTrue(artifact.success,artifact.diagnostics)
+                self.assertTrue(any(reason in note.message for note in artifact.advisories),artifact.advisories)
+        mapped=compile_source(prefix+'  pixels[i]=rgb(i&31,0,0)\n')
+        self.assertTrue(any('Kernel plan estimate on 32-bit targets' in note.message for note in mapped.advisories))
+
     def test_reuse_proof_rejects_state_clocks_rng_and_feedback(self):
         prefix='from lightvm import profile,init,render,rgb,setting\nimport random\nprofile("animation")\n'
         cases=[(' pixels.fill(rgb(1,2,3))\n',True),

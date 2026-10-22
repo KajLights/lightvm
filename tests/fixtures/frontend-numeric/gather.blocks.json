@@ -1,0 +1,385 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "table",
+                "TYPE": "q"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {}
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "+"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_fixed",
+                          "fields": {
+                            "VALUE": "0.75"
+                          },
+                          "inputs": {}
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_fixed",
+                          "fields": {
+                            "VALUE": "0.75"
+                          },
+                          "inputs": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "factor",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_math",
+                        "fields": {
+                          "OP": "+"
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_fixed",
+                              "fields": {
+                                "VALUE": "1.5"
+                              },
+                              "inputs": {}
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_fixed",
+                              "fields": {
+                                "VALUE": "1.5"
+                              },
+                              "inputs": {}
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "i"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_set",
+                    "fields": {
+                      "NAME": "q",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_array_get",
+                          "fields": {
+                            "NAME": "table"
+                          },
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "i",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {}
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "type": "lm_set",
+                        "fields": {
+                          "NAME": "v",
+                          "SCOPE": "local"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_integer",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {}
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "lm_if",
+                            "fields": {},
+                            "inputs": {
+                              "TEST": {
+                                "block": {
+                                  "type": "lm_compare",
+                                  "fields": {
+                                    "OP": "<"
+                                  },
+                                  "inputs": {
+                                    "A": {
+                                      "block": {
+                                        "type": "lm_get",
+                                        "fields": {
+                                          "NAME": "i",
+                                          "SCOPE": "local"
+                                        },
+                                        "inputs": {}
+                                      }
+                                    },
+                                    "B": {
+                                      "block": {
+                                        "type": "lm_integer",
+                                        "fields": {
+                                          "VALUE": 16
+                                        },
+                                        "inputs": {}
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "THEN": {
+                                "block": {
+                                  "type": "lm_set",
+                                  "fields": {
+                                    "NAME": "v",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {
+                                    "VALUE": {
+                                      "block": {
+                                        "type": "lm_convert",
+                                        "fields": {
+                                          "FUNCTION": "int"
+                                        },
+                                        "inputs": {
+                                          "VALUE": {
+                                            "block": {
+                                              "type": "lm_math",
+                                              "fields": {
+                                                "OP": "*"
+                                              },
+                                              "inputs": {
+                                                "A": {
+                                                  "block": {
+                                                    "type": "lm_get",
+                                                    "fields": {
+                                                      "NAME": "q",
+                                                      "SCOPE": "local"
+                                                    },
+                                                    "inputs": {}
+                                                  }
+                                                },
+                                                "B": {
+                                                  "block": {
+                                                    "type": "lm_get",
+                                                    "fields": {
+                                                      "NAME": "factor",
+                                                      "SCOPE": "state"
+                                                    },
+                                                    "inputs": {}
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "ELSE": {
+                                "block": {
+                                  "type": "lm_set",
+                                  "fields": {
+                                    "NAME": "v",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {
+                                    "VALUE": {
+                                      "block": {
+                                        "type": "lm_convert",
+                                        "fields": {
+                                          "FUNCTION": "int"
+                                        },
+                                        "inputs": {
+                                          "VALUE": {
+                                            "block": {
+                                              "type": "lm_convert",
+                                              "fields": {
+                                                "FUNCTION": "fixed_sqrt"
+                                              },
+                                              "inputs": {
+                                                "VALUE": {
+                                                  "block": {
+                                                    "type": "lm_get",
+                                                    "fields": {
+                                                      "NAME": "q",
+                                                      "SCOPE": "local"
+                                                    },
+                                                    "inputs": {}
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "lm_pixel",
+                                "fields": {},
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "i",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {}
+                                    }
+                                  },
+                                  "COLOR": {
+                                    "block": {
+                                      "type": "lm_rgb",
+                                      "fields": {},
+                                      "inputs": {
+                                        "R": {
+                                          "block": {
+                                            "type": "lm_bitwise",
+                                            "fields": {
+                                              "OP": "&"
+                                            },
+                                            "inputs": {
+                                              "A": {
+                                                "block": {
+                                                  "type": "lm_get",
+                                                  "fields": {
+                                                    "NAME": "v",
+                                                    "SCOPE": "local"
+                                                  },
+                                                  "inputs": {}
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_integer",
+                                                  "fields": {
+                                                    "VALUE": 31
+                                                  },
+                                                  "inputs": {}
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "G": {
+                                          "block": {
+                                            "type": "lm_convert",
+                                            "fields": {
+                                              "FUNCTION": "int"
+                                            },
+                                            "inputs": {
+                                              "VALUE": {
+                                                "block": {
+                                                  "type": "lm_native_math",
+                                                  "fields": {
+                                                    "FUNCTION": "sqrt"
+                                                  },
+                                                  "inputs": {
+                                                    "VALUE": {
+                                                      "block": {
+                                                        "type": "lm_number",
+                                                        "fields": {
+                                                          "VALUE": 4
+                                                        },
+                                                        "inputs": {}
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_integer",
+                                            "fields": {
+                                              "VALUE": 7
+                                            },
+                                            "inputs": {}
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

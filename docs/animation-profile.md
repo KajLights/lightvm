@@ -45,8 +45,8 @@ declarations may be declared at module scope.
 Explicit [Q16.16 values and FixedArray resources](numeric-types.md) are available
 with application feature floor 1.2.0. Convert with `fixed(...)`, `int(...)` or
 `float(...)`; mixed fixed/integer/float arithmetic is rejected. Fixed expressions
-currently execute as scalar bytecode, and settings/live inputs retain their
-existing wire types.
+can execute in eligible bulk kernels with feature floor 1.3.0. Settings/live
+inputs retain their existing wire types.
 
 `runtime.time` is the pausable elapsed program time in seconds. `runtime.delta`
 is the actual elapsed time supplied for this render, also in seconds.

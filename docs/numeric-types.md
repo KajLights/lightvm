@@ -3,7 +3,7 @@
 22 October 2026. **Fixed scalar operations use floor 1.2.0; extended kernels and
 new f32 math use floor 1.3.0.** The compiler, loader and shared firmware core support
 explicit fixed values, stable array gathers, lazy conditional maps and native math.
-These implement S1 through S4 of the
+These implement S1 through S5 of the
 [core SDK plan](design/core-numeric-kernels-plan.md).
 
 ## Scope and provenance
@@ -33,7 +33,10 @@ Python construction is explicit: `fixed(...)`, `FixedArray(count, fill=...)`,
 `fixed_bits(...)` and `fixed_from_bits(...)`. `fixed_sqrt(...)` returns fixed;
 `int(...)` and `float(...)` explicitly convert back to existing numeric types.
 These SDK declarations describe compiled operations, not a separate Python
-numeric runtime. Full JavaScript/Blocks authoring parity remains S5 work.
+numeric runtime. JavaScript uses `fixed`, `FixedArray`, `fixedBits`,
+`fixedFromBits` and `fixedSqrt`; Blocks provides matching literal, conversion,
+bitwise and fixed-array operations. All lower to the same typed compiler/core.
+See [frontend authoring and source conventions](javascript-and-blocks.md#explicit-numeric-values).
 Existing literals keep their types; mixed arithmetic requires a conversion.
 Counts and indices remain i32.
 Settings and input wire types remain unchanged: convert captured values once at
@@ -229,5 +232,7 @@ resource admission, malformed packages, cancellation and allocation failures.
 The [S2–S4 validation record](design/numeric-s234-validation-2026-10-22.md) adds
 scalar/bulk raw-state and pixel comparisons, malformed CFGs, lazy faults,
 prepared-plan cancellation/allocation failure, native math and attached-Pico
-measurements. Full fixed authoring parity (S5) and the complete multi-board
-performance matrix (S6) remain separate gates.
+measurements. The [S5 validation record](design/numeric-s5-validation-2026-10-22.md)
+adds frontend raw-vector/literal/domain parity, production browser compilation,
+independent full-profile emission and attached-Pico rejection/retention checks.
+The complete multi-board performance matrix (S6) remains a separate gate.

@@ -85,10 +85,10 @@ def performance_advice(compiler, filename):
             notes.append(Diagnostic('This sprite ' + ('geometry' if kind == 'Transform' else 'colour style') +
                 ' is rebuilt each frame. If its values stay fixed for the sprite’s lifetime, assign it in the sprite init callback.',
                 filename, node.lineno, node.col_offset + 1))
-    for node, selected in compiler.map_reports:
+    for node, selected, reason in compiler.map_reports:
         message = ('Optimised: this independent pixel loop uses a native map.' if selected else
                    'Native-map optimisation is disabled for this compilation; this loop uses the interpreter.' if not compiler.optimize else
-                   'This loop uses the interpreter: native maps require one independent pixel store, no state/RNG effects, and a supported straight-line body.')
+                   'This loop uses the interpreter: ' + reason + '.')
         notes.append(Diagnostic(message, filename, node.lineno, node.col_offset + 1))
     render = compiler.funcs.get('render')
     if render:
@@ -101,6 +101,12 @@ def performance_advice(compiler, filename):
         notes.append(Diagnostic(f'Resource estimate: {len(compiler.resources)} program resources, {len(compiler.regs)} register slots, and {len(compiler.code)} instructions. '
             'Pixel buffers and resource lengths depend on output size/settings; use device heap measurements for total RAM. This is not a frame-rate estimate.',
             filename, render.lineno, render.col_offset + 1))
+        plans = [ins[4]-pc-1 for pc, ins in enumerate(compiler.code) if ins[0] == 39]
+        if plans:
+            notes.append(Diagnostic(f'Kernel plan estimate on 32-bit targets: {sum(48+8*n for n in plans)} bytes for {len(plans)} plans, excluding allocator overhead. '
+                'Pico scratch uses two 576-byte lane tasks plus 512 bytes per executing lane, within the audited stack paths. '
+                'These are separate from pixel/state memory; use map_plan_bytes and stack telemetry on the target.',
+                filename, render.lineno, render.col_offset + 1))
     return notes
 
 

@@ -624,9 +624,10 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 for j in continues: self.code[j][4] = len(self.code)
                 self.emit('IADD', loop, loop, self.literal(1)); self.emit('JMP', imm=head)
                 for j in breaks + [end]: self.code[j][4] = len(self.code)
+                reason = 'optimisation is disabled' if not self.optimize else 'break/continue requires ordered loop control'
                 if self.optimize and not breaks and not continues:
-                    self.optimize_pixel_loop(head, loop, bound)
-                self.map_reports.append((n, self.code[head][0] == P_OP['PIXEL_MAP']))
+                    reason = self.optimize_pixel_loop(head, loop, bound)
+                self.map_reports.append((n, self.code[head][0] == P_OP['PIXEL_MAP'], reason))
             elif isinstance(n, (ast.Break, ast.Continue)):
                 if not self.loop_stack: self.fail(n, 'loop control outside loop')
                 self.loop_stack[-1][isinstance(n, ast.Continue)].append(self.emit('JMP'))
@@ -658,7 +659,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         typed operations, including f32 rounding and scalar colour functions.
         """
         body = self.code[head+2:-2]
-        if not 1 <= len(body) <= 128:return
+        if not 1 <= len(body) <= 128:return 'the body exceeds the 1..128 instruction limit'
         unary = {P_OP[n] for n in ('MOV','ITOF','FTOI','LENGTH')}
         binary = {P_OP[n] for n in ('IADD','ISUB','IMUL','IDIV','IMOD','FADD','FSUB','FMUL','FDIV','FMOD','ILT','FLT','EQ','IMIN','IMAX','FMIN','FMAX','HASH')}
         unary.update(P_OP[n] for n,s in numeric.SIGNATURES.items() if len(s)==2)
@@ -673,31 +674,35 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif op in (P_OP['RGB'],P_OP['HSV']):reads=[b,c,d]
             elif op==P_OP['NATIVE']:
                 binding,reads=self.calls[d]
-                if binding not in (7,8,9,10,11):return
+                if binding not in (7,8,9,10,11):return 'a native call has state/RNG effects or is unsupported in a kernel'
             elif op in (P_OP['JMP'],P_OP['JZ']):
-                if not first+offset<d<end:return
+                if not first+offset<d<end:return 'the branch shape has a backward edge or can skip the final store'
                 reads=[a] if op==P_OP['JZ'] else []
                 extended |= op==P_OP['JZ'] or d!=first+offset+1
             elif op==P_OP['LOAD_ELEM']:
-                if self.regs[b][0:2]!=(REF,CONST) or self.resources[self.regs[b][2]][0] not in (1,2,7,8,11,20):return
+                if self.regs[b][0:2]!=(REF,CONST):return 'a gather needs a stable constant resource identity'
+                if self.resources[self.regs[b][2]][0] not in (1,2,7,8,11,20):return 'the source resource is not a resident numeric array; feedback and aliasing stay ordered'
                 reads=[c];extended=True
             elif op==P_OP['STORE_ELEM']:
-                if b!=index or self.resources[self.regs[a][2]][0] not in (3,12,14,15,16,17):return
+                if b!=index:return 'a scatter store does not use the current pixel index'
+                if self.resources[self.regs[a][2]][0] not in (3,12,14,15,16,17):return 'numeric source mutation must remain ordered'
                 stores.append(a);reads=[c]
-            else:return
+            else:return 'an instruction is unsupported in a pure pixel kernel'
             if op in numeric.OPCODES.values() or any(self.typ(r)==Q for r in reads):extended=True
             if writes:
-                if self.regs[a][1]!=LOCAL or a==index or a==bound:return
+                if self.regs[a][1]!=LOCAL:return 'persistent state writes must remain ordered'
+                if a==index or a==bound:return 'the body changes loop control values'
                 written.add(a)
                 extended |= self.typ(a)==Q
             read_sets.append(reads)
-        if len(stores)!=1 or body[-1][0]!=P_OP['STORE_ELEM']:return
+        if len(stores)!=1 or body[-1][0]!=P_OP['STORE_ELEM']:return 'every path needs one common final pixel store'
         # Acyclic definite assignment. Reads of written locals must be defined
         # on every incoming path, so no iteration carries hidden dependencies.
         incoming=[None]*len(body);incoming[0]={index}
         for offset,(op,a,b,c,d) in enumerate(body):
             defined=incoming[offset]
-            if defined is None or any(r in written and r not in defined for r in read_sets[offset]):return
+            if defined is None:return 'the body contains an unreachable instruction'
+            if any(r in written and r not in defined for r in read_sets[offset]):return 'a local has a loop-carried dependency or is not defined on every path'
             after=defined | ({a} if op not in (P_OP['STORE_ELEM'],P_OP['JMP'],P_OP['JZ']) else set())
             targets=[] if offset+1==len(body) else [offset+1]
             if op==P_OP['JMP']:targets=[d-first]

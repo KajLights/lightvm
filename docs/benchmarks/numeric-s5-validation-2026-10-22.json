@@ -1,0 +1,178 @@
+{
+  "schema": "lightvm.validation.numeric-s5",
+  "date": "2026-10-22",
+  "branch": "codex/core-numeric-foundation",
+  "parent_commit": "69de323",
+  "scope": "S5 frontend and independent-emitter integration; S6 full board/performance matrix remains open",
+  "runtime_c_changed": false,
+  "firmware_sha256": "f87a2e51ecd31f8cbaf2fa48667c32ae94faddb7b5c1f311e945abc5434bee6e",
+  "older_firmware_sha256": "ace68ff719e5f098812b941c0e47123142b25e72303b9ac744aa6deb25e52c4f",
+  "device": {
+    "board": "pico_w",
+    "chip": "RP2040 B2",
+    "serial": "E6614103E7236D37",
+    "clock_hz": 125000000,
+    "render_workers": 2,
+    "strip": {
+      "pin": "GP16",
+      "physical_pixels": 200
+    }
+  },
+  "checks": {
+    "native_ctest": {
+      "passed": 19
+    },
+    "asan_ubsan_ctest": {
+      "passed": 19
+    },
+    "python_discovery": {
+      "run": 348,
+      "skipped": 2,
+      "failures": 0
+    },
+    "frontend_suite": {
+      "passed": 166,
+      "skipped": 1
+    },
+    "sanitized_numeric_python": {
+      "passed": 35
+    },
+    "sanitized_independent_emitter": {
+      "passed": 2
+    },
+    "sanitized_frontend_numeric": {
+      "passed": 13
+    },
+    "pico_build_tests": {
+      "passed": 20
+    },
+    "typescript_vite_build": true,
+    "production_browser": {
+      "browser": "156.0.8078.47",
+      "production_worker": "compiler-worker-52b_2m4n.js",
+      "worker_sha256": "6f44f482ba637b0aaa5cb6fa368f97a46f637bd4e8dd6083614b313a8da45e01",
+      "cases": [
+        {
+          "language": "python",
+          "package_bytes": 785,
+          "package_sha256": "7081841b376a7ee87a0db49bfe609ff84aaed64b126124bf841e34aff5607a03",
+          "bulk": true,
+          "target_rejected": true,
+          "passed": true
+        },
+        {
+          "language": "javascript",
+          "package_bytes": 785,
+          "package_sha256": "7081841b376a7ee87a0db49bfe609ff84aaed64b126124bf841e34aff5607a03",
+          "bulk": true,
+          "target_rejected": true,
+          "passed": true
+        },
+        {
+          "language": "blocks",
+          "package_bytes": 785,
+          "package_sha256": "7081841b376a7ee87a0db49bfe609ff84aaed64b126124bf841e34aff5607a03",
+          "bulk": true,
+          "target_rejected": true,
+          "passed": true
+        }
+      ],
+      "passed": true
+    }
+  },
+  "pico": {
+    "render_cases": 20,
+    "requested_frames_per_case": 6,
+    "current_firmware_rejections": 21,
+    "older_firmware_rejections": 10,
+    "frame_and_generation_retained": true,
+    "per_case_heap_stable": true,
+    "active_heap_range_bytes": [
+      7060,
+      11282
+    ],
+    "describe_ms": {
+      "samples": 120,
+      "minimum": 9.009790956042707,
+      "median": 9.751541481819004,
+      "maximum": 12.50883296597749
+    },
+    "service_counter_deltas": {
+      "foreground_over_10ms": 130,
+      "ingress_over_10ms": 119
+    },
+    "timing_scope": "Management reply observations during uploads/configuration/manual frames; not a matched performance or 10 ms responsiveness gate"
+  },
+  "ram": {
+    "sram_bytes": 270336,
+    "static_bytes": 132736,
+    "vm_heap_ceiling": 65536,
+    "native_stack": 24576,
+    "pixel_driver_max": 30464,
+    "operating_headroom": 16384,
+    "remaining_bytes_after_reservations": 640,
+    "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+  },
+  "stack": {
+    "software_gate_passed": true,
+    "main": {
+      "foreground_bytes": 10064,
+      "with_interrupts_bytes": 12000,
+      "reservation_bytes": 16384,
+      "remaining_bytes": 4384,
+      "required_margin_bytes": 2048
+    },
+    "worker": {
+      "foreground_bytes": 3128,
+      "with_interrupts_bytes": 5064,
+      "reservation_bytes": 8192,
+      "remaining_bytes": 3128,
+      "required_margin_bytes": 1024
+    }
+  },
+  "restoration": {
+    "config_unchanged": true,
+    "saved_config_unchanged": true,
+    "presets_unchanged": true,
+    "original_light_restored": true,
+    "light_state": {
+      "revision": 1,
+      "composition_revision": 2,
+      "power": false,
+      "brightness": 0.800000012,
+      "color": 16777215,
+      "color_control": false,
+      "preset": "rainbow"
+    },
+    "network_service_states": {
+      "state": "connected",
+      "mode": "station",
+      "error": "",
+      "mqtt_connected": true
+    },
+    "passed": true
+  },
+  "source_sha256": {
+    "lightvm/compiler.py": "b3ae8efe350ba6e18cd06a545c1d81285a51eb05e0a22a09d6497de263d99570",
+    "lightvm/portable.py": "392265e1165199681d72aa30abd8d784d9e45fd6e064b2b2739105d35de153b7",
+    "web/src/languages/javascript.ts": "0c7533ac14a548a8aca4465af07e3d5065e3392ff98692ba4de9106a8afb26cc",
+    "web/src/languages/blocks.ts": "bde407102c210f4c5d3ae7aea0490cbd95611ff6e5b5c0a596c0c99b97013555",
+    "web/src/languages/source.ts": "ed87eaf09ecffcaa52132f622fbafd5c64baac8edd78681b060016cba2877fc6",
+    "web/src/compiler-files.mjs": "690d657b529fa6453fc88c2adfad69f049046f91da8d4b2f3d92ad22059017de",
+    "web/src/compiler-worker.ts": "8c6444228e08fe2996b24b56b8fecc06a4b94f270ee2170d7245641f94c82003",
+    "vite.config.ts": "06fbb97581f538ab47be36aba85e9fa9be090d912e863560c188928f09fce259",
+    "tests/fixtures/independent_emitter.py": "71899caef609e82cbc11cb10939676c392f431953f5ee32e47b69e7114d99bb5",
+    "tests/test_independent_emitter.py": "123b15448c63dac6a39e3bee910fef20c42b9c9e384b0ff636e811df84f387ad",
+    "tests/frontend_numeric.py": "fc74a2e5ab6ef5f957d9213852582e4d1eb5b0cb3ca6edb063a6bf6f62bef8ae",
+    "web/src/languages/numeric-frontends.test.ts": "1e71b5ee5d6d6f4d5da0d6edd15ae1c26b969ab4eac70ddbe318fa199f03a7ad",
+    "web/src/compiler-files.test.ts": "efbdd0839391e2e6b2a755790276679b5d1bfb10dcd172160cbcac464b67b9a4",
+    "tools/check_numeric_frontends.mjs": "74afde8496e88145031fbadcd206bde3801c0757975c350082baabab3ccc66c8",
+    "tools/check_s5_hardware.py": "d295fcf42843cbaba9f3d4d1164f812cffbfc515b8a5037d47a8aec577832771",
+    "tools/check_s5_floor_hardware.py": "6041c08772be065cf6ea564e196bcb5a1b0a595127fdff1d09641374ef001b11",
+    "tests/test_performance.py": "970258f5571bb10401a76a3faf67f213be9a4172f79a49c63ebf033c87422f9d",
+    "tests/fixtures/frontend-numeric/gather.blocks.json": "2b3f72ccdfd7543aeacca591bb67d7d93d60a29b5b4f85c19a881c83250c6f0f",
+    "tests/fixtures/frontend-numeric/gather.js": "4e2ee983d903af31f4710791f3532b6e0e70bf9cd68fd98a75b041f1f0bda951",
+    "tests/fixtures/frontend-numeric/gather.py": "45a89d00d4362a27a4b4586c3231c0e3a952ec2c348ecfbb033a9206244e84d8"
+  },
+  "passed": true
+}
