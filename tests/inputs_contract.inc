@@ -86,6 +86,40 @@ static void inputs_contract(void){
     clock_now+=100000;vm_tick(&vm);CHECK(vm.control.committed[0]==20&&vm.control.contribution_frame>initial_frame);
     vm_destroy(&vm);input_registry_destroy(&registry);CHECK(vm_heap_used()==0);
 
+    /* A first/completed native chunk has no bulk flag. Do not admit its
+       expensive operation after the slice deadline; retain progress to resume. */
+    vm_init(&vm,&target,NULL,NULL);vm.output=NULL;vm.memory=counter_lbc;vm.expected=sizeof(counter_lbc);
+    CHECK(!vm_load(&vm));vm.ready=true;CHECK(!control_prepare(&vm));
+    clock_step=LIGHTVM_RENDER_SLICE_US;
+    CHECK(!animation_poll_budget(&vm,0,&ready,4096)&&!ready);
+    clock_step=0;
+    CHECK(!animation_poll_budget(&vm,0,&ready,4096)&&ready);
+    vm_destroy(&vm);CHECK(vm_heap_used()==0);
+
+    /* Before pinning another composite, give a sleeping reusable layer one
+       admission turn to sample changed inputs. Existing composed work remains
+       publishable; this does not cancel an invocation or its captured inputs. */
+    PixelBuffer offscreen={.count=3};Composition *scene=composition_create(&offscreen,1);CHECK(scene);
+    VmInstance *reactive=&scene->layers[0].vm;
+    vm_init(reactive,&scene->layers[0].target,NULL,NULL);reactive->output=NULL;
+    reactive->memory=reusable_inputs_lbc;reactive->expected=sizeof(reusable_inputs_lbc);
+    CHECK(!vm_load(reactive));reactive->ready=true;CHECK(!control_prepare(reactive));reactive->playing=true;
+    composition_prepare(scene);composition_publish(scene);scene->dirty=true;
+    CHECK(json_parse(&j,constant,strlen(constant)));CHECK(!inputs_bind(reactive->portable,&j,0,0));
+    vm_tick_begin();composition_collect_ready(scene);CHECK(!scene->composing&&!scene->prepared);
+    CHECK(vm_tick_collect(reactive,4096));vm_tick_flush();composition_tick(scene,4096);vm_tick_end();
+    CHECK(scene->prepared);for(unsigned n=0;n<3;n++)CHECK(scene->working[n*3]==60);
+    scene->front_pinned=true;uint32_t back_crc=crc32_bytes(scene->working,9);
+    const char *next_input="{\"level\":{\"value\":0.4}}";
+    CHECK(json_parse(&j,next_input,strlen(next_input)));CHECK(!inputs_bind(reactive->portable,&j,0,0));
+    static App collecting;memset(&collecting,0,sizeof(collecting));
+    AppOutput collected={.composition=scene};AppOutput *collected_outputs[]={&collected};
+    collecting.outputs=collected_outputs;collecting.output_count=1;
+    app_tick(&collecting);
+    CHECK(scene->prepared&&crc32_bytes(scene->working,9)==back_crc);
+    for(unsigned n=0;n<3;n++)CHECK(reactive->control.committed[n*4]==40);
+    composition_destroy(scene);CHECK(vm_heap_used()==0);
+
     /* Management must not cancel an unfinished transition on every slider update. */
     Capture reply={.marker=0x12345678u};
     Transition *transition=transition_create(&target);CHECK(transition);

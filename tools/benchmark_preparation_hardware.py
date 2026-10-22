@@ -16,17 +16,22 @@ def run(args):
     description = client.describe()
     original_programs = {p['name'] for p in client.programs()}
     names = ('hw_prep_map', 'hw_prep_heavy')
-    if original_programs.intersection(names):
+    if not args.reuse_packages and original_programs.intersection(names):
         client.close()
         raise ValueError('preparation test program already exists')
     created, rows = [], []
     result = {'label': args.label, 'firmware_sha256': hashlib.sha256(args.firmware.read_bytes()).hexdigest(),
               'description_before': description, 'samples': rows, 'cancellations': []}
     try:
+        result['reuse_verified_packages'] = args.reuse_packages
         for name, kind in zip(names, ('map', 'heavy')):
             data = (args.packages / (kind + '.lbc')).read_bytes()
-            client.save_program(name, data)
-            created.append(name)
+            if args.reuse_packages:
+                if name not in original_programs or client.get_program(name) != data:
+                    raise ValueError('resident package differs or is missing: ' + name)
+            else:
+                client.save_program(name, data)
+                created.append(name)
         client.configure({'schema': 'lightvm.config', 'outputs': []})
         client.configure({'schema': 'lightvm.config', 'outputs': [
             {'id': 'prep', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 200, 'brightness_limit': 32}}]})
@@ -62,11 +67,13 @@ def run(args):
             client.require_ok(client.command(MANAGE, json.dumps({'op': 'program_activate', 'name': names[1], 'output': 'prep', 'action': 'play'}).encode()))
             accepted = time.monotonic()
             operation = json.loads(client.data_reply)['operation'] if client.data_reply.startswith(b'{"operation":') else None
-            stages, usb_latencies = [], []
+            stages, usb_latencies, foreground = [], [], []
             if operation:
                 while not operation['terminal']:
                     before = time.monotonic()
-                    client.status_fields(output='prep')
+                    status = client.status_fields(output='prep')
+                    if 'fg10' in status:
+                        foreground.append({'elapsed_s': time.monotonic() - started, 'over_10ms': int(status['fg10']), 'ingress_over_10ms': int(status['io10']) if 'io10' in status else None})
                     usb_latencies.append((time.monotonic() - before) * 1000)
                     operation = client.operation(operation['boot_id'], operation['id'])
                     if not stages or stages[-1]['stage'] != operation['stage']:
@@ -80,7 +87,7 @@ def run(args):
             after = client.program_state(output='prep')
             row = {'trial': trial + 1, 'acceptance_ms': (accepted - started) * 1000,
                    'completion_ms': (completed - started) * 1000, 'operation': operation, 'stages': stages,
-                   'usb_latency_ms': usb_latencies, 'before': old, 'after': after,
+                   'usb_latency_ms': usb_latencies, 'foreground_gap_samples': foreground, 'before': old, 'after': after,
                    'http_valid': bool(observations) and all('error' not in r for r in observations),
                    'http_observations': [{**r, **({'started': r['started'] - started, 'ended': r['ended'] - started} if 'started' in r else {})} for r in observations]}
             rows.append(row)
@@ -132,6 +139,7 @@ if __name__ == '__main__':
     parser.add_argument('--label', required=True)
     parser.add_argument('--result', required=True, type=Path)
     parser.add_argument('--samples', type=int, default=5)
+    parser.add_argument('--reuse-packages', action='store_true')
     args = parser.parse_args()
     if args.samples < 1:
         parser.error('at least one sample required')

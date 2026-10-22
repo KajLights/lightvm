@@ -58,7 +58,13 @@ def summarize(paths):
                               'pair_imbalance_us': after['render_pair_imbalance_us'] - before['render_pair_imbalance_us'],
                               'worker_job_us': after['render_worker_us'] - before['render_worker_us'],
                               'worker_job_wall_fraction': (after['render_worker_us'] - before['render_worker_us']) / (sample['seconds'] * 1e6),
-                              'offloads': after['render_offloads'] - before['render_offloads']})
+                              'offloads': after['render_offloads'] - before['render_offloads'],
+                              'steady_foreground_over_10ms': sample['foreground_gap_samples'][-1]['over_10ms'] - sample['foreground_gap_samples'][0]['over_10ms']
+                              if sample.get('foreground_gap_samples') else None,
+                              'steady_ingress_over_10ms': sample['foreground_gap_samples'][-1]['ingress_over_10ms'] - sample['foreground_gap_samples'][0]['ingress_over_10ms']
+                              if sample.get('foreground_gap_samples') and sample['foreground_gap_samples'][0].get('ingress_over_10ms') is not None else None,
+                              'foreground_over_10ms': after['foreground_over_10ms'] - before['foreground_over_10ms']
+                              if 'foreground_over_10ms' in before else None})
         presentations = [s['presentations_per_second'] for s in samples if s['_presentation_valid']]
         result[name] = {'trials': len(samples), 'seconds': sum(s['seconds'] for s in samples), 'layers': layers,
                         'median_presentations_per_second': statistics.median(presentations) if presentations else None,

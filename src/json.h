@@ -3,14 +3,19 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+/* Decimal JSON integer, including a terminator; returns the byte count. */
+size_t json_format_u64(char out[21],uint64_t value);
 typedef enum { JSON_OBJECT, JSON_ARRAY, JSON_STRING, JSON_PRIMITIVE } JsonType;
-typedef struct { size_t start, end; int next, children; JsonType type; } JsonToken;
+/* Documents contain at most 65,535 bytes and 256 tokens. The next index
+ * includes sentinel 256; a container can have at most 255 direct children. */
+typedef struct { uint16_t start, end, next; uint8_t children, type; } JsonToken;
 typedef struct {
     const char *text;
     size_t size, position;
     JsonToken tokens[256];
     int count;
 } Json;
+_Static_assert(sizeof(((Json *)0)->tokens)/sizeof(JsonToken)<=UINT8_MAX+1u,"JSON child counts must fit uint8_t");
 /* Caller owns both parser and immutable source until step returns +/-1.
  * Each unit consumes one byte, delimiter, or duplicate-key comparison. */
 typedef struct {

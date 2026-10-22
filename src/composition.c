@@ -97,6 +97,40 @@ static void complete_output(Composition *s) {
     composition_presented(s,NULL,platform_time_us());
     s->frames++;s->output_us+=platform_time_us()-s->output_started;s->error[0]=0;
 }
+static void present_prepared(Composition *s){
+    if(!s->prepared)return;
+    if(s->pending||platform_time_us()<s->next_present)return;
+    if(!s->output->type){if(!s->front_pinned)composition_publish(s);return;}
+    uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
+    for(unsigned i=0;i<s->layer_count;i++)s->layers[i].front_stamp=s->layers[i].sampled;
+    s->output_started=platform_time_us();
+    if(pixels_submit(s->output,s->front,s->count)){s->pending=true;s->next_present=s->output_started+FRAME_INTERVAL_US;complete_output(s);}
+    else{snprintf(s->error,sizeof(s->error),"native composition output failed; retrying");s->dirty=true;}
+}
+void composition_collect_ready(Composition *s){
+    complete_output(s);
+    if(s->command_active||!s->playing)return;
+    if(s->composing&&runtime_epoch_available())compose_slice(s);
+    present_prepared(s);
+    /* Prioritize a composite postponed at the last deadline before starting
+       another round of layer invocations. Its sources stay pinned as usual. */
+    uint64_t now=platform_time_us();
+    /* A sleeping input-dependent layer should sample its new value before we
+       start another composite from its old pixels. Already pinned composites
+       still finish normally, so continuous input cannot cancel publication. */
+    for(unsigned i=0;i<s->layer_count;i++){
+        VmInstance *vm=&s->layers[i].vm;
+        if(vm->playing&&vm->portable&&vm->portable->render_reusable){
+            uint64_t time=vm->control.program_us;
+            if(!vm->control.in_step&&now>=vm->last_frame)time+=now-vm->last_frame;
+            if(inputs_changed(vm->portable,time))return;
+        }
+    }
+    if(!s->prepared&&!s->composing&&s->dirty&&now>=s->next_frame&&runtime_epoch_available()){
+        s->next_frame=now+FRAME_INTERVAL_US;compose_start(s);compose_slice(s);
+        present_prepared(s);
+    }
+}
 static void composition_tick_impl(Composition *s,unsigned budget) {
     complete_output(s);
     if(s->command_active||!s->playing)return;
@@ -111,13 +145,8 @@ static void composition_tick_impl(Composition *s,unsigned budget) {
             VmInstance *vm=&s->layers[i].vm;
             if(vm->control.in_step&&!runtime_owns(vm))vm_tick_budget(vm,budget);
         }
-        if(s->pending||platform_time_us()<s->next_present)return;
-        if(!s->output->type){if(!s->front_pinned)composition_publish(s);return;}
-        uint8_t *next=s->front;s->front=s->working;s->working=next;s->prepared=false;
-        for(unsigned i=0;i<s->layer_count;i++)s->layers[i].front_stamp=s->layers[i].sampled;
-        s->output_started=platform_time_us();
-        if(pixels_submit(s->output,s->front,s->count)){s->pending=true;s->next_present=s->output_started+FRAME_INTERVAL_US;complete_output(s);}
-        else{snprintf(s->error,sizeof(s->error),"native composition output failed; retrying");s->dirty=true;}
+        present_prepared(s);
+        if(s->prepared||!s->output->type)return;
     }
     unsigned first=s->layer_count?s->cursor%s->layer_count:0;
     if(!vm_tick_batching())s->cursor++;

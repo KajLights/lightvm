@@ -52,7 +52,7 @@ bool json_equal(const Json *j, int t, const char *value) {
 void json_begin(JsonParser *p,Json *j,const void *bytes,size_t size){
     memset(p,0,sizeof(*p));memset(j,0,sizeof(*j));
     p->json=j;j->text=bytes;j->size=size;p->token=-1;
-    if(!size)p->status=-1;
+    if(!size||size>UINT16_MAX)p->status=-1;
 }
 static void completed(JsonParser *p,int index){
     Json *j=p->json;JsonToken *t=&j->tokens[index];t->next=j->count;
@@ -171,6 +171,16 @@ bool json_fields(const Json *j, int object, const char *const *allowed) {
 #include <math.h>
 #include <stdlib.h>
 #include <stdint.h>
+/* Most diagnostic counters fit in 32 bits. Avoid a full printf parser and
+ * software 64-bit division for each digit in every state response. */
+size_t json_format_u64(char out[21],uint64_t value){
+    char reverse[20];size_t count=0;
+    while(value>UINT32_MAX){uint64_t next=value/10u;reverse[count++]=(char)('0'+value-next*10u);value=next;}
+    uint32_t low=(uint32_t)value;
+    do{uint32_t next=low/10u;reverse[count++]=(char)('0'+low-next*10u);low=next;}while(low);
+    for(size_t i=0;i<count;i++)out[i]=reverse[count-i-1];
+    out[count]=0;return count;
+}
 static bool primitive(const Json *j,int t,char *buffer,size_t capacity) {
     if (t<0 || j->tokens[t].type!=JSON_PRIMITIVE) return false;
     size_t size=j->tokens[t].end-j->tokens[t].start;

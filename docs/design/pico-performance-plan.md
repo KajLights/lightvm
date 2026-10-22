@@ -13,15 +13,83 @@ freshness and command completion are separate measures. There is no new global
 
 ## Implementation tracker — reviewed 22 October 2026
 
-The implementation continuation is complete, including C3 and closed software
-stack-path accounting. Hardware measurements have reopened the throughput,
-freshness and preparation/recall latency acceptance gates below. Comparison completed on 22 October with the attached Pico W
-(RP2040 B2, serial E6614103E7236D37), 200 WS2812 pixels on GP16. A verified 2 MiB
-flash backup preserves the exact pre-optimisation firmware and all 13 saved
-objects. Its firmware reports SDK 2.3.1, two workers and a 2000 µs slice. Pico 2 W
-and electrical-probe acceptance still need their hardware. The matched fixed-sprite gate now passes with a 50.1% hardware gain; the historical
-8.7% single-core deficit uses a different fixture/build and remains historical
-context, not the comparison denominator.
+### Regression repair and repeat comparison — validated
+
+Goal: fix the measured throughput/fairness, preparation/recall and freshness
+regressions and the 1,024-pixel replacement failure, then repeat the matched
+hardware gates and commit the validated changes. The preceding comparison
+remains the baseline evidence; its failed gates are not waived.
+
+- [x] Reduce configuration/parser scratch and add a large-live-scene replacement
+   regression, including rejected replacement preserving the active scene.
+- [x] Coalesce cheap preparation units within a bounded foreground quantum; test
+   cancellation, ownership, busy status and total activation/HA latency.
+- [x] Isolate scheduler admission and native execution costs. Recover balanced and
+   asymmetric useful throughput and fair layer progress without losing command
+   responsiveness; evaluate shared dispatch only with measured benefit.
+- [x] Repeat matched archived-bytecode hardware runs, exact pixel/state replays,
+   500/1,024-pixel replacements, freshness, authenticated HA and endurance.
+   Preserve firmware/package identities, raw samples and unchanged gates.
+- [x] Review the full repair diff, run native/Python and strict board/stack checks,
+   update this tracker with measured decisions, restore the original saved scene
+   and prepare the validated fixes for this commit.
+
+Validated repair: compact JSON tokens; allocate only configured
+digital-input descriptors and borrow them in acquisition; cache immutable
+register values; use exact binary32 finite checks and budget measured Pico W
+kernels in SRAM. Admission-based round robin, publication before new layer work,
+and bounded early transition work recover the screened dynamic workloads.
+Native contracts cover tight-memory replacement, descriptor rebinding and
+updating a reusable layer without modifying its waiting composite. The
+1,024-pixel/four-scalar reproduction repeatedly replaces configuration without
+an explicit composition release: 58,568 bytes live before and after a rejected
+configuration, with generations retained, continuing frames and no reset.
+
+Screens 17–26 isolated preparation and control-service interactions. The
+last four-part trace measured preparation, USB dispatch and Wi-Fi work that
+could concatenate past 10 ms. The port now services real USB/digital-input
+acquisition after both network and engine work. `fg10` retains the original
+full-loop metric; a separate `io10` counter measures actual ingress intervals,
+so this change is not hidden by replacing the old counter. Screen 27 completed
+three heavy replacements in 1,585–1,593 ms with zero observed ingress intervals
+over 10 ms. Screen 28 passed five trials with five preparation turns per render
+turn and the complete dynamic workload screen. Preparation grants up to 4,096
+instructions within the existing 2 ms interpreter slice; its outer target is
+4 ms, with cancellation/revision checks between units. The full frozen-source
+comparison now passes the measured repair gates. Failed screens and temporary
+profiling patches are retained under
+`build/performance-review/regression-fixes-2026-10-22/`.
+
+The frozen repair UF2 is `ace68ff719e5f098812b941c0e47123142b25e72303b9ac744aa6deb25e52c4f`.
+Its final rerun passes 16 native contracts, 311 Python tests (two skips), focused
+ASan/UBSan checks and strict Pico W/Pico 2 W/minimal builds. The complete primary
+hardware block passes: +110.1% fixed sprites, +94.3% timed sprites, +6.0% images,
+about +30% four scalar layers, and +20.2–22.6% A/B layers. All 30 primary trials
+have zero observed ingress-over-10-ms deltas. The [repair report](pico-performance-repair-2026-10-22.md)
+tracks the passing secondary matrix, replay, HA and 61.55-minute endurance run.
+Three return-baseline trials per primary case confirm the gains; baseline drift
+is −2.98% to +0.92%. Firmware readback matches all 2,605 UF2 blocks and all 27
+package extents remain unchanged. The original 13 saved objects/settings are
+restored and verified, with the optimized firmware left running as requested.
+The 460-file public bundle passes its privacy/hash audit. The full repair diff
+was reviewed; all 242 frozen source/test/tool hashes match the validated build.
+
+The repeated baseline block is complete against the exact original image; the
+candidate's complete workload and endurance campaign passes. Twenty-seven
+archived benchmark packages were installed once and verified by USB readback;
+a private full-flash snapshot confirms the original code hash and records their
+exact payload extents. Firmware-only candidate flashing retains these
+packages. All original numeric gates remain in force.
+
+The implementation continuation includes C3 and closed software stack-path
+accounting. The first attached-board comparison reopened throughput, freshness,
+preparation/recall and replacement-admission gates; the repair results above
+track their closure without removing that evidence. A verified 2 MiB backup
+preserves the exact pre-optimisation firmware and all 13 original saved objects.
+Both comparison images use SDK 2.3.1, two workers and a 2,000 µs slice. The
+historical 8.7% single-core deficit uses a different fixture/build and remains
+context, not the current comparison denominator. Pico 2 W and electrical probes
+still require their hardware.
 
 | Item | Software disposition | Evidence / physical follow-up |
 | --- | --- | --- |
@@ -31,13 +99,13 @@ context, not the comparison denominator.
 | C1 | Complete | Owned typed HA light/recall/power/key/indicator requests; shared management parser; scene/reset/configuration ownership now supplied by C3 |
 | C2 | Software audit complete | Both linked graphs close with callbacks, library/assembly paths, interrupts and guarded recursion; strict build gate and source fingerprints; attached B2 ROM and stress watermarks pass their scoped checks; Pico 2 W physical follow-up remains |
 | P3 | Complete with conservative proof | Verified straight-line unchanged-input reuse, live virtual clocks/ramps/timeouts and manual FRAME; broader branch/map/resource proof deliberately not inferred |
-| P4 | Selected fast paths complete | Exact endpoint span copies, integer image mapping and repeated-colour transform reuse; fused fill/transform reserved for a demonstrated residual board hotspot |
-| P5 | Hardware acceptance failed on some workloads | 4 ms admission/fairness is implemented; image/scalar throughput and input-readback latency regressions reopen tuning. Preserve the original gates |
-| C3 | Atomicity passes; latency and admission reopened | Ten hardware cancellations preserve the old scene; fast acceptance is offset by slow completion/recall and failure to replace a large live scene |
-| P6 | Shared-batch investigation gate opened | Image-pair join waiting exceeds 10% in calibration; 6 ms/512-byte variants do not recover image throughput. No replacement executor is claimed implemented |
-| P7 | Existing shared artwork retained | Larger instruction-cache calibration rejected as a default change: insufficient end-to-end gain; other caches still require measured hotspots/admission evidence |
+| P4 | Selected fast paths complete | Exact endpoint span copies, integer image mapping, channel/premultiplication fast paths and repeated-colour transform reuse; measured image/map/HSV kernels use budgeted Pico W SRAM; fused fill/transform reserved for a demonstrated residual hotspot |
+| P5 | Repair workload and endurance gates pass | All required dynamic layers exceed fresh baseline; 54 primary/secondary trials have zero observed steady ingress-over-10-ms deltas; input readback p95 improves 61.30 → 51.18 ms |
+| C3 | Repair atomicity, memory and latency gates pass | Heavy completion median 2,001.88 → 1,408.80 ms; acceptance p95 4.59 ms; ten cancellations preserve the old scene; three 1,024-pixel/four-scalar empty replacements succeed without explicit release |
+| P6 | Chunk tuning validated; optional shared batch remains open | Image/asymmetric join waiting is still 21.2%/10.9% of epoch time; only two VMs are eligible in those fixtures. No replacement executor or isolated prototype benefit is claimed |
+| P7 | Shared artwork retained; register-value cache measured | Immutable initial values use four charged bytes/register, at most 512 bytes/VM, eliminating repeated operand flash reads. Larger instruction-cache calibration rejected; other caches still require measured hotspots/admission evidence |
 | P8 | Complete with conservative scope | Source-mapped map/reuse/resource advice, creation/frame Blocks controls and shared artwork, generation-aware rates/dirty delay, preparation progress/cancel/reconnect; speculative source rewrites and optional rate caps declined |
-| V | Attached-board comparison complete; candidate unaccepted | Full evidence and restoration recorded; failed software gates and the remaining hardware matrix stay open |
+| V | Attached-board regression repair validated | Primary/secondary, controls, replay, source variants, 61.55-minute endurance and return baseline pass; original state restored with optimized firmware, firmware/package readback and public evidence audit pass. Broader P1/P6 and additional-hardware items remain explicit |
 
 ### Hardware comparison completed — 22 October 2026
 
@@ -116,7 +184,7 @@ watermarks are 5,740/16,384 main and 2,684/8,192 worker bytes. Linked bounds wit
 interrupts remain 12,152/5,300 bytes. Pico 2 W still requires its own physical ROM
 and stress evidence; neither watermarks nor build success certify all hardware.
 
-### Work reopened by measured failures
+### Work reopened by the first comparison (historical)
 
 1. **C3/resources:** reserve or reduce parser/decoded-configuration workspace so
    an admitted scene can safely be replaced or cleared; add the 1,024-pixel,
@@ -136,8 +204,9 @@ and stress evidence; neither watermarks nor build success certify all hardware.
 
 The 6 ms and 6 ms/512-byte cache calibrations did not recover image throughput;
 no default change was adopted. Optional caches/fusion remain gated by measured
-benefit and simultaneous-scene memory. Completing this comparison does not mark
-those failed software acceptance gates complete.
+benefit and simultaneous-scene memory. The repair tracker above records the
+subsequent workload, memory and control results; this earlier comparison itself
+did not close those gates.
 
 ### Full-diff review — 22 October 2026
 

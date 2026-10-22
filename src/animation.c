@@ -83,7 +83,9 @@ int animation_prepare_step(AnimationPreparation *s,VmInstance *a){
         if(!invoke(a,0,0,0)){error="portable invocation rejected";break;}
         s->stage=2;return 0;
     case 2:
-        status=pbc_resume(a->portable,256);
+        /* Let the interpreter time slice bound a heavy initializer; a tiny
+           instruction quota adds avoidable foreground/transport round trips. */
+        status=pbc_resume(a->portable,4096);
         if(status<0){error="portable initialization fault";break;}
         if(status>0)s->stage=3;
         return 0;
@@ -91,7 +93,7 @@ int animation_prepare_step(AnimationPreparation *s,VmInstance *a){
         error=start(a,0,true);if(error)break;
         s->stage=4;return 0;
     case 4:{
-        uint64_t began=platform_time_us();status=pbc_resume(a->portable,256);
+        uint64_t began=platform_time_us();status=pbc_resume(a->portable,4096);
         a->render_cpu_us+=platform_time_us()-began;
         if(status<0){error="portable execution fault";break;}
         if(status>0){error=finish(a);if(error)break;s->stage=5;}

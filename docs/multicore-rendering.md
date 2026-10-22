@@ -30,21 +30,53 @@ Once a preset recall reaches B, its hidden A scene stops autonomous rendering.
 The instance remains available: taking over with manual A/B controls resumes
 both slots without resetting their generations or state. A completed composition
 may finish an already-started slow layer while its front is pinned, but does not
-start more fast-layer frames until it can publish. Composition slices still pin
+start more unchanged fast-layer frames until it can publish. A reusable layer
+with a changed input can update its independent committed buffer while the
+completed composite waits. Composition slices still pin
 the committed layer contributions they are reading.
 
-Execution epochs have a 4 ms admission target, with half initially reserved for
-composition and presentation. Output, layer and A/B cursors rotate across epochs;
+Execution epochs have a 4 ms admission target. Collection stops at 3.5 ms,
+leaving time for composition and presentation. Ready composites publish before
+collection; a postponed dirty composite gets its next bounded chunk first.
+Output, layer and A/B cursors rotate across epochs;
 an instance receives at most one scheduled slice per epoch. A native operation,
 final join or output packing can overrun the target. Measure the whole epoch and
 foreground service gap; the target is not a proven maximum command latency.
 No job survives the return to command processing. This supplies the lifetime
 fence for reset, replacement, configuration changes, storage relocation and
 destruction. Checkpoints are deferred inside an epoch and never run on core 1.
-Within the rotating layer traversal, unfinished work and old dynamic/dirty
-contributions receive priority relative to measured render cost. A valid cached
-layer accumulates no freshness debt; rotation supplies a first opportunity so
-cost estimates cannot starve a layer.
+Layer traversal resumes after the last admitted VM. A complete round also
+rotates its first VM to exchange core assignments. During an epoch only the
+collector admits VM jobs: publication cannot start a serial fallback render
+that bypasses this cursor. A valid cached layer consumes no rendering slice.
+This replaces the quadratic age/cost search measured on the Pico W. A bounded
+transition chunk also runs before layer admission, preventing busy A/B layers
+from consuming every epoch before either completed child can publish. Native
+instructions check the slice deadline on admission as well as between chunks;
+cheap tail instructions may finish and commit a completed frame.
+
+Pico polls USB and digital inputs both after network work and after engine
+work. Each USB poll drains at most 256 bytes in one SDK read. Protocol replies
+are assembled into whole frames; the CDC receive/transmit FIFOs are 256/1,024
+bytes, with 64-byte endpoint buffers so exact packet-sized commands complete
+without requiring a host zero-length packet. Progress JSON is batched into
+512-byte protocol payloads. Frequent status integers use bounded decimal
+formatting and protocol CRC uses a 64-byte read-only nibble table.
+
+`foreground_*` retains the interval between full `app_tick` starts. The separate
+`ingress_*` counters measure actual USB/digital-input service opportunities;
+STATUS exposes cumulative `fg10` and `io10` counts over 10 ms. The loop interval
+can exceed 10 ms even when the additional service point keeps ingress responsive.
+Neither counter is an optical measurement or a bound on SDK network callbacks.
+
+Immutable register initial values use four charged bytes per register (at most
+512 bytes per VM), eliminating repeated flash reads for constant operands.
+Pico W keeps the measured image/map kernels and their small channel/HSV helpers
+in SRAM to reduce shared XIP cache contention. The strict RAM report includes
+this code; it is not an allocation outside the reported budget. Digital input
+acquisition borrows the immutable descriptors owned by HardwareConfig instead
+of keeping four duplicate descriptors; apply rebinds every retained adapter
+before the old hardware configuration is freed.
 
 [Scene preparation](scene-preparation.md) now uses resumable controller-owned
 operations. Parsing, verification, resource initialization, first render,
@@ -221,3 +253,10 @@ to retain contribution snapshots; measure that observer's overhead separately.
 The time-indexed sprite fixture supports autonomous comparisons; probabilistic
 stars require fixed-step replay for exact equivalence. The remaining board gates
 are tracked in the [performance plan](design/pico-performance-plan.md).
+
+`foreground_over_10ms` counts foreground gaps above 10 ms. Difference boundary
+snapshots over a steady interval without flash/setup to evaluate that interval;
+the cumulative maximum alone includes earlier storage stalls. Command/report
+serialization inside the interval still counts and must not be subtracted.
+Pico CDC replies combine a protocol header and payload into one bounded write,
+using a 528-byte stack buffer included in the linked stack-path audit.

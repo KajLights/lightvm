@@ -2,9 +2,10 @@
 #include "animation.h"
 #include "portable_fixtures.h"
 typedef struct { const uint8_t *bytes; size_t size; } PortableBytes;
-static unsigned manifest_reads;
+static unsigned manifest_reads,package_reads;
 static bool portable_read(void *context,uint32_t offset,void *bytes,size_t size){
     PortableBytes *source=context;if(offset>source->size||size>source->size-offset)return false;
+    package_reads++;
     if(source->size>=96&&size==lbc_u32(source->bytes+76)&&offset==source->size-size)manifest_reads++;
     memcpy(bytes,source->bytes+offset,size);return true;
 }
@@ -18,10 +19,24 @@ static void portable_load(VmInstance *vm,PixelBuffer *canvas,Capture *reply,cons
     CHECK(!vm_load(vm));vm->ready=true;CHECK(!control_prepare(vm));
 }
 static void portable_contract(void){
+    /* All exponent classes, signs, zeros, subnormals and NaN payload classes. */
+    const uint32_t fractions[]={0,1,0x3fffff,0x400000,0x7fffff};
+    for(unsigned sign=0;sign<2;sign++)for(unsigned exponent=0;exponent<256;exponent++)
+        for(unsigned n=0;n<sizeof(fractions)/sizeof(fractions[0]);n++){
+            uint32_t bits=(sign<<31)|(exponent<<23)|fractions[n];float value;
+            memcpy(&value,&bits,sizeof(value));CHECK(lbc_finite(value)==(exponent!=255));
+        }
     clock_now=0;clock_step=0;storage_available=false;deny_allocation=false;deny_show=false;
     CHECK(vm_heap_used()==0);
     PortableBytes metadata={library_lbc,sizeof(library_lbc)};Portable *loaded=NULL;manifest_reads=0;
     CHECK(!pbc_open(&loaded,portable_read,&metadata,metadata.size));CHECK(manifest_reads==1);
+    unsigned reads_before=package_reads;size_t heap_before=vm_heap_used();
+    for(unsigned repeat=0;repeat<20;repeat++)for(unsigned r=0;r<loaded->nregs;r++){
+        uint32_t expected=lbc_u32(metadata.bytes+96+r*8+4);
+        CHECK(pbc_initial(loaded,r)==expected);
+        if(pbc_role(loaded,r)==R_CONST)CHECK(pbc_value(loaded,r).u==expected);
+    }
+    CHECK(package_reads==reads_before&&vm_heap_used()==heap_before);
     pbc_destroy(loaded);CHECK(vm_heap_used()==0);
     // Generic typed entries are not required to have any animation lifecycle.
     PortableBytes callback={callback_lbc,sizeof(callback_lbc)};Portable *p=NULL;
@@ -62,6 +77,13 @@ static void portable_contract(void){
     uint8_t first=vm.control.committed[0];unsigned allocation_count=allocations;
     deny_allocation=true;vm.playing=true;vm.last_frame=0;vm.next_frame=20000;clock_now=20000;
     vm_tick(&vm);CHECK(vm.control.in_step&&vm.control.program_us==0&&vm.control.committed[0]==first);
+    /* Publication may make a skipped VM runnable after collection. It must
+       wait for the next collector, never start a serial fallback job. */
+    uint64_t dispatches=p->dispatch_count;
+    vm_tick_begin();vm_tick_budget(&vm,4096);CHECK(p->dispatch_count==dispatches);
+    CHECK(vm_tick_collect(&vm,1));CHECK(!vm_tick_collect(&vm,1));vm_tick_flush();
+    CHECK(p->dispatch_count==dispatches+1);vm_tick_budget(&vm,4096);
+    CHECK(p->dispatch_count==dispatches+1);vm_tick_end();
     unsigned pc=p->pc;static const char snapshot[]="{\"op\":\"program_snapshot\"}";
     Json snapshot_json;CHECK(json_parse(&snapshot_json,(const uint8_t*)snapshot,strlen(snapshot)));
     CHECK(control_manage(&vm,77,&snapshot_json,"program_snapshot"));CHECK(p->pc==pc&&reply.code==STATUS_OK);

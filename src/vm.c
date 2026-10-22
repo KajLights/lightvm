@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "status.h"
 #include "release.h"
 #include "vm_allocator.h"
 #include "runtime.h"
@@ -204,24 +205,28 @@ void vm_tick_flush(void){
     for(unsigned i=0;i<queued;i++)tick_commit(&slices[i],jobs[i].elapsed_us);
     queued=0;
 }
-void vm_tick_collect(VmInstance *a,unsigned budget){
+bool vm_tick_collect(VmInstance *a,unsigned budget){
     assert(batching);
-    if(a->scheduled_epoch==tick_epoch||runtime_owns(a))return;
+    if(a->scheduled_epoch==tick_epoch||runtime_owns(a))return false;
     a->scheduled_epoch=tick_epoch;
-    control_observe(a,a->control.program_us+(platform_time_us()>=a->last_frame?platform_time_us()-a->last_frame:0));
+    uint64_t now=platform_time_us();
+    control_observe(a,a->control.program_us+(now>=a->last_frame?now-a->last_frame:0));
     /* Leave part of the epoch for composition/presentation; otherwise a full
        runnable set could consume every epoch before producing any output. */
-    if(!runtime_epoch_can_collect()){control_wait(a,a->playing?1:0);return;}
+    if(!runtime_epoch_can_collect()){control_wait(a,a->playing?1:0);return false;}
     if(tick_prepare(a,budget,&slices[queued])){
         jobs[queued]=(RenderJob){animation_execute,&slices[queued],0};
         if(++queued==2)vm_tick_flush();
+        return true;
     }
+    return false;
 }
 void vm_tick_end(void){vm_tick_flush();batching=false;runtime_epoch_end();runtime_defer_end();}
 bool vm_tick_batching(void){return batching;}
 void vm_tick_budget(VmInstance *a,unsigned budget) {
-    if(batching&&a->scheduled_epoch==tick_epoch)return;
-    if(batching)a->scheduled_epoch=tick_epoch;
+    /* An epoch runs only jobs admitted by the collector. Starting skipped
+       VMs here serializes fresh layers after publication and bypasses fairness. */
+    if(batching)return;
     if(!runtime_epoch_available())return;
     AnimationSlice slice;
     if(!tick_prepare(a,budget,&slice))return;
@@ -281,20 +286,32 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
         if (size) { reply(a,id,STATUS_PROTOCOL,0,"STATUS takes no payload"); break; }
         const PlatformInfo *info=platform_info();
         char message[FRAME_LIMIT-8];
-        snprintf(message,sizeof(message),"version=%s protocol=%u platform=%.16s board=%.24s output=%.16s ready=%u uploading=%u received=%lu module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pin=%ld pixels=%lu brightness=%lu frame_interval_us=%u mode=%s code_storage=%s frames=%lu render_us=%lu show_us=%lu generation=%lu animation_error=",
-                 LIGHTVM_VERSION,LIGHTVM_PROTOCOL_VERSION,
-                 info->platform,info->board,info->output,
-                 a->ready,a->uploading,(unsigned long)a->received,MODULE_LIMIT,
-                 (unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,
-                 (long)(a->target && a->target->count ? a->target->config.pin : -1),(unsigned long)(a->target ? a->target->count : 0),
-                 (unsigned long)(a->target && a->target->count ? a->target->config.brightness : 0),FRAME_INTERVAL_US,
-                 a->playing ? "bytecode" : "idle", a->ready ? (a->from_storage ? "flash" : "ram") : "none",
-                 (unsigned long)a->frame_count,(unsigned long)a->render_us,
-                 (unsigned long)a->show_us,(unsigned long)a->generation);
-        const char *error=a->animation_error[0]?a->animation_error:"-";
-        size_t used=strlen(message),length=strlen(error);
-        if(length>=sizeof(message)-used)length=sizeof(message)-used-1;
-        memcpy(message+used,error,length);message[used+length]=0;
+        StatusWriter w={message,sizeof(message),0};
+        status_field(&w,"version",LIGHTVM_VERSION,SIZE_MAX);
+        status_integer(&w,"protocol",LIGHTVM_PROTOCOL_VERSION);
+        status_field(&w,"platform",info->platform,16);
+        status_field(&w,"board",info->board,24);
+        status_field(&w,"output",info->output,16);
+        status_integer(&w,"ready",a->ready);
+        status_integer(&w,"uploading",a->uploading);
+        status_integer(&w,"received",a->received);
+        status_integer(&w,"module_limit",MODULE_LIMIT);
+        status_integer(&w,"heap",vm_heap_used());
+        status_integer(&w,"heap_peak",vm_heap_peak());
+        status_integer(&w,"heap_limit",VM_HEAP_LIMIT);
+        if(a->target&&a->target->count)status_integer(&w,"pin",a->target->config.pin);else status_field(&w,"pin","-1",2);
+        status_integer(&w,"pixels",a->target?a->target->count:0);
+        status_integer(&w,"brightness",a->target&&a->target->count?a->target->config.brightness:0);
+        status_integer(&w,"frame_interval_us",FRAME_INTERVAL_US);
+        status_field(&w,"mode",a->playing?"bytecode":"idle",SIZE_MAX);
+        status_field(&w,"code_storage",a->ready?(a->from_storage?"flash":"ram"):"none",SIZE_MAX);
+        status_integer(&w,"frames",a->frame_count);
+        status_integer(&w,"render_us",a->render_us);
+        status_integer(&w,"show_us",a->show_us);
+        status_integer(&w,"generation",a->generation);
+        status_integer(&w,"fg10",runtime_epoch_stats().foreground_over_10ms);
+        status_integer(&w,"io10",runtime_epoch_stats().ingress_over_10ms);
+        status_field(&w,"animation_error",a->animation_error[0]?a->animation_error:"-",SIZE_MAX);
         reply(a,id,STATUS_OK,0,message); break;
     }
     case CMD_BEGIN: case CMD_CHUNK: case CMD_FINISH:

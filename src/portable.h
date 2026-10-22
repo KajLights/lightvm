@@ -23,7 +23,7 @@ typedef struct Portable {
     /* Binding 3 is animation; binding 4 is a progress-driven transition. */
     uint32_t entries[2],profile;
     uint32_t code_offset,palette_offset,manifest_offset,manifest_size;
-    uint8_t *metadata, *descriptors; uint16_t *register_offsets;
+    uint8_t *metadata, *descriptors, *initials; uint16_t *register_offsets;
     uint32_t functions_offset,specs_offset,expressions_offset,calls_offset,settings_offset;
     bool io_fault;
     uint8_t *values; PbcResource *resources; void *state;

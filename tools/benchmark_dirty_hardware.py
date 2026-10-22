@@ -16,15 +16,21 @@ def run(args):
     original = client.get_config()
     created = []
     result = {'label': args.label, 'firmware_sha256': hashlib.sha256(args.firmware.read_bytes()).hexdigest(),
+              'reuse_verified_packages': args.reuse_packages,
               'scope': 'host input-to-composite-readback plus candidate firmware output-completion stamps; no optical measurement',
               'events': []}
     try:
         existing = {p['name'] for p in client.programs()}
         for name in ('reactive', 'timed_sprites'):
-            if 'hw_' + name in existing:
+            if not args.reuse_packages and 'hw_' + name in existing:
                 raise ValueError('benchmark program already exists')
-            client.save_program('hw_' + name, (args.packages / (name + '.lbc')).read_bytes())
-            created.append('hw_' + name)
+            data = (args.packages / (name + '.lbc')).read_bytes()
+            if args.reuse_packages:
+                if 'hw_' + name not in existing or client.get_program('hw_' + name) != data:
+                    raise ValueError('resident package differs or is missing: ' + name)
+            else:
+                client.save_program('hw_' + name, data)
+                created.append('hw_' + name)
         setup(client, {'programs': ['reactive', 'timed_sprites']}, 200)
         time.sleep(7)
         result['before'] = client.transition(output='bench')
@@ -76,6 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('--label', required=True)
     parser.add_argument('--result', required=True, type=Path)
     parser.add_argument('--events', default=100, type=int)
+    parser.add_argument('--reuse-packages', action='store_true')
     args = parser.parse_args()
     if args.events < 1:
         parser.error('at least one event required')

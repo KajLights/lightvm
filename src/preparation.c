@@ -1,4 +1,4 @@
-/* Controller-owned scene operations. Every tick performs one bounded unit and
+/* Controller-owned scene operations. Every tick performs bounded units and
  * returns to the caller; no pending work holds a session callback or C stack. */
 #include "preparation.h"
 #include "app.h"
@@ -55,23 +55,57 @@ typedef struct PreparationQueue {
     HardwareConfig *configuration;AppOutput *validation_output;unsigned config_index;
 } PreparationQueue;
 
-static void emit(struct App *a,uint16_t id,const char *text){
-    size_t size=strlen(text);
-    while(size){size_t n=size>FRAME_LIMIT?FRAME_LIMIT:size;a->send(a->transport,RESP_DATA,id,(const uint8_t *)text,n);text+=n;size-=n;}
+/* Batch progress JSON into protocol-sized frames. Per-field frames made the
+ * observer itself stall preparation while USB drained dozens of short packets. */
+typedef struct { App *app;uint16_t id;char bytes[FRAME_LIMIT];size_t used; } RecordWriter;
+static void record_flush(RecordWriter *w){
+    if(w->used)w->app->send(w->app->transport,RESP_DATA,w->id,(const uint8_t *)w->bytes,w->used);
+    w->used=0;
+}
+static void record_text(RecordWriter *w,const char *text){
+    while(*text){
+        w->bytes[w->used++]=*text++;
+        if(w->used==sizeof(w->bytes))record_flush(w);
+    }
+}
+static void record_number(RecordWriter *w,uint64_t value){
+    char text[21];json_format_u64(text,value);record_text(w,text);
+}
+static void record_string(RecordWriter *w,const char *text){
+    static const char hex[]="0123456789abcdef";
+    record_text(w,"\"");
+    for(const unsigned char *p=(const unsigned char *)text;*p;p++){
+        char escaped[7]={(char)*p,0};
+        if(*p=='"'||*p=='\\'){escaped[0]='\\';escaped[1]=(char)*p;escaped[2]=0;}
+        else if(*p<32){memcpy(escaped,"\\u00",4);escaped[4]=hex[*p>>4];escaped[5]=hex[*p&15];escaped[6]=0;}
+        record_text(w,escaped);
+    }
+    record_text(w,"\"");
 }
 static void record_reply(App *a,uint16_t id,const PreparationRecord *r){
-    a->last_code=STATUS_OK;
-    char text[640];
-    snprintf(text,sizeof(text),"{\"operation\":{\"boot_id\":\"%s\",\"id\":%lu,\"output\":\"%s\",\"stage\":\"%s\",\"units\":%lu,\"code\":%lu,\"value\":%lu,\"accepted_us\":%llu,\"activated_us\":%llu,\"first_presented_us\":%llu,\"fade_completed_us\":%llu,\"terminal\":%s,\"finished_us\":%llu,\"max_step_us\":%llu,\"error\":\"",
-        a->boot_id,(unsigned long)r->id,r->output,r->stage,(unsigned long)r->units,(unsigned long)r->code,(unsigned long)r->value,
-        (unsigned long long)r->accepted,(unsigned long long)r->activated,(unsigned long long)r->first_presented,(unsigned long long)r->fade_completed,r->terminal?"true":"false",(unsigned long long)r->finished,(unsigned long long)r->max_step);
-    emit(a,id,text);
-    for(const char *p=r->error;*p;p++){char c[3]={*p,0,0};if(*p=='"'||*p=='\\'){c[0]='\\';c[1]=*p;}emit(a,id,c);}
-    emit(a,id,"\",\"stage_us\":{");
+    a->last_code=STATUS_OK;RecordWriter w={.app=a,.id=id};
+    record_text(&w,"{\"operation\":{\"boot_id\":");record_string(&w,a->boot_id);
+    record_text(&w,",\"id\":");record_number(&w,r->id);
+    record_text(&w,",\"output\":");record_string(&w,r->output);
+    record_text(&w,",\"stage\":");record_string(&w,r->stage);
+    record_text(&w,",\"units\":");record_number(&w,r->units);
+    record_text(&w,",\"code\":");record_number(&w,r->code);
+    record_text(&w,",\"value\":");record_number(&w,r->value);
+    record_text(&w,",\"accepted_us\":");record_number(&w,r->accepted);
+    record_text(&w,",\"activated_us\":");record_number(&w,r->activated);
+    record_text(&w,",\"first_presented_us\":");record_number(&w,r->first_presented);
+    record_text(&w,",\"fade_completed_us\":");record_number(&w,r->fade_completed);
+    record_text(&w,",\"terminal\":");record_text(&w,r->terminal?"true":"false");
+    record_text(&w,",\"finished_us\":");record_number(&w,r->finished);
+    record_text(&w,",\"max_step_us\":");record_number(&w,r->max_step);
+    record_text(&w,",\"error\":");record_string(&w,r->error);
+    record_text(&w,",\"stage_us\":{");
     for(unsigned n=0;n<PREPARATION_STAGE_COUNT;n++){
-        snprintf(text,sizeof(text),"%s\"%s\":%llu",n?",":"",timed_stages[n],(unsigned long long)r->stage_us[n]);emit(a,id,text);
+        if(n)record_text(&w,",");
+        record_string(&w,timed_stages[n]);record_text(&w,":");record_number(&w,r->stage_us[n]);
     }
-    emit(a,id,"}}}");send_status(a->send,a->transport,id,STATUS_OK,(int32_t)r->id,"scene operation state");
+    record_text(&w,"}}}");record_flush(&w);
+    send_status(a->send,a->transport,id,STATUS_OK,(int32_t)r->id,"scene operation state");
 }
 static PreparationRecord *lookup(App *a,uint32_t id){
     PreparationQueue *q=a->preparation;if(!q)return NULL;
@@ -428,20 +462,27 @@ void preparation_tick(App *a){
     PreparationQueue *q=a->preparation;if(!q)return;
     for(unsigned n=0;n<PREPARATION_HISTORY;n++)milestones(a,&q->history[n]);
     if(!q->head)return;
-    PreparationOperation *o=q->head;AppOutput *d=q->validation_output?q->validation_output:app_output(a,o->record.output);
-    if(o->cancelled||!d){finish(a,o,NULL,true);return;}
-    if(!q->configuration&&o->scene.request.kind<PREPARE_CONFIG_VALIDATE&&d->composition_revision!=o->scene.request.revision){
-        finish(a,o,"scene changed during preparation",false);return;
+    uint64_t tick_started=platform_time_us();
+    /* Coalesce cheap decode/zeroing/verification units. Guest resumes still
+       enforce their quantum, and the count cap also bounds frozen-clock hosts.
+       Return to ingress after at most 4 ms plus one indivisible unit. */
+    for(unsigned unit=0;unit<32;unit++){
+        PreparationOperation *o=q->head;AppOutput *d=q->validation_output?q->validation_output:app_output(a,o->record.output);
+        if(o->cancelled||!d){finish(a,o,NULL,true);return;}
+        if(!q->configuration&&o->scene.request.kind<PREPARE_CONFIG_VALIDATE&&d->composition_revision!=o->scene.request.revision){
+            finish(a,o,"scene changed during preparation",false);return;
+        }
+        bool done=false;uint64_t began=platform_time_us();const char *stage=o->record.stage;
+        /* Preparation never recursively enters the renderer/transport service hook. */
+        runtime_defer_begin();const char *error=step(a,d,o,&done);runtime_defer_end();
+        uint64_t elapsed=platform_time_us()-began;if(elapsed>o->record.max_step)o->record.max_step=elapsed;o->record.units++;
+        for(unsigned n=0;n<PREPARATION_STAGE_COUNT;n++)if(!strcmp(stage,timed_stages[n])){o->record.stage_us[n]+=elapsed;break;}
+        if(error&&o->record.error!=error)snprintf(o->record.error,sizeof(o->record.error),"%s",error);
+        if(error&&q->configuration){finish(a,o,o->record.error,false);return;}
+        if(error){snprintf(d->light_error,sizeof(d->light_error),"%.95s",error);if(o->scene.request.boot)snprintf(a->boot_error,sizeof(a->boot_error),"outputs[%s].startup: %.90s",d->hardware.id,error);}
+        if(error||done){finish(a,o,error,false);return;}
+        if(platform_time_us()-tick_started>=4000u)return;
     }
-    bool done=false;uint64_t began=platform_time_us();const char *stage=o->record.stage;
-    /* Preparation never recursively enters the renderer/transport service hook. */
-    runtime_defer_begin();const char *error=step(a,d,o,&done);runtime_defer_end();
-    uint64_t elapsed=platform_time_us()-began;if(elapsed>o->record.max_step)o->record.max_step=elapsed;o->record.units++;
-    for(unsigned n=0;n<PREPARATION_STAGE_COUNT;n++)if(!strcmp(stage,timed_stages[n])){o->record.stage_us[n]+=elapsed;break;}
-    if(error&&o->record.error!=error)snprintf(o->record.error,sizeof(o->record.error),"%s",error);
-    if(error&&q->configuration){finish(a,o,o->record.error,false);return;}
-    if(error){snprintf(d->light_error,sizeof(d->light_error),"%.95s",error);if(o->scene.request.boot)snprintf(a->boot_error,sizeof(a->boot_error),"outputs[%s].startup: %.90s",d->hardware.id,error);}
-    if(error||done)finish(a,o,error,false);
 }
 size_t preparation_retained_bytes(const App *a){return demo_allocation_bytes(a->preparation);}
 void preparation_abort_all(App *a){

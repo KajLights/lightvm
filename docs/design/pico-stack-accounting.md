@@ -117,8 +117,10 @@ growth, stack-register writes, data directives and mismatched dump/disassembly.
 
 ## Build evidence
 
-The final exact paths and numbers live in the
-[implementation evidence](../benchmarks/pico-performance-implementation-2026-10-21.json).
+The regression-repair paths and numbers live in the
+[repeat comparison evidence](../benchmarks/pico-performance-repair-2026-10-22.json).
+The [initial implementation evidence](../benchmarks/pico-performance-implementation-2026-10-21.json)
+and first hardware campaign remain historical records.
 Both profiles retain the 16/8 KiB reservations and the 16 KiB native operating
 reserve; positive linker headroom is separate from runtime stack headroom.
 The HA `message`, `light_command` and `ha_tick` frames are 184, 24 and 656 bytes
@@ -148,7 +150,8 @@ including interrupts, changed linker reservations and optional feature targets.
 Native allocation/cancellation and integration tests cover
 the corresponding project lifetime guards.
 
-The attached Pico W completed a 62.55-minute same-boot campaign with USB, HTTP,
+In the first hardware campaign, the attached Pico W completed 62.55 minutes on
+one boot with USB, HTTP,
 authenticated MQTT, program writes/deletes, scene replacements and control stress.
 Observed main/worker peaks were **5,740 / 2,684 bytes**, leaving **10,644 / 5,508
 bytes** in the standard reservations. Linked bounds including interrupts remain
@@ -161,3 +164,37 @@ Physical follow-up still includes Pico 2 W, additional output types and the full
 multi-output stress matrix. Record both core watermarks and ROM
 identity, keep the required margins, and investigate any disagreement with this
 conditional accounting rather than enlarging reservations without evidence.
+
+### Regression-repair audit — 22 October
+
+Pico USB replies now assemble one protocol frame (at most 528 bytes) before
+calling the SDK writer. The reviewed indirect `stdio_usb.out_chars` target moves
+from `output_bytes` to `output_message`; the callback map and main-source digest
+track that exact call site. The temporary reply remains owned by the synchronous
+call. Bounded bulk CDC input is called by `service_commands`, whose indirect
+`stdio_usb.in_chars` target is also registered. Main invokes this service before
+and after engine work; it is never entered by a recursive runtime checkpoint.
+Rendering and preparation use separate foreground turns. Progress replies
+stream through one 512-byte buffer, and common status formatting avoids printf.
+The frozen UF2 SHA-256 is
+`ace68ff719e5f098812b941c0e47123142b25e72303b9ac744aa6deb25e52c4f`.
+All three strict build profiles pass with no unresolved software paths:
+
+| Profile | Main with interrupts | Main margin | Worker with interrupts | Worker margin |
+| --- | ---: | ---: | ---: | ---: |
+| Pico W | 12,048 B | 4,336 B | 5,384 B | 2,808 B |
+| Pico 2 W | 12,168 B | 4,216 B | 5,156 B | 3,036 B |
+| No-network Pico | 12,044 B | 4,340 B | 5,372 B | 2,820 B |
+
+The 16/8 KiB stack reservations and required 2/1 KiB margins are unchanged.
+The Pico W report covers 225 objects and 1,968 frames; its HA sentinel frames
+remain 184/24/656 bytes. Static RAM, including SRAM drawing helpers and enlarged
+CDC FIFOs, is 132,976 bytes. After the unchanged VM, stack, driver and 16 KiB
+operating reservations, 400 bytes remain. This linker margin does not replace
+runtime heap and stack measurements. The 61.55-minute repeat campaign records
+**5,248/16,384 bytes main** and **2,676/8,192 bytes worker**, leaving 11,136/5,516
+bytes, across 234 same-boot controller descriptions. VM heap peak is
+61,708/65,536 bytes; both HA stress blocks retain a constant 29,000-byte live
+heap. The actual B2 ROM identity and audited helper bounds above remain
+applicable to the same physical device. The [repair report](pico-performance-repair-2026-10-22.md)
+links the exact ELF, linked paths, firmware readback and stress evidence.

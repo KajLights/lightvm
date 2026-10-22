@@ -34,7 +34,8 @@ STREAM = tuple('platforms/pico/mqtt_port.c:'+name+'_stream' for name in
 CALLBACKS = {
     'runtime_checkpoint': ('src/app.c:service',),
     'src/vm.c:tick_prepare': PIXELS,
-    'platforms/pico/main.c:output_bytes': ('stdio_usb_out_chars',),
+    'platforms/pico/main.c:output_message': ('stdio_usb_out_chars',),
+    'platforms/pico/main.c:service_commands': ('stdio_usb_in_chars',),
     'src/app.c:service': ('platforms/pico/main.c:service_io',),
     'render_job_execute': ('animation_execute','src/render_executor.c:range_run','src/portable_map.c:map_pixels','src/portable_draw.c:draw_task','platforms/pico/render_executor.c:stack_probe'),
     'src/render_executor.c:range_run': RANGES,
@@ -64,7 +65,8 @@ for name in ('bytes','flush','describe','empty_config','config_apply','compositi
              'quoted','read_object','real_number','transition_state','wide','binding_text'):
     CALLBACKS['src/app.c:'+name]=SEND+PIXELS
 CALLBACKS['app_preparation_commit']=PIXELS
-CALLBACKS['src/preparation.c:record_reply']=SEND
+for name in ('record_reply','record_flush','record_text','record_number','record_string'):
+    CALLBACKS['src/preparation.c:'+name]=SEND
 for name in ('composition_destroy','composition_frame','composition_offscreen','transition_destroy','transition_frame',
              'pixels_destroy','pixels_init','pixels_show','pixels_show_frame','pixels_submit','vm_command','vm_destroy',
              'vm_output_cancel','vm_tick_collect'):

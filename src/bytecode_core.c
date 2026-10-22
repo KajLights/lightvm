@@ -1,9 +1,6 @@
 #include "bytecode_core.h"
+#include "config.h"
 #include <math.h>
-#include <float.h>
-_Static_assert(sizeof(float)==4 && FLT_MANT_DIG==24 && FLT_MAX_EXP==128,"LBC1 requires IEEE binary32");
-static inline bool finite32(float f) { return isfinite(f); }
-uint32_t lbc_u32(const uint8_t *p) { return (uint32_t)p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24; }
 static inline uint32_t quantized_hsv(uint32_t hue,uint32_t sat,uint32_t value) {
     uint32_t sector=(hue*6)>>16,fraction=(hue*6)&65535,denominator=255*65535;
     uint32_t low=(value*(255-sat)+127)/255;
@@ -15,8 +12,8 @@ static inline uint32_t quantized_hsv(uint32_t hue,uint32_t sat,uint32_t value) {
     case 4:return t<<16|low<<8|value;default:return value<<16|low<<8|q;
     }
 }
-uint32_t lbc_hsv(float h,float s,float v) {
-    if(!finite32(h)||!finite32(s)||!finite32(v)||s<0||s>1||v<0||v>1)return 0;
+LIGHTVM_DRAW_CODE uint32_t lbc_hsv(float h,float s,float v) {
+    if(!lbc_finite(h)||!lbc_finite(s)||!lbc_finite(v)||s<0||s>1||v<0||v>1)return 0;
     uint32_t hue=(uint32_t)((h-floorf(h))*65536.0f+0.5f)&65535;
     return quantized_hsv(hue,(uint32_t)(s*255.0f+0.5f),(uint32_t)(v*255.0f+0.5f));
 }

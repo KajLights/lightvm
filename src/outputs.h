@@ -27,7 +27,7 @@ typedef struct {
     HardwareOutput *outputs;
     int default_output;
     unsigned input_count;
-    DigitalInputConfig inputs[DIGITAL_INPUT_LIMIT];
+    DigitalInputConfig *inputs;
 } HardwareConfig;
 typedef struct {
     const char *type;

@@ -152,6 +152,7 @@ def run(args):
     result = {'label': args.label, 'firmware_sha256': sha(args.firmware.read_bytes()),
               'packages': {name: manifest[name] for name in sorted(used)},
               'pixels': args.pixels, 'warmup_seconds': args.warmup,
+              'reuse_verified_packages': args.reuse_packages,
               'explicit_release_before_configure': args.clear_before_configure,
               'network_regime': 'original Wi-Fi and authenticated MQTT connection; no intentional background commands',
               'samples': [], 'replays': []}
@@ -159,14 +160,18 @@ def run(args):
         original = client.get_config()
         result['description_before'] = client.describe()
         existing = {p['name'] for p in client.programs()}
-        if existing.intersection('hw_' + p for p in used):
+        if not args.reuse_packages and existing.intersection('hw_' + p for p in used):
             raise ValueError('test program name already exists')
         for name in sorted(used):
             data = (args.packages / (name + '.lbc')).read_bytes()
             if sha(data) != manifest[name]['bytecode_sha256']:
                 raise ValueError('package hash mismatch: ' + name)
-            client.save_program('hw_' + name, data)
-            created.append('hw_' + name)
+            if args.reuse_packages:
+                if 'hw_' + name not in existing or client.get_program('hw_' + name) != data:
+                    raise ValueError('resident package differs or is missing: ' + name)
+            else:
+                client.save_program('hw_' + name, data)
+                created.append('hw_' + name)
         if args.replay:
             for name in replay_names:
                 row = replay(client, name, 300 if name.startswith('animated_') else 650 if name == 'timed_sprites' else 10)
@@ -195,6 +200,11 @@ def run(args):
             if 'original' in locals():
                 if args.clear_before_configure:
                     release_test_scene(client)
+                # Startup validation of the user's original preset can itself
+                # require a second scene. Exercise empty configuration admission
+                # from the live benchmark first, then restore the saved setup.
+                # Unlike clear_composition, this uses the path under test.
+                client.configure({'schema': 'lightvm.config', 'outputs': []})
                 client.configure(original)
         finally:
             try:
@@ -222,6 +232,8 @@ def main():
     parser.add_argument('--diagnostics', action='store_true')
     parser.add_argument('--poll-hz', type=float, default=20)
     parser.add_argument('--replay', action='store_true')
+    parser.add_argument('--reuse-packages', action='store_true',
+                        help='verify and retain preinstalled identical packages across firmware blocks')
     parser.add_argument('--clear-before-configure', action='store_true',
                         help='explicitly release each test scene before replacement; records a distinct admission regime')
     args = parser.parse_args()

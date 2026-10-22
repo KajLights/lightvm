@@ -20,7 +20,7 @@ def sample(client, output, seconds, *, diagnostics=False, poll_hz=20):
         return value,(began+ended)/2,ended-began
     description_before=client.describe();identity=description_before['boot_id']
     before,started,before_query=state()
-    latencies=[];observations=[];heaps=[];deadline=started+seconds;next_poll=time.monotonic()
+    latencies=[];observations=[];heaps=[];foreground=[];deadline=started+seconds;next_poll=time.monotonic()
     while time.monotonic()<deadline:
         if not poll_hz:
             time.sleep(min(.1,max(0,deadline-time.monotonic())))
@@ -29,6 +29,7 @@ def sample(client, output, seconds, *, diagnostics=False, poll_hz=20):
         tick=time.monotonic();status=client.status_fields(output=output);latencies.append((time.monotonic()-tick)*1000)
         if status.get('animation_error')!='-':raise RuntimeError(status)
         heaps.append({key:int(status[key]) for key in ('heap','heap_peak','heap_limit') if key in status})
+        if 'fg10' in status:foreground.append({'elapsed_s':time.monotonic()-started,'over_10ms':int(status['fg10']),'ingress_over_10ms':int(status['io10']) if 'io10' in status else None})
         if diagnostics:
             transition,when,cost=state();observations.append({'elapsed_s':when-started,'query_s':cost,'transition':transition})
         next_poll+=1/poll_hz
@@ -52,7 +53,7 @@ def sample(client, output, seconds, *, diagnostics=False, poll_hz=20):
         'presentation_counter_path':'frames' if after['active'] else 'A.frames',
         'presentations_per_second':(after_presented-before_presented)/elapsed,'layers':layers,
         'status_latency_ms':{'count':len(latencies),'median':statistics.median(latencies) if latencies else None,'p95':percentile(latencies,.95) if latencies else None,'p99':percentile(latencies,.99) if latencies else None,'max':max(latencies) if latencies else None,'samples':latencies},
-        'poll_hz':poll_hz,'heap_samples':heaps,'diagnostics':observations,'description_before':description_before,'description_after':description}
+        'poll_hz':poll_hz,'heap_samples':heaps,'foreground_gap_samples':foreground,'diagnostics':observations,'description_before':description_before,'description_after':description}
 
 
 def main():

@@ -13,15 +13,26 @@ static unsigned deferred;
 static uint64_t epoch_started;
 static bool epoch_active;
 static RuntimeEpochStats epoch_stats;
-static uint64_t last_foreground;
+static uint64_t last_foreground,last_ingress;
+void runtime_ingress(uint64_t now){
+    if(epoch_stats.ingress_calls&&now>=last_ingress){
+        uint64_t gap=now-last_ingress;
+        if(gap>epoch_stats.max_ingress_gap_us)epoch_stats.max_ingress_gap_us=gap;
+        if(gap>10000u)epoch_stats.ingress_over_10ms++;
+    }
+    last_ingress=now;epoch_stats.ingress_calls++;
+}
 void runtime_foreground(uint64_t now){
-    if(epoch_stats.foreground_calls&&now>=last_foreground&&now-last_foreground>epoch_stats.max_foreground_gap_us)
-        epoch_stats.max_foreground_gap_us=now-last_foreground;
+    if(epoch_stats.foreground_calls&&now>=last_foreground){
+        uint64_t gap=now-last_foreground;
+        if(gap>epoch_stats.max_foreground_gap_us)epoch_stats.max_foreground_gap_us=gap;
+        if(gap>10000u)epoch_stats.foreground_over_10ms++;
+    }
     last_foreground=now;epoch_stats.foreground_calls++;
 }
 void runtime_epoch_begin(void){assert(!epoch_active);epoch_active=true;epoch_started=platform_time_us();}
 bool runtime_epoch_available(void){return !epoch_active||platform_time_us()-epoch_started<LIGHTVM_RENDER_EPOCH_US;}
-bool runtime_epoch_can_collect(void){return !epoch_active||platform_time_us()-epoch_started<LIGHTVM_RENDER_EPOCH_US/2;}
+bool runtime_epoch_can_collect(void){return !epoch_active||platform_time_us()-epoch_started<LIGHTVM_RENDER_EPOCH_US*7u/8u;}
 void runtime_epoch_end(void){
     assert(epoch_active);uint64_t elapsed=platform_time_us()-epoch_started;epoch_active=false;
     epoch_stats.epochs++;epoch_stats.total_us+=elapsed;

@@ -56,6 +56,11 @@ static bool validate_apa102(const Json *j,int object,PixelConfig *c,char *error,
 static bool parse_inputs(const Json *j,HardwareConfig *cfg,char *error,size_t capacity) {
     int list=json_get(j,0,"inputs");if(list<0)return true;
     if(j->tokens[list].type!=JSON_ARRAY||(unsigned)j->tokens[list].children>DIGITAL_INPUT_LIMIT)return failure(error,capacity,"inputs: expected at most four inputs");
+    unsigned count=(unsigned)j->tokens[list].children;
+    if(count){
+        cfg->inputs=platform_calloc(count,sizeof(*cfg->inputs));
+        if(!cfg->inputs)return failure(error,capacity,"inputs: allocation failed");
+    }
     for(int t=list+1;t<j->tokens[list].next;t=j->tokens[t].next){
         DigitalInputConfig *d=&cfg->inputs[cfg->input_count];
         static const char *const fields[]={"id","type","config","home_assistant",NULL};
@@ -228,7 +233,7 @@ static bool parse(const Json *j,HardwareConfig *cfg,char *error,size_t capacity)
     error[0]=0;return true;
 }
 
-void hardware_destroy(HardwareConfig *cfg){platform_free(cfg->outputs);memset(cfg,0,sizeof(*cfg));cfg->default_output=-1;}
+void hardware_destroy(HardwareConfig *cfg){platform_free(cfg->inputs);platform_free(cfg->outputs);memset(cfg,0,sizeof(*cfg));cfg->default_output=-1;}
 bool hardware_decode(const Json *j,HardwareConfig *cfg,char *error,size_t capacity){
     if(parse(j,cfg,error,capacity))return true;
     hardware_destroy(cfg);return false;

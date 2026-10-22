@@ -35,12 +35,12 @@ static void gesture_tick(DigitalInputs *s,unsigned input,unsigned channel,uint64
     if(!g->count)return;
     if(g->down){
         // Only the first press can become a hold (Matter MS/MSR/MSL/MSM, !AS).
-        uint64_t due=g->pressed_at+(uint64_t)d->config.long_press_ms*1000u;
+        uint64_t due=g->pressed_at+(uint64_t)d->config->long_press_ms*1000u;
         if(g->count==1&&!g->long_started&&now>=due){
             g->long_started=true;emit(s,input,channel,DIGITAL_LONG_PRESS_START,0,due);
         }
     }else{
-        uint64_t due=g->released_at+(uint64_t)d->config.multi_press_ms*1000u;
+        uint64_t due=g->released_at+(uint64_t)d->config->multi_press_ms*1000u;
         if(now>=due){
             emit(s,input,channel,DIGITAL_MULTI_PRESS_END,g->count>DIGITAL_INPUT_MULTI_PRESS_MAX?0:g->count,due);
             memset(g,0,sizeof(*g));
@@ -76,9 +76,9 @@ void digital_inputs_apply(DigitalInputs *s,const DigitalInputConfig *config,unsi
     for(unsigned n=0;n<count;n++){
         source[n]=DIGITAL_INPUT_LIMIT;
         for(unsigned i=0;i<s->count;i++)if(!used[i]&&s->devices[i].bus&&
-            !strcmp(s->devices[i].config.id,config[n].id)&&s->devices[i].config.sda==config[n].sda&&
-            s->devices[i].config.scl==config[n].scl&&s->devices[i].config.address==config[n].address&&
-            s->devices[i].config.active_low==config[n].active_low&&s->devices[i].config.debounce_ms==config[n].debounce_ms){
+            !strcmp(s->devices[i].config->id,config[n].id)&&s->devices[i].config->sda==config[n].sda&&
+            s->devices[i].config->scl==config[n].scl&&s->devices[i].config->address==config[n].address&&
+            s->devices[i].config->active_low==config[n].active_low&&s->devices[i].config->debounce_ms==config[n].debounce_ms){
             source[n]=i;used[i]=matched[n]=true;break;
         }
     }
@@ -96,7 +96,7 @@ void digital_inputs_apply(DigitalInputs *s,const DigitalInputConfig *config,unsi
             if(s->devices[n].bus)platform_i2c_close(s->devices[n].bus);
             memset(&s->devices[n],0,sizeof(s->devices[n]));
         }
-        s->devices[n].config=config[n];
+        s->devices[n].config=&config[n];
     }
     for(unsigned n=count;n<DIGITAL_INPUT_LIMIT;n++){
         if(s->devices[n].bus)platform_i2c_close(s->devices[n].bus);
@@ -108,26 +108,26 @@ void digital_inputs_tick(DigitalInputs *s,uint64_t now) {
     for(unsigned i=0;i<s->count;i++){
         DigitalInput *d=&s->devices[i];if(now<d->next_sample)continue;
         d->next_sample=now+5000;
-        if(!d->bus&&!platform_i2c_open(d->config.sda,d->config.scl,&d->bus))goto unavailable;
+        if(!d->bus&&!platform_i2c_open(d->config->sda,d->config->scl,&d->bus))goto unavailable;
         if(!d->configured){
             // TCA9555: no polarity inversion, all sixteen channels are inputs.
             const uint8_t polarity[]={4,0,0},direction[]={6,255,255};
-            if(!platform_i2c_transfer(d->bus,(uint8_t)d->config.address,polarity,3,NULL,0)||
-               !platform_i2c_transfer(d->bus,(uint8_t)d->config.address,direction,3,NULL,0))goto unavailable;
+            if(!platform_i2c_transfer(d->bus,(uint8_t)d->config->address,polarity,3,NULL,0)||
+               !platform_i2c_transfer(d->bus,(uint8_t)d->config->address,direction,3,NULL,0))goto unavailable;
             d->configured=true;
         }
         uint8_t reg=0,bytes[2];
-        if(!platform_i2c_transfer(d->bus,(uint8_t)d->config.address,&reg,1,bytes,2))goto unavailable;
-        uint16_t value=(uint16_t)(bytes[0]|(bytes[1]<<8));if(d->config.active_low)value=(uint16_t)~value;
+        if(!platform_i2c_transfer(d->bus,(uint8_t)d->config->address,&reg,1,bytes,2))goto unavailable;
+        uint16_t value=(uint16_t)(bytes[0]|(bytes[1]<<8));if(d->config->active_low)value=(uint16_t)~value;
         d->available=true;
         if(!d->initialized){d->stable=value;d->candidate=value;d->initialized=true;for(unsigned n=0;n<16;n++)d->changed[n]=now;continue;}
         for(unsigned n=0;n<16;n++){
             uint16_t bit=(uint16_t)(1u<<n);
-            if(d->config.home_assistant)gesture_tick(s,i,n,now);
+            if(d->config->home_assistant)gesture_tick(s,i,n,now);
             if((value^d->candidate)&bit){d->candidate^=bit;d->changed[n]=now;}
-            if(((d->stable^d->candidate)&bit)&&now-d->changed[n]>=d->config.debounce_ms*1000u){
+            if(((d->stable^d->candidate)&bit)&&now-d->changed[n]>=d->config->debounce_ms*1000u){
                 d->stable^=bit;
-                if(d->config.home_assistant)gesture_edge(s,i,n,(d->stable&bit)!=0,now);
+                if(d->config->home_assistant)gesture_edge(s,i,n,(d->stable&bit)!=0,now);
             }
         }
         continue;

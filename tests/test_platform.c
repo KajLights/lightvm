@@ -1,3 +1,4 @@
+#include "status.h"
 #include "release.h"
 // Link the real engine against a test port, without host or Pico native code.
 #include "session.h"
@@ -302,7 +303,8 @@ static void indicator_contract(void) {
     // Exercise expiry and queue backpressure without clocks or real sockets.
     HomeAssistant *ha=calloc(1,sizeof(*ha));CHECK(ha);ha->app=&app;strcpy(ha->root,"homeassistant/lightvm/test");ha->mqtt.state=MQTT_ONLINE;
     strcpy(ha->keys[0].input,"buttons");ha->keys[0].phase=3;ha->keys[0].input_known=true;
-    app.digital_inputs.count=1;strcpy(app.digital_inputs.devices[0].config.id,"buttons");
+    DigitalInputConfig buttons={.id="buttons"};
+    app.digital_inputs.count=1;app.digital_inputs.devices[0].config=&buttons;
     app.digital_inputs.queued=1;app.digital_inputs.events[0]=(DigitalInputEvent){.time=0,.input=0,.channel=0,.type=DIGITAL_PRESS_START};
     CHECK(!ha_keys_tick(ha,DIGITAL_INPUT_EVENT_TTL_US+1)&&!app.digital_inputs.queued&&!ha->mqtt.queued);
     app.digital_inputs.queued=1;app.digital_inputs.events[app.digital_inputs.head]=(DigitalInputEvent){.time=1000000,.input=0,.channel=0,.type=DIGITAL_PRESS_START};
@@ -350,7 +352,7 @@ static void indicator_effect_contract(void) {
     command(&session,CMD_MANAGE,(const uint8_t *)dim,strlen(dim));app_tick(&app);CHECK(displayed[0]==0);
     clock_now=epoch+250000;app_tick(&app);CHECK(displayed[0]==32);
     app.digital_inputs.count=1;DigitalInput *input=&app.digital_inputs.devices[0];
-    strcpy(input->config.id,"buttons");strcpy(input->config.indicators,"keys");
+    DigitalInputConfig buttons={.id="buttons",.indicators="keys"};input->config=&buttons;
     input->available=true;input->next_sample=UINT64_MAX;input->stable=1;
     const char *enable="{\"op\":\"key_feedback_set\",\"input\":\"buttons\",\"key\":1,\"enabled\":true}";
     command(&session,CMD_MANAGE,(const uint8_t *)enable,strlen(enable));CHECK(reply.code==STATUS_OK&&input->press_feedback==1);

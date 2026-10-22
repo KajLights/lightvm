@@ -30,6 +30,8 @@ void composition_publish(Composition *);
 void composition_presented(Composition *,const ContributionStamp *,uint64_t);
 CompositionLayer *composition_layer(Composition *, const char *id);
 void composition_invalidate(Composition *);
+// Collector phase only: checkpoints are deferred while publishing/preparing.
+void composition_collect_ready(Composition *);
 void composition_tick(Composition *, unsigned budget);
 bool composition_prepare_step(Composition *);
 void composition_prepare(Composition *);

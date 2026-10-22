@@ -47,7 +47,8 @@ void vm_tick(VmInstance *app);
 void vm_tick_budget(VmInstance *app,unsigned budget);
 /* Collect independent VM slices across outputs, then join before presentation. */
 void vm_tick_begin(void);
-void vm_tick_collect(VmInstance *,unsigned budget);
+/* True when admitted; callers advance fairness cursors only for accepted work. */
+bool vm_tick_collect(VmInstance *,unsigned budget);
 void vm_tick_flush(void);
 void vm_tick_end(void);
 bool vm_tick_batching(void);

@@ -9,10 +9,18 @@ void write_u32(uint8_t *p, uint32_t v) {
     for (unsigned i=0; i<4; ++i) p[i]=(uint8_t)(v>>(8*i));
 }
 uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t size) {
-    while (size--) {
-        crc ^= *p++;
-        for (unsigned bit=0; bit<8; ++bit)
-            crc = (crc>>1) ^ (0xedb88320u & (0u-(crc&1u)));
+    /* Reflected IEEE CRC-32, four bits per lookup. A 64-byte read-only table
+       avoids the bit-at-a-time cost on every USB and HTTP response. */
+    static const uint32_t nibble[16]={
+        0x00000000u,0x1db71064u,0x3b6e20c8u,0x26d930acu,
+        0x76dc4190u,0x6b6b51f4u,0x4db26158u,0x5005713cu,
+        0xedb88320u,0xf00f9344u,0xd6d6a3e8u,0xcb61b38cu,
+        0x9b64c2b0u,0x86d3d2d4u,0xa00ae278u,0xbdbdf21cu
+    };
+    while(size--){
+        crc^=*p++;
+        crc=(crc>>4)^nibble[crc&15u];
+        crc=(crc>>4)^nibble[crc&15u];
     }
     return crc;
 }

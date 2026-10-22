@@ -35,7 +35,7 @@ static void preparation_contract(void){
         CHECK(preparation_result(&app,id,&code,&value,&error)&&code!=STATUS_OK&&!strcmp(error,"cancelled"));
         CHECK(d->vm.generation==old_generation&&vm_heap_used()==baseline);
     }
-    CHECK(total>20&&total<1000);
+    CHECK(total>1&&total<1000);
     /* Candidate allocation faults leave the displayed scene owned and runnable. */
     uint32_t id,code;int32_t value;const char *error;old_generation=d->vm.generation;
     baseline=vm_heap_used();CHECK(!preparation_submit(&app,d,&request,NULL,0,&id));deny_allocation=true;
@@ -75,7 +75,9 @@ static void preparation_contract(void){
         request=(PreparationRequest){.kind=PREPARE_SLOT,.slot=1,.play=true,.revision=d->composition_revision,.light=d->pixels.light,.entry=*store_find(&app.store,STORE_ANIMATION,"slow")};
         strcpy(request.name,"slow");CHECK(!preparation_submit(&app,d,&request,NULL,0,&id));
         command(&session,CMD_MANAGE,(const uint8_t *)stops[n],strlen(stops[n]));CHECK(reply.code==STATUS_OK);
-        app_tick(&app);CHECK(preparation_result(&app,id,&code,&value,&error)&&code!=STATUS_OK);
+        /* A render turn may precede the next preparation boundary. */
+        for(unsigned turn=0;turn<2&&!preparation_result(&app,id,&code,&value,&error);turn++)app_tick(&app);
+        CHECK(preparation_result(&app,id,&code,&value,&error)&&code!=STATUS_OK);
         CHECK(d->transition->compositions[1]==scene);
     }
     /* Invalidation must also stop an unfinished candidate before it reaches
@@ -85,7 +87,25 @@ static void preparation_contract(void){
     command(&session,CMD_MANAGE,(const uint8_t *)stale_pause,strlen(stale_pause));CHECK(reply.code==STATUS_CONFIG);
     app_tick(&app);CHECK(!preparation_result(&app,id,&code,&value,&error));
     d->composition_revision++;
-    app_tick(&app);CHECK(preparation_result(&app,id,&code,&value,&error)&&code!=STATUS_OK);
+    /* A render turn may precede the next preparation boundary. */
+    for(unsigned turn=0;turn<2&&!preparation_result(&app,id,&code,&value,&error);turn++)app_tick(&app);
+    CHECK(preparation_result(&app,id,&code,&value,&error)&&code!=STATUS_OK);
+    /* The 1,024-pixel/four-scalar Pico scene left 7,336 bytes free. Even an
+       empty replacement used to need both a 5 KiB parser and a 2.5 KiB config.
+       Validation must fit without releasing or changing that live scene. */
+    size_t reserve=VM_HEAP_LIMIT-vm_heap_used()-7336u;
+    CHECK(vm_heap_charge(reserve));baseline=vm_heap_used();
+    request=(PreparationRequest){.kind=PREPARE_CONFIG_VALIDATE,.active_revision=app.revision,.saved_revision=app.store.config_revision};
+    CHECK(!preparation_submit(&app,d,&request,EMPTY_CONFIG,strlen(EMPTY_CONFIG),&id));
+    for(unsigned n=0;n<1000&&!preparation_result(&app,id,&code,&value,&error);n++)preparation_tick(&app);
+    CHECK(preparation_result(&app,id,&code,&value,&error)&&code==STATUS_OK);
+    CHECK(d->transition->compositions[1]==scene&&vm_heap_used()==baseline);
+    const char *invalid="{\"schema\":\"lightvm.config\",\"outputs\":[],\"unexpected\":1}";
+    CHECK(!preparation_submit(&app,d,&request,invalid,strlen(invalid),&id));
+    for(unsigned n=0;n<1000&&!preparation_result(&app,id,&code,&value,&error);n++)preparation_tick(&app);
+    CHECK(preparation_result(&app,id,&code,&value,&error)&&code==STATUS_CONFIG);
+    CHECK(d->transition->compositions[1]==scene&&vm_heap_used()==baseline);
+    vm_heap_uncharge(reserve);
     session_destroy(&session);app_destroy(&app);storage_available=false;CHECK(vm_heap_used()==0);
 
     /* Every byte boundary is a legal parser yield; decoded duplicate keys and
@@ -96,4 +116,54 @@ static void preparation_contract(void){
         do{status=json_step(&parser,quantum);CHECK(++ticks<1000);}while(!status);
         CHECK((status>0)==(n<3));
     }
+    /* Truncated status fields must remain terminated and leave both guards
+       intact, including zero capacity and the largest unsigned counter. */
+    for(size_t capacity=0;capacity<24;capacity++){
+        unsigned char guarded[32];memset(guarded,0xa5,sizeof(guarded));
+        StatusWriter writer={(char *)guarded+4,capacity,0};
+        status_integer(&writer,"counter",UINT64_MAX);
+        status_field(&writer,"suffix","value",5);
+        for(size_t n=0;n<4;n++)CHECK(guarded[n]==0xa5);
+        for(size_t n=4+capacity;n<sizeof(guarded);n++)CHECK(guarded[n]==0xa5);
+        if(capacity)CHECK(guarded[4+capacity-1]==0);
+    }
+    /* Wire CRC remains identical for every byte and arbitrary incremental
+       boundaries, including nonstandard seeds used by streaming callers. */
+    CHECK(crc32_bytes((const uint8_t *)"123456789",9)==0xcbf43926u);
+    uint8_t crc_data[256];for(unsigned i=0;i<256;i++)crc_data[i]=(uint8_t)i;
+    const uint32_t seeds[]={0,UINT32_MAX,0x12345678u};
+    for(unsigned seed=0;seed<3;seed++){
+        uint32_t reference=seeds[seed];
+        for(unsigned size=0;size<=256;size++){
+            CHECK(crc32_update(seeds[seed],crc_data,size)==reference);
+            unsigned split=size/2;
+            CHECK(crc32_update(crc32_update(seeds[seed],crc_data,split),crc_data+split,size-split)==reference);
+            if(size<256){reference^=crc_data[size];for(unsigned bit=0;bit<8;bit++)reference=(reference>>1)^(0xedb88320u&(0u-(reference&1u)));}
+        }
+    }
+    /* Fast diagnostic formatting retains the full unsigned 64-bit domain. */
+    uint64_t integers[]={0,9,10,99,100,UINT32_MAX,(uint64_t)UINT32_MAX+1,UINT64_MAX};
+    for(unsigned n=0;n<sizeof(integers)/sizeof(*integers);n++){
+        char actual[21],expected[21];size_t size=json_format_u64(actual,integers[n]);
+        snprintf(expected,sizeof(expected),"%llu",(unsigned long long)integers[n]);
+        CHECK(!strcmp(actual,expected)&&size==strlen(expected));
+    }
+    for(uint64_t n=1;n<UINT64_MAX/10;n*=10){
+        char actual[21],expected[21];json_format_u64(actual,n-1);
+        snprintf(expected,sizeof(expected),"%llu",(unsigned long long)(n-1));CHECK(!strcmp(actual,expected));
+    }
+    Json oversized;JsonParser parser;
+    char children[513];children[0]='[';
+    for(unsigned n=0;n<256;n++){children[1+n*2]='0';children[2+n*2]=',';}
+    children[510]=']';CHECK(json_parse(&oversized,children,511));
+    CHECK(oversized.count==256&&oversized.tokens[0].children==255&&oversized.tokens[0].next==256);
+    children[510]=',';children[512]=']';CHECK(!json_parse(&oversized,children,513));
+    char *boundary=malloc(UINT16_MAX);CHECK(boundary);
+    memset(boundary,' ',UINT16_MAX);boundary[UINT16_MAX-1]='0';
+    json_begin(&parser,&oversized,boundary,UINT16_MAX);
+    int status;do{status=json_step(&parser,256);}while(!status);
+    CHECK(status>0&&oversized.tokens[0].start==UINT16_MAX-1&&oversized.tokens[0].end==UINT16_MAX);
+    free(boundary);
+    json_begin(&parser,&oversized,"0",(size_t)UINT16_MAX+1u);
+    CHECK(json_step(&parser,1)<0); /* Reject before reading or truncating offsets. */
 }

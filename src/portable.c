@@ -61,17 +61,20 @@ static const NativeSignature natives[]={
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}
 uint32_t pbc_initial(const Portable *p,unsigned r){
-    uint8_t q[4];if(r>=p->nregs||!p->read(p->context,96+r*8+4,q,4)){((Portable*)p)->io_fault=true;return 0;}return lbc_u32(q);
+    if(r>=p->nregs){((Portable*)p)->io_fault=true;return 0;}
+    return lbc_u32(p->initials+r*4);
 }
-PbcValue pbc_value(const Portable *p,unsigned r){
+static inline __attribute__((always_inline)) PbcValue register_value(const Portable *p,unsigned r){
     PbcValue v={0};if(r>=p->nregs)return v;
-    if(pbc_role(p,r)==R_CONST){v.u=pbc_initial(p,r);return v;}
+    if((p->descriptors[r]>>4)==R_CONST){v.u=lbc_u32(p->initials+r*4);return v;}
     if(p->values)memcpy(&v,p->values+p->register_offsets[r],4);
     return v;
 }
-void pbc_set_value(Portable *p,unsigned r,PbcValue v){
-    if(r<p->nregs&&p->values&&pbc_role(p,r)!=R_CONST)memcpy(p->values+p->register_offsets[r],&v,4);
+static inline __attribute__((always_inline)) void register_write(Portable *p,unsigned r,PbcValue v){
+    if(r<p->nregs&&p->values&&(p->descriptors[r]>>4)!=R_CONST)memcpy(p->values+p->register_offsets[r],&v,4);
 }
+PbcValue pbc_value(const Portable *p,unsigned r){return register_value(p,r);}
+void pbc_set_value(Portable *p,unsigned r,PbcValue v){register_write(p,r,v);}
 static bool table_read(Portable *p,unsigned base,unsigned index,unsigned count,unsigned width,uint8_t *q){
     if(index>=count||!p->read(p->context,base+index*width,q,width)){memset(q,0,width);p->io_fault=true;return false;}return true;
 }
@@ -271,12 +274,15 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
     p->settings_offset=p->calls_offset+p->ncalls*16;
     p->manifest_offset=p->settings_offset+p->nsettings*16;
     if(p->manifest_offset+p->manifest_size!=size)return -1;
-    /* Only compact active type/layout bindings live in RAM. All immutable
-       descriptors, templates and tables remain in the pinned package. */
+    /* Keep initial register values with the decoded bindings. Constant reads
+       occur on every interpreter instruction; consulting the pinned flash
+       package for each operand wastes both cores' instruction-cache capacity.
+       This immutable admission allocation is charged to the VM heap. */
     unsigned binding_bytes=(p->nregs+1u)&~1u;
-    p->metadata_bytes=binding_bytes+p->nregs*sizeof(uint16_t);
+    p->metadata_bytes=binding_bytes+p->nregs*(sizeof(uint16_t)+4u);
     p->metadata=demo_calloc(1,p->metadata_bytes);if(!p->metadata){loader->error="portable bindings exceed memory budget";return -1;}
     p->descriptors=p->metadata;p->register_offsets=(uint16_t*)(p->metadata+binding_bytes);
+    p->initials=p->metadata+binding_bytes+p->nregs*sizeof(uint16_t);
 
         loader->stage=1;return 0;
     }
@@ -287,6 +293,7 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         unsigned type=q[0],role=q[1];uint32_t value=lbc_u32(q+4);
         if(!type||type==5||type>P_REF||role==4||role==5||role>P_SETTING||q[2]||q[3]||!finite_value(type,value))goto fail;
         p->descriptors[r]=(uint8_t)(type|(role<<4));
+        memcpy(p->initials+r*4,q+4,4);
         p->register_offsets[r]=(uint16_t)p->register_bytes;
         if(role!=R_CONST)p->register_bytes+=4;
         if(type==P_REF&&((role==R_CONST&&value>=p->nresources)||(role!=R_CONST&&role!=R_INPUT&&role!=R_LOCAL)||(role!=R_CONST&&value)))goto fail;
@@ -385,7 +392,7 @@ static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bind
         PbcExpression e_value=pbc_expression(p,n);const PbcExpression *e=&e_value;PbcValue v={0};
         if(e->op==0)v.u=e->value;
         else if(e->op==1)v.i=(int32_t)count;
-        else if(e->op==2)v=bindings?bindings[e->a]:pbc_value(p,e->a);
+        else if(e->op==2)v=bindings?bindings[e->a]:register_value(p,e->a);
         else if(e->type==T_INT){
             int64_t a=values[e->a].i,b=values[e->b].i,result;
             switch(e->op){
@@ -399,7 +406,7 @@ static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bind
             switch(e->op){case 3:v.f=a+b;break;case 4:v.f=a-b;break;case 5:v.f=a*b;break;
             case 8:if(b==0)return false;v.f=a/b;break;case 7:if(b==0)return false;v.f=a-floorf(a/b)*b;break;
             case 9:v.f=fminf(a,b);break;case 10:v.f=fmaxf(a,b);break;default:return false;}
-            if(!isfinite(v.f))return false;
+            if(!lbc_finite(v.f))return false;
         }
         values[n]=v;
     }
@@ -418,7 +425,7 @@ static bool store_value(PbcResource *r,unsigned index,PbcValue value){
     case 11:if(value.i<0)return false;/* Supported integer domain is signed i32. */
         /* fall through */
     case 1:memcpy(at,&value.i,4);break;
-    case 2:if(!isfinite(value.f))return false;memcpy(at,&value.f,4);break;
+    case 2:if(!lbc_finite(value.f))return false;memcpy(at,&value.f,4);break;
     case DRAW_RGBA:if(value.u>0xffffff)return false;draw_rgba(at,value.u,255);break;
     case 7:if(value.u>255)return false;*at=(uint8_t)value.u;break;
     case 8:if(value.u>65535)return false;{uint16_t v=(uint16_t)value.u;memcpy(at,&v,2);}break;
@@ -448,7 +455,7 @@ static bool resolve_settings(Portable *p,unsigned count,PbcValue *bindings){
         unsigned typ=pbc_type(p,s->reg);double v=number(value,typ);
         if(s->minimum!=UINT32_MAX&&(!evaluate(p,s->minimum,count,bindings,&lo)||v<number(lo,pbc_expression((Portable*)p,s->minimum).type)))return false;
         if(s->maximum!=UINT32_MAX&&(!evaluate(p,s->maximum,count,bindings,&hi)||v>number(hi,pbc_expression((Portable*)p,s->maximum).type)))return false;
-        if(bindings)bindings[s->reg]=value;else pbc_set_value(p,s->reg,value);
+        if(bindings)bindings[s->reg]=value;else register_write(p,s->reg,value);
     }
     p->argument_error[0]=0;
     return true;
@@ -465,7 +472,7 @@ int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
     p->state_bytes=(p->state_bytes+7u)&~(size_t)7u;
     p->state=demo_calloc(1,p->state_bytes);if(!p->state){s->error="portable state exceeds memory budget";return -1;};
     p->values=p->state;p->resources=(PbcResource*)(p->values+resource_offset);p->generation=output?output->generation:0;p->output=output;
-    for(unsigned r=0;r<p->nregs;r++)pbc_set_value(p,r,(PbcValue){.u=pbc_initial(p,r)});
+    for(unsigned r=0;r<p->nregs;r++)register_write(p,r,(PbcValue){.u=pbc_initial(p,r)});
 
     s->resource_offset=resource_offset;
 
@@ -580,9 +587,9 @@ bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned
         if(!finite_value(type,arguments[n].u)||(type==P_REF&&arguments[n].u>=p->nresources))return false;
     }
     for(unsigned r=0;r<p->nregs;r++)if(pbc_role(p,r)==R_LOCAL){
-        pbc_set_value(p,r,(PbcValue){.u=pbc_initial(p,r)});
+        register_write(p,r,(PbcValue){.u=pbc_initial(p,r)});
     }
-    for(unsigned n=0;n<count;n++)pbc_set_value(p,fn->arg_start+n,arguments[n]);
+    for(unsigned n=0;n<count;n++)register_write(p,fn->arg_start+n,arguments[n]);
     p->function=function;p->pc=fn->first;p->used=0;p->bulk=0;p->status=0;return true;
 }
 /* PCG32 state belongs to the portable instance. Rejection consumes one VM
@@ -613,7 +620,7 @@ static bool random_range(Portable *p,int64_t start,int64_t stop,int64_t step,Pbc
 /* Native signatures and permission checks above are shared for every binding.
  * Bodies below implement library versions, not compiler-specific AST behaviour. */
 static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
-    PbcValue a[8]={{0}};for(unsigned k=0;k<site->argc;k++)a[k]=pbc_value(p,site->args[k]);
+    PbcValue a[8]={{0}};for(unsigned k=0;k<site->argc;k++)a[k]=register_value(p,site->args[k]);
     if(site->binding>=55){if(a[0].u>=p->ninputs)return false;*result=p->inputs[a[0].u].snapshot;return true;}
     if(site->binding>=18){uint64_t started=platform_time_us();bool ok=pbc_drawing_call(p,site,a,result);p->native_draw_us+=platform_time_us()-started;return ok;}
     switch(site->binding){
@@ -621,12 +628,12 @@ static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
     case 4:return random_range(p,a[0].i,a[1].i,a[2].i,result);
     case 5:random_seed(p,a[0].i<0?(uint64_t)-(int64_t)a[0].i:(uint64_t)a[0].i);return true;
     case 6:random_default(p);return true;
-    case 7:if(!isfinite(a[0].f))return false;result->f=sinf(a[0].f);return true;
+    case 7:if(!lbc_finite(a[0].f))return false;result->f=sinf(a[0].f);return true;
     case 8:result->i=(int32_t)(a[0].u>>16);return true;
     case 9:result->i=(int32_t)((a[0].u>>8)&255);return true;
     case 10:result->i=(int32_t)(a[0].u&255);return true;
     case 11:{
-        if(!isfinite(a[0].f)||a[0].f<0)return false;
+        if(!lbc_finite(a[0].f)||a[0].f<0)return false;
         float hue=fmodf(a[0].f,256.0f);unsigned sector=hue<85?0:hue<170?1:2;
         float part=hue-(float)(sector*85);unsigned rising=(unsigned)(part*3);if(rising>255)rising=255;
         unsigned falling=255-rising;
@@ -661,10 +668,16 @@ int pbc_resume(Portable *p,unsigned quota){
     unsigned dispatched=0;
     while(quota--){
         if(p->used>=LIGHTVM_INVOCATION_LIMIT)goto fault;
-        if(dispatched++&&(p->bulk||!(dispatched&15u))&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
+        bool checked=dispatched&&(p->bulk||!((dispatched+1u)&15u));
+        if(checked&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
+        dispatched++;
         uint8_t q[8];if(!instruction(p,p->pc,q))goto fault;
-        unsigned op=q[0],a=q[1],b=q[2],c=q[3];uint32_t d=lbc_u32(q+4);p->pc++;p->used++;p->dispatch_count++;
-        PbcValue r[4]={pbc_value(p,a),pbc_value(p,b),pbc_value(p,c),pbc_value(p,d)};
+        unsigned op=q[0],a=q[1],b=q[2],c=q[3];uint32_t d=lbc_u32(q+4);
+        /* Completing a chunk clears bulk. Check before the next expensive
+           operation as well, but let cheap tail instructions commit the frame. */
+        if(op>=P_FILL&&!checked&&dispatched>1&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
+        p->pc++;p->used++;p->dispatch_count++;
+        PbcValue r[4]={register_value(p,a),register_value(p,b),register_value(p,c),register_value(p,d)};
         if(p->io_fault)goto fault;
         bool writes=true;
         switch(op){
@@ -675,14 +688,14 @@ int pbc_resume(Portable *p,unsigned quota){
         case IDIV:case IMOD:{int32_t x=r[1].i,y=r[2].i;if(!y||(x==INT32_MIN&&y==-1))goto fault;int32_t div=x/y,rem=x%y;if(rem&&((rem<0)!=(y<0))){div--;rem+=y;}r[0].i=op==IDIV?div:rem;break;}
         case FADD:r[0].f=r[1].f+r[2].f;break;case FSUB:r[0].f=r[1].f-r[2].f;break;case FMUL:r[0].f=r[1].f*r[2].f;break;
         case FDIV:if(r[2].f==0)goto fault;r[0].f=r[1].f/r[2].f;break;
-        case FMOD:if(!isfinite(r[1].f)||!isfinite(r[2].f)||r[2].f==0)goto fault;r[0].f=r[1].f-floorf(r[1].f/r[2].f)*r[2].f;break;
+        case FMOD:if(!lbc_finite(r[1].f)||!lbc_finite(r[2].f)||r[2].f==0)goto fault;r[0].f=r[1].f-floorf(r[1].f/r[2].f)*r[2].f;break;
         case ITOF:r[0].f=(float)r[1].i;break;
-        case FTOI:if(!isfinite(r[1].f)||r[1].f<-2147483648.0f||r[1].f>=2147483648.0f)goto fault;r[0].i=(int32_t)r[1].f;break;
+        case FTOI:if(!lbc_finite(r[1].f)||r[1].f<-2147483648.0f||r[1].f>=2147483648.0f)goto fault;r[0].i=(int32_t)r[1].f;break;
         case ILT:r[0].u=r[1].i<r[2].i;break;case FLT:r[0].u=r[1].f<r[2].f;break;
         case EQ:r[0].u=pbc_type(p,b)==T_FLOAT?r[1].f==r[2].f:r[1].u==r[2].u;break;
         case JZ:writes=false;if(!r[0].u)p->pc=d;break;case JMP:writes=false;p->pc=d;break;
         case RGB:if(r[1].u>255||r[2].u>255||r[3].u>255)goto fault;r[0].u=r[1].u<<16|r[2].u<<8|r[3].u;break;
-        case HSV:if(!isfinite(r[1].f)||!isfinite(r[2].f)||!isfinite(r[3].f)||r[2].f<0||r[2].f>1||r[3].f<0||r[3].f>1)goto fault;r[0].u=lbc_hsv(r[1].f,r[2].f,r[3].f);break;
+        case HSV:if(!lbc_finite(r[1].f)||!lbc_finite(r[2].f)||!lbc_finite(r[3].f)||r[2].f<0||r[2].f>1||r[3].f<0||r[3].f>1)goto fault;r[0].u=lbc_hsv(r[1].f,r[2].f,r[3].f);break;
         case IMIN:r[0].i=r[1].i<r[2].i?r[1].i:r[2].i;break;case IMAX:r[0].i=r[1].i>r[2].i?r[1].i:r[2].i;break;
         case FMIN:r[0].f=fminf(r[1].f,r[2].f);break;case FMAX:r[0].f=fmaxf(r[1].f,r[2].f);break;
         case HASH:r[0].f=lbc_hash01(r[1].i,r[2].i);break;
@@ -714,7 +727,7 @@ int pbc_resume(Portable *p,unsigned quota){
         }
         default:goto fault;
         }
-        if(writes)pbc_set_value(p,a,r[0]);
+        if(writes)register_write(p,a,r[0]);
     }
     return 0;
 fault:p->status=UINT32_MAX;return -1;

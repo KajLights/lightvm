@@ -116,11 +116,12 @@ static void configuration_permutations(void){
     digital_inputs_apply(&inputs,reordered,3);
     CHECK(inputs.devices[0].stable==102&&inputs.devices[1].stable==100&&inputs.devices[2].stable==101);
     CHECK(opened==before_open&&closed==before_close);
-    reordered[0]=configs[1];reordered[1]=configs[2];strcpy(reordered[2].id,"new");
-    digital_inputs_apply(&inputs,reordered,3);
+    DigitalInputConfig replaced[3]={configs[1],configs[2],config};strcpy(replaced[2].id,"new");
+    digital_inputs_apply(&inputs,replaced,3);
+    CHECK(inputs.devices[0].config==&replaced[0]&&inputs.devices[1].config==&replaced[1]);
     CHECK(inputs.devices[0].stable==101&&inputs.devices[1].stable==102&&!inputs.devices[2].bus);
     CHECK(closed==before_close+1);
-    digital_inputs_apply(&inputs,reordered+1,1);CHECK(inputs.devices[0].stable==102);
+    digital_inputs_apply(&inputs,replaced+1,1);CHECK(inputs.devices[0].stable==102);
     CHECK(closed==before_close+2);digital_inputs_destroy(&inputs);CHECK(opened==closed);
 }
 int main(void) {

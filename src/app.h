@@ -73,6 +73,7 @@ typedef struct App {
     uint32_t transition_program_generation;
     bool uploading, staged, booting;
     bool command_active, disconnect_pending, hardware_changing;
+    uint8_t preparation_turn;
     uint64_t upload_deadline;
     char object_name[OBJECT_NAME_LIMIT + 1];
     uint32_t last_code;

@@ -21,6 +21,13 @@ if(worker_stack_remainder)
     message(FATAL_ERROR "LIGHTVM_WORKER_STACK_BYTES must be a multiple of 32")
 endif()
 target_compile_definitions(lightvm PRIVATE PICO_PANIC_FUNCTION=lightvm_panic PICO_STACK_SIZE=16384 PICO_CORE1_STACK_SIZE=${LIGHTVM_WORKER_STACK_BYTES})
+# Queue complete ordinary control requests while the foreground renders. The
+# SDK's 64-byte CDC FIFO otherwise splits JSON commands across render turns.
+# A full operation-progress reply fits in TX without holding the foreground
+# while the host drains individual USB packets.
+# Keep endpoint transfers at one USB packet: a command ending on an exact
+# 64-byte boundary must not wait for another packet or a host ZLP.
+target_compile_definitions(lightvm PRIVATE CFG_TUD_CDC_RX_BUFSIZE=256 CFG_TUD_CDC_TX_BUFSIZE=1024 CFG_TUD_CDC_EP_BUFSIZE=64)
 # Both stacks are excluded from the contiguous heap and checked in the RAM gate.
 pico_set_linker_script_var(lightvm RAM_LENGTH "RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384-${LIGHTVM_WORKER_STACK_BYTES}")
 pico_set_linker_script_var(lightvm SCRATCH_X_ORIGIN "RAM_ORIGIN_DEFAULT+RAM_LENGTH_DEFAULT+SCRATCH_X_LENGTH_DEFAULT+SCRATCH_Y_LENGTH_DEFAULT-16384-${LIGHTVM_WORKER_STACK_BYTES}")

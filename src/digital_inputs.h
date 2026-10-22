@@ -27,7 +27,7 @@ typedef struct {
     bool active_low, home_assistant;
 } DigitalInputConfig;
 typedef struct {
-    DigitalInputConfig config;
+    const DigitalInputConfig *config;
     void *bus;
     uint16_t stable, candidate, press_feedback;
     uint64_t changed[DIGITAL_INPUT_CHANNELS], next_sample;
@@ -47,6 +47,8 @@ typedef struct {
     DigitalInputEvent events[DIGITAL_INPUT_EVENT_LIMIT];
 } DigitalInputs;
 void digital_inputs_destroy(DigitalInputs *);
+// Borrows immutable configuration until the next apply/destroy. The owner must
+// keep the old configuration alive until apply has finished rebinding devices.
 void digital_inputs_apply(DigitalInputs *, const DigitalInputConfig *, unsigned);
 void digital_inputs_tick(DigitalInputs *,uint64_t now);
 bool digital_inputs_event(DigitalInputs *,DigitalInputEvent *);

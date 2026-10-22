@@ -71,19 +71,19 @@ static bool evaluate(Instruction i,Value *v) {
     }
     case FADD:v[i.a].f=x.f+y.f;break;case FSUB:v[i.a].f=x.f-y.f;break;case FMUL:v[i.a].f=x.f*y.f;break;
     case FDIV:if(y.f==0)return false;v[i.a].f=x.f/y.f;break;
-    case FMOD:if(!isfinite(x.f)||!isfinite(y.f)||y.f==0)return false;v[i.a].f=x.f-floorf(x.f/y.f)*y.f;break;
+    case FMOD:if(!lbc_finite(x.f)||!lbc_finite(y.f)||y.f==0)return false;v[i.a].f=x.f-floorf(x.f/y.f)*y.f;break;
     case ITOF:v[i.a].f=(float)x.i;break;
-    case FTOI:if(!isfinite(x.f)||x.f<-2147483648.0f||x.f>=2147483648.0f)return false;v[i.a].i=(int32_t)x.f;break;
+    case FTOI:if(!lbc_finite(x.f)||x.f<-2147483648.0f||x.f>=2147483648.0f)return false;v[i.a].i=(int32_t)x.f;break;
     case ILT:v[i.a].u=x.i<y.i;break;case FLT:v[i.a].u=x.f<y.f;break;
     case MAP_FEQ:v[i.a].u=x.f==y.f;break;case MAP_EQ:v[i.a].u=x.u==y.u;break;
     case RGB:if(x.u>255||y.u>255||v[i.d].u>255)return false;v[i.a].u=x.u<<16|y.u<<8|v[i.d].u;break;
-    case HSV:if(!isfinite(x.f)||!isfinite(y.f)||!isfinite(v[i.d].f)||y.f<0||y.f>1||v[i.d].f<0||v[i.d].f>1)return false;v[i.a].u=lbc_hsv(x.f,y.f,v[i.d].f);break;
+    case HSV:if(!lbc_finite(x.f)||!lbc_finite(y.f)||!lbc_finite(v[i.d].f)||y.f<0||y.f>1||v[i.d].f<0||v[i.d].f>1)return false;v[i.a].u=lbc_hsv(x.f,y.f,v[i.d].f);break;
     case IMIN:v[i.a].i=x.i<y.i?x.i:y.i;break;case IMAX:v[i.a].i=x.i>y.i?x.i:y.i;break;
     case FMIN:v[i.a].f=fminf(x.f,y.f);break;case FMAX:v[i.a].f=fmaxf(x.f,y.f);break;
     case HASH:v[i.a].f=lbc_hash01(x.i,y.i);break;
-    case MAP_SIN:if(!isfinite(x.f))return false;v[i.a].f=sinf(x.f);break;
+    case MAP_SIN:if(!lbc_finite(x.f))return false;v[i.a].f=sinf(x.f);break;
     case MAP_RED:v[i.a].u=x.u>>16;break;case MAP_GREEN:v[i.a].u=(x.u>>8)&255;break;case MAP_BLUE:v[i.a].u=x.u&255;break;
-    case MAP_WHEEL:if(!isfinite(x.f)||x.f<0)return false;v[i.a].u=draw_colorwheel(x.f);break;
+    case MAP_WHEEL:if(!lbc_finite(x.f)||x.f<0)return false;v[i.a].u=draw_colorwheel(x.f);break;
     default:return false;
     }
     return true;
@@ -93,7 +93,7 @@ typedef struct {
     PbcResource *image;unsigned index,length,stride,limit;
 } MapKernel;
 typedef struct { MapKernel *kernel;unsigned first,end;bool success; } MapTask;
-static void map_pixels(void *context){
+static LIGHTVM_DRAW_CODE void map_pixels(void *context){
     MapTask *task=context;MapKernel *k=task->kernel;
     Value values[128],invariants[32];memcpy(values,k->initial,sizeof(values));
     task->success=false;
@@ -125,7 +125,11 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     /* Failed transient output is discarded. Persistent resources stay serial so
        their partial writes on a fault keep the defined instruction order. */
     bool parallel=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA&&render_executor_can_split();
-    unsigned start=p->bulk,limit=start+(parallel?128u:32u);if(limit>(unsigned)stop)limit=(unsigned)stop;
+    /* A transient output map can amortize decode/capture over 64 pixels even
+       when both cores own VMs. Persistent maps retain their smaller ordered
+       chunks, including the same partial-write boundary on failure. */
+    bool transient=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA;
+    unsigned start=p->bulk,limit=start+(parallel?128u:transient?64u:32u);if(limit>(unsigned)stop)limit=(unsigned)stop;
     MapKernel kernel={0};Instruction *code=kernel.code;Value *values=kernel.initial;
     uint8_t flags[128]={0},*cached=kernel.cached;flags[index]=1;
     unsigned length=end-first;

@@ -42,7 +42,7 @@ bool pbc_drawing_valid(Portable *p,const PbcCall *site,unsigned rights) {
 static PbcResource *resource(Portable *p,unsigned id) {
     return id<p->nresources && p->resources[id].generation==p->generation ? &p->resources[id] : NULL;
 }
-bool pbc_image_read(Portable *p,PbcResource *r,unsigned index,uint8_t pixel[5]) {
+LIGHTVM_DRAW_CODE bool pbc_image_read(Portable *p,PbcResource *r,unsigned index,uint8_t pixel[5]) {
     if(!r||!image(r->kind)||index>=r->count)return false;
     memset(pixel,0,5);pixel[4]=255;
     unsigned stride=draw_stride(r->kind);
@@ -54,21 +54,27 @@ bool pbc_image_read(Portable *p,PbcResource *r,unsigned index,uint8_t pixel[5]) 
         if(!p->read(p->context,p->palette_offset+(r->random_state+first)*4,q,words*4))return false;
         for(unsigned c=0;c<stride;c++)raw[c]=q[((skip+c)/3)*4+(skip+c)%3];
     }
-    for(unsigned c=0;c<5;c++) { int at=draw_channel(r->kind,c); if(at>=0)pixel[c]=raw[at]; }
+    memcpy(pixel,raw,3);
+    if(r->kind==DRAW_IMAGE_RGBW||r->kind==DRAW_IMAGE_RGBWA)pixel[3]=raw[3];
+    if(r->kind==DRAW_RGBA||r->kind==DRAW_IMAGE_RGBA)pixel[4]=raw[3];
+    else if(r->kind==DRAW_IMAGE_RGBWA)pixel[4]=raw[4];
     return true;
 }
 static bool write_pixel(PbcResource *r,unsigned index,const uint8_t pixel[5]) {
     if(!r||r->sealed||!r->data||index>=r->count)return false;
     uint8_t *dst=r->data+(size_t)index*draw_stride(r->kind);
-    for(unsigned c=0;c<5;c++){int at=draw_channel(r->kind,c);if(at>=0)dst[at]=pixel[c];}
+    memcpy(dst,pixel,3);
+    if(r->kind==DRAW_IMAGE_RGBW||r->kind==DRAW_IMAGE_RGBWA)dst[3]=pixel[3];
+    if(r->kind==DRAW_RGBA||r->kind==DRAW_IMAGE_RGBA)dst[3]=pixel[4];
+    else if(r->kind==DRAW_IMAGE_RGBWA)dst[4]=pixel[4];
     return true;
 }
 static unsigned byte(float value) { return (unsigned)(fminf(255,fmaxf(0,value))+0.5f); }
 static void to_premul(unsigned kind,uint8_t pixel[5]) {
-    if(kind!=DRAW_RGBA)for(unsigned c=0;c<4;c++)pixel[c]=draw_mul255(pixel[c],pixel[4]);
+    if(kind!=DRAW_RGBA&&pixel[4]!=255)for(unsigned c=0;c<4;c++)pixel[c]=draw_mul255(pixel[c],pixel[4]);
 }
 static void from_premul(unsigned kind,uint8_t pixel[5]) {
-    if(kind!=DRAW_RGBA)for(unsigned c=0;c<4;c++)pixel[c]=pixel[4]?(uint8_t)(((unsigned)pixel[c]*255+pixel[4]/2)/pixel[4]):0;
+    if(kind!=DRAW_RGBA&&pixel[4]!=255)for(unsigned c=0;c<4;c++)pixel[c]=pixel[4]?(uint8_t)(((unsigned)pixel[c]*255+pixel[4]/2)/pixel[4]):0;
 }
 static void color_transform(uint8_t v[5],const DrawStyle *style,bool premul) {
     if(style->alpha==1 && style->brightness==1 && style->tint==0xffffff && style->hue==0 && style->saturation==1)return;
@@ -140,10 +146,53 @@ static __attribute__((noinline)) bool transform_pixels(Portable *p,PbcResource *
     }
     return true;
 }
-static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
-    Portable *p=k->p;PbcResource *r=k->r,*src=k->src,*style=k->style,*palette=k->palette;
+/* Keep only the measured transformed-image loop in SRAM on Pico W. */
+static LIGHTVM_DRAW_CODE __attribute__((noinline)) bool image_pixels(DrawKernel *k,unsigned first,unsigned end){
+    Portable *p=k->p;PbcResource *r=k->r,*src=k->src,*style=k->style;
     const PbcValue *a=k->a;unsigned id=k->id;
     double period=k->period,wrapped_translate=k->wrapped_translate,wrapped_origin=k->wrapped_origin;
+    for(unsigned i=first;i<end;i++){
+        uint8_t v[5];if(!pbc_image_read(p,r,i,v))return false;
+        DrawStyle *s=(DrawStyle *)style->data;
+        uint8_t left[5],right[5];
+        if(id==52){
+            double x=fmod(((double)i-wrapped_translate)/(double)s->scale+wrapped_origin,period);
+            if(x<0)x+=period;
+            float sum[5]={0};
+            if(!sample_add(p,src,x,a[3].u!=0,sum)||!sample_add(p,src,x-period,a[3].u!=0,sum))return false;
+            for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(sum[c]);
+        }else if(k->integer_mapping){
+            /* Under these bounds, each original float operation is an
+               exact integer. Preserve package reads (and their faults),
+               including the zero-weight neighbour of linear sampling. */
+            int x=(int)i+k->offset;
+            if(x < -1 || x > (int)src->count)continue;
+            if(!sample(p,src,x,left))return false;
+            if(a[3].u&&!src->data&&!sample(p,src,x+1,right))return false;
+        }else{
+            float x=((float)i-s->translate)/s->scale+s->origin;
+            if(!lbc_finite(x))return false;
+            if(x < -1 || x > (float)src->count)continue;
+            int base=(int)floorf(x);
+            if(a[3].u==0){if(!sample(p,src,(int)floorf(x+0.5f),left))return false;}
+            else {
+                if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
+                float mix=x-floorf(x);
+                for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(left[c]*(1-mix)+right[c]*mix);
+            }
+        }
+        color_transform(left,s,true);to_premul(r->kind,v);
+        draw_over_channels(v,left,4,DRAW_OPACITY_ONE);
+        from_premul(r->kind,v);
+
+        if(!write_pixel(r,i,v))return false;
+    }
+    return true;
+}
+static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
+    if(k->id==31||k->id==52)return image_pixels(k,first,end);
+    Portable *p=k->p;PbcResource *r=k->r,*src=k->src,*style=k->style,*palette=k->palette;
+    const PbcValue *a=k->a;unsigned id=k->id;
     if(id==34){
         /* Fill overwrites every channel. Pack once, without reading pixels or
            repeating colour conversion for each destination. */
@@ -159,11 +208,11 @@ static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
             else v[channel]=(uint8_t)value;
         }else if(id>=48&&id<=50){
             uint32_t color;
-            if(id==49){float hue=a[1].f+i*a[2].f;if(!isfinite(hue))return false;color=draw_colorwheel(hue);}
+            if(id==49){float hue=a[1].f+i*a[2].f;if(!lbc_finite(hue))return false;color=draw_colorwheel(hue);}
             else{
                 uint32_t left=a[1].u,right=a[2].u;unsigned mix=r->count>1?(i*255u+(r->count-1)/2)/(r->count-1):0;
                 if(id==50){
-                    float phase=a[2].f+i*a[3].f;if(!isfinite(phase))return false;
+                    float phase=a[2].f+i*a[3].f;if(!lbc_finite(phase))return false;
                     phase=fmodf(phase,(float)palette->count);if(phase<0)phase+=palette->count;
                     unsigned index=(unsigned)phase;mix=(unsigned)((phase-index)*255+0.5f);
                     memcpy(&left,palette->data+index*4,4);memcpy(&right,palette->data+((index+1)%palette->count)*4,4);
@@ -178,39 +227,7 @@ static bool draw_pixels(DrawKernel *k,unsigned first,unsigned end){
             draw_over_channels(v,point,4,DRAW_OPACITY_ONE);
             from_premul(r->kind,v);
         }else if(id==35){if(!pbc_image_read(p,src,i,v))return false;}
-        else if(id==31||id==52) {
-            DrawStyle *s=(DrawStyle *)style->data;
-            uint8_t left[5],right[5];
-            if(id==52){
-                double x=fmod(((double)i-wrapped_translate)/(double)s->scale+wrapped_origin,period);
-                if(x<0)x+=period;
-                float sum[5]={0};
-                if(!sample_add(p,src,x,a[3].u!=0,sum)||!sample_add(p,src,x-period,a[3].u!=0,sum))return false;
-                for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(sum[c]);
-            }else if(k->integer_mapping){
-                /* Under these bounds, each original float operation is an
-                   exact integer. Preserve package reads (and their faults),
-                   including the zero-weight neighbour of linear sampling. */
-                int x=(int)i+k->offset;
-                if(x < -1 || x > (int)src->count)continue;
-                if(!sample(p,src,x,left))return false;
-                if(a[3].u&&!src->data&&!sample(p,src,x+1,right))return false;
-            }else{
-                float x=((float)i-s->translate)/s->scale+s->origin;
-                if(!isfinite(x))return false;
-                if(x < -1 || x > (float)src->count)continue;
-                int base=(int)floorf(x);
-                if(a[3].u==0){if(!sample(p,src,(int)floorf(x+0.5f),left))return false;}
-                else {
-                    if(!sample(p,src,base,left)||!sample(p,src,base+1,right))return false;
-                    float mix=x-floorf(x);
-                    for(unsigned c=0;c<5;c++)left[c]=(uint8_t)byte(left[c]*(1-mix)+right[c]*mix);
-                }
-            }
-            color_transform(left,s,true);to_premul(r->kind,v);
-            draw_over_channels(v,left,4,DRAW_OPACITY_ONE);
-            from_premul(r->kind,v);
-        }else return false;
+        else return false;
         if(!write_pixel(r,i,v))return false;
     }
     return true;
@@ -229,7 +246,7 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
         if(start>stop||stop>r->count)return false;
         uint32_t weight=0;
         if(id==53){
-            if(!isfinite(a[1].f)||a[1].f<0||a[1].f>1)return false;
+            if(!lbc_finite(a[1].f)||a[1].f<0||a[1].f>1)return false;
             weight=draw_opacity_float(a[1].f);
         }else if(a[1].u>1)return false;
         unsigned cursor=p->bulk?p->bulk:start,end=cursor+32;if(end>stop)end=stop;
@@ -245,7 +262,7 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
         unsigned fields=r->random_state;
         if(id==45){result->u=batch->active;return true;}
         if(id==37||id==38) {
-            if(id==37&&(!isfinite(a[1].f)||a[1].f<0))return false;
+            if(id==37&&(!lbc_finite(a[1].f)||a[1].f<0))return false;
             unsigned start=p->bulk?p->bulk:(id==37?0:a[1].u);
             if(start>r->count)return false;
             unsigned end=start+8;if(end>r->count)end=r->count;
@@ -272,10 +289,10 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
         if(!instance->active)return false;
         if(id==44||id==47) {
             uint64_t since=id==44?instance->born:instance->previous;
-            if(!isfinite(a[2].f)||p->now_us<since)return false;
+            if(!lbc_finite(a[2].f)||p->now_us<since)return false;
             result->f=(float)((p->now_us-since)/1000000.0);
             if(id==47)instance->previous=p->now_us;
-            return isfinite(result->f);
+            return lbc_finite(result->f);
         }
         if(a[2].u>=fields)return false;
         bool floating;
@@ -285,14 +302,14 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
         if(floating!=(id==41||id==43))return false;
         uint32_t *values=draw_instance_fields(instance);
         if(id==40||id==41){result->u=values[a[2].u];return true;}
-        if(id==43&&!isfinite(a[3].f))return false;
+        if(id==43&&!lbc_finite(a[3].f))return false;
         values[a[2].u]=a[3].u;return true;
     }
     if(id==32||id==33) {
         if(r->kind!=DRAW_STYLE||!r->data)return false;
         DrawStyle *s=(DrawStyle *)r->data;
-        if(id==32){if(!isfinite(a[1].f)||!isfinite(a[2].f)||!isfinite(a[3].f)||a[2].f==0)return false;s->translate=a[1].f;s->scale=a[2].f;s->origin=a[3].f;}
-        else{if(!isfinite(a[1].f)||a[1].f<0||a[1].f>1||!isfinite(a[2].f)||a[2].f<0||a[3].u>0xffffff||!isfinite(a[4].f)||!isfinite(a[5].f)||a[5].f<0)return false;s->alpha=a[1].f;s->brightness=a[2].f;s->tint=a[3].u;s->hue=a[4].f;s->saturation=a[5].f;}
+        if(id==32){if(!lbc_finite(a[1].f)||!lbc_finite(a[2].f)||!lbc_finite(a[3].f)||a[2].f==0)return false;s->translate=a[1].f;s->scale=a[2].f;s->origin=a[3].f;}
+        else{if(!lbc_finite(a[1].f)||a[1].f<0||a[1].f>1||!lbc_finite(a[2].f)||a[2].f<0||a[3].u>0xffffff||!lbc_finite(a[4].f)||!lbc_finite(a[5].f)||a[5].f<0)return false;s->alpha=a[1].f;s->brightness=a[2].f;s->tint=a[3].u;s->hue=a[4].f;s->saturation=a[5].f;}
         return true;
     }
     if(!image(r->kind))return false;
@@ -300,7 +317,7 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
     if(r->sealed||!r->data)return false;
     unsigned start=0,stop=r->count;
     if(id==28){start=a[3].u;stop=a[4].u;if(a[1].u>4||draw_channel(r->kind,a[1].u)<0||a[2].u>255)return false;}
-    if(id==29||id==30){start=a[2].u;stop=a[3].u;if(draw_channel(r->kind,4)<0||!isfinite(a[1].f)||a[1].f<0||(id==29&&a[1].f>1))return false;}
+    if(id==29||id==30){start=a[2].u;stop=a[3].u;if(draw_channel(r->kind,4)<0||!lbc_finite(a[1].f)||a[1].f<0||(id==29&&a[1].f>1))return false;}
     if(id==34){start=a[3].u;stop=a[4].u;if(a[1].u>0xffffff||a[2].u>255)return false;}
     if(id==36){start=a[2].u;stop=a[3].u;}
     if(start>stop||stop>r->count)return false;
@@ -312,7 +329,7 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
     double period=0,wrapped_translate=0,wrapped_origin=0;
     if(id==52){
         DrawStyle *s=(DrawStyle *)style->data;
-        if(!isfinite(s->translate)||!isfinite(s->origin)||!isfinite(s->scale)||s->scale==0)return false;
+        if(!lbc_finite(s->translate)||!lbc_finite(s->origin)||!lbc_finite(s->scale)||s->scale==0)return false;
         if(!r->count || (double)src->count*fabs((double)s->scale)>(double)r->count)return false;
         period=(double)r->count/fabs((double)s->scale);
         wrapped_translate=fmod((double)s->translate,(double)r->count);
@@ -328,9 +345,9 @@ bool pbc_drawing_call(Portable *p,const PbcCall *site,const PbcValue *a,PbcValue
     }
     if(id==51){if(a[1].u>=r->count||a[2].u>0xffffff||a[3].u>255)return false;start=a[1].u;stop=start+1;}
     if(id==48&&(a[1].u>0xffffff||a[2].u>0xffffff))return false;
-    if(id==49&&(!isfinite(a[1].f)||!isfinite(a[2].f)))return false;
+    if(id==49&&(!lbc_finite(a[1].f)||!lbc_finite(a[2].f)))return false;
     PbcResource *palette=id==50?resource(p,a[1].u):NULL;
-    if(id==50&&(!palette||!palette->data||!palette->count||!isfinite(a[2].f)||!isfinite(a[3].f)))return false;
+    if(id==50&&(!palette||!palette->data||!palette->count||!lbc_finite(a[2].f)||!lbc_finite(a[3].f)))return false;
     /* Large chunks are worthwhile only when they actually split. Two busy
        VM workers need small serial chunks to keep their time slices balanced. */
     bool parallel=p->output&&r->data==p->output->data&&(!src||src->data)&&render_executor_can_split();

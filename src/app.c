@@ -1,4 +1,5 @@
 #include "app.h"
+#include "status.h"
 #include "release.h"
 #include "runtime.h"
 #include "render_executor.h"
@@ -26,8 +27,8 @@ static void bytes(Writer *w, const void *data, size_t size) {
     }
 }
 static void literal(Writer *w, const char *s) { bytes(w, s, strlen(s)); }
-static void number(Writer *w, uint32_t n) { char s[16]; snprintf(s, sizeof(s), "%lu", (unsigned long)n); literal(w, s); }
-static void wide(Writer *w,uint64_t n){char s[24];snprintf(s,sizeof(s),"%llu",(unsigned long long)n);literal(w,s);}
+static void number(Writer *w,uint32_t n){char s[21];size_t size=json_format_u64(s,n);bytes(w,s,size);}
+static void wide(Writer *w,uint64_t n){char s[21];size_t size=json_format_u64(s,n);bytes(w,s,size);}
 static void quoted(Writer *w, const char *s) {
     literal(w, "\"");
     while (*s) {
@@ -241,7 +242,7 @@ static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t
     for(unsigned i=0;i<a->output_count;i++)a->outputs[i]->hardware=a->hardware.outputs[i];
     for(unsigned i=0;i<a->digital_inputs.count;i++){
         DigitalInput *input=&a->digital_inputs.devices[i];uint8_t mask[2];input->press_feedback=0;
-        const StoreEntry *entry=store_find(&a->store,STORE_KEY_FEEDBACK,input->config.id);
+        const StoreEntry *entry=store_find(&a->store,STORE_KEY_FEEDBACK,input->config->id);
         if(entry){
             if(entry->size!=sizeof(mask)||!store_read(&a->store,entry,0,mask,sizeof(mask)))goto failed;
             input->press_feedback=(uint16_t)(mask[0]|(mask[1]<<8));
@@ -278,6 +279,7 @@ static void indicator_tick(App *,AppOutput *,uint64_t);
 static const char *save_output_state(App *,const AppOutput *,bool,const char *,const LightControls *);
 static void collect_composition(Composition *s,unsigned budget){
     if(!s)return;
+    composition_collect_ready(s);
     if(!s->playing||s->command_active||s->composing){
         for(unsigned n=0;n<s->layer_count;n++){
             VmInstance *vm=&s->layers[n].vm;control_observe(vm,vm->control.program_us);
@@ -286,30 +288,26 @@ static void collect_composition(Composition *s,unsigned budget){
         return;
     }
     unsigned first=s->layer_count?s->cursor%s->layer_count:0;
-    /* Rotate when this scene receives admission time. Rotating skipped scenes
-       as well can alias with output rotation and repeatedly skip the same
-       layers when only one pair fits in an epoch. */
-    if(runtime_epoch_can_collect())s->cursor++;
-    unsigned visited=0;
+    bool admitted=false;
+    /* Continue after the last admitted VM, not merely the last visited one.
+       This bounds fairness by admissions even when an epoch fits only one pair,
+       without an O(layers squared) age/cost division on the coordinator. */
     for(unsigned n=0;n<s->layer_count;n++){
-        unsigned chosen=first;
-        if(n){
-            uint64_t best=0,now=platform_time_us();
-            for(unsigned k=1;k<=s->layer_count;k++){
-                unsigned i=(first+k)%s->layer_count;if(visited&(1u<<i))continue;
-                VmInstance *candidate=&s->layers[i].vm;Control *c=&candidate->control;
-                uint64_t since=c->dirty?c->dirty_since_us:c->displayed.captured_us;
-                uint64_t age=now>=since?now-since:0;
-                unsigned cost=candidate->render_us?candidate->render_us:1;if(cost>LIGHTVM_RENDER_SLICE_US)cost=LIGHTVM_RENDER_SLICE_US;
-                bool cached=candidate->portable&&candidate->portable->render_reusable&&c->contribution_valid&&c->contribution.frame&&!c->dirty;
-                uint64_t score=(!candidate->playing||cached)?0:(age/cost)+(c->in_step?1000000u:0u);
-                if(!best||score>best){best=score?score:1;chosen=i;}
-            }
+        unsigned chosen=(first+n)%s->layer_count;
+        VmInstance *vm=&s->layers[chosen].vm;
+        bool changed=false;
+        if(s->prepared&&!vm->control.in_step&&vm->portable&&vm->portable->render_reusable){
+            uint64_t now=platform_time_us(),elapsed=now>=vm->last_frame?now-vm->last_frame:0;
+            changed=inputs_changed(vm->portable,vm->control.program_us+elapsed);
         }
-        visited|=1u<<chosen;VmInstance *vm=&s->layers[chosen].vm;
-        if(!s->prepared||vm->control.in_step)vm_tick_collect(vm,budget);
-        else{control_observe(vm,vm->control.program_us);control_wait(vm,3);}
+        /* A completed composite owns its own pixels. A changed reusable layer
+           can render ahead while it waits for the physical front buffer. */
+        if(!s->prepared||vm->control.in_step||changed){
+            if(vm_tick_collect(vm,budget)){s->cursor=(chosen+1)%s->layer_count;admitted=true;}
+        }else{control_observe(vm,vm->control.program_us);control_wait(vm,3);}
     }
+    /* A complete round must also exchange core assignment. */
+    if(admitted&&s->cursor==first)s->cursor=(first+1)%s->layer_count;
 }
 static void collect_render_jobs(App *a,unsigned first,unsigned budget){
     vm_tick_begin();
@@ -321,6 +319,10 @@ static void collect_render_jobs(App *a,unsigned first,unsigned budget){
             transition_update(t,platform_time_us());
             t->destination_only=d->recall_owned&&t->driver==TRANSITION_MANUAL&&t->progress==100;
             if(t->start_pending||t->command_active||!t->playing)continue;
+            /* Finish/publish the transition before admitting another full set
+               of layer slices. Otherwise four busy VMs can consume every
+               epoch and leave one completed child waiting for its front. */
+            transition_tick(t,64);
             if(t->destination_only)collect_composition(t->compositions[1],budget);
             else{
                 unsigned slot=t->schedule_slot%2;
@@ -431,7 +433,7 @@ static void indicator_tick(App *a,AppOutput *d,uint64_t now) {
     uint16_t pressed=0;
     for(unsigned n=0;n<a->digital_inputs.count;n++){
         const DigitalInput *input=&a->digital_inputs.devices[n];
-        if(input->available&&!strcmp(input->config.indicators,d->hardware.id))pressed=input->stable&input->press_feedback;
+        if(input->available&&!strcmp(input->config->indicators,d->hardware.id))pressed=input->stable&input->press_feedback;
     }
     for(unsigned p=0;p<d->pixels.count;p++){
         uint8_t brightness=indicator_brightness(&d->indicators[p],p<16&&(pressed&(1u<<p)),now);
@@ -462,18 +464,29 @@ void app_tick(App *a) {
         memset(&a->pending_network,0,sizeof(a->pending_network));
     }
     if (!a->network_pending) network_tick(&a->network,now);
-    unsigned first=a->output_count?a->schedule_cursor++%a->output_count:0;
-    collect_render_jobs(a,first,4096);
-    for(unsigned i=0;i<a->output_count;i++){
-        AppOutput *d=a->outputs[(first+i)%a->output_count];
-        if(d->hardware.indicators){indicator_tick(a,d,platform_time_us());continue;}
-        if(d->transition)transition_tick(d->transition,4096);else if(d->composition)composition_tick(d->composition,4096);else vm_tick(&d->vm);
+    /* Rendering and candidate preparation each have a bounded quantum. Do not
+       concatenate both before the port can service another command. Five
+       short preparation turns per render turn keep the old scene progressing
+       while avoiding a long preparation quantum under command/HTTP load. */
+    bool prepare=preparation_pending(a)&&a->preparation_turn<5;
+    a->preparation_turn=prepare?a->preparation_turn+1:0;
+    if(!prepare){
+        unsigned first=a->output_count?a->schedule_cursor++%a->output_count:0;
+        collect_render_jobs(a,first,4096);
+        for(unsigned i=0;i<a->output_count;i++){
+            AppOutput *d=a->outputs[(first+i)%a->output_count];
+            if(d->hardware.indicators){indicator_tick(a,d,platform_time_us());continue;}
+            if(d->transition)transition_tick(d->transition,4096);else if(d->composition)composition_tick(d->composition,4096);else vm_tick(&d->vm);
+        }
+        vm_tick_end();
+    }else for(unsigned i=0;i<a->output_count;i++){
+        AppOutput *d=a->outputs[i];
+        if(d->hardware.indicators)indicator_tick(a,d,platform_time_us());
     }
-    vm_tick_end();
     if(preparation_has_room(a))for(unsigned i=0;i<a->output_count;i++)if(a->outputs[i]->startup_pending){
         a->outputs[i]->startup_pending=false;start_output(a,a->outputs[i]);break;
     }
-    preparation_tick(a);
+    if(prepare||!preparation_pending(a))preparation_tick(a);
     for(unsigned i=0;i<a->output_count;i++){
         AppOutput *d=a->outputs[i];
         if(d->light_save_due&&now>=d->light_save_due&&!a->command_active&&!a->store.writer){
@@ -572,7 +585,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"inputs\":[");
     for(unsigned i=0;i<a->digital_inputs.count;i++){
         const DigitalInput *d=&a->digital_inputs.devices[i];if(i)literal(&w,",");
-        literal(&w,"{\"id\":");quoted(&w,d->config.id);literal(&w,",\"type\":\"tca9555\",\"available\":");literal(&w,d->available?"true":"false");
+        literal(&w,"{\"id\":");quoted(&w,d->config->id);literal(&w,",\"type\":\"tca9555\",\"available\":");literal(&w,d->available?"true":"false");
         literal(&w,",\"pressed\":");if(d->available)number(&w,d->stable);else literal(&w,"null");literal(&w,"}");
     }
     literal(&w,"],\"input_event_overflow\":");number(&w,a->digital_inputs.overflow);
@@ -603,7 +616,11 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"render_epoch_overruns\":");wide(&w,epochs.overruns);
     literal(&w,",\"foreground_calls\":");wide(&w,epochs.foreground_calls);
     literal(&w,",\"foreground_max_gap_us\":");wide(&w,epochs.max_foreground_gap_us);
+    literal(&w,",\"foreground_over_10ms\":");wide(&w,epochs.foreground_over_10ms);
 
+    literal(&w,",\"ingress_calls\":");wide(&w,epochs.ingress_calls);
+    literal(&w,",\"ingress_max_gap_us\":");wide(&w,epochs.max_ingress_gap_us);
+    literal(&w,",\"ingress_over_10ms\":");wide(&w,epochs.ingress_over_10ms);
     literal(&w,",\"instance_context_bytes\":"); number(&w,sizeof(VmInstance));
     literal(&w,",\"app_context_bytes\":"); number(&w,sizeof(App));
     literal(&w,",\"upload_workspace_bytes\":"); number(&w,sizeof(StoreUpload));
@@ -1288,13 +1305,46 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
             for(size_t offset=0;offset<(size_t)d->pixels.count*3;offset+=FRAME_LIMIT){size_t n=(size_t)d->pixels.count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,d->pixels.rgb+offset,n);}reply(a,id,STATUS_OK,(int32_t)d->pixels.count,"transition frame rendered");return true;}
         if(command==CMD_PLAY||command==CMD_STOP){output_command_power(d,command);d->recall_owned=false;transition_play(t,command==CMD_PLAY);if(command==CMD_STOP){transition_invalidate(t);if(t->pending){d->pixels.type->cancel(d->pixels.driver);t->pending=false;}pixels_clear(&d->pixels);pixels_show(&d->pixels);}reply(a,id,STATUS_OK,0,command==CMD_PLAY?"A/B resumed":"A/B stopped");return true;}
         if(command==CMD_RESET){output_command_power(d,command);clear_output_composition(d);d->vm.output=&d->pixels;++d->composition_revision;pixels_clear(&d->pixels);pixels_show(&d->pixels);reply(a,id,STATUS_OK,0,"A/B unloaded");return true;}
-        if(command==CMD_STATUS){char message[FRAME_LIMIT-8];snprintf(message,sizeof(message),"version=" LIGHTVM_VERSION " code_storage=flash module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pixels=%lu mode=transition frames=%lu animation_error=%.99s",MODULE_LIMIT,(unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,(unsigned long)d->pixels.count,(unsigned long)t->frames,t->error[0]?t->error:"-");reply(a,id,STATUS_OK,0,message);return true;}
+        if(command==CMD_STATUS){char message[FRAME_LIMIT-8];
+        StatusWriter w={message,sizeof(message),0};
+        status_field(&w,"version",LIGHTVM_VERSION,SIZE_MAX);
+        status_field(&w,"code_storage","flash",SIZE_MAX);
+        status_integer(&w,"module_limit",MODULE_LIMIT);
+        status_integer(&w,"heap",vm_heap_used());
+        status_integer(&w,"heap_peak",vm_heap_peak());
+        status_integer(&w,"heap_limit",VM_HEAP_LIMIT);
+        status_integer(&w,"pixels",d->pixels.count);
+        status_field(&w,"mode","transition",SIZE_MAX);
+        status_integer(&w,"frames",t->frames);
+        status_integer(&w,"fg10",runtime_epoch_stats().foreground_over_10ms);
+        status_integer(&w,"io10",runtime_epoch_stats().ingress_over_10ms);
+        status_field(&w,"animation_error",t->error[0]?t->error:"-",99);
+        reply(a,id,STATUS_OK,0,message);return true;}
         return false;
     }
     Composition *s=d->composition;if(!s)return false;
     if(command==CMD_STATUS){
         char message[FRAME_LIMIT-8];const PlatformInfo *info=platform_info();
-        snprintf(message,sizeof(message),"version=" LIGHTVM_VERSION " protocol=1 platform=%.16s board=%.24s output=ws2812 ready=1 uploading=%u module_limit=%u heap=%lu heap_peak=%lu heap_limit=%u pixels=%lu frame_interval_us=%u mode=composition frames=%lu layers=%u animation_error=%.99s",info->platform,info->board,d->vm.uploading,MODULE_LIMIT,(unsigned long)vm_heap_used(),(unsigned long)vm_heap_peak(),VM_HEAP_LIMIT,(unsigned long)s->count,FRAME_INTERVAL_US,(unsigned long)s->frames,s->layer_count,s->error[0]?s->error:"-");
+        StatusWriter w={message,sizeof(message),0};
+        status_field(&w,"version",LIGHTVM_VERSION,SIZE_MAX);
+        status_integer(&w,"protocol",1);
+        status_field(&w,"platform",info->platform,16);
+        status_field(&w,"board",info->board,24);
+        status_field(&w,"output","ws2812",SIZE_MAX);
+        status_integer(&w,"ready",1);
+        status_integer(&w,"uploading",d->vm.uploading);
+        status_integer(&w,"module_limit",MODULE_LIMIT);
+        status_integer(&w,"heap",vm_heap_used());
+        status_integer(&w,"heap_peak",vm_heap_peak());
+        status_integer(&w,"heap_limit",VM_HEAP_LIMIT);
+        status_integer(&w,"pixels",s->count);
+        status_integer(&w,"frame_interval_us",FRAME_INTERVAL_US);
+        status_field(&w,"mode","composition",SIZE_MAX);
+        status_integer(&w,"frames",s->frames);
+        status_integer(&w,"layers",s->layer_count);
+        status_integer(&w,"fg10",runtime_epoch_stats().foreground_over_10ms);
+        status_integer(&w,"io10",runtime_epoch_stats().ingress_over_10ms);
+        status_field(&w,"animation_error",s->error[0]?s->error:"-",99);
         reply(a,id,STATUS_OK,0,message);return true;
     }
     if(command==CMD_FRAME){
@@ -1623,8 +1673,8 @@ static bool key_feedback_command(App *a,uint16_t id,const Command *command) {
     const char *input=command->output;unsigned key=command->pixel;bool enabled=command->on;
     if(key<1||key>DIGITAL_INPUT_CHANNELS)goto invalid;
     DigitalInput *d=NULL;
-    for(unsigned n=0;n<a->digital_inputs.count;n++)if(!strcmp(a->digital_inputs.devices[n].config.id,input))d=&a->digital_inputs.devices[n];
-    if(!d||!d->config.indicators[0])goto invalid;
+    for(unsigned n=0;n<a->digital_inputs.count;n++)if(!strcmp(a->digital_inputs.devices[n].config->id,input))d=&a->digital_inputs.devices[n];
+    if(!d||!d->config->indicators[0])goto invalid;
     uint16_t bit=(uint16_t)(1u<<(key-1));
     if(command->kind==COMMAND_KEY_SET){
         uint16_t next=enabled?(uint16_t)(d->press_feedback|bit):(uint16_t)(d->press_feedback&~bit);

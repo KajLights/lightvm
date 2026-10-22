@@ -107,11 +107,16 @@ failures in `mqtt_error`; early acceptance is not a successful preset publicatio
 
 ## Bounded work and measurements
 
-Each foreground cycle grants preparation one unit after rendering. JSON uses an
-explicit cursor (depth 16, 256 tokens), and a parse/load unit processes at most
+While an operation is pending, five preparation turns are followed by one
+render turn, returning to the port after every turn. The old scene continues
+to advance. A preparation turn grants up to 32 units, stopping after a 4 ms
+time target or a terminal operation. The target can overrun by one indivisible
+unit; cancellation and revision validity are checked between units. JSON uses an
+explicit cursor (depth 16, 256 compact tokens, documents at most 65,535 bytes),
+and a parse/load unit processes at most
 256 bytes. Package verification processes at most 32 instructions or 16 register
 descriptors per unit. Resource zeroing uses 256-byte units, resource fills 32
-pixels, guest init/render 256 dispatches plus the board's VM wall-time quantum,
+pixels, guest init/render at most 4,096 dispatches within the board's VM wall-time quantum,
 composition 128 pixels, and transition baseline copies 256 bytes. Settings,
 layer descriptors and cleanup have fixed admitted counts. There is no recursive
 transport service under candidate execution.

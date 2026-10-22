@@ -265,19 +265,32 @@ def draw(ctx, runtime, pixels):
         self.client.configure(self.config, save=True)
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'blue'}))
         self.wait_light(state='ON', effect='blue')
-        self.client.close()
-        self.client = Client(ProcessTransport(self.receiver, self.storage))
-        self.broker.wait(f'{self.root}/availability', b'online')
-        self.wait_light(output='desk', state='ON', effect='blue')
-        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['effect'], 'blue')
+        def restart_and_expect(state):
+            self.client.close()
+            deadline = time.monotonic() + 4
+            while self.broker.connection is not None and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertIsNone(self.broker.connection)
+            # Only fresh publications from the restarted controller can satisfy
+            # the expectation; never accept the previous connection's state.
+            while not self.broker.messages.empty():
+                self.broker.messages.get_nowait()
+            self.broker.latest.clear()
+            self.client = Client(ProcessTransport(self.receiver, self.storage))
+            self.broker.wait(f'{self.root}/availability', b'online')
+            # Startup may publish its restored state before online availability.
+            # broker.wait consumes those earlier publications into latest.
+            restored = json.loads(self.broker.latest.get(f'{self.root}/desk/state', b'{}'))
+            if restored.get('state') != state or restored.get('effect') != 'blue':
+                restored = self.wait_light(output='desk', state=state, effect='blue')
+            self.assertEqual(restored['state'], state)
+            self.assertEqual(restored['effect'], 'blue')
+            self.assertEqual(self.client.describe()['outputs'][0]['power'], state == 'ON')
+
+        restart_and_expect('ON')
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'OFF'}))
         self.wait_light(output='desk', state='OFF')
-        self.client.close()
-        self.client = Client(ProcessTransport(self.receiver, self.storage))
-        self.broker.wait(f'{self.root}/availability', b'online')
-        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['state'], 'OFF')
-        self.assertEqual(json.loads(self.broker.latest[f'{self.root}/desk/state'])['effect'], 'blue')
-        self.assertFalse(self.client.describe()['outputs'][0]['power'])
+        restart_and_expect('OFF')
         # Broker reconnection does not reapply startup or replay retained commands.
         self.broker.publish('homeassistant/status', 'online')
         self.broker.wait(f'{self.root}/availability', b'online')
