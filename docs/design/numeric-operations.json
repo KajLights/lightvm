@@ -1,5 +1,5 @@
 {
-  "status": "frozen mathematical contracts; no new wire encodings or release assignments",
+  "status": "S1 scalar and declaration encodings assigned; S4 native math remains planned",
   "operations": [
     {
       "name": "q16.literal",
@@ -14,13 +14,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "reference-only",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "compiler",
+      "wire_id": {
+        "kind": "constant",
+        "type": 7
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.add",
@@ -34,13 +37,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 40
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.sub",
@@ -54,13 +60,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 41
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.mul",
@@ -74,13 +83,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 42
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.neg",
@@ -93,13 +105,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 45
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.div",
@@ -116,13 +131,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 43
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.mod",
@@ -138,13 +156,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 44
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.min",
@@ -158,13 +179,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 46
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.max",
@@ -178,13 +202,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 47
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.lt",
@@ -198,13 +225,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 48
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.eq",
@@ -218,13 +248,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 17
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.sqrt",
@@ -239,13 +272,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 55
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.from_i32",
@@ -260,13 +296,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 49
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.to_i32",
@@ -279,13 +318,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 50
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.from_f32",
@@ -301,13 +343,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 51
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.to_f32",
@@ -320,13 +365,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 52
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.bits",
@@ -339,13 +387,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 54
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "q16.from_bits",
@@ -358,13 +409,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 53
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "i32.and",
@@ -378,13 +432,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 56
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "i32.or",
@@ -398,13 +455,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 57
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "i32.xor",
@@ -418,13 +478,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 58
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "i32.not",
@@ -437,13 +500,16 @@
       "faults": [],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 59
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "i32.shl",
@@ -459,13 +525,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 60
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "i32.shr",
@@ -481,13 +550,16 @@
       ],
       "effects": [],
       "accuracy": "exact",
-      "implementation": "standalone",
-      "wire_id": null,
-      "feature_floor": {
-        "status": "unreleased",
-        "release": null
+      "implementation": "runtime",
+      "wire_id": {
+        "kind": "instruction",
+        "id": 61
       },
-      "kernel_eligibility": "pure candidate; requires verifier and scalar/bulk conformance before admission"
+      "feature_floor": {
+        "status": "implemented",
+        "release": "1.2.0"
+      },
+      "kernel_eligibility": "not admitted in S1; requires S2 verifier and scalar/bulk conformance"
     },
     {
       "name": "f32.abs",

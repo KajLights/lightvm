@@ -1,7 +1,7 @@
 #ifndef LIGHTVM_NUMERIC_H
 #define LIGHTVM_NUMERIC_H
 
-/* Standalone numeric foundation; not yet linked into the interpreter or firmware.
+/* Shared numeric foundation for typed scalar execution and preparation.
  * Q16.16 values are signed raw integers, with one unit equal to 1/65536.
  * Checked operations require a non-null out pointer and leave it unchanged on
  * failure. All operations are pure, bounded and allocation-free.

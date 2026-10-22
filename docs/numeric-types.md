@@ -1,9 +1,8 @@
 # Numeric foundation contract
 
-22 October 2026. **S0 contract and standalone implementation; runtime integration
-is pending.** These types and new operations are not yet accepted by the compiler,
-loader or firmware. The existing animation API continues to use its current
-types. This contract implements the foundation of the
+22 October 2026. **S1 scalar runtime contract, application feature floor 1.2.0.**
+The compiler, loader and shared firmware core support explicit fixed values and
+arrays alongside the existing types. This implements the first runtime stage of the
 [core SDK plan](design/core-numeric-kernels-plan.md).
 
 ## Scope and provenance
@@ -18,22 +17,25 @@ references. The numeric implementation and fixtures are independently written.
 The [operation catalogue](design/numeric-operations.json) records signatures,
 units, fault conditions, accuracy and intended kernel eligibility. Its names are
 semantic identifiers, not opcode numbers or source-language execution modes.
-`wire_id: null` and an unreleased feature floor mean **do not emit this operation
-as a new bytecode feature**. Assign encodings and the application feature floor
-during integration on the validated Pico repair. Existing operations such
-as sine retain their current bindings until that coordinated change.
+S1 encodings and their 1.2.0 feature floor are assigned. `wire_id: null` and an
+unreleased feature floor still mean **do not emit this operation as a new bytecode
+feature**: the expanded f32 math contract awaits S4. Existing operations such as
+sine retain their current bindings.
 
 ## Values and conversions
 
 Q16.16 is a distinct signed value type with `value = raw / 65536`. Raw storage is
 32 bits; the representable interval is `[-32768, 32768 - 1/65536]`. All bit patterns
-are valid. Zero has one representation. The bytecode type tag and array resource
-kind remain unassigned. A raw integer never becomes a resource handle.
+are valid. Zero has one representation. The bytecode type tag is 7 and the
+four-byte array resource kind is 20. A raw integer never becomes a resource handle.
 
-Construction will be explicit: `fixed(...)`, `FixedArray(count, fill=...)`,
-`fixed_bits(...)` and `fixed_from_bits(...)`, with equivalent frontend support.
-These authoring names are pending integration. Existing literals keep their
-types; mixed arithmetic requires a conversion. Counts and indices remain i32.
+Python construction is explicit: `fixed(...)`, `FixedArray(count, fill=...)`,
+`fixed_bits(...)` and `fixed_from_bits(...)`. `fixed_sqrt(...)` returns fixed;
+`int(...)` and `float(...)` explicitly convert back to existing numeric types.
+These SDK declarations describe compiled operations, not a separate Python
+numeric runtime. Full JavaScript/Blocks authoring parity remains S5 work.
+Existing literals keep their types; mixed arithmetic requires a conversion.
+Counts and indices remain i32.
 Settings and input wire types remain unchanged: convert captured values once at
 the appropriate initialization/frame boundary. Fixed-valued wire declarations
 must be rejected until separately implemented.
@@ -54,11 +56,50 @@ float precision can make it round to one. This applies to numeric literal
 construction, not arbitrary constant expressions: expressions must retain each
 operation's declared intermediate rounding and overflow.
 
+Constant folding applies the same rules. A faulting arithmetic expression stays
+in bytecode: an untaken branch does not fault, and a taken fault cannot move ahead
+of earlier observable writes. An out-of-range fixed literal is a source error.
+
 Both f32 zero signs and all f32 subnormals convert to raw zero. Nonfinite f32
 inputs fault. Check range **after** rounding: a value just below the lower bound
 can round to the minimum, while the upper boundary tie rounds out of range.
 Converting maximum fixed to f32 yields `32768.0`; converting that f32 back faults.
 A fixed/f32 round trip is not generally an identity.
+
+## Authoring and arrays
+
+```python
+from lightvm import profile, init, render, fixed, FixedArray, rgb
+profile("animation")
+
+@init
+def setup(ctx, runtime):
+    ctx.levels = FixedArray(runtime.pixel_count, fill=fixed(0.25))
+    ctx.step = fixed(0.125)
+
+@render
+def draw(ctx, runtime, pixels):
+    for i in range(pixels.count):
+        ctx.levels[i] = (ctx.levels[i] + ctx.step) % fixed(1)
+        pixels[i] = rgb(int(ctx.levels[i] * fixed(255)), 0, 0)
+```
+
+Declare arrays directly on `ctx` in unconditional initialization. Count and fill
+are admission expressions: literals, `runtime.pixel_count`, earlier settings and
+supported pure arithmetic; they cannot depend on arbitrary mutable init state.
+Counts must resolve to 0..65535, subject to admitted memory. The default fill is
+fixed zero. Each element costs four payload bytes; preparation charges allocation
+and initializes resources incrementally before activation.
+
+Indexed reads/writes check bounds. `array.fill(value, start=0, stop=len(array))`
+and `array.copy_from(other)` require matching fixed types; copy also requires
+equal lengths. Fill/copy use the existing resumable chunks of at most 32 elements.
+Array identity, permissions and generation checks apply across yields. Rendering
+does not allocate.
+
+S1 fixed expressions and new bitwise operations execute as ordinary scalar
+bytecode. Compiler recognition and the runtime verifier keep them out of map
+kernels until S2 supplies the corresponding verifier and conformance coverage.
 
 ## Arithmetic and bit operations
 
@@ -106,8 +147,8 @@ preserve it where applicable. Min of opposite zero signs is negative zero; max
 is positive zero. A negative-zero base raised to a positive odd integral exponent
 produces negative zero, otherwise positive zero. All zero exponents produce one.
 The [native vectors](../tests/fixtures/numeric-vectors.json) pin these identities
-and fault cases. They specify future behaviour; no native implementation or
-current-runtime conformance is claimed by this standalone work.
+and fault cases. They specify future behaviour; S1 does not implement the expanded
+native f32 set or establish its conformance.
 
 Scalar and bulk paths must use the same implementation and match exactly on one
 build. For S4, generate independent high-precision reference results from exact
@@ -132,10 +173,10 @@ transcendental approximations, noise and indexed sampling remain separate scope.
 For now fixed programs explicitly convert to f32 for transcendental work. Do not
 accumulate a long-lived elapsed clock in Q16.16.
 
-## Standalone implementation and verification
+## Implementation and verification
 
-[numeric.h](../src/numeric.h) exposes signed raw values as `LvmQ16`; this C alias
-does not replace future loader type checking. Checked functions return false and
+[numeric.h](../src/numeric.h) exposes signed raw values as `LvmQ16`; the loader
+independently verifies the distinct bytecode type. Checked functions return false and
 leave the non-null output pointer unchanged on failure. No operation allocates,
 uses global state or changes the floating environment. Implementations avoid
 signed overflow, signed shifts and out-of-range unsigned-to-signed conversion.
@@ -143,30 +184,31 @@ signed overflow, signed shifts and out-of-range unsigned-to-signed conversion.
 Float conversion operates on IEEE binary32 bits using integer arithmetic; float
 wrappers only copy those bits. Fixed square root takes exactly 24 restoring
 steps. Other loops are bounded by the 32-bit representation. Wide division may
-use a compiler support routine on embedded targets; hardware latency, call graphs
-and stack cost must still be measured during integration.
+use a compiler support routine on embedded targets. Pico builds include the
+resulting calls in the whole-path stack audit; physical latency remains S6 work.
 
 [The oracle](../tests/numeric_oracle.py) uses rational arithmetic, arbitrary
 integers, binary32 packing and integer square root independently of the C code.
 Reviewed vectors test both implementations, then randomized and boundary suites
-compare raw values and faults. The test executable is built in a temporary
-directory; no board or application build is modified.
+compare raw values and faults. Standalone tests build a temporary executable.
+Runtime tests replay the same oracle through independent hand-encoded packages,
+verified scalar invocation and Python emission with folding enabled/disabled.
 
 ```sh
 python3 -B -m unittest discover -s tests -p test_numeric.py -v
 LIGHTVM_NUMERIC_CFLAGS='-O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer' \
   python3 -B -m unittest discover -s tests -p test_numeric.py -v
+LIGHTVM_NUMERIC_RUNTIME=build/host/test_platform \
+  python3 -B -m unittest discover -s tests -p test_numeric_runtime.py -v
 ```
 
 `CC` selects a C11 compiler. Sanitizer availability depends on that host compiler.
-These checks establish standalone correctness, not firmware throughput or full
-S1 completion. Runtime binding, resource admission, constant folding, all three
-frontends, scalar/bulk agreement and board memory/stack gates remain required.
-
-Verification on 22 October 2026: Apple Clang 21.0.0, arm64 macOS, Python 3.9.
-All eight standalone tests pass in the normal optimized build and with
-AddressSanitizer/UndefinedBehaviorSanitizer. Coverage includes 93 reviewed raw
-operation vectors, 15 exact literal cases, seeded raw operands, conversion
-boundaries and four host rounding modes. The 43 future native-math vectors are
-catalogue requirements; their execution awaits S4. No board build or benchmark
-was run for this isolated milestone.
+The [S1 validation record](design/numeric-s1-validation-2026-10-22.md) records
+native/compiler regressions, ASan/UBSan and Pico build, SRAM and stack results.
+Coverage includes 93 reviewed raw operation vectors, 15 exact literal cases,
+seeded raw operands, conversion boundaries and four host rounding modes, plus
+resource admission, malformed packages, cancellation and allocation failures.
+These results establish scalar correctness and build bounds, not firmware
+throughput. Scalar/bulk agreement, complete frontend parity, expanded native f32
+math and physical measurements belong to the later stages. The 43 future native
+math vectors remain catalogue requirements awaiting S4.

@@ -3,6 +3,7 @@
 import ast
 import math
 import struct
+from . import numeric
 
 # Keep numeric IDs in sync with bytecode_core.h. Registers have fixed declared types.
 OP = {name: i for i, name in enumerate([
@@ -10,7 +11,8 @@ OP = {name: i for i, name in enumerate([
     'FADD', 'FSUB', 'FMUL', 'FDIV', 'FMOD', 'ITOF', 'FTOI', 'ILT',
     'FLT', 'EQ', 'JZ', 'JMP', 'RGB', 'HSV'])}
 OP.update(IMIN=23, IMAX=24, FMIN=25, FMAX=26, HASH=27)
-I, F, C, B = 1, 2, 3, 4
+OP.update(numeric.OPCODES)
+I, F, C, B, Q = 1, 2, 3, 4, 7
 LOCAL, INPUT, CONST, STATE = range(4)
 MAX_REGS = 128
 
@@ -21,6 +23,8 @@ class CompileError(ValueError):
 
 class Compiler:
     def __init__(self, source):
+        self.source = source
+        self.numeric_used = False
         self.tree = ast.parse(source)
         self.regs, self.code, self.constants, self.names = [], [], {}, {}
         self.funcs, self.table = {}, []
@@ -50,9 +54,54 @@ class Compiler:
     def typ(self, r):
         return self.regs[r][0]
 
-    def convert(self, r, typ):
+    def raw_constant(self, typ, bits):
+        key = typ, bits & 0xffffffff
+        if key not in self.constants:
+            self.constants[key] = self.reg(typ, CONST, key[1])
+        return self.constants[key]
+
+    def numeric_op(self, name, *args):
+        signature = numeric.SIGNATURES[name]
+        if tuple(self.typ(r) for r in args) != signature[1:]:
+            raise CompileError('numeric operands require explicit matching types')
+        self.numeric_used = True
+        if getattr(self, 'optimize', True) and all(self.regs[r][1] == CONST for r in args):
+            try:
+                bits = numeric.evaluate(name, *(self.regs[r][2] for r in args))
+            except ArithmeticError:
+                pass  # Preserve runtime fault ordering and lazy control flow.
+            else:
+                return self.raw_constant(signature[0], bits)
+        out = self.reg(signature[0])
+        self.emit(name, out, *args)
+        return out
+
+    def fixed_literal(self, node):
+        operand = node.operand if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)) else node
+        if not isinstance(operand, ast.Constant) or type(operand.value) not in (int, float):
+            return None
+        token = ast.get_source_segment(self.source, operand)
+        if token is None:
+            # Compiler-created integer nodes are exact; floats must retain their
+            # source token instead of silently using a rounded AST value.
+            if type(operand.value) is not int:
+                self.fail(node, 'fixed literal requires its original source token')
+            token = str(operand.value)
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub): token = '-' + token
+        try: bits = numeric.literal(token)
+        except (ValueError, ArithmeticError) as error: self.fail(node, str(error))
+        self.numeric_used = True
+        return self.raw_constant(Q, bits)
+
+    def convert(self, r, typ, explicit=False):
         if self.typ(r) == typ:
             return r
+        if Q in (self.typ(r), typ):
+            if not explicit:
+                raise CompileError('fixed values require an explicit numeric conversion')
+            name = {(I, Q): 'ITOQ', (F, Q): 'FTOQ', (Q, I): 'QTOI', (Q, F): 'QTOF'}.get((self.typ(r), typ))
+            if name is None: raise CompileError('fixed conversion requires i32, f32 or fixed')
+            return self.numeric_op(name, r)
         if (self.typ(r), typ) not in [(I, F), (F, I)]:
             raise CompileError('incompatible types')
         out = self.reg(typ)
@@ -60,6 +109,10 @@ class Compiler:
         return out
 
     def pair(self, a, b):
+        if Q in (self.typ(a), self.typ(b)):
+            if self.typ(a) != Q or self.typ(b) != Q:
+                raise CompileError('mixed fixed arithmetic requires an explicit conversion')
+            return a, b, Q
         if self.typ(a) not in (I, F) or self.typ(b) not in (I, F):
             raise CompileError('arithmetic requires numbers')
         typ = F if F in (self.typ(a), self.typ(b)) else I
@@ -74,7 +127,10 @@ class Compiler:
             if isinstance(n.operand, ast.Constant):
                 return self.literal(-n.operand.value)
             r = self.expr(n.operand)
+            if self.typ(r) == Q: return self.numeric_op('QNEG', r)
             return self.binary(ast.Sub(), self.literal(0.0 if self.typ(r)==F else 0), r)
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Invert):
+            return self.numeric_op('INOT', self.expr(n.operand))
         if isinstance(n, ast.BinOp):
             return self.binary(n.op, self.expr(n.left), self.expr(n.right))
         if isinstance(n, ast.Compare) and len(n.ops)==1:
@@ -85,7 +141,7 @@ class Compiler:
             elif not isinstance(op, (ast.Lt, ast.Eq)):
                 self.fail(n, 'only <, > and == comparisons are supported')
             out = self.reg(B)
-            self.emit('EQ' if isinstance(op, ast.Eq) else 'FLT' if t==F else 'ILT', out,a,b)
+            self.emit('EQ' if isinstance(op, ast.Eq) else 'QLT' if t==Q else 'FLT' if t==F else 'ILT', out,a,b)
             return out
         if isinstance(n, ast.IfExp):
             cond = self.expr(n.test)
@@ -99,11 +155,18 @@ class Compiler:
             return out
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and not n.keywords:
             name = n.func.id
+            if name == 'fixed' and len(n.args) == 1:
+                literal = self.fixed_literal(n.args[0])
+                return literal if literal is not None else self.convert(self.expr(n.args[0]), Q, explicit=True)
+            if name in ('fixed_bits', 'fixed_from_bits', 'fixed_sqrt') and len(n.args) == 1:
+                return self.numeric_op({'fixed_bits':'QBITS', 'fixed_from_bits':'QFROMBITS', 'fixed_sqrt':'QSQRT'}[name], self.expr(n.args[0]))
             args = [self.expr(a) for a in n.args]
             if name in ('int', 'float') and len(args)==1:
-                return self.convert(args[0], I if name=='int' else F)
+                return self.convert(args[0], I if name=='int' else F, explicit=True)
             if name in ('min','max') and len(args)==2:
-                a,b,t=self.pair(*args);out=self.reg(t)
+                a,b,t=self.pair(*args)
+                if t == Q: return self.numeric_op('Q'+name.upper(), a, b)
+                out=self.reg(t)
                 self.emit(('F' if t==F else 'I')+name.upper(),out,a,b);return out
             if name in ('hsv','rgb') and len(args)==3:
                 typ = F if name=='hsv' else I
@@ -114,7 +177,13 @@ class Compiler:
         self.fail(n, 'unsupported expression')
 
     def binary(self, op, a, b):
+        bitops = {ast.BitAnd:'IAND', ast.BitOr:'IOR', ast.BitXor:'IXOR', ast.LShift:'ISHL', ast.RShift:'ISHR'}
+        if type(op) in bitops: return self.numeric_op(bitops[type(op)], a, b)
         a,b,t=self.pair(a,b)
+        if t == Q:
+            names = {ast.Add:'QADD', ast.Sub:'QSUB', ast.Mult:'QMUL', ast.Div:'QDIV', ast.Mod:'QMOD'}
+            if type(op) not in names: raise CompileError('fixed arithmetic supports +, -, *, / and %')
+            return self.numeric_op(names[type(op)], a, b)
         if isinstance(op,ast.Div):
             a,b,t=self.convert(a,F),self.convert(b,F),F
         names={ast.Add:'ADD',ast.Sub:'SUB',ast.Mult:'MUL',ast.Div:'DIV',ast.FloorDiv:'DIV',ast.Mod:'MOD'}

@@ -42,6 +42,12 @@ change ordinary context fields and array elements. Mutable module-level state an
 are unsupported; readonly PixelArray artwork, Sprite definitions and static Input
 declarations may be declared at module scope.
 
+Explicit [Q16.16 values and FixedArray resources](numeric-types.md) are available
+with application feature floor 1.2.0. Convert with `fixed(...)`, `int(...)` or
+`float(...)`; mixed fixed/integer/float arithmetic is rejected. Fixed expressions
+currently execute as scalar bytecode, and settings/live inputs retain their
+existing wire types.
+
 `runtime.time` is the pausable elapsed program time in seconds. `runtime.delta`
 is the actual elapsed time supplied for this render, also in seconds.
 `runtime.pixel_count` is available during initialization and rendering.

@@ -1,10 +1,9 @@
 # Independent bytecode emission
 
 22 October 2026. Baseline: validated Pico repair `a9c8611`. This document records
-the current container and the integration requirements for the
-[numeric foundation](numeric-types.md).
-The standalone numeric module adds no accepted wire encoding. The rebase onto
-the Pico performance repair preserves the container, type and opcode tables.
+the current container and the S1 encodings for the
+[numeric foundation](numeric-types.md). The shared core adds numeric operations
+under application feature floor 1.2.0. The container layout remains unchanged.
 
 ## Current container
 
@@ -48,12 +47,15 @@ up to 256 native call sites and up to 16 settings. JSON parser limits also apply
 the current compiler limits metadata to 256 tokens. Target descriptions may
 impose additional memory/admission limits even when the package fits these caps.
 
-Current scalar types are i32=1, f32=2, packed RGB8=3 and bool=4; reference type is
-6. Type 5 is rejected. Register roles are local=0, invocation input=1, constant=2,
+Current scalar types are i32=1, f32=2, packed RGB8=3, bool=4 and Q16.16=7;
+reference type is 6. Type 5 is rejected. Register roles are local=0, invocation input=1, constant=2,
 persistent state=3 and setting=6. Roles 4 and 5 are rejected. F32 initializer bits
 must be finite, bool is 0/1 and colour fits 24 bits. References are validated
-resource identities, never numerical addresses. Fixed type/resource IDs are
-unassigned; do not reuse a rejected slot merely because it appears free.
+resource identities, never numerical addresses. All 32-bit fixed initializers
+are valid. Fixed arrays use resource kind 20, four-byte elements and zero flags.
+Their length expression is i32 and their fill expression is fixed; seed/stream
+expressions retain the existing i32 requirement. Fixed settings and live-input
+wire declarations remain unsupported.
 
 Function ranges partition the instruction section in order, with no overlap or
 gaps. A void function ends in END and a valued function in RETURN. Branch targets
@@ -85,20 +87,58 @@ rounding, wrapping and fault order. Report unsupported operations before emissio
 Unknown/rejected opcodes and native bindings remain rejected; no runtime shim
 or source-language compatibility mode is introduced.
 
-The [new operation catalogue](design/numeric-operations.json) freezes mathematical
-names and contracts, with `wire_id` and release assignments deliberately unset.
-S1/S4 integration must assign those fields alongside loader, dispatch, compiler
-and fixture updates. The encoder must reject an unset mapping or feature floor;
-the catalogue itself is not a usable new bytecode table. Do not change the
-application version or claim that current firmware implements these operations
-as part of this foundation work.
+The [operation catalogue](design/numeric-operations.json) assigns S1 encodings
+and their 1.2.0 application floor. Its future S4 entries remain unset: an encoder
+must reject an unset mapping or feature floor. A package using a fixed type,
+fixed array or new numeric operation must declare `requires` at least 1.2.0,
+including generic typed callbacks. The loader rejects a falsely lowered floor
+even on newer firmware. Existing programs retain their earlier feature floors.
 
-## Conformance gates for integration
+## S1 scalar numeric encoding
 
-1. Bind the shared numeric implementation through `cmake/lightvm_core.cmake` for
-   every target, after rebasing. Update register/resource typing, initialization,
-   expression evaluation and runtime faults together. New fixed wire settings
-   and live-input types remain out of scope.
+For binary instructions, `a` is the result register, `b` and `c` are operand
+registers, and `d` is zero. Unary instructions use `a` and `b`; `c` and `d` are
+zero. Types are exact: no implicit mixed fixed/i32/f32 arithmetic is permitted.
+Writing a persistent result still requires the function's state-write permission.
+
+| ID | Operation | Result and operands |
+| --- | --- | --- |
+| 40..44 | QADD, QSUB, QMUL, QDIV, QMOD | fixed ← fixed, fixed |
+| 45 | QNEG | fixed ← fixed |
+| 46..47 | QMIN, QMAX | fixed ← fixed, fixed |
+| 48 | QLT | bool ← fixed, fixed |
+| 49 | ITOQ | fixed ← i32 |
+| 50 | QTOI | i32 ← fixed |
+| 51 | FTOQ | fixed ← f32 |
+| 52 | QTOF | f32 ← fixed |
+| 53 | QFROMBITS | fixed ← i32 |
+| 54 | QBITS | i32 ← fixed |
+| 55 | QSQRT | fixed ← fixed |
+| 56..58 | IAND, IOR, IXOR | i32 ← i32, i32 |
+| 59 | INOT | i32 ← i32 |
+| 60..61 | ISHL, ISHR | i32 ← i32, i32 |
+
+Fixed equality uses existing EQ=17 with two fixed operands and a bool result.
+MOV and existing array LOAD/STORE/LEN/FILL/COPY use their verified type rules;
+raw numeric values cannot be substituted for resource references.
+
+Declaration expressions use the same numeric IDs 40..61 and signatures. Their
+`a`/`b` fields refer only to earlier expressions, `type` is the declared result,
+and `value` is zero. Unary `b` must be zero. A literal expression has opcode 0
+and stores its raw bits in `value`, with type 7 for fixed. Admission evaluates
+these expressions with the same shared numeric implementation as scalar code.
+
+S1 does not admit these operations or fixed-typed values to map bodies. Emit an
+ordinary loop until S2 supplies verified bulk execution; a feature floor never
+authorizes an unimplemented map operation.
+
+## Conformance and remaining integration gates
+
+1. S1 binds the shared numeric implementation through `cmake/lightvm_core.cmake`
+   for every target, with register/resource typing, initialization, declaration
+   evaluation and runtime faults updated together. See the
+   [S1 validation record](design/numeric-s1-validation-2026-10-22.md).
+   Fixed wire settings and live-input types remain out of scope.
 2. Replay the [numeric vectors](../tests/fixtures/numeric-vectors.json) through
    constant folding, ordinary bytecode and each admitted bulk path. Include
    malformed types, bindings, permissions, alias claims and resource identities.
@@ -113,7 +153,8 @@ as part of this foundation work.
 5. Add an independently encoded fixture that imports no Python compiler code.
    It must pass admission and rendering on host and intended targets, then fail
    cleanly when its required application feature floor is unsupported. This
-   fixture is an S5 gate, not delivered by the standalone arithmetic tests.
+   full-emitter fixture remains an S5 gate. S1 already has independent C-encoded
+   scalar callback fixtures; those do not establish all frontend/profile parity.
 6. Run Python, JavaScript and Blocks emission through native execution. Recompute
    complete stack paths, admitted heap peaks and board timing after linking the
    new operations. Keep the Pico repair's archived packages and baseline results

@@ -1,0 +1,234 @@
+{
+  "date": "2026-10-22",
+  "scope": "S1 scalar integration; no physical performance claim",
+  "baseline_commit": "a9c861144efe602598a0a708f3a9d5512ffe8a2e",
+  "foundation_commit": "0c4490e",
+  "application_version": "1.2.0",
+  "source_sha256": {
+    "CMakeLists.txt": "f91d487fc8cd72cc99c30db5333f723f1be0be2bc0f019878209baa40042a505",
+    "cmake/lightvm_core.cmake": "6183a7993852b14f81e0ffb17519dc75a8ab91c355cb850d0042db75ee135b13",
+    "docs/design/numeric-operations.json": "9fb99867ef7fe1dac1ac9ffeba4e681c2d5e94a22c5982886ccf2252ba501b45",
+    "lightvm/__init__.py": "2580067ddcb8cae58266ac1ecf0ec9927a11fa623581522860635697e298d8b2",
+    "lightvm/compiler_core.py": "287a8d0c51b6438fa1f3f31bb3fe0a5ce9d0e1974ec16eb12cd30efee356061b",
+    "lightvm/numeric.py": "4eb4dec568ccc72d54fcf9d4a93335fe08807c20827bac8df024baaf75eccc02",
+    "lightvm/portable.py": "77ad4fc57693e3cb0940543ae91f4dab1a68f34e6d21c2c1b8091b0c319cf1d6",
+    "lightvm/release.json": "0374846f99f518617dc7e9c3e0ed5f7267a0cdb0eb112697a3afd554510b398f",
+    "src/bytecode_core.c": "de04494b4ef6e871fec52c0d9b958f48f35cb1bb26827555d68ccb7285497419",
+    "src/bytecode_core.h": "e364fd30ef6ebe9bf7446745ee517f2489a725ccf8dee9b18fd5d7799b05e6c7",
+    "src/numeric.c": "c86fe95fef178f583933e7473901e624925582e9015fdd4df40daf65fbaccd3f",
+    "src/numeric.h": "d8c23719f1670f9a88b1e4c0d3eedc4ba66cd0fffe7f6315f0ae19d47a617498",
+    "src/portable.c": "59aa40b8ef20014cb3c9774654e5d67225d593c471f3ca50d2927b79aaa67db4",
+    "src/portable.h": "006dba909fc2b2c5db4d59bfb1bef92c21de05a6be58db7351d6fe9f0ef97d7f",
+    "src/portable_manifest.c": "6ed9a8da3d0e34aad85e33f620fd703fb13c31bbf59f73fd4463a9e05450b161",
+    "src/release.c": "343c645b90af9ce6a59c99827ce5ff3bdc0ee67794ff3f5fede83062bd17a908",
+    "src/release.h": "4d063c3a6df44b45c0da8f3daafcc6c0c41cc1d442fc8e8ada38b345d989331a",
+    "tests/bytecode_fixtures.h": "305d0f3e569cd345b43b4e43856cb4812ad70c2e6f12a62896760afff1dd867b",
+    "tests/fixtures/numeric-vectors.json": "16c917f09cbb772f5899673dc58f2970facd160f33326ac8db4b7b28b4fd3125",
+    "tests/generate_portable_fixtures.py": "415541b27776b44adf8ed12f8586df745c452002c6d470847fc86c185280ad69",
+    "tests/numeric_contract.inc": "d599524933f2920c1852ef9a7bcc33014d5ce40918ff302fddfc455078da5b66",
+    "tests/numeric_oracle.py": "b0506d9bc1c8e18ba635c2fb1e64f40f2198fe68c6d76a4aec9659849a0c632f",
+    "tests/portable_fixtures.h": "9a82af1aa1cb2fa4c2ee7cbcdf2dafb97d1edf20b6fd0063be33db9192366df2",
+    "tests/test_numeric.py": "05db5b6c68b1934c2e6bbb8260efc43022985b3803c3281a1d8fbb6efeb473c8",
+    "tests/test_numeric_runtime.py": "f4ce1def3719f749b948d80570205db6f61bc1bb13393482d2bdb325b4779951",
+    "tests/test_platform.c": "67ee8f3b18af0b8e37d494c0fe1e63809d4f2b9189908f942eda56bb5dfceb8f"
+  },
+  "host": {
+    "system": "arm64 macOS",
+    "compiler": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+    "python": "Python 3.12.13",
+    "ctest_normal": {
+      "passed": 17,
+      "failed": 0
+    },
+    "ctest_asan_ubsan": {
+      "passed": 17,
+      "failed": 0,
+      "leak_sanitizer": false
+    },
+    "python_regressions": {
+      "run": 332,
+      "failed": 0,
+      "skipped": 3,
+      "skip_disposition": "CMake board selection rerun successfully with bundled CMake on PATH; host Wi-Fi setup and power recovery omitted by Wi-Fi-disabled baseline configuration"
+    },
+    "pico_build_python_tests": {
+      "run": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "numeric_runtime_compiler_tests": {
+      "run": 17,
+      "failed": 0
+    },
+    "log_sha256": {
+      "lightvm-s1-python-final.log": "f31fbe51de0975d1b1696deee203e672da1b7979f74a51fc5b973e5d26ec1b89",
+      "lightvm-s1-ctest-final.log": "2fd41d17965218e577387e247f0a1591e3ba53e22f0be77b7933fdd8216c323f",
+      "lightvm-s1-sanitize-final.log": "e41c59eaf73834499cf2f27af20a55c63f36e9119a94b7f7d5a85273c647e363",
+      "lightvm-s1-pico-tests.log": "b131eb00baae9e97faf1e781d4fa66ea8d881a006842416c5276a8b57878a255"
+    }
+  },
+  "boards": {
+    "pico-w": {
+      "build": {
+        "PICO_BOARD": "pico_w",
+        "PICO_PLATFORM": "rp2040",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-mcpu=cortex-m0plus -mthumb -mfloat-abi=soft -ftls-model=local-exec",
+        "CMAKE_C_FLAGS_RELEASE": "-g -O3 -DNDEBUG",
+        "LIGHTVM_WIFI": "ON",
+        "LIGHTVM_HTTP": "ON",
+        "LIGHTVM_WEBSOCKET": "ON",
+        "LIGHTVM_MQTT": "ON",
+        "LIGHTVM_BOOT_SEQUENCE": "ON",
+        "LIGHTVM_RENDER_WORKERS": "2",
+        "LIGHTVM_WORKER_STACK_BYTES": "8192",
+        "LIGHTVM_STORAGE_BYTES": "1048576",
+        "LIGHTVM_VM_HEAP_BYTES": "AUTO"
+      },
+      "ram": {
+        "sram_bytes": 270336,
+        "static_bytes": 132976,
+        "vm_heap_ceiling": 65536,
+        "native_stack": 24576,
+        "pixel_driver_max": 30464,
+        "operating_headroom": 16384,
+        "remaining_bytes_after_reservations": 400,
+        "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+      },
+      "stack": {
+        "software_accounting_complete": true,
+        "software_gate_passed": true,
+        "hardware_validated": false,
+        "main": {
+          "foreground_bytes": 10112,
+          "with_interrupts_bytes": 12048,
+          "reservation_bytes": 16384,
+          "remaining_bytes": 4336,
+          "required_margin_bytes": 2048
+        },
+        "worker": {
+          "foreground_bytes": 3448,
+          "with_interrupts_bytes": 5384,
+          "reservation_bytes": 8192,
+          "remaining_bytes": 2808,
+          "required_margin_bytes": 1024
+        },
+        "interrupt_allowance_bytes": 1936,
+        "elf_sha256": "10ce06795289e053ee2f76ca42915257b2e50aede8df9270632cf73e159069db",
+        "callgraph_sha256": "9b2187f88ff98d030a02d03278d770131c24836d22b5713e70f4074450c2d369",
+        "linked_disassembly_sha256": "461481c3d78a8c198acfece51e5b8c118216721694af1619a335bb3a5a4c6544"
+      },
+      "stack_report_sha256": "338320dd211129a3838e02a7d2003b6d2e35e4f36afbbe30ab73084b9b61e162",
+      "ram_report_sha256": "577bc574e460d5311cc0632be86ab25d91201a30a45cfcecee742c1385f9acfb",
+      "uf2_sha256": "51f276c1b58ed1a5bb1ae2a8d3d9a0f704ca7bf0115807250d0e45712d3cfb9a"
+    },
+    "pico2-w": {
+      "build": {
+        "PICO_BOARD": "pico2_w",
+        "PICO_PLATFORM": "rp2350-arm-s",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-mcpu=cortex-m33 -mthumb -march=armv8-m.main+fp+dsp -mcmse -mfloat-abi=softfp -ftls-model=local-exec",
+        "CMAKE_C_FLAGS_RELEASE": "-g -O3 -DNDEBUG",
+        "LIGHTVM_WIFI": "ON",
+        "LIGHTVM_HTTP": "ON",
+        "LIGHTVM_WEBSOCKET": "ON",
+        "LIGHTVM_MQTT": "ON",
+        "LIGHTVM_BOOT_SEQUENCE": "ON",
+        "LIGHTVM_RENDER_WORKERS": "2",
+        "LIGHTVM_WORKER_STACK_BYTES": "8192",
+        "LIGHTVM_STORAGE_BYTES": "1048576",
+        "LIGHTVM_VM_HEAP_BYTES": "AUTO"
+      },
+      "ram": {
+        "sram_bytes": 532480,
+        "static_bytes": 136076,
+        "vm_heap_ceiling": 196608,
+        "native_stack": 24576,
+        "pixel_driver_max": 34816,
+        "operating_headroom": 16384,
+        "remaining_bytes_after_reservations": 124020,
+        "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+      },
+      "stack": {
+        "software_accounting_complete": true,
+        "software_gate_passed": true,
+        "hardware_validated": false,
+        "main": {
+          "foreground_bytes": 10264,
+          "with_interrupts_bytes": 12168,
+          "reservation_bytes": 16384,
+          "remaining_bytes": 4216,
+          "required_margin_bytes": 2048
+        },
+        "worker": {
+          "foreground_bytes": 3252,
+          "with_interrupts_bytes": 5156,
+          "reservation_bytes": 8192,
+          "remaining_bytes": 3036,
+          "required_margin_bytes": 1024
+        },
+        "interrupt_allowance_bytes": 1904,
+        "elf_sha256": "ba773972e9459c46dca737f82809efab2d1f099c19ca18fffcdef39e80b06b8e",
+        "callgraph_sha256": "ff3ce5b22cf67db24fbb24c5b7fda7a61e9f54c94e0cab91f097e29d97b1f7e7",
+        "linked_disassembly_sha256": "881282c54083ef18879c21c5833b88f5a44f8817b5226ee4a11fb37d58fcabf2"
+      },
+      "stack_report_sha256": "5a6d7cb9e75860abad705f5444420222a8be275d4b39a4fc1d0ce202246d8c90",
+      "ram_report_sha256": "f098101befcb95abfa9bbb389bcaec71fe13ef573893596d8635b5c42dee96c3",
+      "uf2_sha256": "fa615266c063d512a10cacdaf9927a25441fb1dc71810c90467e1edf5a2c1fa6"
+    },
+    "pico-minimal": {
+      "build": {
+        "PICO_BOARD": "pico",
+        "PICO_PLATFORM": "rp2040",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-mcpu=cortex-m0plus -mthumb -mfloat-abi=soft -ftls-model=local-exec",
+        "CMAKE_C_FLAGS_RELEASE": "-g -O3 -DNDEBUG",
+        "LIGHTVM_WIFI": "OFF",
+        "LIGHTVM_HTTP": "OFF",
+        "LIGHTVM_WEBSOCKET": "OFF",
+        "LIGHTVM_MQTT": "OFF",
+        "LIGHTVM_BOOT_SEQUENCE": "ON",
+        "LIGHTVM_RENDER_WORKERS": "2",
+        "LIGHTVM_WORKER_STACK_BYTES": "8192",
+        "LIGHTVM_STORAGE_BYTES": "1048576",
+        "LIGHTVM_VM_HEAP_BYTES": "AUTO"
+      },
+      "ram": {
+        "sram_bytes": 270336,
+        "static_bytes": 37336,
+        "vm_heap_ceiling": 131072,
+        "native_stack": 24576,
+        "pixel_driver_max": 34816,
+        "operating_headroom": 16384,
+        "remaining_bytes_after_reservations": 26152,
+        "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+      },
+      "stack": {
+        "software_accounting_complete": true,
+        "software_gate_passed": true,
+        "hardware_validated": false,
+        "main": {
+          "foreground_bytes": 10108,
+          "with_interrupts_bytes": 12044,
+          "reservation_bytes": 16384,
+          "remaining_bytes": 4340,
+          "required_margin_bytes": 2048
+        },
+        "worker": {
+          "foreground_bytes": 3436,
+          "with_interrupts_bytes": 5372,
+          "reservation_bytes": 8192,
+          "remaining_bytes": 2820,
+          "required_margin_bytes": 1024
+        },
+        "interrupt_allowance_bytes": 1936,
+        "elf_sha256": "8d06cfecc21e55d006f68d27400b78d2d7ef5be17b3b8fa2e3703bfa615216ce",
+        "callgraph_sha256": "2eb761b2d2d429d3ba7f2b9f054a1c982804d16c086b55357c5d9760ac34c644",
+        "linked_disassembly_sha256": "bcfcfd254075267a63b5e3ab7975b845bb43b489a722b5eb55c0557c76025221"
+      },
+      "stack_report_sha256": "2b970d49fcf0b731e0a58f57b48f127fb8b4f603aaf9ad33a51b43bfe417265b",
+      "ram_report_sha256": "65e6427e349ccbcaea3defb6489aa94334c5e0032b6369efee99aa279b62b7fa",
+      "uf2_sha256": "cae8ac42c9de467889aaea1b66e0f60e43999f177febd5c9708b1a681b85df18"
+    }
+  }
+}

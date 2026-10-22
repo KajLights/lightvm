@@ -11,7 +11,8 @@ from pathlib import Path
 from .sprite_compiler import SpriteCompiler, FEATURE_NATIVES
 from .input_compiler import InputCompiler
 from .release import VERSION, BASELINE, normalize_release, release_error
-from .compiler_core import Compiler, CompileError, OP, I, F, C, B, LOCAL, INPUT, CONST, STATE
+from .compiler_core import Compiler, CompileError, OP, I, F, C, B, Q, LOCAL, INPUT, CONST, STATE
+from . import numeric
 
 REF, SETTING = 6, 6
 P_OP = {**OP, 'LOAD_ELEM': 33, 'STORE_ELEM': 34, 'LENGTH': 35,
@@ -37,8 +38,10 @@ NATIVES.update({
 })
 ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
 PUBLIC = {'requires', 'profile', 'setting', 'Input', 'Ramp', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
-          'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees'}
+          'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees',
+          'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt', 'FixedArray'}
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
+BIT_OPS = {ast.BitAnd:'IAND', ast.BitOr:'IOR', ast.BitXor:'IXOR', ast.LShift:'ISHL', ast.RShift:'ISHR'}
 LIBRARIES = {'lightvm.motion', 'lightvm.easing', 'lightvm.transitions'}
 
 
@@ -105,16 +108,16 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
 
     def truth(self, reg):
         if self.typ(reg) == B: return reg
-        if self.typ(reg) not in (I, F, C): raise CompileError('condition requires a scalar')
-        zero = self.literal(0.0 if self.typ(reg) == F else 0)
+        if self.typ(reg) not in (I, F, C, Q): raise CompileError('condition requires a scalar')
+        zero = self.raw_constant(Q, 0) if self.typ(reg) == Q else self.literal(0.0 if self.typ(reg) == F else 0)
         if self.typ(reg) == C: reg = self.convert(reg, I)
         equal = self.reg(B); self.emit('EQ', equal, reg, zero)
         out = self.reg(B); self.emit('EQ', out, equal, self.literal(False)); return out
 
-    def convert(self, reg, typ):
+    def convert(self, reg, typ, explicit=False):
         if self.typ(reg) == C and typ == I: return self.native('color_int', [reg], None)
         if self.typ(reg) == I and typ == C: return self.native('int_color', [reg], None)
-        return super().convert(reg, typ)
+        return super().convert(reg, typ, explicit=explicit)
 
     def colour_constant(self, value):
         key = C, value
@@ -151,9 +154,36 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             return self.declarations[self.declaration_key(node)]
         elif isinstance(node, ast.Call) and getattr(node.func, 'id', '') == 'rgb':
             value = (0, C, 0, 0, self.colour_literal(node))
-        elif isinstance(node, ast.BinOp) and type(node.op) in EXPR_OPS:
+        elif isinstance(node, ast.Call) and self.imports.get(getattr(node.func, 'id', '')) in ('fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'):
+            name = self.imports[node.func.id]
+            if len(node.args) != 1 or node.keywords: self.fail(node, name + ' takes one positional argument')
+            literal = self.fixed_literal(node.args[0]) if name == 'fixed' else None
+            if literal is not None:
+                value = (0, Q, 0, 0, self.regs[literal][2])
+            else:
+                a = self.declarative(node.args[0]); typ = self.expressions[a][1]
+                if name == 'fixed' and typ == Q: return a
+                operation = ({I:'ITOQ', F:'FTOQ'}.get(typ) if name == 'fixed' else
+                             {'fixed_bits':'QBITS', 'fixed_from_bits':'QFROMBITS', 'fixed_sqrt':'QSQRT'}[name])
+                if operation is None: self.fail(node, 'fixed conversion requires i32 or f32')
+                return self.declarative_numeric(operation, [a], node)
+        elif isinstance(node, ast.Call) and getattr(node.func, 'id', '') in ('int', 'float') and len(node.args) == 1 and not node.keywords:
+            a = self.declarative(node.args[0]); typ = I if node.func.id == 'int' else F
+            if self.expressions[a][1] == typ: return a
+            if self.expressions[a][1] != Q: self.fail(node, 'unsupported declaration conversion')
+            return self.declarative_numeric('QTOI' if typ == I else 'QTOF', [a], node)
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.Invert)):
+            a = self.declarative(node.operand)
+            return self.declarative_numeric('QNEG' if isinstance(node.op, ast.USub) else 'INOT', [a], node)
+        elif isinstance(node, ast.BinOp) and type(node.op) in (EXPR_OPS.keys() | BIT_OPS.keys()):
             a, b = self.declarative(node.left), self.declarative(node.right)
             ta, tb = self.expressions[a][1], self.expressions[b][1]
+            if type(node.op) in BIT_OPS:
+                return self.declarative_numeric(BIT_OPS[type(node.op)], [a, b], node)
+            if Q in (ta, tb):
+                operation = {ast.Add:'QADD', ast.Sub:'QSUB', ast.Mult:'QMUL', ast.Div:'QDIV', ast.Mod:'QMOD'}.get(type(node.op))
+                if operation is None: self.fail(node, 'fixed arithmetic supports +, -, *, / and %')
+                return self.declarative_numeric(operation, [a, b], node)
             if ta not in (I, F) or tb not in (I, F): self.fail(node, 'numeric declaration required')
             typ = F if F in (ta, tb) or isinstance(node.op, ast.Div) else I
             if isinstance(node.op, ast.FloorDiv) and typ != I: self.fail(node, 'integer floor division required')
@@ -161,10 +191,26 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         elif isinstance(node, ast.Call) and getattr(node.func, 'id', '') in ('min', 'max') and len(node.args) == 2 and not node.keywords:
             a, b = map(self.declarative, node.args)
             ta, tb = self.expressions[a][1], self.expressions[b][1]
+            if Q in (ta, tb): return self.declarative_numeric('Q' + node.func.id.upper(), [a, b], node)
             if ta not in (I, F) or tb not in (I, F): self.fail(node, 'numeric declaration required')
             value = (9 if node.func.id == 'min' else 10, F if F in (ta, tb) else I, a, b, 0)
         else:
             self.fail(node, 'declaration needs literals, runtime.pixel_count or earlier settings')
+        return self.declarative_record(value, node)
+
+    def declarative_numeric(self, name, args, node):
+        signature = numeric.SIGNATURES[name]
+        if tuple(self.expressions[a][1] for a in args) != signature[1:]:
+            self.fail(node, 'numeric declaration requires explicit matching types')
+        self.numeric_used = True
+        value = (P_OP[name], signature[0], args[0], args[1] if len(args) == 2 else 0, 0)
+        if self.optimize and all(self.expressions[a][0] == 0 for a in args):
+            try: bits = numeric.evaluate(name, *(self.expressions[a][4] for a in args))
+            except ArithmeticError: pass
+            else: value = (0, signature[0], 0, 0, bits)
+        return self.declarative_record(value, node)
+
+    def declarative_record(self, value, node):
         if value in self.expressions: return self.expressions.index(value)
         if len(self.expressions) >= 128: self.fail(node, 'declaration expression limit exceeded')
         self.expressions.append(value)
@@ -222,6 +268,28 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             if self.imports.get(n.id) == 'math.pi': return self.literal(math.pi)
             if self.capability(n): self.fail(n, 'caller objects may only be passed to helpers or accessed by property')
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
+            if n.func.attr in ('fill', 'copy_from'):
+                try: ref, kind = self.resource(n.func.value)
+                except CompileError: kind = None
+                if kind == 20:
+                    self.check_write(ref, n)
+                    if len(n.args) != 1: self.fail(n, 'one positional argument required')
+                    if n.func.attr == 'copy_from':
+                        if n.keywords: self.fail(n, 'copy_from takes one source array')
+                        source, source_kind = self.resource(n.args[0])
+                        if source_kind != kind: self.fail(n, 'copy_from requires matching array types')
+                        self.emit('RESOURCE_COPY', ref, source)
+                    else:
+                        kws = {k.arg:k.value for k in n.keywords}
+                        if len(kws) != len(n.keywords) or set(kws) - {'start', 'stop'}: self.fail(n, 'invalid fill range')
+                        value = self.expr(n.args[0])
+                        if self.typ(value) != Q: self.fail(n, 'fixed array fill requires an explicit fixed value')
+                        start = self.expr(kws['start']) if 'start' in kws else self.literal(0)
+                        if 'stop' in kws: stop = self.expr(kws['stop'])
+                        else: stop = self.reg(I); self.emit('LENGTH', stop, ref)
+                        if self.typ(start) != I or self.typ(stop) != I: self.fail(n, 'fill range must be i32')
+                        self.emit('RESOURCE_FILL', ref, value, start, stop)
+                    return -1
             module = self.imports.get(getattr(n.func.value, 'id', ''))
             if module == 'random': return self.random_call(n.func.attr, n)
             if module == 'math' and n.func.attr == 'sin':
@@ -265,7 +333,9 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     return out
                 if isinstance(op, (ast.Gt, ast.LtE)): a, b = b, a
                 if not isinstance(op, (ast.Lt, ast.Gt, ast.LtE, ast.GtE)): self.fail(n, 'unsupported comparison')
-                out = self.reg(B); self.emit('FLT' if typ == F else 'ILT', out, a, b)
+                if typ == Q: out = self.numeric_op('QLT', a, b)
+                else:
+                    out = self.reg(B); self.emit('FLT' if typ == F else 'ILT', out, a, b)
             if isinstance(op, (ast.NotEq, ast.LtE, ast.GtE)):
                 negated = self.reg(B); self.emit('EQ', negated, out, self.literal(False)); out = negated
             return out
@@ -337,12 +407,12 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     self.code[jump][4] = len(self.code)
                 self.env, self.writes, self.loop_stack, self.caps = previous_env, previous_writes, previous_loops, previous_caps
                 return out
-        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id not in {'int', 'float', 'min', 'max'} and self.imports.get(n.func.id) not in {'rgb', 'hsv', 'hash01'}:
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id not in {'int', 'float', 'min', 'max'} and self.imports.get(n.func.id) not in {'rgb', 'hsv', 'hash01', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'}:
             self.fail(n, 'unsupported or unimported function')
         return super().expr(n)
 
     def element_type(self, kind):
-        return I if kind in (7, 8, 11) else C if kind in (12, 14, 15, 16, 17) else kind
+        return Q if kind == 20 else I if kind in (7, 8, 11) else C if kind in (12, 14, 15, 16, 17) else kind
 
     def random_call(self, name, node):
         args = list(node.args)
@@ -422,6 +492,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             external = name.removeprefix('ctx.')
             if len(external) > 32 or external in self.setting_names: self.fail(node, 'duplicate or invalid control name')
             default = self.declarative(call.args[0]); typ = self.expressions[default][1]
+            if typ == Q: self.fail(node, 'fixed-valued settings are unsupported; convert an int or float setting explicitly')
             bounds = {k.arg: self.declarative(k.value) for k in call.keywords}
             if len(bounds) != len(call.keywords) or bounds and typ not in (I, F): self.fail(node, 'invalid bounds')
             if any(self.expressions[e][1] != typ for e in bounds.values()): self.fail(node, 'bounds must match the default type')
@@ -436,6 +507,20 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 if name in self.env or name in self.caps or name in self.imports: self.fail(node, 'setting binding already exists')
                 self.env[name] = reg
             self.declarations[name] = len(self.expressions); self.expressions.append((2, typ, reg, 0, 0)); return
+        if kind == 'FixedArray':
+            if len(call.args) != 1 or len(call.keywords) > 1 or any(k.arg != 'fill' for k in call.keywords):
+                self.fail(node, 'FixedArray(count, fill=fixed_value) required')
+            length = self.declarative(call.args[0])
+            fill = self.declarative(call.keywords[0].value) if call.keywords else self.declarative_record((0, Q, 0, 0, 0), node)
+            if self.expressions[length][1] != I or self.expressions[fill][1] != Q:
+                self.fail(node, 'FixedArray needs an i32 count and explicit fixed fill')
+            if name.startswith('ctx.') and name[4:] in self.fields or not name.startswith('ctx.') and name in self.env:
+                self.fail(node, 'array binding already exists')
+            self.numeric_used = True
+            reg = self.add_resource(name, 20, length, fill)
+            if name.startswith('ctx.'): self.fields[name[4:]] = reg
+            else: self.env[name] = reg
+            return
         if kind != 'array.array' or len(call.args) != 2 or call.keywords: self.fail(node, 'array(typecode, initializer) required')
         code, values = call.args
         if not isinstance(code, ast.Constant) or code.value not in ARRAY_TYPES: self.fail(node, 'supported array typecodes: i, I, f, B, H')
@@ -469,7 +554,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.native('require', [self.truth(self.expr(n.test))], n)
             elif isinstance(n, ast.Assign) and len(n.targets) == 1:
                 if self.feature_assignment(n.targets[0], n.value, n): continue
-                if isinstance(n.value, ast.Call) and self.imports.get(getattr(n.value.func, 'id', '')) in ('setting', 'array.array', 'SpriteBatch', 'PixelArray'):
+                if isinstance(n.value, ast.Call) and self.imports.get(getattr(n.value.func, 'id', '')) in ('setting', 'array.array', 'SpriteBatch', 'PixelArray', 'FixedArray'):
                     self.declaration(n.targets[0], n.value, n)
                 else: self.assign_target(n.targets[0], self.expr(n.value), n)
             elif isinstance(n, ast.AugAssign):
@@ -574,6 +659,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 if b!=index or self.resources[self.regs[a][2]][0] not in (3,12,14,15,16,17):return
                 stores.append(a);reads=[c]
             else:return
+            if any(self.typ(r) == Q for r in reads) or (op != P_OP['STORE_ELEM'] and self.typ(a) == Q): return
             captures.update(r for r in reads if r not in defined)
             if op!=P_OP['STORE_ELEM']:
                 if self.regs[a][1]!=LOCAL or a==index or a==bound:return
@@ -652,6 +738,9 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 if pending: self.emit('END')
             functions.append((start, len(self.code), self.rights, 0, 0, len(self.inputs)))
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
+        if self.numeric_used: feature_floor = numeric.RELEASE
+        if minimum_release and release_error(minimum_release, feature_floor):
+            raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
         manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or feature_floor,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
@@ -682,6 +771,8 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         # Each operand position's register meaning; immediate targets stay intact.
         binary = {P_OP[x] for x in ('IADD','ISUB','IMUL','IDIV','IMOD','FADD','FSUB','FMUL','FDIV','FMOD','ILT','FLT','EQ','IMIN','IMAX','FMIN','FMAX','HASH')}
         unary = {P_OP[x] for x in ('MOV','ITOF','FTOI','LENGTH')}
+        binary.update(P_OP[name] for name, sig in numeric.SIGNATURES.items() if len(sig) == 3)
+        unary.update(P_OP[name] for name, sig in numeric.SIGNATURES.items() if len(sig) == 2)
         def operands(ins):
             op,a,b,c,d = ins
             if op in binary: return [1], [2,3]

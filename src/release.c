@@ -52,11 +52,18 @@ static int prerelease(const Release *a,const Release *b){
     }
     return (ai<a->pre_size)-(bi<b->pre_size);
 }
+static const char *compatible(Release a,Release b){
+    if(a.core[0]!=b.core[0])return "program requires a different LightVM major release";
+    for(unsigned n=1;n<3;n++)if(a.core[n]!=b.core[n])return a.core[n]<b.core[n]?"program requires a newer LightVM release":NULL;
+    return prerelease(&a,&b)<0?"program requires a newer LightVM release":NULL;
+}
 const char *lightvm_release_error(const char *current,const char *required){
     Release a,b;
     if(!parse(current,false,&a))return "invalid LightVM application release";
     if(!parse(required,true,&b))return "invalid minimum required LightVM release";
-    if(a.core[0]!=b.core[0])return "program requires a different LightVM major release";
-    for(unsigned n=1;n<3;n++)if(a.core[n]!=b.core[n])return a.core[n]<b.core[n]?"program requires a newer LightVM release":NULL;
-    return prerelease(&a,&b)<0?"program requires a newer LightVM release":NULL;
+    return compatible(a,b);
+}
+bool lightvm_release_at_least(const char *value,const char *floor){
+    Release a,b;
+    return parse(value,true,&a)&&parse(floor,true,&b)&&!compatible(a,b);
 }

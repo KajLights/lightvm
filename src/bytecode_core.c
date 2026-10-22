@@ -1,6 +1,49 @@
 #include "bytecode_core.h"
 #include "config.h"
+#include "numeric.h"
 #include <math.h>
+LbcNumericSignature lbc_numeric_signature(unsigned op){
+    static const LbcNumericSignature signatures[]={
+        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,T_FIXED},
+        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,T_FIXED},
+        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,0},
+        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,T_FIXED},
+        {T_BOOL,T_FIXED,T_FIXED}, {T_FIXED,T_INT,0}, {T_INT,T_FIXED,0},
+        {T_FIXED,T_FLOAT,0}, {T_FLOAT,T_FIXED,0},
+        {T_FIXED,T_INT,0}, {T_INT,T_FIXED,0}, {T_FIXED,T_FIXED,0},
+        {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT},
+        {T_INT,T_INT,0}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT}
+    };
+    return op>=QADD&&op<=ISHR?signatures[op-QADD]:(LbcNumericSignature){0};
+}
+bool lbc_numeric_eval(unsigned op,uint32_t left,uint32_t right,uint32_t *out){
+    int32_t a=lvm_i32_from_bits(left),b=lvm_i32_from_bits(right),value;
+    switch(op){
+    case QADD:value=lvm_q16_add(a,b);break;
+    case QSUB:value=lvm_q16_sub(a,b);break;
+    case QMUL:value=lvm_q16_mul(a,b);break;
+    case QDIV:if(!lvm_q16_div(a,b,&value))return false;break;
+    case QMOD:if(!lvm_q16_mod(a,b,&value))return false;break;
+    case QNEG:value=lvm_q16_neg(a);break;
+    case QMIN:value=lvm_q16_min(a,b);break;
+    case QMAX:value=lvm_q16_max(a,b);break;
+    case QLT:value=lvm_q16_lt(a,b);break;
+    case ITOQ:if(!lvm_q16_from_i32(a,&value))return false;break;
+    case QTOI:value=lvm_q16_to_i32(a);break;
+    case FTOQ:if(!lvm_q16_from_f32_bits(left,&value))return false;break;
+    case QTOF:*out=lvm_q16_to_f32_bits(a);return true;
+    case QFROMBITS:case QBITS:*out=left;return true;
+    case QSQRT:if(!lvm_q16_sqrt(a,&value))return false;break;
+    case IAND:value=lvm_i32_and(a,b);break;
+    case IOR:value=lvm_i32_or(a,b);break;
+    case IXOR:value=lvm_i32_xor(a,b);break;
+    case INOT:value=lvm_i32_not(a);break;
+    case ISHL:if(!lvm_i32_shl(a,b,&value))return false;break;
+    case ISHR:if(!lvm_i32_shr(a,b,&value))return false;break;
+    default:return false;
+    }
+    *out=lvm_i32_bits(value);return true;
+}
 static inline uint32_t quantized_hsv(uint32_t hue,uint32_t sat,uint32_t value) {
     uint32_t sector=(hue*6)>>16,fraction=(hue*6)&65535,denominator=255*65535;
     uint32_t low=(value*(255-sat)+127)/255;

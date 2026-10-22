@@ -53,6 +53,32 @@ class SpriteBatch:
         raise RuntimeError("SpriteBatch is provided by the compiled native runtime")
 
 
+class FixedArray:
+    """Admission-sized Q16.16 storage; count is i32, fill is explicitly fixed."""
+    def __init__(self, count, *, fill=None):
+        raise RuntimeError("FixedArray is provided by the compiled native runtime")
+
+
+def fixed(value):
+    """Construct Q16.16 explicitly; numeric source literals retain every digit."""
+    raise RuntimeError("fixed is provided by the compiler and native runtime")
+
+
+def fixed_bits(value):
+    """Return all 32 fixed storage bits as an i32, without numeric conversion."""
+    raise RuntimeError("fixed_bits is provided by the compiled native runtime")
+
+
+def fixed_from_bits(value):
+    """Interpret all 32 i32 bits as Q16.16, without numeric conversion."""
+    raise RuntimeError("fixed_from_bits is provided by the compiled native runtime")
+
+
+def fixed_sqrt(value):
+    """Floor the nonnegative Q16.16 square root to one raw unit."""
+    raise RuntimeError("fixed_sqrt is provided by the compiled native runtime")
+
+
 class Input:
     """Static typed live-input declaration, read with runtime.input(handle)."""
     def __init__(self, name, *, default=0.0, minimum=None, maximum=None, unit="", driver=None, control=None):

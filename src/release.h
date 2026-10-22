@@ -6,4 +6,6 @@
 /* No allocation. Build metadata is ignored; prereleases follow SemVer ordering. */
 bool lightvm_release_valid(const char *value, bool shorthand);
 const char *lightvm_release_error(const char *current, const char *required);
+/* Both operands may use the minimum-release shorthand. */
+bool lightvm_release_at_least(const char *value, const char *floor);
 #endif

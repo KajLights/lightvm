@@ -5,6 +5,20 @@ import struct
 from bytecode_fixtures import program
 prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation")\n'
 fixtures={
+ 'fixed_array_lbc':program('''from lightvm import profile,init,render,FixedArray,fixed,fixed_bits,fixed_from_bits,fixed_sqrt,rgb
+profile("animation")
+@init
+def setup(ctx,runtime):
+ ctx.a=FixedArray(runtime.pixel_count, fill=fixed(-3.5) % fixed(3))
+ ctx.b=FixedArray(runtime.pixel_count)
+ ctx.x=fixed(0.0000076293945312500000000000001)
+@render
+def draw(ctx,runtime,pixels):
+ ctx.x=ctx.x+fixed(runtime.delta)
+ ctx.a.fill(fixed_sqrt(fixed(4))+fixed(0.5))
+ ctx.b.copy_from(ctx.a)
+ pixels.fill(rgb(int(ctx.b[0]),fixed_bits(ctx.x)&255,0))
+'''),
  'transition_lbc':program('''from lightvm import profile,render
 from lightvm.transitions import crossfade
 profile("transition")

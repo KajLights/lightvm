@@ -87,6 +87,7 @@ static bool finite_value(unsigned type,uint32_t value){
     return type==T_FLOAT ? (value&0x7f800000u)!=0x7f800000u :
         type==T_BOOL ? value<2 : type==T_COLOR ? value<=0xffffff : true;
 }
+static bool scalar_type(unsigned type){return (type>=T_INT&&type<=T_BOOL)||type==T_FIXED;}
 static bool read_at(Portable *p,uint32_t offset,void *out,size_t size){
     return offset<=p->size && size<=p->size-offset && p->read(p->context,offset,out,size);
 }
@@ -138,16 +139,20 @@ bool pbc_render_reusable(Portable *p){
         else if(op==MOV||op==ITOF||op==FTOI){reads[count++]=b;}
         else if((op>=IADD&&op<=FMOD)||op==ILT||op==FLT||op==EQ||op==IMIN||op==IMAX||op==FMIN||op==FMAX||op==HASH){reads[count++]=b;reads[count++]=c;}
         else if(op==RGB||op==HSV){reads[count++]=b;reads[count++]=c;reads[count++]=d;}
-        else return false;
+        else {
+            LbcNumericSignature sig=lbc_numeric_signature(op);
+            if(!sig.result)return false;
+            reads[count++]=b;if(sig.right)reads[count++]=c;
+        }
         for(unsigned n=0;n<count;n++)if(reads[n]>=p->nregs||!defined[reads[n]])return false;
         if(writes){if(a>=p->nregs||pbc_role(p,a)!=R_LOCAL)return false;defined[a]=true;}
     }
     return !p->io_fault;
 }
-static unsigned element_type(unsigned kind){return kind==7||kind==8||kind==11?T_INT:draw_channels(kind)?T_COLOR:kind;}
+static unsigned element_type(unsigned kind){return kind==LBC_FIXED_ARRAY?T_FIXED:kind==7||kind==8||kind==11?T_INT:draw_channels(kind)?T_COLOR:kind;}
 static unsigned element_size(unsigned kind){
     if(kind>=DRAW_IMAGE_RGB&&kind<=DRAW_IMAGE_RGBWA)return draw_stride(kind);
-    switch(kind){case 1:case 2:case 11:case DRAW_RGBA:return 4;case 7:return 1;case 8:return 2;default:return 0;}
+    switch(kind){case 1:case 2:case 11:case DRAW_RGBA:case LBC_FIXED_ARRAY:return 4;case 7:return 1;case 8:return 2;default:return 0;}
 }
 static int resource_id(const Portable *p,unsigned reg){
     if(pbc_type(p,reg)!=P_REF || pbc_role(p,reg)!=R_CONST)return -1;
@@ -190,6 +195,11 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
         return sig->result ? can_write(p,a,fn->rights)&&at==sig->result : a==255;
     }
     if(!can_write(p,a,fn->rights))return false;
+    if(op>=QADD&&op<=ISHR){
+        LbcNumericSignature sig=lbc_numeric_signature(op);
+        return p->numeric_allowed&&at==sig.result&&bt==sig.left&&
+            (sig.right?ct==sig.right:!c)&&!d;
+    }
     switch(op){
     case MOV:return at==bt&&!c&&!d;
     case IADD:case ISUB:case IMUL:case IDIV:case IMOD:case IMIN:case IMAX:return at==T_INT&&bt==T_INT&&ct==T_INT&&!d;
@@ -219,12 +229,21 @@ static bool valid_expressions(Portable *p){
     for(unsigned r=0;r<p->nregs;r++)if(pbc_role(p,r)==P_SETTING&&setting_for_reg[r]<0)return false;
     for(unsigned n=0;n<p->nexpressions;n++){
         PbcExpression e_value=pbc_expression(p,n);const PbcExpression *e=&e_value;
-        if(e->reserved||e->type<T_INT||e->type>T_BOOL)return false;
+        if(e->reserved||!scalar_type(e->type)||(e->type==T_FIXED&&!p->numeric_allowed))return false;
         if(e->op==0){if(e->a||e->b||!finite_value(e->type,e->value))return false;}
         else if(e->op==1){if(e->type!=T_INT||e->a||e->b||e->value)return false;}
         else if(e->op==2){
             if(e->a>=p->nregs||setting_for_reg[e->a]<0||e->type!=pbc_type(p,e->a)||e->b||e->value)return false;
             dependencies[n]=1u<<setting_for_reg[e->a];
+        }else if(e->op>=QADD&&e->op<=ISHR){
+            LbcNumericSignature sig=lbc_numeric_signature(e->op);
+            if(!p->numeric_allowed||e->type!=sig.result||e->a>=n||e->value||
+                pbc_expression(p,e->a).type!=sig.left)return false;
+            dependencies[n]=dependencies[e->a];
+            if(sig.right){
+                if(e->b>=n||pbc_expression(p,e->b).type!=sig.right)return false;
+                dependencies[n]|=dependencies[e->b];
+            }else if(e->b)return false;
         }else{
             if(e->op>10||e->a>=n||e->b>=n||e->value)return false;
             unsigned a=pbc_expression((Portable*)p,e->a).type,b=pbc_expression((Portable*)p,e->b).type;
@@ -291,7 +310,7 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         for(unsigned r=loader->index;r<limit;r++){
         uint8_t q[8];if(!read_at(p,96+r*8,q,8))goto fail;
         unsigned type=q[0],role=q[1];uint32_t value=lbc_u32(q+4);
-        if(!type||type==5||type>P_REF||role==4||role==5||role>P_SETTING||q[2]||q[3]||!finite_value(type,value))goto fail;
+        if((!scalar_type(type)&&type!=P_REF)||role==4||role==5||role>P_SETTING||q[2]||q[3]||!finite_value(type,value))goto fail;
         p->descriptors[r]=(uint8_t)(type|(role<<4));
         memcpy(p->initials+r*4,q+4,4);
         p->register_offsets[r]=(uint16_t)p->register_bytes;
@@ -342,7 +361,8 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
     case 8:
         if(loader->index<p->nresources){unsigned n=loader->index++;
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;
-        if(!s->kind||s->kind==3||s->kind==4||s->kind==5||s->kind==6||s->kind==9||s->kind==10||s->kind==13||s->kind>DRAW_STYLE||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
+        if(!s->kind||s->kind==3||s->kind==4||s->kind==5||s->kind==6||s->kind==9||s->kind==10||s->kind==13||s->kind>LBC_FIXED_ARRAY||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
+        if(s->kind==LBC_FIXED_ARRAY&&(!p->numeric_allowed||s->flags))goto fail;
         if(pbc_expression((Portable*)p,s->length).type!=T_INT||pbc_expression((Portable*)p,s->seed).type!=T_INT||pbc_expression((Portable*)p,s->stream).type!=T_INT)goto fail;
         unsigned fill_type=pbc_expression((Portable*)p,s->fill).type;
         if(fill_type!=(s->kind==DRAW_BATCH||s->kind==DRAW_STYLE?T_INT:element_type(s->kind)))goto fail;
@@ -353,7 +373,9 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
     case 9:
         if(loader->function<p->nfunctions){unsigned n=loader->function++;
         PbcFunction fn_value=pbc_function(p,n);const PbcFunction *fn=&fn_value;
-        if(fn->first!=loader->previous||fn->end<=fn->first||fn->end>p->ncode||(fn->rights&~13u)||(fn->result==5||fn->result>P_REF)||fn->arg_count>8||fn->arg_start>p->nregs||fn->arg_count>p->nregs-fn->arg_start)goto fail;
+        if(fn->first!=loader->previous||fn->end<=fn->first||fn->end>p->ncode||(fn->rights&~13u)||
+            (fn->result&&!scalar_type(fn->result)&&fn->result!=P_REF)||
+            (fn->result==T_FIXED&&!p->numeric_allowed)||fn->arg_count>8||fn->arg_start>p->nregs||fn->arg_count>p->nregs-fn->arg_start)goto fail;
         for(unsigned k=0;k<fn->arg_count;k++)if(pbc_role(p,fn->arg_start+k)!=R_INPUT)goto fail;
 
             loader->previous=fn->end;loader->current=*fn;loader->pc=fn->first;
@@ -393,6 +415,9 @@ static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bind
         if(e->op==0)v.u=e->value;
         else if(e->op==1)v.i=(int32_t)count;
         else if(e->op==2)v=bindings?bindings[e->a]:register_value(p,e->a);
+        else if(e->op>=QADD&&e->op<=ISHR){
+            if(!lbc_numeric_eval(e->op,values[e->a].u,values[e->b].u,&v.u))return false;
+        }
         else if(e->type==T_INT){
             int64_t a=values[e->a].i,b=values[e->b].i,result;
             switch(e->op){
@@ -424,7 +449,7 @@ static bool store_value(PbcResource *r,unsigned index,PbcValue value){
     switch(r->kind){
     case 11:if(value.i<0)return false;/* Supported integer domain is signed i32. */
         /* fall through */
-    case 1:memcpy(at,&value.i,4);break;
+    case 1:case LBC_FIXED_ARRAY:memcpy(at,&value.u,4);break;
     case 2:if(!lbc_finite(value.f))return false;memcpy(at,&value.f,4);break;
     case DRAW_RGBA:if(value.u>0xffffff)return false;draw_rgba(at,value.u,255);break;
     case 7:if(value.u>255)return false;*at=(uint8_t)value.u;break;
@@ -440,7 +465,7 @@ static bool load_value(Portable *p,PbcResource *r,unsigned index,PbcValue *value
     if(!element_size(r->kind)||!r->data)return false;
     const uint8_t *at=r->data+index*element_size(r->kind);
     switch(r->kind){
-    case 1:case 11:memcpy(&value->i,at,4);break;case 2:memcpy(&value->f,at,4);break;
+    case 1:case 11:case LBC_FIXED_ARRAY:memcpy(&value->u,at,4);break;case 2:memcpy(&value->f,at,4);break;
     case DRAW_RGBA:value->u=0;for(unsigned c=0;c<3;c++)value->u=(value->u<<8)|(at[3]?((unsigned)at[c]*255u+at[3]/2u)/at[3]:0);break;
     case 7:value->u=*at;break;
     case 8:{uint16_t v;memcpy(&v,at,2);value->u=v;}break;default:return false;
@@ -725,7 +750,7 @@ int pbc_resume(Portable *p,unsigned quota){
             if(p->native_pending)p->pc--;else p->pc=d;
             break;
         }
-        default:goto fault;
+        default:if(!lbc_numeric_eval(op,r[1].u,r[2].u,&r[0].u))goto fault;break;
         }
         if(writes)register_write(p,a,r[0]);
     }

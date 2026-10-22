@@ -50,7 +50,9 @@ def draw(ctx, runtime, pixels):
 
 The compiler normalizes `requires("1.2")` to `1.2.0`. One optional top-level
 `requires(...)` declaration is accepted. Omitting it selects the source's feature
-floor: `1.1.0` for an `Input(..., control=...)` declaration, otherwise `1.0.0`.
+floor: `1.2.0` for fixed values/arrays or i32 bitwise/shift operations, `1.1.0`
+for an `Input(..., control=...)` declaration, otherwise `1.0.0`. The highest
+applicable floor wins, including numeric source operations folded to constants.
 Requirements below that floor or in another major are rejected. A declaration may request a future
 minor release; it prevents execution on older firmware even when the source uses
 only baseline operations.
@@ -60,6 +62,12 @@ minimum only when that feature is emitted. An explicit requirement below the
 feature's introduction release must produce a diagnostic. Updating the compiler's
 own version must never raise existing programs' requirements. Do not add another
 schema, profile, drawing API or interpreter revision for such additions.
+
+The loader also checks a package's claimed floor against its numeric encodings.
+A fixed register/resource, fixed declaration expression or new numeric instruction
+cannot claim a floor below 1.2.0, even on firmware that implements it. This check
+also applies to generic typed callbacks. Application release 1.2.0 keeps the
+current container layout; it introduces no storage migration.
 
 Firmware `describe` and `STATUS` report `version`. Target-aware Python compilation
 checks that version and the module limit. The editor compiles independently of

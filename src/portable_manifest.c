@@ -30,5 +30,18 @@ static const char *declarations(Portable *p,const Json *j){
 }
 
 const char *pbc_manifest_decode(Portable *p,const Json *j){
-    return p->profile==3||p->profile==4?declarations(p,j):inputs_load(p,j);
+    const char *error=p->profile==3||p->profile==4?declarations(p,j):inputs_load(p,j);
+    if(error)return error;
+    /* Generic typed callbacks also declare the application floor when using
+       new numeric features; a profile binding cannot bypass that contract. */
+    int token=json_get(j,0,"requires");
+    if(token>=0){
+        char required[96];
+        if(!json_string(j,token,required,sizeof(required)))return "invalid required LightVM release";
+        error=lightvm_release_error(LIGHTVM_VERSION,required);if(error)return error;
+        p->numeric_allowed=lightvm_release_at_least(required,LBC_NUMERIC_RELEASE);
+    }
+    for(unsigned r=0;r<p->nregs;r++)if(pbc_type(p,r)==T_FIXED&&!p->numeric_allowed)
+        return "fixed values require LightVM " LBC_NUMERIC_RELEASE;
+    return NULL;
 }

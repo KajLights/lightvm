@@ -267,6 +267,7 @@ static void network_transactions(void) {
 }
 
 #include "portable_contract.inc"
+#include "numeric_contract.inc"
 #include "inputs_contract.inc"
 #include "composition_contract.inc"
 #include "transition_contract.inc"
@@ -376,7 +377,10 @@ static void indicator_effect_contract(void) {
     CHECK(displayed[0]==0&&!app.outputs[0]->indicators[0].on);
     session_destroy(&session);app_destroy(&app);
 }
-int main(void) {
+int main(int argc,char **argv) {
+    if((argc==2||argc==3)&&!strcmp(argv[1],"--numeric-driver"))return numeric_driver(argc==3?argv[2]:"nearest");
+    if(argc==3&&!strcmp(argv[1],"--numeric-package"))return numeric_package_driver(argv[2]);
+    CHECK(argc==1);
     storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
     static App app;
     static Session session;
@@ -623,6 +627,7 @@ int main(void) {
     session_destroy(&session); app_destroy(&app);
     network_transactions();
     portable_contract();
+    numeric_contract();
     inputs_contract();
     composition_contract();
     transition_contract();

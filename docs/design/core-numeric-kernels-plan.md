@@ -1,19 +1,20 @@
 # Core numeric types, bulk kernels and native math
 
-22 October 2026. **Status: S0 foundation complete; standalone numeric module
-verified. Runtime integration remains pending.**
+22 October 2026. **Status: S0 and S1 complete. Scalar fixed-point integration
+is verified; broader kernels and native f32 math remain pending.**
 
 The [numeric contract](../numeric-types.md),
 [operation catalogue](numeric-operations.json),
 [emitter requirements](../bytecode-emitter.md) and
 [workload specification](numeric-workloads.md) freeze the foundation scope.
-`src/numeric.c` and its independent reference tests are isolated from firmware
-and application builds. The foundation began on LightVM `bdc1045` and is now
-rebased onto validated Pico repair `a9c8611`. Runtime integration starts from
-that repair, preserving its memory, scheduling and ownership changes.
-The rebase was conflict-free; the foundation patch is unchanged. All eight
-standalone tests pass again in optimized and ASan/UBSan builds. These checks
-verify the foundation on the new baseline, not runtime or hardware integration.
+The foundation began on LightVM `bdc1045` and was rebased conflict-free onto
+validated Pico repair `a9c8611`; the foundation patch was unchanged. S1 links
+`src/numeric.c` through the shared core and adds verified scalar execution,
+fixed arrays, declaration expressions and Python authoring under feature floor
+1.2.0, preserving the repair's memory, scheduling and ownership design.
+The [S1 validation record](numeric-s1-validation-2026-10-22.md) covers independent
+oracle comparisons, lifecycle/fault tests, host regressions, ASan/UBSan and Pico
+build/SRAM/stack gates. No physical numeric-performance result is claimed.
 
 Source baselines: LightVM `1d9b7ea`; sibling picolights
 `f6480b4845b2ba3af4fbf0ffb1f398d362dda772`. Paths into picolights below assume
@@ -99,9 +100,10 @@ actually reused. Do not claim that existing effects already use new arithmetic.
 
 ## Current constraints
 
-- [The core](../../src/bytecode_core.h) has i32, f32, bool and packed RGB8.
+- [The core](../../src/bytecode_core.h) has i32, f32, bool, packed RGB8 and Q16.16.
   Addition/subtraction/multiplication of i32 wrap; integer division faults on its
-  exceptional overflow. There are no integer bitwise instructions or fixed type.
+  exceptional overflow. S1 adds exact fixed arithmetic and integer bitwise/checked
+  shifts to scalar execution; map admission remains separate work.
 - [Portable execution](../../src/portable.c) and
   [map execution](../../src/portable_map.c) implement overlapping arithmetic
   switches. New operations must not acquire different semantics in these paths.
@@ -127,11 +129,11 @@ Use signed two's-complement Q16.16: `value = signed_raw / 65536`, with range
 storage and a four-byte fixed-array resource kind. Never treat a numeric value
 as a resource handle or pointer.
 
-Provide explicit `fixed(...)` construction and `FixedArray(count, fill=...)`
-initialization descriptions in the Python SDK, with equivalent explicit
-JavaScript/Blocks authoring. These names are proposed source APIs, not a new
-runtime object system. Array sizes remain i32 and are resolved during admission.
-Array handles remain static in this delivery.
+S1 provides explicit `fixed(...)` construction and `FixedArray(count, fill=...)`
+initialization descriptions in the Python SDK. Equivalent explicit
+JavaScript/Blocks authoring follows in S5. These describe compiled operations;
+there is no new runtime object system. Array sizes remain i32 and are resolved
+during admission. Array handles remain static in this delivery.
 
 Existing literals retain their current types. Mixed fixed/f32/i32 arithmetic
 requires an explicit conversion; do not silently convert an existing animation.
@@ -417,11 +419,12 @@ sampling.
 
 ## Delivery sequence
 
-S0 is complete for the foundational numeric/kernel scope. The standalone
-arithmetic portion of S1 is verified, but S1 runtime/resource/frontend integration
-and S2-S6 remain pending. Native f32 vectors and accuracy envelopes are requirements
-for S4, not evidence that its implementation has shipped. Optional procedural
-sampling remains its own evaluation and is not part of this S0 completion.
+S0 and S1 are complete for the foundational numeric/scalar scope, with
+[S1 evidence](numeric-s1-validation-2026-10-22.md) recorded separately from the
+Pico repair baseline. S2-S6 remain pending. New numeric operations are not admitted
+to bulk maps yet. Native f32 vectors and accuracy envelopes are requirements for
+S4, not evidence that its implementation has shipped. Full frontend/emitter parity
+remains S5; optional procedural sampling remains its own evaluation.
 
 | Stage | Deliverable and likely files | Completion gate |
 | --- | --- | --- |

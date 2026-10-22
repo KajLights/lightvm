@@ -29,6 +29,7 @@ BOUNDARIES = (-(1 << 31), -(1 << 31) + 1, -16777217, -16777216,
 
 
 class NumericContractTests(unittest.TestCase):
+    driver_args = []
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory(prefix='lightvm-numeric-')
@@ -47,7 +48,7 @@ class NumericContractTests(unittest.TestCase):
         cases = [(op, tuple(value & oracle.MASK for value in args)) for op, args in cases]
         data = ''.join(f'{op} {args[0]:08x} {(args[1] if len(args) > 1 else 0):08x}\n'
                        for op, args in cases)
-        command = [str(self.driver)] + ([rounding] if rounding else [])
+        command = [str(self.driver), *self.driver_args] + ([rounding] if rounding else [])
         run = subprocess.run(command, input=data, text=True, capture_output=True)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(run.stderr, '', 'sanitizer or runtime diagnostic')
@@ -134,20 +135,23 @@ class NumericContractTests(unittest.TestCase):
             self.assertTrue(set(op['arguments']) <= types, op)
             self.assertIn(op['result'], types, op)
             self.assertEqual(op['effects'], [], op)
-            self.assertEqual(op['wire_id'], None, op)
             self.assertTrue(op['semantics'] and op['accuracy'] and op['feature_floor'], op)
-            if op['implementation'] == 'standalone':
+            if op['implementation'] == 'runtime':
                 self.assertIn(op['name'], exact, op)
+                self.assertEqual(op['wire_id']['kind'], 'instruction')
+                self.assertEqual(op['feature_floor']['release'], '1.2.0')
             elif op['name'] == 'q16.literal':
                 self.assertTrue(self.vectors['literals'])
+                self.assertEqual(op['wire_id'], {'kind':'constant', 'type':7})
             else:
+                self.assertIsNone(op['wire_id'])
                 self.assertIn(op['name'], native, op)
-            if op['faults'] and op['implementation'] == 'standalone':
+            if op['faults'] and op['implementation'] == 'runtime':
                 self.assertTrue(any(case['op'] == op['name'] and case.get('fault')
                                     for case in self.vectors['exact']), op)
         implemented = set(BINARY + UNARY + ('q16.from_f32', 'i32.shl', 'i32.shr'))
         self.assertEqual({op['name'] for op in catalogue['operations']
-                          if op['implementation'] == 'standalone'}, implemented)
+                          if op['implementation'] == 'runtime'}, implemented)
 
 
 if __name__ == '__main__':
