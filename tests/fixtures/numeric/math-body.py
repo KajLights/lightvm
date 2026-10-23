@@ -1,4 +1,4 @@
-"""A costly valid body checks the cooperative bound at one pixel per chunk."""
+"""A costly body stays ordered when its first pixel exceeds the kernel work cap."""
 import math
 from lightvm import profile, render, rgb
 profile("animation")

@@ -32,7 +32,7 @@ typedef struct {
 /* EQ metadata describes its fixed specialization; the base EQ is polymorphic. */
 LbcNumericMetadata lbc_numeric_metadata(unsigned op);
 LbcNumericMetadata lbc_native_numeric_metadata(unsigned binding);
-unsigned lbc_instruction_work(unsigned op);
+#include "numeric_work.inc"
 LbcNumericSignature lbc_numeric_signature(unsigned op);
 bool lbc_numeric_eval(unsigned op,uint32_t left,uint32_t right,uint32_t *out);
 enum { R_LOCAL,R_INPUT,R_CONST,R_STATE };

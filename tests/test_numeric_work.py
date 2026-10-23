@@ -62,6 +62,18 @@ class NumericWorkTests(unittest.TestCase):
             if not expected_map:self.assertIn('first-pixel work budget',compiler.map_reports[0][2])
             self.assertEqual(self.run_work(package)['status'],1)
 
+    def test_native_binding_reserves_its_full_cost_before_execution(self):
+        _,package,_=self.compile('@init\ndef setup(ctx,runtime):ctx.value=0.0\n'
+                                 '@render\ndef draw(ctx,runtime,pixels):ctx.value=math.sin(0.5)\n',False)
+        # Existing sine binding: 64, state assignment: 1, END: 1.
+        rejected=self.run_work(package,budget=63)
+        self.assertEqual((rejected['status'],rejected['work'],rejected['state']),(-1,0,[0]))
+        for budget in (64,65):
+            limited=self.run_work(package,budget=budget)
+            self.assertEqual((limited['status'],limited['work']),(-1,budget))
+        accepted=self.run_work(package,budget=66)
+        self.assertEqual((accepted['status'],accepted['work']),(1,66))
+
     def test_first_pixel_budget_boundary_and_mutually_exclusive_paths(self):
         # 7*(EXP+MOV) + 12*(FDIV+MOV) + 5*(FADD+MOV) + FTOI+RGB+STORE = 1024.
         body='  x=math.exp(0.5)\n'*7+'  x=x/1.0\n'*12+'  x=x+0.0\n'*5

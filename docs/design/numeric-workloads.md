@@ -1,9 +1,10 @@
 # Numeric and kernel workload specification
 
-23 October 2026. **Full host parameter matrix and cross-builds pass; physical
-acceptance remains open.** Follow the [numeric contract](../numeric-types.md),
+23 October 2026. **Host and RP2040 numeric checks pass; control-service and
+other-board acceptance remain open.** Follow the
+[numeric contract](../numeric-types.md),
 [delivery plan](core-numeric-kernels-plan.md) and
-[current validation record](numeric-followup-validation-2026-10-23.md). The
+[current Pico W validation](numeric-pico-validation-2026-10-23.md). The
 [earlier measurements](numeric-s234-validation-2026-10-22.md) retain their
 attached-RP2040 scope. The complete S6 physical matrix remains pending.
 
@@ -94,8 +95,9 @@ Gaussian input pairs, trigonometric colour powers and ordered fixed damping with
 independent shading. These are original small workload expressions. Their timed
 versions capture bounded elapsed-time phase/offset to prevent static frame reuse.
 The damping fixture alternates an impulse for repeatable frame-by-frame comparison;
-it is not the full five-impulse Q2 study. Table-length and exhaustive parameter
-sweeps remain S6 work.
+it is not the full five-impulse Q2 study. The 23 October matrix below supplies
+the full parameter grids and five-impulse study; timing claims retain their
+measured case and board scope.
 
 `tools/benchmark_numeric.py --prepare` freezes source/package hashes and both
 optimized and forced-scalar packages. Its replay mode compares five explicit
@@ -150,8 +152,32 @@ as ordered controls and records the compiler reason. In particular, the prior
 30 log/exp-pair fixture exceeds the new first-pixel cap and is no longer a map.
 Do not omit it or compare it as a successful bulk specialization.
 
-See the [current validation record](numeric-followup-validation-2026-10-23.md).
-Five alternating physical windows at 200/500/1,024 pixels, small-loop break-even,
-per-operation fixed/f32 timings, mixed scenes, network load and simultaneous
-old/candidate/transition peaks remain unmeasured for the current candidate.
-The target-specific physical gates stay open without connected boards.
+See the [current Pico W validation](numeric-pico-validation-2026-10-23.md).
+The current Pico W campaign records five alternating windows at 200/500/1,024
+pixels, small-loop and fixed/f32 operation screens, mixed scenes, network load
+and simultaneous old/candidate/transition peaks. Its service gate fails and
+remains open; RP2350 and ESP32 still require physical validation.
+
+## Current physical disposition
+
+The [23 October Pico W campaign](numeric-pico-validation-2026-10-23.md) adds
+416 scalar/bulk frame comparisons (32 deterministic cases × 13 admitted counts),
+independent wire/floor rejections, native-math vectors and fault/retention checks.
+Unchanged Rainbow and Stars remain timing controls; their default unseeded RNG
+prevents a frame-for-frame device comparison through the current public reset
+API. Host replays include explicit seeds and still cover both examples. A
+separate unchanged Stars comparison uses its existing settings to hold a stable
+20-sprite population and passes the repeated regression gate.
+
+Repeated render timing, small-loop screens, fixed/f32 operation chains and
+first/steady-cost controls are reported separately. Counts above the attached
+200-pixel strip are logical execution/admission tests. Screened operation chains
+include common loop/quantization overhead and are not isolated cycle counts.
+
+Concurrent brightness controls expose an existing synchronous output-refresh
+path that misses the 10 ms service target. The original and tuned firmware both
+fail this gate; HTTP/WebSocket polling alone has no observed ingress violation
+in its isolated window but still has foreground violations. Peak-memory tests
+also require clearing a scene before parsing a replacement at nearly full heap.
+These findings and RP2350/ESP32 physical results retain their explicit open
+statuses. Numeric throughput gains do not close unrelated control-service gates.

@@ -38,6 +38,7 @@ static int numeric_metadata_driver(void){
     for(unsigned n=0;n<sizeof(numeric_cases)/sizeof(*numeric_cases);n++){
         const NumericCase *test=&numeric_cases[n];LbcNumericMetadata m=lbc_numeric_metadata(test->op);
         CHECK(m.signature.left==test->left&&m.signature.right==test->right&&m.signature.result==test->result);
+        CHECK(lbc_instruction_work(test->op)==m.work);
         /* Exercise the loader's real signatures, not only the generated table. */
         uint8_t bytes[256];PortableBytes source={bytes,numeric_package(bytes,test)};Portable *p=NULL;
         CHECK(!pbc_open(&p,portable_read,&source,source.size));pbc_destroy(p);CHECK(vm_heap_used()==0);
@@ -66,6 +67,7 @@ static int numeric_metadata_driver(void){
     }
     LbcNumericMetadata sine=lbc_native_numeric_metadata(7),instruction=lbc_numeric_metadata(FSIN);
     CHECK(!memcmp(&sine,&instruction,sizeof(sine)));
+    CHECK(lbc_native_instruction_work(7)==sine.work&&lbc_native_instruction_work(8)==1);
     puts("]");return 0;
 }
 static int numeric_driver(const char *rounding){

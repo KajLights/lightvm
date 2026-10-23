@@ -1,10 +1,13 @@
 # Core numeric types, bulk kernels and native math
 
-23 October 2026. **Status: implementation corrections verified; physical R5/R6
-acceptance open.** Fixed arithmetic, prepared kernels, native math and
+23 October 2026. **Status: implementation corrections committed; RP2040
+numeric execution measured and tuned; control-service acceptance open.**
+Fixed arithmetic, prepared kernels, native math and
 frontend/emitter integration are present. The [implementation follow-up below](#implementation-follow-up--23-october-2026)
 closes the verifier, semantic feature-floor, easing, metadata and work-accounting
-corrections from the original review. The
+corrections from the original review. The subsequent
+[Pico W campaign](numeric-pico-validation-2026-10-23.md) records current-firmware
+correctness, performance, memory and the failed network-control service gate. The
 [S2–S4 validation record](numeric-s234-validation-2026-10-22.md) and
 [S5 integration record](numeric-s5-validation-2026-10-22.md) retain their measured
 attached-Pico scope; their completion statements predate this review.
@@ -170,8 +173,8 @@ The original review findings below refer to `129ebbf` and remain as rationale.
 | R2 | Implemented and verified | Compiler and loader enforce 1.3.0 for scalar/declaration f32 min/max and both sine encodings, including typed callbacks; shared signed-zero semantics and target/rejection tests pass; recompile experimental packages |
 | R3 | Implemented and verified | Nine normalized guest easing helpers; endpoints, adjacent values, clamp/monotonic/equation checks, explicit fixed conversion, hygienic imports and all four frontend paths pass |
 | R4 | Implemented and verified | Catalogue-generated C/Python signatures, work, effects, floors and eligibility; native probe checks signatures and actual loader operands/results/floors; independent emitter retains literal IDs and tests RGB boundaries; complete core wire reference |
-| R5 | Accounting implemented; physical calibration open | Separate first/steady costs, 1,024-unit first-path admission cap, weighted invocation reservations including faults and speculative suffixes, explicit watchdog semantics; exact boundary and lazy-path tests pass. No physical latency/performance claim for this candidate |
-| R6 | Host matrix and cross-builds pass; physical campaign open | 2,210 host replays across 34 cases, including full parameter grids/five-impulse damping and unchanged controls; RP2040/RP2350 strict RAM/stack gates and ESP32-S3 build pass. Board timing, network load and deployment acceptance still require connected hardware |
+| R5 | Accounting and RP2040 workloads checked; service acceptance open | First/steady and weighted invocation reservations remain intact after dispatch tuning. Current-candidate arithmetic, kernel, cold/warm and ordered-body results are in the Pico W record. A render-job bound does not close the failed control-service gate |
+| R6 | RP2040 campaign recorded; network service and other boards open | 2,210 host replays, 416 deterministic physical frame pairs, independent wire/fault checks and RP2040 timing/memory results. RP2040/RP2350 strict RAM/stack and ESP32-S3 builds pass. Concurrent brightness controls fail the 10 ms service target on both preserved and final firmware; RP2350/ESP32 physical results remain absent |
 
 First-pixel paths over 1,024 units remain ordinary resumable source loops with
 an explicit compiler advisory. Explicitly encoded over-budget maps fail
@@ -332,6 +335,41 @@ regression results when evaluating them.
   640 bytes left after configured reservations in the recorded build; changing
   SRAM placement, plan representation or continuations needs a fresh accounting.
   Do not enlarge global reserves or relax gates to absorb an unmeasured change.
+
+### Current RP2040 findings — 23 October 2026
+
+The [current physical record](numeric-pico-validation-2026-10-23.md) follows
+reviewed implementation commit `2459b5b`. Generated flash-resident cost lookup
+and a direct native-call dispatch path recover accounting overhead without
+changing work weights, numeric precision, reservations or kernel selection.
+Five alternating firmware pairs retain every unchanged control. Stars has a
+variable random population; its raw results remain diagnostic, while the
+separate fixed-population sprite control is repeatable. Do not claim an exact
+unchanged-Stars regression gate from those stochastic windows. A further run of
+the unchanged Stars package with its declared settings holding 20 live sprites
+passes: the final firmware is 6.32% faster across five paired windows.
+
+Outstanding control work is now concrete. Brightness changes call
+`refresh_light_frame()`, which drains the old physical output and invokes a
+synchronous `pixels_show()`. At 500 WS2812 pixels the wire transfer alone takes
+about 15 ms. Concurrent HTTP/WebSocket/MQTT tests and MQTT-only isolation exceed
+the 10 ms ingress target on both preserved and final numeric firmware. Convert
+brightness refresh to an owned asynchronous output operation, preserving paused
+frames, A/B transitions, cancellation, DMA-buffer lifetime and acknowledgements;
+then repeat the same load and stack/resource checks. Also isolate the remaining
+HTTP/WebSocket foreground gaps: timely actual ingress does not erase a failed
+full-loop foreground target. Do not change numeric weights to hide control I/O.
+The inherited near-boot gap remains separately open.
+
+The 1,024-pixel A/B/program-transition scene holds 63,474 of 65,536 VM-heap bytes.
+Candidate cancellation/rejection restores the exact prior heap, but an additional
+configuration parser is rejected at that occupancy. Clearing B through its
+existing composition control releases enough space for ordinary configuration
+restoration. Retain this
+recoverability path and test cleanup at peak occupancy; full transactional
+replacement is only supported when its parser/candidate peak fits. Do not enlarge
+the heap or describe a successful steady scene as proof that every replacement
+can coexist with it.
 
 ### Review verification
 
@@ -649,9 +687,10 @@ sampling.
 ## Delivery sequence
 
 S0–S5 and R1–R4 are implemented and checked. R5's first/steady work accounting,
-watchdog contract and oversized-body selection rule are implemented. R5/R6
-physical calibration and current-candidate performance/service gates remain
-open; cross-build and host checks do not replace them. The
+watchdog contract and oversized-body selection rule are implemented. The
+[Pico W campaign](numeric-pico-validation-2026-10-23.md) adds current-candidate
+physical evidence and dispatch tuning. R5/R6 service acceptance and the other
+physical boards remain open; cross-build and host checks do not replace them. The
 [23 October follow-up](numeric-followup-validation-2026-10-23.md) supersedes the
 review's implementation gaps while preserving the historical measurements.
 [S1 evidence](numeric-s1-validation-2026-10-22.md),
@@ -669,12 +708,13 @@ Optional procedural sampling remains its own evaluation.
 | S3 | Verifier/accounting complete; physical service gate open | Lazy forward branches, compact admitted plans, larger bodies and weighted chunks; compiler CFG proof and source diagnostics | Branch/long-body fixtures use bulk execution; dead-arm faults remain dormant; memory and per-chunk bounds pass |
 | S4 | Math, semantic floors and helper coverage verified | Required native math, shared evaluator integration and generic helper coverage in the SDK/frontends | All required functions run through scalar and bulk paths with documented error/domain results; Flame/Candle math and colour equations compile |
 | S5 | Frontend, emitter and metadata integration verified | Full frontend parity, external-emitter fixture, feature floors, documentation and integration regression coverage | No separate language runtime; all current examples and new fixtures pass; newer instructions are rejected by insufficient targets before replacing live state |
-| S6 | Full host matrix/cross-builds pass; physical R5/R6 open | Matched hardware measurements, stack/RAM gates and final workload review | Correctness, performance, responsiveness and memory gates below have recorded evidence; unresolved physical results remain explicitly pending |
+| S6 | RP2040 results recorded; control service and other boards open | Matched hardware measurements, stack/RAM gates and final workload review | Correctness, performance, responsiveness and memory gates below have recorded evidence; unresolved physical results remain explicitly pending |
 
 S1 follows S0. S2 follows S1; S3 follows S2. S4 can be implemented after S1 but
 must be revalidated against the completed S3 kernel path. S5 joins S1-S4. For
-the next campaign, measure the current candidate for R5/R6 using the frozen
-parameter matrix and unchanged controls. S6 is the release gate. Land a working scalar operation
+the next campaign, address the measured control-service gaps and run the
+remaining physical boards using the same frozen matrix. S6 is the release gate.
+Land a working scalar operation
 and its validation before enabling that operation in a kernel.
 
 Evaluate the Stars proposal alongside this sequence: S0 defines its sampling,

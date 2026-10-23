@@ -702,7 +702,6 @@ int pbc_resume(Portable *p,unsigned quota){
     uint64_t slice_started=platform_time_us();
     unsigned dispatched=0;
     while(quota--){
-        if(p->used>=LIGHTVM_INVOCATION_LIMIT)goto fault;
         bool checked=dispatched&&(p->bulk||!((dispatched+1u)&15u));
         if(checked&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
         dispatched++;
@@ -711,8 +710,20 @@ int pbc_resume(Portable *p,unsigned quota){
         /* Completing a chunk clears bulk. Check before the next expensive
            operation as well, but let cheap tail instructions commit the frame. */
         if(op>=P_FILL&&!checked&&dispatched>1&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
+        if(op==P_NATIVE){
+            /* Native operands come from the call record. Decode it once and
+             * avoid reading the instruction's unrelated register slots. */
+            PbcCall site=pbc_call(p,d);unsigned work=lbc_native_instruction_work(site.binding);
+            if(work>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+            p->pc++;p->used+=work;p->dispatch_count++;
+            if(p->io_fault)goto fault;
+            PbcValue result={0};p->native_pending=false;
+            if(!native_call(p,&site,&result))goto fault;
+            if(p->native_pending)p->pc--;
+            else if(a!=255)register_write(p,a,result);
+            continue;
+        }
         unsigned work=lbc_instruction_work(op);
-        if(op==P_NATIVE){LbcNumericMetadata meta=lbc_native_numeric_metadata(pbc_call(p,d).binding);if(meta.work)work=meta.work;}
         if(work>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
         p->pc++;p->used+=work;p->dispatch_count++;
         PbcValue r[4]={register_value(p,a),register_value(p,b),register_value(p,c),register_value(p,d)};
@@ -759,7 +770,6 @@ int pbc_resume(Portable *p,unsigned quota){
             for(unsigned k=p->bulk;k<end;k++){PbcValue v;if(!load_value(p,src,k,&v)||!store_value(dst,k,v))goto fault;}
             if(end<dst->count){p->bulk=end;p->pc--;}else p->bulk=0;break;
         }
-        case P_NATIVE:{PbcValue result={0};PbcCall site=pbc_call(p,d);p->native_pending=false;if(!native_call(p,&site,&result))goto fault;if(p->native_pending){p->pc--;writes=false;}else if(a!=255)r[0]=result;else writes=false;break;}
         case P_MAP:{
             writes=false;p->native_pending=false;uint64_t started=platform_time_us();
             bool ok=pbc_map_run(p,p->pc,d,a,b,c);p->native_draw_us+=platform_time_us()-started;

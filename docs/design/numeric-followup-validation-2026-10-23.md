@@ -1,5 +1,9 @@
 # Numeric foundation follow-up validation
 
+The later [Pico W campaign](numeric-pico-validation-2026-10-23.md) supplies the
+current physical results and records the remaining control-service failure.
+The no-board statements below describe this earlier software-validation run.
+
 23 October 2026. The implementation corrections from the review of `129ebbf`
 are complete in `codex/core-numeric-foundation`. Physical release acceptance
 remains open. This record supplements the historical S1/S2–S4/S5 results; it
