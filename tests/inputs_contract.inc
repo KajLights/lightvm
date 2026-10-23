@@ -115,6 +115,8 @@ static void inputs_contract(void){
     static App collecting;memset(&collecting,0,sizeof(collecting));
     AppOutput collected={.composition=scene};AppOutput *collected_outputs[]={&collected};
     collecting.outputs=collected_outputs;collecting.output_count=1;
+    /* The next render must also respect a board's optional refresh cap. */
+    clock_now=reactive->next_frame;
     app_tick(&collecting);
     CHECK(scene->prepared&&crc32_bytes(scene->working,9)==back_crc);
     for(unsigned n=0;n<3;n++)CHECK(reactive->control.committed[n*4]==40);

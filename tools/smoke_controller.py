@@ -29,8 +29,10 @@ def smoke(client, board, reference):
     pin='D1' if board=='xiao_esp32c3' else 'D0' if board.startswith('xiao_esp32') else 'GP16'
     config={'schema':'lightvm.config','outputs':[{'id':'lights','type':'ws2812b','config':{'pin':pin,'count':count,'brightness_limit':32}}]}
     host_config={**config,'outputs':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]}
+    configured_heap=None
     try:
         client.configure(config);reference.configure(host_config)
+        configured_heap=client.status_fields()['heap']
         for source in sorted((ROOT/'examples/animations').glob('*.py')):
             artifact=compile_source(source.read_text().replace("random.seed()", "random.seed(1)"),str(source),info)
             check(artifact.success,str(artifact.diagnostics))
@@ -40,6 +42,12 @@ def smoke(client, board, reference):
                 client.require_ok(client.command(FRAME,payload));reference.require_ok(reference.command(FRAME,payload))
                 check(client.pixel_snapshot==reference.pixel_snapshot,source.name+': output differs from host')
             before,pixels=client.snapshot();after,repeated=client.snapshot()
+            # Live ages, dependency observations and coordinator waits can change
+            # between requests while the paused program and pixels stay fixed.
+            for snapshot in (before,after):
+                snapshot['state']={key:value for key,value in snapshot['state'].items()
+                                   if key not in ('displayed_sample_age_us','dirty_age_us','dependency_revision',
+                                                  'runnable_wait_us','composite_wait_us','output_wait_us')}
             check(before==after and pixels==repeated,'snapshot changed program state')
             if source.stem=='color':
                 client.set_inputs({'color':{'value':0x123456}})
@@ -62,10 +70,15 @@ def smoke(client, board, reference):
         while client.program_state()['program_us']<=paused:
             check(time.monotonic()<deadline,'resume failed')
             time.sleep(.02)
-        print('All effects, identical bytecode/pixels, controls, snapshots, playback and pause/resume passed.')
     finally:
-        client.command(STOP);client.command(RESET);client.configure(original)
-    check(client.status_fields()['heap']=='0','RESET leaked interpreter memory')
+        try:
+            client.require_ok(client.command(STOP));client.require_ok(client.command(RESET))
+            if configured_heap is not None:
+                # Outputs and the scene-operation history retain their idle allocation.
+                check(client.status_fields()['heap']==configured_heap,'RESET leaked interpreter memory')
+        finally:
+            client.configure(original)
+    print('All effects, identical bytecode/pixels, controls, snapshots, playback, pause/resume and reset heap passed.')
 
 
 def main():

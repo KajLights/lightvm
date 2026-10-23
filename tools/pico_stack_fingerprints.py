@@ -21,11 +21,14 @@ PROJECT=(
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def dependencies(build,sdk):
+    # These two targets supply the firmware sources and SDK objects. Native
+    # pioasm/picotool sub-builds are packaging tools, not firmware stack paths.
     result=set()
-    for file in build.rglob('*.o.d'):
-        for word in file.read_text().replace('\\\n',' ').split():
-            path=Path(word)
-            if path.is_relative_to(sdk) and path.is_file():result.add(path.relative_to(sdk).as_posix())
+    for target in ('lightvm.dir','lightvm_core.dir'):
+        for file in (build/'CMakeFiles'/target).rglob('*.o.d'):
+            for word in file.read_text().replace('\\\n',' ').split():
+                path=Path(word)
+                if path.is_relative_to(sdk) and path.is_file():result.add(path.relative_to(sdk).as_posix())
     return result
 
 def verify_files(manifest,sdk,root=ROOT):

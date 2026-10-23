@@ -15,7 +15,7 @@ from check_pico_ram import ram_report
 from check_pico_ha_stack import stack_report
 from audit_pico_stack import audit, parse_graph, cmake_enabled
 from pico_stack_paths import parse_machine, path_audit, account, EXTRA_ROOTS, IRQ_ROOTS
-from pico_stack_fingerprints import verify_files
+from pico_stack_fingerprints import dependencies, verify_files
 from pico_stack_contracts import enabled_target
 from unittest.mock import patch
 from package_web_firmware import package, validate_pico_uf2
@@ -234,6 +234,21 @@ class PicoClosedStackTests(unittest.TestCase):
             self.assertFalse(verify_files(manifest,root,root))
             source.write_text('new callback')
             self.assertEqual(len(verify_files(manifest,root,root)),1)
+
+    def test_firmware_fingerprints_exclude_native_sdk_build_tools(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);sdk=root/'sdk';sdk.mkdir();build=root/'build'
+            for name in ('firmware.h','core.h','host-tool.h'):
+                (sdk/name).write_text('fixture')
+            for target,header in (
+                ('CMakeFiles/lightvm.dir/port.c.o.d','firmware.h'),
+                ('CMakeFiles/lightvm_core.dir/core.c.o.d','core.h'),
+                ('_deps/picotool-build/CMakeFiles/picotool.dir/main.cpp.o.d','host-tool.h'),
+                ('pioasm/CMakeFiles/pioasm.dir/main.cpp.o.d','host-tool.h'),
+            ):
+                file=build/target;file.parent.mkdir(parents=True,exist_ok=True)
+                file.write_text('object.o: '+str(sdk/header)+'\n')
+            self.assertEqual(dependencies(build,sdk),{'firmware.h','core.h'})
 
 
 class PicoHaStackTests(unittest.TestCase):
