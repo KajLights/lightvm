@@ -13,6 +13,11 @@ ROOT=Path(__file__).resolve().parents[1]
 MANIFEST=Path(__file__).with_name('pico-stack-contracts.json')
 PROJECT=(
     'src/runtime.c','src/app.c','src/preparation.c','src/render_executor.c',
+    'src/device_host.c','src/store_policy.c',
+    'shared/device-core/src/http.c','shared/device-core/src/http_setup.c',
+    'shared/device-core/src/store.c','shared/device-core/src/store_extent.c',
+    'shared/device-core/src/network.c','shared/device-core/src/settings.c',
+    'shared/device-core/src/discovery.c',
     'platforms/pico/render_executor.c','platforms/pico/network_port.c',
     'platforms/pico/main.c','platforms/pico/platform.c','platforms/pico/CMakeLists.txt',
     'platforms/pico/lwipopts.h','platforms/pico/tusb_config.h',
@@ -24,8 +29,10 @@ def dependencies(build,sdk):
     # These two targets supply the firmware sources and SDK objects. Native
     # pioasm/picotool sub-builds are packaging tools, not firmware stack paths.
     result=set()
-    for target in ('lightvm.dir','lightvm_core.dir'):
-        for file in (build/'CMakeFiles'/target).rglob('*.o.d'):
+    targets=[build/'CMakeFiles'/name for name in ('lightvm.dir','lightvm_core.dir')]
+    targets.append(build/'device-core/CMakeFiles/device_core.dir')
+    for target in targets:
+        for file in target.rglob('*.o.d'):
             for word in file.read_text().replace('\\\n',' ').split():
                 path=Path(word)
                 if path.is_relative_to(sdk) and path.is_file():result.add(path.relative_to(sdk).as_posix())

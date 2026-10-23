@@ -1,4 +1,4 @@
-#include "discovery.h"
+#include "device/discovery.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +9,7 @@ static bool send(void *ctx,const uint8_t *b,size_t n,const uint8_t ip[4],uint16_
 }
 static void start(Discovery *d,Wire *w,unsigned number,uint16_t port) {
     char host[32],id[32]; snprintf(host,sizeof(host),"lightvm-%06u",number); snprintf(id,sizeof(id),"test-%u",number);
-    const uint8_t ip[4]={192,168,1,(uint8_t)number}; discovery_start(d,host,id,"pico_w",ip,port,send,w,0); CHECK(d->active);
+    const uint8_t ip[4]={192,168,1,(uint8_t)number}; DeviceHost identity={.controller_id=id,.board="pico_w",.version="0.1.0",.kind="light_controller",.capabilities=3}; discovery_start(d,host,&identity,ip,port,send,w,0); CHECK(d->active);
 }
 static void announce(Discovery *d) {
     discovery_tick(d,100000); discovery_tick(d,350000); discovery_tick(d,600000); discovery_tick(d,850000); CHECK(d->announced);
@@ -87,6 +87,13 @@ int main(void) {
         discovery_receive(&c,changed.bytes,changed.size,(uint8_t[]){192,168,1,2},5353,1000000);
         CHECK(discovery_json(&c,json,sizeof(json),1000000));
     }
+    // Shared service peers can be audio analysers with independent product names.
+    DeviceHost audio={.controller_id="audio-1234",.board="xiao_esp32s3",.version="0.1.0-dev",.kind="audio_analyser",.capabilities=13};
+    start(&b,&wb,2,80);
+    discovery_start(&a,"kaj-fi-123456",&audio,(uint8_t[]){192,168,1,42},80,send,&wa,0);announce(&a);
+    discovery_receive(&b,wa.bytes,wa.size,a.controllers[0].ip,5353,1000000);
+    CHECK(discovery_json(&b,json,sizeof(json),1000000));
+    CHECK(strstr(json,"kaj-fi-123456.local") && strstr(json,"audio_analyser") && strstr(json,"\"capabilities\":13") && strstr(json,"0.1.0-dev"));
     puts("bounded DNS-SD discovery, expiry, goodbye, aliases and malformed packets: passed");
     return 0;
 }

@@ -288,7 +288,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
         char message[FRAME_LIMIT-8];
         StatusWriter w={message,sizeof(message),0};
         status_field(&w,"version",LIGHTVM_VERSION,SIZE_MAX);
-        status_integer(&w,"protocol",LIGHTVM_PROTOCOL_VERSION);
+        status_integer(&w,"protocol",DEVICE_PROTOCOL_VERSION);
         status_field(&w,"platform",info->platform,16);
         status_field(&w,"board",info->board,24);
         status_field(&w,"output",info->output,16);

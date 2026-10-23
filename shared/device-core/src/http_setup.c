@@ -1,4 +1,4 @@
-#include "http_setup.h"
+#include "device/http_setup.h"
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>
@@ -21,19 +21,19 @@ static void escape(const char *in,char *out) {
 static unsigned page(Http *h,unsigned status,const char *message,bool saved) {
     char text[160*6+1],ssid[32*6+1],country[2*6+1];
     escape(message,text);
-    const NetworkConfig *c=&h->app->network.config;
+    const NetworkConfig *c=&h->host->network->config;
     escape(c->count?c->networks[0].ssid:"",ssid); escape(c->country,country);
     int n=snprintf((char *)h->response,sizeof(h->response),
         "<!doctype html><html lang='en'><meta charset='utf-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>LightVM Wi-Fi setup</title>"
+        "<title>Device Wi-Fi setup</title>"
         "<body style='font-family:system-ui;max-width:30em;margin:2em auto;padding:0 1em'>"
         "<h1>Wi-Fi setup</h1><p role='%s'>%s</p>",status>=400?"alert":"status",text);
     if (n<0 || (size_t)n>=sizeof(h->response)) return 500;
     h->used=(size_t)n;
     if (!saved) {
         n=snprintf((char *)h->response+h->used,sizeof(h->response)-h->used,
-            "<p>Connect this LightVM board to your Wi-Fi. No internet connection is needed.</p>"
+            "<p>Connect this device to your Wi-Fi. No internet connection is needed.</p>"
             "<form method='post' action='/setup'>"
             "<input type='hidden' name='revision' value='%u'>"
             "<input type='hidden' name='token' value='%s'>"
@@ -46,8 +46,8 @@ static unsigned page(Http *h,unsigned status,const char *message,bool saved) {
             "<br><small>Two letters, for example IT; XX uses worldwide settings.</small></p>"
             "<button type='submit'>Save Wi-Fi</button></form>"
             "<p><small>Saving makes this the preferred network and keeps other saved networks. "
-            "After setup, rejoin your Wi-Fi to use the LightVM editor.</small></p>",
-            (unsigned)h->app->store.network_revision,h->app->boot_id,ssid,c->count&&c->networks[0].hidden?" checked":"",country);
+            "After setup, rejoin your Wi-Fi to use the device management interface.</small></p>",
+            (unsigned)h->host->settings->store->network_revision,h->host->boot_id,ssid,c->count&&c->networks[0].hidden?" checked":"",country);
         if (n<0 || (size_t)n>=sizeof(h->response)-h->used) return 500;
         h->used+=(size_t)n;
     }
@@ -112,10 +112,10 @@ unsigned http_setup(Http *h,const HttpRequest *r) {
     if (strcmp(r->method,"POST")) return 405;
     Form form;
     if (!parse(r,&form)) return page(h,400,"Invalid form. Reload the page and try again.",false);
-    if (!r->form_origin_valid || strcmp(form.token,h->app->boot_id)) return page(h,403,"This page has expired or came from another site. Reload this board's setup page.",false);
+    if (!r->form_origin_valid || strcmp(form.token,h->host->boot_id)) return page(h,403,"This page has expired or came from another site. Reload this board's setup page.",false);
     for (unsigned i=0;i<2;i++) if(form.country[i]>='a' && form.country[i]<='z')form.country[i]-='a'-'A';
     if (!network_country_valid(form.country)) return page(h,400,"Enter a two-letter country code, or XX for worldwide settings.",false);
-    NetworkConfig config=h->app->network.config;
+    NetworkConfig config=h->host->network->config;
     unsigned index=0; while(index<config.count && strcmp(config.networks[index].ssid,form.network.ssid))index++;
     if (form.open) form.network.password[0]=0;
     else if (!form.network.password[0]) {
@@ -132,13 +132,13 @@ unsigned http_setup(Http *h,const HttpRequest *r) {
     config.networks[0]=form.network;
     config.wifi_enabled=true; config.http_enabled=true; config.mode=NET_MODE_STATION;
     strcpy(config.country,form.country);
-    if (h->app->connection_sequence==UINT64_MAX) return page(h,503,"Restart the board before trying again.",false);
-    uint64_t source=++h->app->connection_sequence;
-    enum Status status=app_save_network(h->app,&config,form.revision,source,error,sizeof(error));
+    if (*h->host->connection_sequence==UINT64_MAX) return page(h,503,"Restart the board before trying again.",false);
+    uint64_t source=++(*h->host->connection_sequence);
+    enum Status status=h->host->save_network(h->host->context,&config,form.revision,source,error,sizeof(error));
     memset(&config,0,sizeof(config)); memset(&form,0,sizeof(form));
     if (status!=STATUS_OK) return page(h,status==STATUS_STORAGE?500:409,error,false);
     h->reply_source=source;
-    return page(h,200,h->app->network.recovery?
-        "Wi-Fi saved. Restart the board, then rejoin your normal Wi-Fi and open the LightVM editor. The recovery access point stays available until restart.":
-        "Wi-Fi saved. This setup connection will close while the board joins your network. Rejoin your normal Wi-Fi, then open the LightVM editor.",true);
+    return page(h,200,h->host->network->recovery?
+        "Wi-Fi saved. Restart the board, then rejoin your normal Wi-Fi and open the device management interface. The recovery access point stays available until restart.":
+        "Wi-Fi saved. This setup connection will close while the board joins your network. Rejoin your normal Wi-Fi, then open the device management interface.",true);
 }

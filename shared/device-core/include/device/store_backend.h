@@ -1,6 +1,6 @@
-#ifndef LIGHTVM_STORE_BACKEND_H
-#define LIGHTVM_STORE_BACKEND_H
-#include "store.h"
+#ifndef KAJ_DEVICE_STORE_BACKEND_H
+#define KAJ_DEVICE_STORE_BACKEND_H
+#include "device/store.h"
 /* Implementations own state and version tokens. publish/remove must commit
  * atomically, update revisions only on success, and preserve pinned versions.
  * No backend callback may re-enter a storage operation on this Store. */

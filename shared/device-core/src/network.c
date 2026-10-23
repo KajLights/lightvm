@@ -1,6 +1,6 @@
-#include "network.h"
-#include "platform.h"
-#include "json.h"
+#include "device/network.h"
+#include "device/platform.h"
+#include "device/json.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -144,7 +144,7 @@ static bool network_decode(const Json *j,const NetworkConfig *previous,NetworkCo
 }
 bool network_parse(const void *bytes,size_t size,const NetworkConfig *previous,NetworkConfig *out,char *error,size_t capacity){
     Json *j=platform_calloc(1,sizeof(*j));bool ok=false;
-    if(!j||size>CONFIG_LIMIT||!json_parse(j,bytes,size))fail(error,capacity,"network: expected bounded lightvm.network JSON");
+    if(!j||size>DEVICE_CONFIG_LIMIT||!json_parse(j,bytes,size))fail(error,capacity,"network: expected bounded lightvm.network JSON");
     else ok=network_decode(j,previous,out,error,capacity);
     platform_free(j);return ok;
 }

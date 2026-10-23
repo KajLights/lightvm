@@ -1,11 +1,12 @@
-#include "discovery.h"
-#include "release.h"
+#include "device/discovery.h"
+#include "device/version.h"
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
 
-// A bounded IPv4 DNS-SD implementation for LightVM's one service. In particular,
+// A bounded IPv4 DNS-SD implementation for the common device management service. In particular,
 // lightvm.local is a shared bootstrap A record: never probe it or set cache-flush.
 // Unique host/service records use the MAC-derived name and are probed separately.
 static const uint8_t multicast[4]={224,0,0,251};
@@ -72,13 +73,13 @@ static bool instance_label(const char *full,char out[32]) {
     const char *dot=strchr(full,'.');
     if (!dot || strcmp(dot+1,service) || (size_t)(dot-full)>=32) return false;
     memcpy(out,full,(size_t)(dot-full)); out[dot-full]=0;
-    return !strncmp(out,"lightvm-",8) && label(out,32);
+    return label(out,32);
 }
 static bool host_label(const char *full,char out[32]) {
     const char *dot=strchr(full,'.');
     if (!dot || strcmp(dot,".local") || (size_t)(dot-full)>=32) return false;
     memcpy(out,full,(size_t)(dot-full)); out[dot-full]=0;
-    return !strncmp(out,"lightvm-",8) && label(out,32);
+    return label(out,32);
 }
 static bool ip_valid(const uint8_t ip[4]) { return ip[0] && ip[0]<224 && ip[0]!=127; }
 static uint64_t until(uint64_t now,uint32_t ttl) {
@@ -128,7 +129,8 @@ static void own_records(Discovery *d,Packet *p,uint32_t ttl,bool alias,bool lega
     bool flush=!legacy;
     size_t n=rr(p,service,PTR,false,ttl); name(p,instance); finish_rr(p,n);
     n=rr(p,instance,SRV,flush,ttl); number(p,0,2); number(p,0,2); number(p,self->port,2); name(p,host); finish_rr(p,n);
-    n=rr(p,instance,TXT,flush,ttl); text(p,"id=",self->controller_id); text(p,"board=",self->board); text(p,"version=",LIGHTVM_VERSION); finish_rr(p,n);
+    n=rr(p,instance,TXT,flush,ttl); text(p,"id=",self->controller_id); text(p,"board=",self->board); text(p,"version=",self->version); text(p,"kind=",self->kind);
+    char caps[16]; snprintf(caps,sizeof(caps),"%u",(unsigned)self->capabilities); text(p,"caps=",caps); finish_rr(p,n);
     n=rr(p,host,A,flush,ttl); put(p,self->ip,4); finish_rr(p,n);
     if (alias) { n=rr(p,bootstrap,A,false,ttl?10:0); put(p,self->ip,4); finish_rr(p,n); }
 }
@@ -146,7 +148,7 @@ static void response(Discovery *d,uint32_t ttl,bool alias,const uint8_t ip[4],ui
     send_packet(d,&p,ip,port);
 }
 static bool complete(const DiscoveryController *p,uint64_t now) {
-    return p->hostname[0] && p->controller_id[0] && p->board[0] && p->port && p->ptr_until>now && p->srv_until>now && p->txt_until>now && p->ip_until>now;
+    return p->hostname[0] && p->controller_id[0] && p->board[0] && p->kind[0] && p->version[0] && p->port && p->ptr_until>now && p->srv_until>now && p->txt_until>now && p->ip_until>now;
 }
 static void query(Discovery *d,bool probe,uint64_t now) {
     Packet p={d->packet,0,sizeof(d->packet),false}; char host[40];
@@ -172,11 +174,15 @@ static void query(Discovery *d,bool probe,uint64_t now) {
     }
     send_packet(d,&p,multicast,DISCOVERY_PORT);
 }
-void discovery_start(Discovery *d,const char *hostname,const char *id,const char *board,const uint8_t ip[4],
+void discovery_start(Discovery *d,const char *hostname,const DeviceHost *identity,const uint8_t ip[4],
                      uint16_t port,DiscoverySend send,void *context,uint64_t now) {
     memset(d,0,sizeof(*d));
+    if (!identity || !identity->controller_id || !identity->board || !identity->version || !identity->kind) return;
+    const char *id=identity->controller_id,*board=identity->board;
+    if (!device_version_valid(identity->version,false) || !label(identity->kind,32)) return;
     if (!label(hostname,sizeof(d->controllers[0].hostname)) || !label(id,sizeof(d->controllers[0].controller_id)) || !label(board,sizeof(d->controllers[0].board)) || !port) return;
     DiscoveryController *self=&d->controllers[0]; strcpy(self->hostname,hostname); strcpy(self->controller_id,id); strcpy(self->board,board);
+    strcpy(self->version,identity->version); strcpy(self->kind,identity->kind); self->capabilities=identity->capabilities;
     memcpy(self->ip,ip,4); self->port=port; d->send=send; d->context=context; d->active=true;
     d->next_announce=now+(uint64_t)(ip[3]%100)*1000u; d->next_query=now;
 }
@@ -186,26 +192,33 @@ void discovery_stop(Discovery *d,uint64_t now) {
     memset(d,0,sizeof(*d));
 }
 static void parse_txt(DiscoveryController *p,const uint8_t *bytes,size_t at,size_t end) {
-    char id[64]="",board[32]=""; bool release=false;
+    char id[64]="",board[32]="",version[96]="",kind[32]="";
+    uint32_t capabilities=0; bool caps_valid=false;
     while (at<end) {
         unsigned n=bytes[at++]; if (n>end-at) return;
         const uint8_t *text=bytes+at; at+=n;
         char *out=NULL; size_t prefix=0,capacity=0;
         if (n>3 && !memcmp(text,"id=",3)) { out=id; prefix=3; capacity=sizeof(id); }
         else if (n>6 && !memcmp(text,"board=",6)) { out=board; prefix=6; capacity=sizeof(board); }
-        else if(n>8&&!memcmp(text,"version=",8)){
-            char version[96];size_t length=n-8;if(length>=sizeof(version))return;
-            memcpy(version,text+8,length);version[length]=0;
-            if(memchr(version,0,length))return;
-            release=lightvm_release_valid(version,false);
+        else if (n>8 && !memcmp(text,"version=",8)) { out=version; prefix=8; capacity=sizeof(version); }
+        else if (n>5 && !memcmp(text,"kind=",5)) { out=kind; prefix=5; capacity=sizeof(kind); }
+        else if (n>5 && !memcmp(text,"caps=",5)) {
+            uint32_t value=0;
+            for (unsigned i=5;i<n;i++) {
+                unsigned digit=text[i]-'0'; if (digit>9 || value>(UINT32_MAX-digit)/10) return;
+                value=value*10+digit;
+            }
+            capabilities=value; caps_valid=true;
         }
         if (out) {
             size_t length=n-prefix; if (length>=capacity) return;
             memcpy(out,text+prefix,length); out[length]=0;
-            if (memchr(out,0,length) || !label(out,capacity)) return;
+            if (memchr(out,0,length)) return;
         }
     }
-    if (release && id[0] && board[0]) { strcpy(p->controller_id,id); strcpy(p->board,board); }
+    if (device_version_valid(version,false) && label(id,sizeof(id)) && label(board,sizeof(board)) && label(kind,sizeof(kind)) && caps_valid) {
+        strcpy(p->controller_id,id); strcpy(p->board,board); strcpy(p->version,version); strcpy(p->kind,kind); p->capabilities=capabilities;
+    }
 }
 void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8_t from[4],uint16_t port,uint64_t now) {
     if (!d->active || size<12 || size>DISCOVERY_PACKET_LIMIT) return;
@@ -257,7 +270,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
                     data+=6; if (read_name(bytes,size,&data,target,sizeof(target)) && data==r.end && !strcmp(target,host)) known|=WANT_SRV;
                 } else if (r.type==TXT) {
                     DiscoveryController txt={0}; parse_txt(&txt,bytes,r.data,r.end);
-                    if (!strcmp(txt.controller_id,d->controllers[0].controller_id) && !strcmp(txt.board,d->controllers[0].board)) known|=WANT_TXT;
+                    if (!strcmp(txt.controller_id,d->controllers[0].controller_id) && !strcmp(txt.board,d->controllers[0].board) && !strcmp(txt.version,d->controllers[0].version) && !strcmp(txt.kind,d->controllers[0].kind) && txt.capabilities==d->controllers[0].capabilities) known|=WANT_TXT;
                 }
             }
         }
@@ -265,7 +278,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
             // A unique-name conflict: choose another suffix and probe again. The
             // shared bootstrap name is intentionally excluded from this path.
             if ((flags&0x8000) || memcmp(d->controllers[0].ip,bytes+r.data,4)<0) {
-                char renamed[32]; snprintf(renamed,sizeof(renamed),"lightvm-%02x%02x%02x-%u",d->controllers[0].ip[1],d->controllers[0].ip[2],d->controllers[0].ip[3],++d->collision);
+                char renamed[32]; snprintf(renamed,sizeof(renamed),"device-%02x%02x%02x-%u",d->controllers[0].ip[1],d->controllers[0].ip[2],d->controllers[0].ip[3],++d->collision);
                 strcpy(d->controllers[0].hostname,renamed); d->probes=0; d->announced=false; d->next_announce=now+250000u;
                 return;
             }
@@ -273,7 +286,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
     }
     if (flags&0x8000) {
         // Three passes make PTR, SRV/TXT and address ordering irrelevant. Only
-        // PTR-confirmed LightVM instances may occupy the bounded cache.
+        // PTR-confirmed device instances may occupy the bounded cache.
         for (unsigned pass=0;pass<3;pass++) {
             at=start;
             for (unsigned i=0;i<records;i++) {
@@ -290,7 +303,7 @@ void discovery_receive(Discovery *d,const uint8_t *bytes,size_t size,const uint8
                         if (!read_name(bytes,size,&data,target,sizeof(target)) || data!=r.end || !host_label(target,key) || strcmp(key,p->hostname)) continue;
                         p->port=u16(bytes+r.data+4); p->srv_until=until(now,r.ttl);
                     } else if (r.type==TXT) {
-                        p->controller_id[0]=0; p->board[0]=0; parse_txt(p,bytes,r.data,r.end); p->txt_until=until(now,r.ttl);
+                        p->controller_id[0]=0; p->board[0]=0; p->kind[0]=0; p->version[0]=0; p->capabilities=0; parse_txt(p,bytes,r.data,r.end); p->txt_until=until(now,r.ttl);
                     }
                 } else if (pass==2 && r.type==A && r.end-r.data==4 && host_label(r.name,key)) {
                     p=peer(d,key,false); if (p && ip_valid(bytes+r.data)) { memcpy(p->ip,bytes+r.data,4); p->ip_until=until(now,r.ttl); }
@@ -335,7 +348,7 @@ size_t discovery_json(Discovery *d,char *out,size_t capacity,uint64_t now) {
     if (d && d->active) {
         for (unsigned i=0;i<DISCOVERY_LIMIT;i++) {
             DiscoveryController *p=&d->controllers[i]; if (i && !complete(p,now)) continue;
-            json(out,capacity,&used,"%s{\"hostname\":\"%s.local\",\"controller_id\":\"%s\",\"board\":\"%s\",\"ip\":\"%u.%u.%u.%u\",\"port\":%u,\"url\":\"http://%u.%u.%u.%u:%u\"}",count++?",":"",p->hostname,p->controller_id,p->board,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port);
+            json(out,capacity,&used,"%s{\"hostname\":\"%s.local\",\"controller_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"kind\":\"%s\",\"capabilities\":%u,\"ip\":\"%u.%u.%u.%u\",\"port\":%u,\"url\":\"http://%u.%u.%u.%u:%u\"}",count++?",":"",p->hostname,p->controller_id,p->board,p->version,p->kind,(unsigned)p->capabilities,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port);
         }
     }
     json(out,capacity,&used,"]}"); return used<capacity?used:0;

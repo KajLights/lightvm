@@ -1,7 +1,7 @@
 #ifndef LIGHTVM_CONTROL_H
 #define LIGHTVM_CONTROL_H
 
-#include "json.h"
+#include "device/json.h"
 #include <stdbool.h>
 #include <stdint.h>
 typedef struct {

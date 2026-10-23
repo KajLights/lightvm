@@ -1,6 +1,6 @@
 #include "boot_sequence.h"
 #include "platform.h"
-#include "protocol.h"
+#include "device/protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -7,7 +7,7 @@ if(LIGHTVM_MQTT)
     list(APPEND port_requires pthread)
 endif()
 if("$ENV{LIGHTVM_PORT_WIFI}" STREQUAL "1")
-    list(APPEND port_sources network_port.c)
+    list(APPEND port_sources "${LIGHTVM_ROOT}/shared/device-core/ports/esp32/network_port.c")
     list(APPEND port_requires esp_wifi esp_netif esp_event nvs_flash esp_hw_support lwip)
 endif()
 if("$ENV{LIGHTVM_PORT_HTTP}" STREQUAL "1")
@@ -21,3 +21,4 @@ target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
 # Ordinary libraries must inherit the IDF compile options too (notably Xtensa
 # long calls and section placement). No SDK dependency enters the shared source.
 target_link_libraries(lightvm_core PRIVATE idf::esp_common)
+target_link_libraries(device_core PRIVATE idf::esp_common)

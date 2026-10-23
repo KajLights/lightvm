@@ -1,4 +1,4 @@
-#include "websocket.h"
+#include "device/websocket.h"
 #include <string.h>
 #include <strings.h>
 
@@ -171,7 +171,7 @@ void websocket_feed(WebSocket *w,const uint8_t *bytes,size_t size,uint64_t now) 
 void websocket_tick(WebSocket *w,uint64_t now) {
     if (!w->http) return;
     if (w->disconnected) {
-        if (w->source && !w->http->app->command_active) { app_disconnect(w->http->app,w->source); w->source=0; }
+        if (w->source && !w->http->host->busy(w->http->host->context)) { w->http->host->disconnect(w->http->host->context,w->source); w->source=0; }
         return;
     }
     if (!w->upgraded || w->close_queued) return;

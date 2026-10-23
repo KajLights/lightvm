@@ -1,6 +1,5 @@
-#include "store_backend.h"
-#include "protocol.h"
-#include "outputs.h"
+#include "device/store_backend.h"
+#include "device/protocol.h"
 #include <string.h>
 typedef struct { StoreAssets assets; StoreEntry entries[]; } AssetStore;
 static bool mount(Store *s,const void *configuration){
@@ -11,11 +10,9 @@ static bool mount(Store *s,const void *configuration){
     state->assets=*config;s->state=state;
     for(uint32_t n=0;n<config->count;n++){
         const StoreAsset *a=&config->assets[n];StoreEntry *e=&state->entries[n];
-        if(!a->name||!a->data||!a->size||strlen(a->name)>OBJECT_NAME_LIMIT||a->type<STORE_ANIMATION||a->type>STORE_NETWORK_SETTINGS)return false;
-        if(a->type==STORE_CONFIGURATION){if(strcmp(a->name,STORE_CONFIG))return false;}
-        else if(a->type==STORE_NETWORK_SETTINGS){if(strcmp(a->name,STORE_NETWORK))return false;}
-        else if(!object_name_valid(a->name))return false;
-        if(a->size>(a->type==STORE_ANIMATION||a->type==STORE_TRANSITION?MODULE_LIMIT:CONFIG_LIMIT))return false;
+        if(!a->name||!a->data||strlen(a->name)>DEVICE_NAME_LIMIT)return false;
+        strcpy(e->name,a->name);e->type=a->type;e->size=a->size;
+        if(!store_entry_valid(e))return false;
         for(uint32_t k=0;k<n;k++)if(a->type==state->entries[k].type&&!strcmp(a->name,state->entries[k].name))return false;
         strcpy(e->name,a->name);e->type=a->type;e->id=n;e->size=a->size;e->crc=crc32_bytes(a->data,a->size);
     }

@@ -1,41 +1,26 @@
-#include "store_backend.h"
-#include "outputs.h"
-#include "protocol.h"
-#include "runtime.h"
+#include "device/store_backend.h"
+#include "device/protocol.h"
+#include "device/platform.h"
 #include <string.h>
 #include <limits.h>
-#ifndef LIGHTVM_STORAGE_BACKEND
-#define LIGHTVM_STORAGE_BACKEND store_extent_backend
+#ifndef DEVICE_STORAGE_BACKEND
+#define DEVICE_STORAGE_BACKEND store_extent_backend
 #endif
-extern const StoreBackend LIGHTVM_STORAGE_BACKEND;
-const char *store_type_name(StoreType type) {
-    static const char *const names[]={"","animation","transition","preset","config","network"};
-    return (unsigned)type<=STORE_NETWORK_SETTINGS?names[type]:"";
-}
-StoreType store_type(const char *name) {
-    for(StoreType t=STORE_ANIMATION;t<=STORE_NETWORK_SETTINGS;t++)if(!strcmp(name,store_type_name(t)))return t;
-    return STORE_ANY;
-}
-static bool valid(const StoreEntry *e) {
-    bool system=e->type==STORE_CONFIGURATION||e->type==STORE_NETWORK_SETTINGS;
-    return e->type>=STORE_ANIMATION&&e->type<=STORE_KEY_FEEDBACK&&
-        (system? !strcmp(e->name,e->type==STORE_CONFIGURATION?STORE_CONFIG:STORE_NETWORK):object_name_valid(e->name))&&
-        e->size&&e->size<=(e->type==STORE_ANIMATION||e->type==STORE_TRANSITION?MODULE_LIMIT:CONFIG_LIMIT);
-}
+extern const StoreBackend DEVICE_STORAGE_BACKEND;
 bool store_mount_with(Store *s,const StoreBackend *backend,const void *configuration) {
     memset(s,0,sizeof(*s));s->backend=backend;
     if(!backend||!backend->name||!backend->mount||!backend->entry||!backend->read||!backend->info)return false;
     if(backend->begin&&(!backend->chunk||!backend->finish||!backend->cancel||!backend->publish))return false;
-    if(backend->mount(s,configuration)){s->preset_revision=s->generation;return true;}
+    if(backend->mount(s,configuration)){for(unsigned i=0;i<STORE_TYPE_LIMIT;i++)s->type_revision[i]=s->generation;return true;}
     if(backend->destroy)backend->destroy(s);
     s->available=false;return false;
 }
 bool store_mount(Store *s) {
-#ifdef LIGHTVM_STORAGE_CONFIGURATION
-    extern const void *const LIGHTVM_STORAGE_CONFIGURATION;
-    return store_mount_with(s,&LIGHTVM_STORAGE_BACKEND,LIGHTVM_STORAGE_CONFIGURATION);
+#ifdef DEVICE_STORAGE_CONFIGURATION
+    extern const void *const DEVICE_STORAGE_CONFIGURATION;
+    return store_mount_with(s,&DEVICE_STORAGE_BACKEND,DEVICE_STORAGE_CONFIGURATION);
 #else
-    return store_mount_with(s,&LIGHTVM_STORAGE_BACKEND,NULL);
+    return store_mount_with(s,&DEVICE_STORAGE_BACKEND,NULL);
 #endif
 }
 void store_destroy(Store *s) {
@@ -83,10 +68,10 @@ void store_upload_cancel(StoreUpload *u) {
 }
 bool store_upload_begin(Store *s,StoreUpload *u,StoreType type,const char *name,uint32_t size,uint32_t crc) {
     StoreEntry e={.type=type,.size=size,.crc=crc};
-    if(strlen(name)>OBJECT_NAME_LIMIT)return false;
+    if(type>=STORE_TYPE_LIMIT||strlen(name)>DEVICE_NAME_LIMIT)return false;
     strcpy(e.name,name);
     /* Empty names are private transient uploads, never publishable. */
-    if(s->writer||!s->available||!s->backend->begin||(!valid(&e)&&(name[0]||type!=STORE_ANIMATION||!size||size>MODULE_LIMIT)))return false;
+    if(s->writer||!s->available||!s->backend->begin||(!store_entry_valid(&e)&&(name[0]||!store_transient_valid(type,size))))return false;
     store_upload_cancel(u);u->store=s;u->entry=e;
     if(!s->backend->begin(s,u)){store_upload_cancel(u);return false;}
     u->pin=store_pin(s,&u->entry);
@@ -101,15 +86,15 @@ bool store_upload_finish(StoreUpload *u) {
     u->active=false;u->complete=true;return true;
 }
 bool store_publish(Store *s,const StoreEntry *e) {
-    if(s->writer||!s->available||!valid(e)||!s->backend->publish)return false;
+    if(e->type>=STORE_TYPE_LIMIT||s->writer||!s->available||!store_entry_valid(e)||!s->backend->publish)return false;
     int pin=store_pin(s,e);if(pin<0)return false;
     StoreType type=e->type;
-    bool ok=s->backend->publish(s,e);if(ok&&type==STORE_PRESET)++s->preset_revision;
+    bool ok=s->backend->publish(s,e);if(ok&&type<STORE_TYPE_LIMIT)++s->type_revision[type];
     store_unpin(s,pin);return ok;
 }
 bool store_write_begin(Store *s,StoreWrite *w,StoreType type,const char *name,const void *bytes,uint32_t size){
-    if(w->store||s->writer||!s->available||!s->backend->write_step||!s->backend->write_cancel||strlen(name)>OBJECT_NAME_LIMIT)return false;
-    StoreEntry e={.type=type,.size=size};strcpy(e.name,name);if(!valid(&e))return false;
+    if(type>=STORE_TYPE_LIMIT||w->store||s->writer||!s->available||!s->backend->write_step||!s->backend->write_cancel||strlen(name)>DEVICE_NAME_LIMIT)return false;
+    StoreEntry e={.type=type,.size=size};strcpy(e.name,name);if(!store_entry_valid(&e))return false;
     *w=(StoreWrite){.store=s,.entry=e,.data=bytes};s->writer=w;return true;
 }
 void store_write_cancel(StoreWrite *w){
@@ -119,12 +104,12 @@ void store_write_cancel(StoreWrite *w){
 int store_write_step(StoreWrite *w){
     if(!w->store||w->store->writer!=w)return -1;
     int status=w->store->backend->write_step(w);
-    if(status){if(status>0&&w->entry.type==STORE_PRESET)++w->store->preset_revision;store_write_cancel(w);}
+    if(status){if(status>0)++w->store->type_revision[w->entry.type];store_write_cancel(w);}
     return status;
 }
 bool store_put(Store *s,StoreType type,const char *name,const void *bytes,uint32_t size) {
     StoreWrite w={0};if(!store_write_begin(s,&w,type,name,bytes,size))return false;
-    int status;do{status=store_write_step(&w);runtime_checkpoint();}while(!status);return status>0;
+    int status;do{status=store_write_step(&w);device_checkpoint();}while(!status);return status>0;
 }
 bool store_put_config(Store *s,const void *bytes,uint32_t size) { return store_put(s,STORE_CONFIGURATION,STORE_CONFIG,bytes,size); }
 bool store_delete(Store *s,StoreType type,const char *name) {
@@ -132,6 +117,6 @@ bool store_delete(Store *s,StoreType type,const char *name) {
     const StoreEntry *e=store_find(s,type,name);
     if(e)type=e->type;
     bool ok=e&&s->backend->remove&&s->backend->remove(s,e);
-    if(ok&&type==STORE_PRESET)++s->preset_revision;
+    if(ok&&type<STORE_TYPE_LIMIT)++s->type_revision[type];
     return ok;
 }

@@ -1,5 +1,5 @@
-#ifndef LIGHTVM_JSON_H
-#define LIGHTVM_JSON_H
+#ifndef KAJ_DEVICE_JSON_H
+#define KAJ_DEVICE_JSON_H
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

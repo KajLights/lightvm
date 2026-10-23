@@ -5,7 +5,7 @@
 #include "mqtt_posix.h"
 #endif
 #if LIGHTVM_WIFI
-#include "network_port.h"
+#include "device/esp32.h"
 #endif
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
@@ -49,7 +49,7 @@ static void output_message(void *context, uint8_t type, uint16_t id,
 static void service_io(void *context) {
     (void)context;
 #if LIGHTVM_WIFI
-    esp32_network_poll();
+    device_esp32_poll();
 #endif
     taskYIELD();
 }
@@ -63,7 +63,7 @@ void app_main(void) {
     app_init(&app, output_message, &transport);
     session_init(&session, &app, 1, output_message, &transport);
 #if LIGHTVM_WIFI
-    esp32_network_init(&app);
+    device_esp32_init(&app.device,false);
 #endif
 #if LIGHTVM_MQTT
     static HomeAssistant ha;
@@ -74,7 +74,7 @@ void app_main(void) {
     bool connected=usb_serial_jtag_is_connected();
     for (;;) {
 #if LIGHTVM_WIFI
-        esp32_network_poll();
+        device_esp32_poll();
 #endif
         bool current=usb_serial_jtag_is_connected();
         if (connected && !current) { session_destroy(&session); session_init(&session,&app,1,output_message,&transport); }

@@ -1,4 +1,4 @@
-#include "protocol.h"
+#include "device/protocol.h"
 #include <string.h>
 
 static const uint8_t magic[4] = {'L','V','M','1'};
@@ -39,7 +39,7 @@ void send_status(SendMessage send, void *context, uint16_t id,
 }
 void write_frame(WriteBytes write, void *context, uint8_t type, uint16_t id,
                  const uint8_t *payload, size_t size) {
-    uint8_t header[HEADER_SIZE]={'L','V','M','1',LIGHTVM_PROTOCOL_VERSION,type,(uint8_t)id,(uint8_t)(id>>8)};
+    uint8_t header[HEADER_SIZE]={'L','V','M','1',DEVICE_PROTOCOL_VERSION,type,(uint8_t)id,(uint8_t)(id>>8)};
     write_u32(header+8,(uint32_t)size);
     uint32_t crc=crc32_update(0xffffffffu,header+4,8);
     crc=crc32_update(crc,payload,size)^0xffffffffu;
@@ -69,7 +69,7 @@ void decoder_feed(Decoder *d, uint8_t byte) {
         d->header[d->header_used++]=byte;
         if (d->header_used==HEADER_SIZE) {
             d->payload_size=read_u32(d->header+8);
-            if (d->header[4]!=LIGHTVM_PROTOCOL_VERSION || d->payload_size>FRAME_LIMIT) {
+            if (d->header[4]!=DEVICE_PROTOCOL_VERSION || d->payload_size>FRAME_LIMIT) {
                 uint16_t id=(uint16_t)(d->header[6] | (uint16_t)d->header[7]<<8);
                 send_status(d->send,d->context,id,STATUS_PROTOCOL,0,"invalid frame header");
                 d->header_used=0;

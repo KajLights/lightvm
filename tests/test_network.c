@@ -1,4 +1,4 @@
-#include "network.h"
+#include "device/network.h"
 #include "platform.h"
 #include <stdio.h>
 #include <string.h>

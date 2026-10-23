@@ -1,6 +1,6 @@
 #ifndef LIGHTVM_VM_H
 #define LIGHTVM_VM_H
-#include "protocol.h"
+#include "device/protocol.h"
 #include "bytecode_core.h"
 #include "config.h"
 #include "platform.h"
@@ -8,7 +8,7 @@
 #include "pixels.h"
 #include "control.h"
 #include "portable.h"
-#include "store.h"
+#include "assets.h"
 
 typedef struct VmInstance {
     const uint8_t *memory; /* Borrowed immutable fixtures/firmware only. */

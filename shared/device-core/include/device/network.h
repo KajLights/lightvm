@@ -1,7 +1,7 @@
-#ifndef LIGHTVM_NETWORK_H
-#define LIGHTVM_NETWORK_H
-#include "config.h"
-#include "mqtt.h"
+#ifndef KAJ_DEVICE_NETWORK_H
+#define KAJ_DEVICE_NETWORK_H
+#include "device/config.h"
+#include "device/mqtt_config.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

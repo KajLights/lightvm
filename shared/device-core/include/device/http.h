@@ -1,12 +1,11 @@
-#ifndef LIGHTVM_HTTP_H
-#define LIGHTVM_HTTP_H
-#include "app.h"
-#include "discovery.h"
-#define HTTP_SESSIONS LIGHTVM_HTTP_CLIENTS
+#ifndef KAJ_DEVICE_HTTP_H
+#define KAJ_DEVICE_HTTP_H
+#include "device/host.h"
+#include "device/discovery.h"
+#define HTTP_SESSIONS DEVICE_HTTP_CLIENTS
 #define HTTP_QUEUE 4u
 #define HTTP_INPUT_LIMIT (2048u+HEADER_SIZE+FRAME_LIMIT)
-#define HTTP_DATA_LIMIT (MODULE_LIMIT > (CONFIG_LIMIT+PIXEL_CAPACITY*4u) ? MODULE_LIMIT : (CONFIG_LIMIT+PIXEL_CAPACITY*4u))
-#define HTTP_RESPONSE_LIMIT (HTTP_DATA_LIMIT+((HTTP_DATA_LIMIT+FRAME_LIMIT-1u)/FRAME_LIMIT)*HEADER_SIZE+1024u)
+#define HTTP_RESPONSE_LIMIT DEVICE_HTTP_RESPONSE_BYTES
 typedef struct { uint8_t bytes[HTTP_INPUT_LIMIT]; size_t used; bool ready; } HttpInput;
 typedef struct {
     void *context;
@@ -21,23 +20,23 @@ typedef struct {
     unsigned error;
     bool discovery_only,form_origin_valid;
     HttpIO io;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     WebSocket *websocket;
     uint8_t websocket_action;
 #endif
 } HttpRequest;
 typedef struct { char token[33]; uint64_t source,expires; } HttpSession;
 typedef struct Http {
-    App *app; Discovery *discovery; HttpSession sessions[HTTP_SESSIONS];
+    DeviceHost *host; Discovery *discovery; HttpSession sessions[HTTP_SESSIONS];
     HttpRequest queue[HTTP_QUEUE],active; unsigned head,count;
     uint8_t response[HTTP_RESPONSE_LIMIT]; size_t used,sent;
     char header[512]; size_t header_size,header_sent;
     bool sending,closing,overflow,executing,html; uint64_t deadline,reply_source;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     bool websocket_keep_open;
 #endif
 } Http;
-void http_init(Http *,App *);
+void http_init(Http *,DeviceHost *);
 // All operations below run on the engine owner. Native ingress queues cross threads.
 bool http_submit(Http *,const HttpRequest *);
 bool http_input(HttpInput *,const uint8_t *,size_t,HttpRequest *);

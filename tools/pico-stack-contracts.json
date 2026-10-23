@@ -541,14 +541,23 @@
   },
   "project": {
     "src/runtime.c": "804a81d20f0a49e625e37a248989480d50d353d33928b8d57e96723970355f7d",
-    "src/app.c": "39cfadf99b4688cfcf7149d79290127bf0d437455c83cdedb2f771f7b4a7059f",
+    "src/app.c": "29916c448e01bc375757853c7d2156ca3a21149da6e444ce17870e25a7f2e049",
     "src/preparation.c": "af6d0f3bc62922b5ec07b87496e453d671255f2636d70ae0a69345484db6e0b5",
     "src/render_executor.c": "68321a5d5c1949e72afb99fdc9a2262cab961c40af1bc11db736fa47a0a11e86",
     "platforms/pico/render_executor.c": "6b195ad70aa147f2fffd510343e63eb8ec2bd8afdc189bb375e5ca93f75feeba",
-    "platforms/pico/network_port.c": "6a35c10511c4b09668f8a0dc074d44bca0c483b99522b481c94c17c951f97285",
+    "platforms/pico/network_port.c": "3d21102fee70b79ad00e2fb8fa45ab3fda1b81bc405c239c65a1195ba804f4d8",
     "platforms/pico/main.c": "913fec12902d830eefbbf574db8648511d0fb1a9f9c9b09726b430475d4fb37e",
     "platforms/pico/platform.c": "d848c2bde4923ea4a721cc494aa7c18eb533d7b34a212d09e46470daad83120a",
-    "platforms/pico/CMakeLists.txt": "161cfbe7683526e9a421e92a572f93afd20f70827bccae2da197be8f44160a4a",
-    "platforms/pico/lwipopts.h": "8c622e12bfb71fddc372081218a9e57c39b31601b799d29c2d42a93c4a178fb5"
+    "platforms/pico/CMakeLists.txt": "547115eb06c2aaf9d20d8b18d4555cf0097f0622e1e95cb6fce70e620a2bb394",
+    "platforms/pico/lwipopts.h": "8c622e12bfb71fddc372081218a9e57c39b31601b799d29c2d42a93c4a178fb5",
+    "src/device_host.c": "57f5fd9fdc43992f97d22c77601f1a168593fa8a5bf93c88d45843585885ce9e",
+    "src/store_policy.c": "ea16727cc13754e8c1737e4e6d026ae363b948216e2e646a184b9d053167c5eb",
+    "shared/device-core/src/http.c": "c5fb7f79da46cbbb3b2b7ca6479b44f7784374e38bf8e6965d57cac97e2b3c11",
+    "shared/device-core/src/http_setup.c": "2c84b61088477a8c04dfeaa7ec96a05626428f402ae5e00da33f5a0f11d26691",
+    "shared/device-core/src/store.c": "9cae9d437147901adc4dd0741adace6620d3c01a2d4caaa0515daf23de8fb3be",
+    "shared/device-core/src/store_extent.c": "ec83cb35eef3e1b6454e5c416442341e306246350540193980509937840bb1a8",
+    "shared/device-core/src/network.c": "701d56189b767447980bb18b26945fa3fbb40c51426cd3c7283e59778fd05ef2",
+    "shared/device-core/src/settings.c": "8d3fe7f56e586e630dc685bd4847b27631e1fa7e51afd508506dd9727a70c760",
+    "shared/device-core/src/discovery.c": "6fbfda834723554fa22178855c0f7537683c794865c848ec6ecdf8a986dcb9e7"
   }
 }

@@ -246,3 +246,11 @@ experimental installs require the documented
 [clean installation](docs/architecture.md#clean-installation-after-experimental-changes).
 
 See [JavaScript and blocks](docs/javascript-and-blocks.md) for the editor modes, language contracts and visual toolbox.
+
+## Shared device services
+
+[shared/device-core](shared/device-core/README.md) provides the Wi-Fi, HTTP,
+discovery, configuration and persistence services used by LightVM and kaj-fi.
+LightVM binds its output/animation policies through small application adapters;
+the audio firmware links the same core without the lighting engine. Discovery
+includes device kind and capabilities, and the editor selects light-output peers.

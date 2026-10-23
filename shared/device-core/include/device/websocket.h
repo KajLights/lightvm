@@ -1,6 +1,6 @@
-#ifndef LIGHTVM_WEBSOCKET_H
-#define LIGHTVM_WEBSOCKET_H
-#include "http.h"
+#ifndef DEVICE_WEBSOCKET_H
+#define DEVICE_WEBSOCKET_H
+#include "device/http.h"
 
 #define WEBSOCKET_PATH "/api/v1/ws"
 #define WEBSOCKET_MESSAGE_LIMIT (HEADER_SIZE + FRAME_LIMIT)

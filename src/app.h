@@ -1,9 +1,10 @@
 #ifndef DEMO_APP_H
 #define DEMO_APP_H
-#include "protocol.h"
+#include "device/protocol.h"
 #include "vm.h"
-#include "store.h"
-#include "network.h"
+#include "assets.h"
+#include "device/network.h"
+#include "device/host.h"
 #include "composition.h"
 #include "transition.h"
 #include "command.h"
@@ -49,11 +50,10 @@ typedef struct App {
     void (*service_io)(void *); void *service_context;
     Network network;
     InputRegistry inputs;
-    // Keep the active interface/settings intact until the commit reply has left.
-    NetworkConfig pending_network;
-    bool network_pending;
-    uint64_t network_due, network_reply_source, source, upload_owner, connection_sequence;
-    char controller_id[65], boot_id[33], network_error[160];
+    NetworkSettings network_settings;
+    DeviceHost device;
+    uint64_t source,upload_owner,connection_sequence;
+    char controller_id[65],boot_id[33];
     char mqtt_error[160];
     bool mqtt_connected;
     AppOutput fallback;
@@ -81,6 +81,7 @@ typedef struct App {
     SendMessage send;
     void *transport;
 } App;
+DeviceHost app_device_host(App *);
 AppOutput *app_output(App *, const char *id);
 /* Saved identity of the visible, unmodified composition, or NULL. */
 const char *app_output_preset(const App *, const AppOutput *);

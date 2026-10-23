@@ -113,6 +113,7 @@ static void inputs_contract(void){
     const char *next_input="{\"level\":{\"value\":0.4}}";
     CHECK(json_parse(&j,next_input,strlen(next_input)));CHECK(!inputs_bind(reactive->portable,&j,0,0));
     static App collecting;memset(&collecting,0,sizeof(collecting));
+    network_settings_init(&collecting.network_settings,&collecting.network,&collecting.store);
     AppOutput collected={.composition=scene};AppOutput *collected_outputs[]={&collected};
     collecting.outputs=collected_outputs;collecting.output_count=1;
     /* The next render must also respect a board's optional refresh cap. */

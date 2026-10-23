@@ -1,11 +1,11 @@
-#ifndef DEMO_PROTOCOL_H
-#define DEMO_PROTOCOL_H
+#ifndef KAJ_DEVICE_PROTOCOL_H
+#define KAJ_DEVICE_PROTOCOL_H
 #include <stddef.h>
 #include <stdint.h>
 
 #define FRAME_LIMIT 512u
 #define HEADER_SIZE 16u
-#define LIGHTVM_PROTOCOL_VERSION 1u
+#define DEVICE_PROTOCOL_VERSION 1u
 enum Message { CMD_STATUS=1, CMD_BEGIN=2, CMD_CHUNK=3, CMD_FINISH=4,
                CMD_RESET=6, CMD_PLAY=7, CMD_STOP=8,
                CMD_FRAME=9, // Command 10 is reserved; keep management IDs stable.

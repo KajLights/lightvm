@@ -1,13 +1,15 @@
-#ifndef LIGHTVM_STORE_H
-#define LIGHTVM_STORE_H
-#include "config.h"
-#include "platform.h"
+#ifndef KAJ_DEVICE_STORE_H
+#define KAJ_DEVICE_STORE_H
+#include "device/config.h"
+#include "device/platform.h"
 #define STORE_CONFIG "$config"
 #define STORE_NETWORK "$network"
+#define STORE_TYPE_LIMIT 16u
 #define STORE_PAGE_BYTES 256u
-typedef enum { STORE_ANY, STORE_ANIMATION, STORE_TRANSITION, STORE_PRESET, STORE_CONFIGURATION, STORE_NETWORK_SETTINGS, STORE_OUTPUT_STATE, STORE_KEY_FEEDBACK } StoreType;
+typedef uint8_t StoreType;
+enum { STORE_ANY=0, STORE_CONFIGURATION=4, STORE_NETWORK_SETTINGS=5 };
 /* id is an opaque backend version token. Applications must not interpret it. */
-typedef struct { char name[OBJECT_NAME_LIMIT+1]; StoreType type; uint32_t id,size,crc; } StoreEntry;
+typedef struct { char name[DEVICE_NAME_LIMIT+1]; StoreType type; uint32_t id,size,crc; } StoreEntry;
 typedef struct StoreBackend StoreBackend;
 typedef struct StorePin StorePin;
 typedef struct StoreWrite StoreWrite;
@@ -15,7 +17,8 @@ typedef struct Store {
     const StoreBackend *backend;
     void *state;
     bool available;
-    uint32_t generation,config_revision,network_revision,preset_revision;
+    uint32_t generation,config_revision,network_revision;
+    uint32_t type_revision[STORE_TYPE_LIMIT];
     StorePin *pins;
     StoreWrite *writer;
 } Store;
@@ -39,6 +42,9 @@ bool store_write_begin(Store *,StoreWrite *,StoreType,const char *,const void *,
 int store_write_step(StoreWrite *); /* 0 pending, 1 published, -1 failed */
 void store_write_cancel(StoreWrite *);
 typedef struct { uint32_t total_bytes,free_bytes,largest_free_bytes,allocation_unit; bool writable; } StoreInfo;
+/* Application schema hooks; byte storage itself has no application types. */
+bool store_entry_valid(const StoreEntry *);
+bool store_transient_valid(StoreType,uint32_t);
 const char *store_type_name(StoreType);
 StoreType store_type(const char *);
 bool store_mount(Store *);

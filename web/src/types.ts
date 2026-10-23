@@ -55,7 +55,7 @@ export interface ProgramState {
   inputs_revision?: number; inputs?: Record<string, InputState>;
   program_crc32?: number;
 }
-export interface NearbyController { controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
+export interface NearbyController { kind: string; capabilities: number; version: string; controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { blockId?: string; message: string; line: number; column: number; end_line?: number; end_column?: number }
 export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[]; advisories?: Diagnostic[] }
 export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', outputs: [] };

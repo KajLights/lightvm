@@ -1,7 +1,6 @@
-#include "store_backend.h"
-#include "runtime.h"
-#include "protocol.h"
-#include "outputs.h"
+#include "device/store_backend.h"
+#include "device/platform.h"
+#include "device/protocol.h"
 #include <string.h>
 #define SECTOR 4096u
 #define COMMIT_OFFSET 1024u
@@ -32,7 +31,7 @@ static bool extent_crc(const ExtentStore *s,uint32_t offset,uint32_t size,uint32
     for(uint32_t at=0;at<size;){
         size_t n=size-at;if(n>sizeof(bytes))n=sizeof(bytes);
         if(!s->device.read(s->device.context,offset+at,bytes,n))return false;
-        crc=crc32_update(crc,bytes,n);at+=(uint32_t)n;runtime_checkpoint();
+        crc=crc32_update(crc,bytes,n);at+=(uint32_t)n;device_checkpoint();
     }
     return (crc^0xffffffffu)==expected;
 }
@@ -44,11 +43,7 @@ static bool decode(ExtentStore *s,StoreEntry *e,const uint8_t *r){
     if(!memchr(r,0,33))return false;
     memcpy(e->name,r,33);e->id=read_u32(r+36);e->size=read_u32(r+40);e->crc=read_u32(r+44);
     e->type=(StoreType)r[33];
-    if(e->type<STORE_ANIMATION||e->type>STORE_KEY_FEEDBACK)return false;
-    if(e->type==STORE_CONFIGURATION){if(strcmp(e->name,STORE_CONFIG))return false;}
-    else if(e->type==STORE_NETWORK_SETTINGS){if(strcmp(e->name,STORE_NETWORK))return false;}
-    else if(!object_name_valid(e->name))return false;
-    return e->size<=(e->type==STORE_ANIMATION||e->type==STORE_TRANSITION?MODULE_LIMIT:CONFIG_LIMIT)&&extent_crc(s,e->id,e->size,e->crc);
+    return store_entry_valid(e)&&extent_crc(s,e->id,e->size,e->crc);
 }
 static bool overlap(uint32_t a,uint32_t an,uint32_t b,uint32_t bn){return an&&bn&&a<b+bn&&b<a+an;}
 static bool scan(ExtentStore *s,unsigned bank,uint32_t *generation,uint32_t *config,uint32_t *network){
@@ -147,10 +142,10 @@ static bool chunk(StoreUpload *u,uint32_t at,const void *data,size_t size){
         }return true;
     }
     while(size){
-        if(u->received>=state->erased){if(!s->device.erase(s->device.context,u->entry.id+state->erased,SECTOR)){u->active=false;return false;}state->erased+=SECTOR;runtime_checkpoint();}
+        if(u->received>=state->erased){if(!s->device.erase(s->device.context,u->entry.id+state->erased,SECTOR)){u->active=false;return false;}state->erased+=SECTOR;device_checkpoint();}
         size_t n=256-u->received%256;if(n>size)n=size;
         memcpy(state->page+u->received%256,bytes,n);state->crc=crc32_update(state->crc,bytes,n);u->received+=(uint32_t)n;bytes+=n;size-=n;
-        if(u->received%256==0){if(!s->device.write(s->device.context,u->entry.id+u->received-256,state->page,256)){u->active=false;return false;}memset(state->page,255,256);runtime_checkpoint();}
+        if(u->received%256==0){if(!s->device.write(s->device.context,u->entry.id+u->received-256,state->page,256)){u->active=false;return false;}memset(state->page,255,256);device_checkpoint();}
     }return true;
 }
 static bool finish(StoreUpload *u){
@@ -228,7 +223,7 @@ static int commit_step(Store *store,ExtentCommit *c,StoreType changed){
 static bool commit(Store *store,StoreEntry *entries,uint32_t count,StoreType changed){
     ExtentCommit *c=platform_calloc(1,sizeof(*c));if(!c)return false;
     c->entries=entries;c->count=count;int result;
-    do{result=commit_step(store,c,changed);runtime_checkpoint();}while(!result);
+    do{result=commit_step(store,c,changed);device_checkpoint();}while(!result);
     platform_free(c);return result>0;
 }
 /* One 256-byte payload/verification unit or one catalogue/root flash operation

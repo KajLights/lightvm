@@ -1,7 +1,7 @@
-#include "http.h"
-#include "http_setup.h"
-#if LIGHTVM_WEBSOCKET
-#include "websocket.h"
+#include "device/http.h"
+#include "device/http_setup.h"
+#if DEVICE_WEBSOCKET
+#include "device/websocket.h"
 #endif
 #include <stdio.h>
 #include <string.h>
@@ -19,18 +19,18 @@ static void capture_bytes(void *context,const uint8_t *bytes,size_t size) {
     memcpy(h->response+h->used,bytes,size); h->used+=size;
 }
 static void capture(void *context,uint8_t kind,uint16_t id,const uint8_t *bytes,size_t size) { write_frame(capture_bytes,context,kind,id,bytes,size); }
-void http_init(Http *h,App *a) { memset(h,0,sizeof(*h)); h->app=a; }
+void http_init(Http *h,DeviceHost *a) { memset(h,0,sizeof(*h)); h->host=a; }
 bool http_submit(Http *h,const HttpRequest *r) {
     if (h->count==HTTP_QUEUE) return false;
     h->queue[(h->head+h->count)%HTTP_QUEUE]=*r; h->count++; return true;
 }
 static void expire(Http *h,uint64_t now) {
     for (unsigned i=0;i<HTTP_SESSIONS;i++) if (h->sessions[i].source && now>=h->sessions[i].expires) {
-        app_disconnect(h->app,h->sessions[i].source); memset(&h->sessions[i],0,sizeof(h->sessions[i]));
+        h->host->disconnect(h->host->context,h->sessions[i].source); memset(&h->sessions[i],0,sizeof(h->sessions[i]));
     }
 }
 void http_disconnect_sessions(Http *h) {
-    for (unsigned i=0;i<HTTP_SESSIONS;i++) { app_disconnect(h->app,h->sessions[i].source); memset(&h->sessions[i],0,sizeof(h->sessions[i])); }
+    for (unsigned i=0;i<HTTP_SESSIONS;i++) { h->host->disconnect(h->host->context,h->sessions[i].source); memset(&h->sessions[i],0,sizeof(h->sessions[i])); }
 }
 static HttpSession *session(Http *h,const char *token,uint64_t now) {
     for (unsigned i=0;i<HTTP_SESSIONS;i++) if (h->sessions[i].source && !strcmp(token,h->sessions[i].token)) { h->sessions[i].expires=now+300000000u; return &h->sessions[i]; }
@@ -38,23 +38,23 @@ static HttpSession *session(Http *h,const char *token,uint64_t now) {
 }
 static unsigned command(Http *h,HttpRequest *r,uint64_t source) {
     const uint8_t *b=r->body;
-    if (r->size<HEADER_SIZE || memcmp(b,"LVM1",4) || b[4]!=LIGHTVM_PROTOCOL_VERSION || read_u32(b+8)>FRAME_LIMIT || r->size!=HEADER_SIZE+read_u32(b+8) || b[5]>=RESP_STATUS) return 400;
+    if (r->size<HEADER_SIZE || memcmp(b,"LVM1",4) || b[4]!=DEVICE_PROTOCOL_VERSION || read_u32(b+8)>FRAME_LIMIT || r->size!=HEADER_SIZE+read_u32(b+8) || b[5]>=RESP_STATUS) return 400;
     uint32_t crc=crc32_update(0xffffffffu,b+4,8); crc=crc32_update(crc,b+16,r->size-16)^0xffffffffu;
     if (crc!=read_u32(b+12)) return 400;
     h->reply_source=source;
-    app_dispatch(h->app,source,capture,h,b[5],(uint16_t)(b[6]|b[7]<<8),b+16,r->size-16);
+    h->host->dispatch(h->host->context,source,capture,h,b[5],(uint16_t)(b[6]|b[7]<<8),b+16,r->size-16);
     return h->overflow?500:200;
 }
 static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     if (r->error) return r->error;
     if (r->discovery_only && strcmp(r->path,"/api/v1/controllers")) return 404;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     if (r->websocket_action) {
         WebSocket *w=r->websocket;
         if (!w || w->disconnected) return 400;
         if (r->websocket_action==WS_UPGRADE) {
-            if (w->source || h->app->connection_sequence==UINT64_MAX) return 503;
-            w->source=++h->app->connection_sequence; return 101;
+            if (w->source || *h->host->connection_sequence==UINT64_MAX) return 503;
+            w->source=++(*h->host->connection_sequence); return 101;
         }
         if (!w->upgraded || !w->source) return 400;
         if (r->websocket_action==WS_BINARY) return command(h,r,w->source);
@@ -62,7 +62,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     }
 #endif
     if (!strcmp(r->method,"OPTIONS")) return 204;
-    if (LIGHTVM_WIFI && (!strcmp(r->path,"/") || !strcmp(r->path,"/setup"))) return http_setup(h,r);
+    if (DEVICE_WIFI && (!strcmp(r->path,"/") || !strcmp(r->path,"/setup"))) return http_setup(h,r);
     if (!strcmp(r->path,"/api/v1/controllers")) {
         if (strcmp(r->method,"GET")) return 405;
         if (r->size) return 400;
@@ -73,15 +73,15 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
         if (r->size) return 400;
         HttpSession *s=NULL;
         for (unsigned i=0;i<HTTP_SESSIONS;i++) if (!h->sessions[i].source) { s=&h->sessions[i]; break; }
-        if (!s || h->app->connection_sequence==UINT64_MAX) return 503;
-        s->source=++h->app->connection_sequence; s->expires=now+300000000u;
-        snprintf(s->token,sizeof(s->token),"%016llx%016llx",(unsigned long long)crc32_bytes((const uint8_t *)h->app->boot_id,strlen(h->app->boot_id)),(unsigned long long)s->source);
-        int n=snprintf((char *)h->response,sizeof(h->response),"{\"session_id\":\"%s\",\"controller_id\":\"%s\",\"boot_id\":\"%s\",\"expires_in_ms\":300000}",s->token,h->app->controller_id,h->app->boot_id);
+        if (!s || *h->host->connection_sequence==UINT64_MAX) return 503;
+        s->source=++(*h->host->connection_sequence); s->expires=now+300000000u;
+        snprintf(s->token,sizeof(s->token),"%016llx%016llx",(unsigned long long)crc32_bytes((const uint8_t *)h->host->boot_id,strlen(h->host->boot_id)),(unsigned long long)s->source);
+        int n=snprintf((char *)h->response,sizeof(h->response),"{\"session_id\":\"%s\",\"controller_id\":\"%s\",\"boot_id\":\"%s\",\"expires_in_ms\":300000}",s->token,h->host->controller_id,h->host->boot_id);
         h->used=(size_t)n; return 201;
     }
     if (!strcmp(r->method,"DELETE") && !strncmp(r->path,"/api/v1/sessions/",17)) {
         HttpSession *s=session(h,r->path+17,now); if (!s) return 404;
-        app_disconnect(h->app,s->source); memset(s,0,sizeof(*s)); return 204;
+        h->host->disconnect(h->host->context,s->source); memset(s,0,sizeof(*s)); return 204;
     }
     if (strcmp(r->path,"/api/v1/command")) return 404;
     if (strcmp(r->method,"POST")) return 405;
@@ -89,7 +89,7 @@ static unsigned execute(Http *h,HttpRequest *r,uint64_t now) {
     return command(h,r,s->source);
 }
 static void headers(Http *h,unsigned code,bool binary) {
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     HttpRequest *r=&h->active; h->websocket_keep_open=false;
     if (r->websocket_action==WS_UPGRADE && code==101) {
         char accept[29]; websocket_accept(r->token,accept,sizeof(accept));
@@ -104,29 +104,29 @@ static void headers(Http *h,unsigned code,bool binary) {
     }
 #endif
     const char *reason=code==200?"OK":code==201?"Created":code==204?"No Content":code==400?"Bad Request":code==403?"Forbidden":code==404?"Not Found":code==405?"Method Not Allowed":code==409?"Conflict":code==413?"Payload Too Large":code==415?"Unsupported Media Type":
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         code==426?"Upgrade Required":
 #endif
         code==503?"Service Unavailable":"Internal Server Error";
     h->header_size=(size_t)snprintf(h->header,sizeof(h->header),"HTTP/1.1 %u %s\r\nContent-Type: %s\r\nContent-Length: %lu\r\n"
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         "Connection: %s\r\n"
 #else
         "Connection: close\r\n"
 #endif
         "Cache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type, X-LightVM-Session\r\n"
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         "%s"
 #endif
         "\r\n",code,reason,h->html?"text/html; charset=utf-8":binary?"application/octet-stream":"application/json",(unsigned long)h->used
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         ,code==426?"close, Upgrade":"close"
         ,code==426?"Upgrade: websocket\r\nSec-WebSocket-Version: 13\r\n":""
 #endif
     );
 }
 void http_tick(Http *h,uint64_t now) {
-    if(h->executing||h->app->command_active)return;
+    if(h->executing||h->host->busy(h->host->context))return;
     expire(h,now);
     if (!h->sending && h->count) {
         h->active=h->queue[h->head]; h->head=(h->head+1)%HTTP_QUEUE; h->count--;
@@ -146,12 +146,12 @@ void http_tick(Http *h,uint64_t now) {
         else if (n<0) h->deadline=now;
     }
     bool complete=h->header_sent==h->header_size && h->sent==h->used;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     if (complete && !h->closing && now<h->deadline && h->websocket_keep_open) {
         WebSocket *w=h->active.websocket;
         if (!w->flush || w->flush(w->io.context)) {
             if (h->active.websocket_action==WS_UPGRADE) w->upgraded=true;
-            app_reply_delivered(h->app,h->reply_source); h->sending=false;
+            h->host->reply_delivered(h->host->context,h->reply_source); h->sending=false;
         }
         return;
     }
@@ -160,7 +160,7 @@ void http_tick(Http *h,uint64_t now) {
         h->closing=true;
         bool closed=h->active.io.close(h->active.io.context);
         if (closed) {
-            if (closed && complete) app_reply_delivered(h->app,h->reply_source);
+            if (closed && complete) h->host->reply_delivered(h->host->context,h->reply_source);
             h->sending=false;
         }
     }
@@ -188,7 +188,7 @@ bool http_input(HttpInput *input,const uint8_t *bytes,size_t size,HttpRequest *r
     bool length_seen=false,token_seen=false,media=false,form=false,host_seen=false,origin_seen=false; size_t length=0;
     bool setup_post=!strcmp(r->method,"POST") && !strcmp(r->path,"/setup");
     char host[96]="",origin[112]="";
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     WebSocketHandshake handshake={0};
     bool upgrading=!strcmp(r->path,WEBSOCKET_PATH);
 #endif
@@ -197,7 +197,7 @@ bool http_input(HttpInput *input,const uint8_t *bytes,size_t size,HttpRequest *r
         char *colon=strchr(field,':'); if (!colon) { if (*field) r->error=400; break; } *colon=0;
         char *value=colon+1; while (*value==' ' || *value=='\t') value++;
         char *tail=value+strlen(value); while (tail>value && (tail[-1]==' ' || tail[-1]=='\t')) *--tail=0;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         if (upgrading) websocket_header(&handshake,field,value);
 #endif
         if (!strcasecmp(field,"Content-Length")) {
@@ -221,7 +221,7 @@ bool http_input(HttpInput *input,const uint8_t *bytes,size_t size,HttpRequest *r
     if (input->used<end+length) return false;
     if (input->used!=end+length) r->error=400;
     r->size=length; memcpy(r->body,input->bytes+end,length);
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     if (upgrading && !r->error) r->error=websocket_upgrade(r,&handshake);
 #endif
     input->ready=true; return true;

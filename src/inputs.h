@@ -1,6 +1,6 @@
 #ifndef LIGHTVM_INPUTS_H
 #define LIGHTVM_INPUTS_H
-#include "json.h"
+#include "device/json.h"
 #include <stdbool.h>
 #include <stdint.h>
 

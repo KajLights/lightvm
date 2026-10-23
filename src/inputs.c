@@ -2,7 +2,7 @@
 #include "inputs.h"
 #include "portable.h"
 #include "platform.h"
-#include "store.h"
+#include "assets.h"
 #include "outputs.h"
 #include "vm_allocator.h"
 #include <float.h>

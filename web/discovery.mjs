@@ -15,7 +15,10 @@ export function controllerList(payload) {
         !Number.isInteger(value.port) || value.port < 1 || value.port > 65535 ||
         typeof value.controller_id !== "string" || !/^[a-z0-9_-]{1,63}$/i.test(value.controller_id) ||
         typeof value.board !== "string" || !/^[a-z0-9_-]{1,31}$/i.test(value.board) ||
-        typeof value.hostname !== "string" || !/^lightvm-[a-z0-9_-]{1,23}\.local$/i.test(value.hostname)) throw new Error("This firmware returned an invalid controller address.");
+        typeof value.hostname !== "string" || !/^[a-z0-9_-]{1,31}\.local$/i.test(value.hostname)) throw new Error("This firmware returned an invalid controller address.");
+    if (typeof value.kind !== "string" || !/^[a-z0-9_-]{1,31}$/i.test(value.kind) ||
+        !Number.isInteger(value.capabilities) || value.capabilities < 0 || value.capabilities > 0xffffffff) throw new Error("Invalid device capabilities.");
+    if (!(value.capabilities & 2)) continue; // The editor manages light outputs.
     // Build the origin from validated address fields, never a supplied URL.
     const ip = parts.map(Number).join(".");
     if (!controllers.has(value.controller_id)) controllers.set(value.controller_id, { ...value, ip, url: new URL(`http://${ip}:${value.port}`).origin });

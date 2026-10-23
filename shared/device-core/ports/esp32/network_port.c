@@ -1,4 +1,6 @@
-#include "network_port.h"
+#include "device/esp32.h"
+#include "device/config.h"
+#include "device/platform.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
 #include "esp_event.h"
@@ -11,11 +13,11 @@
 #include "freertos/task.h"
 #include <stdio.h>
 #include <string.h>
-#if LIGHTVM_HTTP
-#include "http.h"
-#include "http_setup.h"
-#if LIGHTVM_WEBSOCKET
-#include "websocket.h"
+#if DEVICE_HTTP
+#include "device/http.h"
+#include "device/http_setup.h"
+#if DEVICE_WEBSOCKET
+#include "device/websocket.h"
 #include <errno.h>
 #endif
 #include "esp_http_server.h"
@@ -25,7 +27,8 @@
 #include <unistd.h>
 #include <stdatomic.h>
 #endif
-static App *engine;
+static DeviceHost *engine;
+static bool low_latency;
 static bool initialized,wifi_created,scanning,scan_done,scan_failed,ap_started;
 static NetworkMode mode;
 static esp_event_handler_instance_t wifi_events,ip_events;
@@ -33,11 +36,11 @@ static esp_netif_t *station,*access_point;
 static QueueHandle_t events;
 static bool observed[NETWORK_LIMIT];
 static int failure;
-#if LIGHTVM_HTTP
+#if DEVICE_HTTP
 static void stop_discovery(void);
 static bool stop_http(void);
 #endif
-static char hostname[sizeof("lightvm-ffffff")];
+static char hostname[32];
 static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
     (void)ctx; int value=0;
     if (base==WIFI_EVENT && id==WIFI_EVENT_SCAN_DONE) value=1;
@@ -50,12 +53,12 @@ static void event(void *ctx,esp_event_base_t base,int32_t id,void *data) {
 }
 static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
-#if LIGHTVM_HTTP
+#if DEVICE_HTTP
     if (!stop_http()) return false;
 #endif
     if (!c->wifi_enabled && !initialized) return true;
     if (!initialized) {
-        // LightVM's snapshot is the sole credential store. NVS is for PHY calibration.
+        // The application snapshot is the sole credential store. NVS is for PHY calibration.
         if (nvs_flash_init()!=ESP_OK || esp_netif_init()!=ESP_OK) return false;
         esp_err_t loop=esp_event_loop_create_default(); if (loop!=ESP_OK && loop!=ESP_ERR_INVALID_STATE) return false;
         if (!events) events=xQueueCreate(16,sizeof(int));
@@ -64,7 +67,7 @@ static bool configure(void *ctx,const NetworkConfig *c) {
         if (!station) return false;
         uint8_t mac[6];
         if (esp_read_mac(mac,ESP_MAC_WIFI_STA)!=ESP_OK) return false;
-        snprintf(hostname,sizeof(hostname),"lightvm-%02x%02x%02x",mac[3],mac[4],mac[5]);
+        snprintf(hostname,sizeof(hostname),"%.20s-%02x%02x%02x",engine->hostname_prefix,mac[3],mac[4],mac[5]);
         if (esp_netif_set_hostname(station,hostname)!=ESP_OK) return false;
         wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT(); init.nvs_enable=0;
         if (!wifi_created) { if (esp_wifi_init(&init)!=ESP_OK) return false; wifi_created=true; }
@@ -88,9 +91,9 @@ static bool configure(void *ctx,const NetworkConfig *c) {
         if (esp_netif_set_ip_info(access_point,&ip)!=ESP_OK || esp_netif_set_hostname(access_point,hostname)!=ESP_OK) return false;
         dhcps_lease_t leases={.enable=true}; IP4_ADDR(&leases.start_ip,192,168,4,2); IP4_ADDR(&leases.end_ip,192,168,4,5);
         if (esp_netif_dhcps_option(access_point,ESP_NETIF_OP_SET,ESP_NETIF_REQUESTED_IP_ADDRESS,&leases,sizeof(leases))!=ESP_OK) return false;
-        snprintf(engine->network.ap_ssid,sizeof(engine->network.ap_ssid),"%s",c->ap_ssid[0]?c->ap_ssid:hostname);
+        snprintf(engine->network->ap_ssid,sizeof(engine->network->ap_ssid),"%s",c->ap_ssid[0]?c->ap_ssid:hostname);
         wifi_config_t config={0};
-        memcpy(config.ap.ssid,engine->network.ap_ssid,strlen(engine->network.ap_ssid)); config.ap.ssid_len=strlen(engine->network.ap_ssid);
+        memcpy(config.ap.ssid,engine->network->ap_ssid,strlen(engine->network->ap_ssid)); config.ap.ssid_len=strlen(engine->network->ap_ssid);
         memcpy(config.ap.password,c->ap_password,strlen(c->ap_password));
         config.ap.channel=1; config.ap.max_connection=4;
         config.ap.authmode=c->ap_password[0]?WIFI_AUTH_WPA2_PSK:WIFI_AUTH_OPEN;
@@ -100,7 +103,7 @@ static bool configure(void *ctx,const NetworkConfig *c) {
         // Re-arm it before AP_START, which brings the netif up asynchronously.
         if (esp_netif_dhcps_start(access_point)!=ESP_OK) return false;
     }
-    return esp_wifi_start()==ESP_OK;
+    return esp_wifi_start()==ESP_OK && esp_wifi_set_ps(low_latency?WIFI_PS_NONE:WIFI_PS_MIN_MODEM)==ESP_OK;
 }
 static bool scan(void *ctx) {
     (void)ctx; failure=0; scan_done=false; scan_failed=false; memset(observed,0,sizeof(observed));
@@ -111,7 +114,7 @@ static int scan_poll(void *ctx,const char *ssid,bool *visible) {
     (void)ctx;
     if (!scan_done) return 0;
     if (scan_failed) return -1;
-    if (ssid && visible) { *visible=false; for (unsigned i=0;i<engine->network.config.count;i++) if (!strcmp(ssid,engine->network.config.networks[i].ssid)) *visible=observed[i]; }
+    if (ssid && visible) { *visible=false; for (unsigned i=0;i<engine->network->config.count;i++) if (!strcmp(ssid,engine->network->config.networks[i].ssid)) *visible=observed[i]; }
     return 1;
 }
 static bool connect_network(void *ctx,const WifiNetwork *network) {
@@ -142,7 +145,7 @@ static void disconnect(void *ctx) {
     if (initialized) {
         if (scanning) esp_wifi_scan_stop();
         if (mode==NET_MODE_AP) {
-#if LIGHTVM_HTTP
+#if DEVICE_HTTP
             stop_discovery();
 #endif
             esp_wifi_stop(); ap_started=false; if (access_point) esp_netif_dhcps_stop(access_point);
@@ -152,7 +155,7 @@ static void disconnect(void *ctx) {
     scanning=false;
 }
 static uint32_t random_value(void *ctx) { (void)ctx; return esp_random(); }
-#if LIGHTVM_HTTP
+#if DEVICE_HTTP
 static Http http;
 static httpd_handle_t handle;
 static httpd_handle_t bootstrap_handle;
@@ -175,7 +178,7 @@ static bool start_discovery(uint16_t port) {
     int yes=1,ttl=255; struct in_addr local;
     struct sockaddr_in address={.sin_family=AF_INET,.sin_port=htons(DISCOVERY_PORT),.sin_addr={.s_addr=htonl(INADDR_ANY)}};
     struct ip_mreq group={0}; inet_pton(AF_INET,"224.0.0.251",&group.imr_multiaddr);
-    if (inet_pton(AF_INET,engine->network.ip,&local)!=1) goto failed;
+    if (inet_pton(AF_INET,engine->network->ip,&local)!=1) goto failed;
     group.imr_interface=local;
     if (setsockopt(discovery_socket,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(yes)) ||
         setsockopt(discovery_socket,IPPROTO_IP,IP_MULTICAST_TTL,&ttl,sizeof(ttl)) ||
@@ -185,15 +188,15 @@ static bool start_discovery(uint16_t port) {
         setsockopt(discovery_socket,IPPROTO_IP,IP_ADD_MEMBERSHIP,&group,sizeof(group)) ||
         fcntl(discovery_socket,F_SETFL,O_NONBLOCK)) goto failed;
     uint8_t ip[4]; memcpy(ip,&local.s_addr,4);
-    discovery_start(&discovery,hostname,engine->controller_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
+    discovery_start(&discovery,hostname,engine,ip,port,discovery_send,NULL,platform_time_us());
     if (!discovery.active) goto failed;
     return true;
 failed:
     stop_discovery(); return false;
 }
 static void poll_discovery(uint64_t now,uint16_t port) {
-    bool enabled=handle && network_online(&engine->network) && network_http_enabled(&engine->network);
-    struct in_addr address={0}; inet_pton(AF_INET,engine->network.ip,&address);
+    bool enabled=handle && network_online(engine->network) && network_http_enabled(engine->network);
+    struct in_addr address={0}; inet_pton(AF_INET,engine->network->ip,&address);
     if (discovery.active && (!enabled || memcmp(&address.s_addr,discovery.controllers[0].ip,4) || port!=discovery.controllers[0].port)) stop_discovery();
     static uint64_t retry;
     if (enabled && !discovery.active && now>=retry) { start_discovery(port); retry=now+5000000u; }
@@ -212,7 +215,7 @@ static void poll_discovery(uint64_t now,uint16_t port) {
 }
 static QueueHandle_t ingress,transmit;
 typedef struct { httpd_req_t *request; atomic_bool occupied,failed,done; bool closing;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     WebSocket websocket;
     atomic_bool websocket_ready,flushed;
     bool flush_pending;
@@ -222,7 +225,7 @@ static Client clients[6];
 static atomic_bool stopping;
 typedef struct { Client *client; HttpRequest request; } Incoming;
 typedef struct { Client *client; size_t size; uint8_t bytes[512];
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     bool flush;
 #endif
 } Outgoing;
@@ -231,7 +234,7 @@ static void sender(void *ctx) {
     for (;;) {
         if (!xQueueReceive(transmit,&job,portMAX_DELAY)) continue;
         Client *c=job.client;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         if (job.flush) { atomic_store(&c->flushed,true); continue; }
 #endif
         if (!job.size) {
@@ -256,7 +259,7 @@ static bool close_client(void *ctx) {
     Client *c=ctx;
     if (!c->closing) { Outgoing job={.client=c}; if (xQueueSend(transmit,&job,0)!=pdTRUE) return false; c->closing=true; }
     if (!atomic_load(&c->done)) return false;
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     if (atomic_load(&c->websocket_ready)) {
         websocket_closed(&c->websocket);
         if (c->websocket.source) return false;
@@ -266,7 +269,7 @@ static bool close_client(void *ctx) {
     c->closing=false;
     atomic_store(&c->occupied,false); return true;
 }
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
 static bool flush_client(void *ctx) {
     Client *c=ctx;
     if (atomic_load(&c->failed)) return false;
@@ -286,7 +289,7 @@ static esp_err_t request(httpd_req_t *r) {
     for (unsigned i=0;i<6;i++) { bool empty=false; if (atomic_compare_exchange_strong(&clients[i].occupied,&empty,true)) { c=&clients[i]; break; } }
     if (!c) { httpd_resp_set_status(r,"503 Service Unavailable"); return httpd_resp_send(r,NULL,0); }
     atomic_store(&c->failed,false); atomic_store(&c->done,false);
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     atomic_store(&c->websocket_ready,false);
 #endif
     Incoming incoming={.client=c}; HttpRequest *q=&incoming.request;
@@ -308,7 +311,7 @@ static esp_err_t request(httpd_req_t *r) {
             q->form_origin_valid=http_setup_origin(host,origin);
         }
     }
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     q->websocket=&c->websocket;
     if (!q->error && !strcmp(q->path,WEBSOCKET_PATH)) {
         WebSocketHandshake handshake={0};
@@ -326,7 +329,7 @@ static esp_err_t request(httpd_req_t *r) {
     }
     if (httpd_req_async_handler_begin(r,&c->request)!=ESP_OK) { atomic_store(&c->occupied,false); return ESP_FAIL; }
     q->io=(HttpIO){c,output,close_client};
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
     if (q->websocket_action==WS_UPGRADE) { int enabled=1; setsockopt(httpd_req_to_sockfd(c->request),IPPROTO_TCP,TCP_NODELAY,&enabled,sizeof(enabled)); }
 #endif
     if (xQueueSend(ingress,&incoming,0)!=pdTRUE) {
@@ -371,18 +374,18 @@ static bool stop_http(void) {
     httpd_stop(handle); handle=NULL; atomic_store(&stopping,false); return true;
 }
 #endif
-void esp32_network_init(App *app) {
-    engine=app;
-    app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect_network,link_state,disconnect,random_value};
-#if LIGHTVM_HTTP
+void device_esp32_init(DeviceHost *app,bool realtime) {
+    engine=app; low_latency=realtime;
+    app->network->driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect_network,link_state,disconnect,random_value};
+#if DEVICE_HTTP
     http_init(&http,app); ingress=xQueueCreate(HTTP_QUEUE,sizeof(Incoming)); transmit=xQueueCreate(4,sizeof(Outgoing));
     http.discovery=&discovery;
-    if (!ingress || !transmit || xTaskCreate(sender,"http-output",4096,NULL,5,NULL)!=pdPASS) { strcpy(app->network_error,"HTTP task allocation failed"); }
+    if (!ingress || !transmit || xTaskCreate(sender,"http-output",4096,NULL,5,NULL)!=pdPASS) { strcpy(app->settings->error,"HTTP task allocation failed"); }
 #endif
-    network_bootstrap(&app->network,LIGHTVM_HTTP);
-    NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
+    network_bootstrap(app->network,DEVICE_HTTP);
+    NetworkConfig saved=app->network->config; network_apply(app->network,&saved);
 }
-void esp32_network_poll(void) {
+void device_esp32_poll(void) {
     if (events) {
         int value;
         while (xQueueReceive(events,&value,0)==pdTRUE) {
@@ -390,7 +393,7 @@ void esp32_network_poll(void) {
                 scan_done=true; scanning=false; uint16_t count=0; scan_failed=esp_wifi_scan_get_ap_num(&count)!=ESP_OK;
                 for (unsigned k=0;k<count && !scan_failed;k++) {
                     wifi_ap_record_t record; scan_failed=esp_wifi_scan_get_ap_record(&record)!=ESP_OK;
-                    if (!scan_failed) for (unsigned i=0;i<engine->network.config.count;i++) if (!strcmp((const char *)record.ssid,engine->network.config.networks[i].ssid)) observed[i]=true;
+                    if (!scan_failed) for (unsigned i=0;i<engine->network->config.count;i++) if (!strcmp((const char *)record.ssid,engine->network->config.networks[i].ssid)) observed[i]=true;
                 }
                 esp_wifi_clear_ap_list();
             }
@@ -399,23 +402,23 @@ void esp32_network_poll(void) {
             else if (value<0) failure=value; else failure=0;
         }
     }
-#if LIGHTVM_HTTP
+#if DEVICE_HTTP
     static NetworkState previous=NET_DISABLED; static uint16_t listening_port;
-    if ((previous==NET_CONNECTED || previous==NET_AP_ACTIVE) && !network_online(&engine->network)) http_disconnect_sessions(&http);
-    previous=engine->network.state;
-    bool enabled=network_http_enabled(&engine->network) && network_online(&engine->network);
-    uint16_t requested_port=network_http_port(&engine->network);
-    if (handle && !engine->network_pending && (!enabled || listening_port!=requested_port)) {
+    if ((previous==NET_CONNECTED || previous==NET_AP_ACTIVE) && !network_online(engine->network)) http_disconnect_sessions(&http);
+    previous=engine->network->state;
+    bool enabled=network_http_enabled(engine->network) && network_online(engine->network);
+    uint16_t requested_port=network_http_port(engine->network);
+    if (handle && !engine->settings->pending && (!enabled || listening_port!=requested_port)) {
         if (!stop_http()) return;
     }
-    if (!handle && !engine->network_pending && enabled && ingress && transmit) { if (start_http(requested_port)) listening_port=requested_port; else strcpy(engine->network_error,"HTTP listener could not start"); }
+    if (!handle && !engine->settings->pending && enabled && ingress && transmit) { if (start_http(requested_port)) listening_port=requested_port; else strcpy(engine->settings->error,"HTTP listener could not start"); }
     poll_discovery(platform_time_us(),listening_port);
     if (handle) {
         Incoming incoming;
         // Transfer native HTTP ingress only when the shared engine is free.
         // WebSocket frames enter the portable queue on this engine owner.
         if (!http.sending && !http.count && xQueueReceive(ingress,&incoming,0)==pdTRUE) {
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
             Client *c=incoming.client;
             c->flush_pending=false;
             websocket_init(&c->websocket,&http,incoming.request.io,flush_client);
@@ -423,7 +426,7 @@ void esp32_network_poll(void) {
 #endif
             http_submit(&http,&incoming.request);
         }
-#if LIGHTVM_WEBSOCKET
+#if DEVICE_WEBSOCKET
         for (unsigned i=0;i<6;i++) {
             Client *c=&clients[i];
             if (!atomic_load(&c->occupied) || !atomic_load(&c->websocket_ready) || c->closing) continue;

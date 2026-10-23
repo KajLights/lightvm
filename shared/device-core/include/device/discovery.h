@@ -1,5 +1,6 @@
-#ifndef LIGHTVM_DISCOVERY_H
-#define LIGHTVM_DISCOVERY_H
+#ifndef KAJ_DEVICE_DISCOVERY_H
+#define KAJ_DEVICE_DISCOVERY_H
+#include "device/host.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -9,7 +10,8 @@
 #define DISCOVERY_PORT 5353u
 #define DISCOVERY_TTL 30u
 typedef struct {
-    char hostname[32],controller_id[64],board[32];
+    char hostname[32],controller_id[64],board[32],version[96],kind[32];
+    uint32_t capabilities;
     uint8_t ip[4]; uint16_t port;
     uint64_t ptr_until,srv_until,txt_until,ip_until;
 } DiscoveryController;
@@ -23,7 +25,7 @@ typedef struct {
     unsigned probes,collision;
     bool active,announced,reply_pending,reply_alias,truncated;
 } Discovery;
-void discovery_start(Discovery *,const char *hostname,const char *controller_id,const char *board,
+void discovery_start(Discovery *,const char *hostname,const DeviceHost *,
                      const uint8_t ip[4],uint16_t port,DiscoverySend,void *,uint64_t now);
 void discovery_stop(Discovery *,uint64_t now);
 void discovery_receive(Discovery *,const uint8_t *,size_t,const uint8_t from[4],uint16_t port,uint64_t now);
