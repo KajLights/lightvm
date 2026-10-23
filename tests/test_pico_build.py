@@ -147,6 +147,18 @@ class PicoClosedStackTests(unittest.TestCase):
         self.assertTrue(enabled_target('src/http.c:capture',http))
         self.assertFalse(enabled_target('src/home_assistant.c:response',http))
 
+    def test_lwip_callbacks_follow_each_configured_protocol(self):
+        for http in (False,True):
+            for mqtt in (False,True):
+                features={'LIGHTVM_WIFI':True,'LIGHTVM_HTTP':http,'LIGHTVM_MQTT':mqtt}
+                with self.subTest(features=features):
+                    for name in ('tcp_tmr','tcpip_tcp_timer'):
+                        self.assertEqual(enabled_target(name,features),http or mqtt)
+                    for name in ('dns_tmr','dns_recv'):
+                        self.assertEqual(enabled_target(name,features),mqtt)
+                    self.assertEqual(enabled_target('igmp_tmr',features),http)
+                    self.assertTrue(enabled_target('new_unknown_callback',features))
+
     def test_machine_boundaries_returns_veneers_and_dynamic_reservations(self):
         text = """00001000 <caller>:
 1000:\tb510      \tpush\t{r4, lr}

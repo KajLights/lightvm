@@ -37,8 +37,9 @@ def replay(executable, source, frames, *, optimize=True, animated=False):
     client = Client(ProcessTransport(str(Path(executable).resolve())))
     images = []
     try:
+        pixel_count = min(200, client.describe()['pixel_capacity'])
         client.configure({'schema': 'lightvm.config', 'outputs': [
-            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 200}}]})
+            {'id': 'lights', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': pixel_count}}]})
         client.save_program('replay', artifact.bytecode)
         client.configure_composition([{'id': 'fg', 'program': 'replay'}], output='lights')
         client.require_ok(client.command(STOP, output='lights'))
@@ -56,6 +57,7 @@ def replay(executable, source, frames, *, optimize=True, animated=False):
             'source_sha256': hashlib.sha256(source.encode()).hexdigest(),
             'bytecode_sha256': hashlib.sha256(artifact.bytecode).hexdigest(),
             'bytecode_bytes': len(artifact.bytecode), 'frames': frames, 'delta_ms': 16,
+            'pixel_count': pixel_count,
             'optimize': optimize, 'settings': settings,
             'sha256_all_frames': hashlib.sha256(b''.join(images)).hexdigest(),
             'counters': {key: after[key] - before[key] for key in COUNTERS},

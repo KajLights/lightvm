@@ -10,9 +10,11 @@ def enabled_target(name, features):
     Do not infer absence from a missing symbol: that must still fail the gate.
     """
     if features is None:return True
+    # Match LWIP_TCP/DNS/IGMP in lwipopts.h and the guarded timer/UDP registrations.
+    if name in ('tcp_tmr','tcpip_tcp_timer') and not (features['LIGHTVM_HTTP'] or features['LIGHTVM_MQTT']):return False
     if (name.startswith(('src/home_assistant.c:', 'src/ha_keys.c:', 'platforms/pico/mqtt_port.c:')) or
-        name in ('ha_tick','mqtt_tick','error_stream','resolved')) and not features['LIGHTVM_MQTT']:return False
-    if (name.startswith(('src/http.c:', 'src/discovery.c:')) or name in ('http_tick','failed','discovery_received') or
+        name in ('ha_tick','mqtt_tick','error_stream','resolved','dns_tmr','dns_recv')) and not features['LIGHTVM_MQTT']:return False
+    if (name.startswith(('src/http.c:', 'src/discovery.c:')) or name in ('http_tick','failed','discovery_received','igmp_tmr') or
         name.startswith('platforms/pico/network_port.c:') and name.split(':')[-1] in
         ('output','close_client','receive','accept_client','failed','discovery_send','discovery_received')) and not features['LIGHTVM_HTTP']:return False
     if (name.startswith('platforms/pico/network_port.c:') or name=='cyw43_gpio_irq_handler' or

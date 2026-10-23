@@ -21,8 +21,12 @@ class PerformanceTests(unittest.TestCase):
     def test_sprite_variants_and_seeded_lifetimes_match(self):
         result = measure(self.executable)
         animated = result['animated']
+        expected_hashes={
+            175:'a1af85f53d28ee885e73779fa6bf99094e956753b15aa890083cea46b6198bdf',
+            200:'7b9e75d072e4222c88432dc763acae1312938506eebe62f801c8cc87dbd0097d',
+        }
         self.assertEqual(animated['current']['sha256_all_frames'],
-                         '7b9e75d072e4222c88432dc763acae1312938506eebe62f801c8cc87dbd0097d')
+                         expected_hashes[animated['current']['pixel_count']])
         self.assertLess(animated['current']['counters']['dispatch_count'],
                         animated['original_reference']['counters']['dispatch_count'])
         fixed = result['fixed']['12']
@@ -108,7 +112,8 @@ class PerformanceTests(unittest.TestCase):
     def test_deadline_rotation_keeps_many_layers_and_outputs_progressing(self):
         c=Client(ProcessTransport(self.executable))
         try:
-            c.configure({'schema':'lightvm.config','outputs':[{'id':f'lights{i}','type':'ws2812b','config':{'pin':f'GP{16+i}','count':200}} for i in range(2)]})
+            count=min(200,c.describe()['pixel_capacity'])
+            c.configure({'schema':'lightvm.config','outputs':[{'id':f'lights{i}','type':'ws2812b','config':{'pin':f'GP{16+i}','count':count}} for i in range(2)]})
             source='from lightvm import profile,init,render,rgb\nprofile("animation")\n@init\ndef setup(ctx,runtime):\n ctx.x=0\n@render\ndef draw(ctx,runtime,pixels):\n for i in range(1500):\n  ctx.x=(ctx.x+1)%255\n pixels.fill(rgb(ctx.x,0,0))\n'
             artifact=compile_source(source);self.assertTrue(artifact.success,artifact.diagnostics)
             c.save_program('busy',artifact.bytecode)
@@ -122,7 +127,8 @@ class PerformanceTests(unittest.TestCase):
     def test_unchanged_background_sleeps_and_inputs_wake_it(self):
         c=Client(ProcessTransport(self.executable))
         try:
-            c.configure({'schema':'lightvm.config','outputs':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':200}}]})
+            count=min(200,c.describe()['pixel_capacity'])
+            c.configure({'schema':'lightvm.config','outputs':[{'id':'lights','type':'ws2812b','config':{'pin':'GP16','count':count}}]})
             artifact=compile_source((ROOT/'examples/animations/color.py').read_text())
             self.assertTrue(artifact.success,artifact.diagnostics)
             c.save_program('background',artifact.bytecode)
