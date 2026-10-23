@@ -130,7 +130,10 @@ static int numeric_package_driver(const char *path,unsigned count,unsigned tick,
     printf("\",\"plan_bytes\":%zu,\"images\":[",p->map_bytes);comma=false;
     for(unsigned n=0;n<p->nresources;n++)if(p->resources[n].kind>=14&&p->resources[n].kind<=17&&!p->resources[n].sealed){
         PbcResource *r=&p->resources[n];printf("%s\"",comma?",":"");comma=true;
-        for(unsigned k=0;k<r->count*draw_stride(r->kind);k++)printf("%02x",r->data[k]);printf("\"");
+        for(unsigned k=0;k<r->count*draw_stride(r->kind);k++){
+            printf("%02x",r->data[k]);
+        }
+        printf("\"");
     }
     printf("]");if(stats)printf(",\"work\":%u,\"dispatches\":%llu",p->used-(LIGHTVM_INVOCATION_LIMIT-budget),(unsigned long long)p->dispatch_count);
     puts("}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;

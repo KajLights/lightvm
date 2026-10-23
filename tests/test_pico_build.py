@@ -117,6 +117,27 @@ edge: { sourcename: "child" targetname: "__indirect_call" }
 
 
 class PicoClosedStackTests(unittest.TestCase):
+    def test_interrupt_roots_do_not_depend_on_sdk_checkout_location(self):
+        handlers=(
+            'dcd_int_handler',
+            'src/rp2_common/pico_stdio_usb/stdio_usb.c:low_priority_worker_irq',
+            'src/common/pico_time/time.c:alarm_pool_irq_handler',
+            'src/rp2_common/hardware_gpio/gpio.c:gpio_default_irq_handler',
+            'src/rp2_common/pico_multicore/multicore.c:multicore_lockout_handler',
+        )
+        for sdk in ('build/deps/pico-sdk', 'build/deps/pico-sdk-2.3.1', '/opt/pico/sdk'):
+            with self.subTest(sdk=sdk):
+                frames={sdk+'/'+name if '/' in name else name:32 for name in handlers}
+                report=path_audit(frames,{},dict.fromkeys(frames,'static'),IRQ_ROOTS)
+                self.assertTrue(all(result['complete'] for result in report.values()))
+                self.assertTrue(all(result['foreground_bytes']==32 for result in report.values()))
+                # A similarly named function from another source cannot fill a missing root.
+                missing=IRQ_ROOTS[1]
+                frames[sdk+'/unreviewed.c:'+missing.rsplit(':',1)[1]]=frames.pop(sdk+'/'+missing)
+                report=path_audit(frames,{},dict.fromkeys(frames,'static'),IRQ_ROOTS)
+                self.assertFalse(report[missing]['complete'])
+                self.assertIn('missing root: '+missing,report[missing]['unresolved'])
+
     def test_disabled_features_only_remove_their_known_registrations(self):
         minimal=dict.fromkeys(('LIGHTVM_WIFI','LIGHTVM_HTTP','LIGHTVM_MQTT'),False)
         for name in ('http_tick','ha_tick','mqtt_tick','src/home_assistant.c:response','src/http.c:capture','platforms/pico/network_port.c:scan','cyw43_gpio_irq_handler'):

@@ -115,7 +115,16 @@ def main():
     args.output.write_text(json.dumps(report, indent=2).replace(root, '') + '\n')
     print(f'Pico stack accounting: {len(files)} objects, {report["frame_count"]} frames; software gate {report.get("software_gate_passed",False)}; hardware validation pending')
     if not args.report_only and (not report.get('software_gate_passed',False)):
-        parser.exit(1, 'Stack path audit failed: unresolved calls or insufficient stack margin. See the report.\n')
+        problems=set(report.get('contract_identity',{}).get('errors',()))
+        for group in ('roots','interrupt_paths'):
+            for result in report.get(group,{}).values():
+                problems.update(result['unresolved'])
+        for stack in ('main','worker'):
+            result=report.get(stack,{})
+            if result and result['remaining_bytes']<result['required_margin_bytes']:
+                problems.add(f'{stack} stack margin: {result["remaining_bytes"]} bytes; required {result["required_margin_bytes"]}')
+        for problem in sorted(problems):print('  '+problem)
+        parser.exit(1, f'Stack path audit failed. Full report: {args.output}\n')
 
 
 if __name__ == '__main__':

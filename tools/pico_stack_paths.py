@@ -258,10 +258,11 @@ def path_audit(frames,edges,kinds,roots):
 
 IRQ_ROOTS = (
     'dcd_int_handler',
-    'build/deps/pico-sdk-2.3.1/src/rp2_common/pico_stdio_usb/stdio_usb.c:low_priority_worker_irq',
-    'build/deps/pico-sdk-2.3.1/src/common/pico_time/time.c:alarm_pool_irq_handler',
-    'build/deps/pico-sdk-2.3.1/src/rp2_common/hardware_gpio/gpio.c:gpio_default_irq_handler',
-    'build/deps/pico-sdk-2.3.1/src/rp2_common/pico_multicore/multicore.c:multicore_lockout_handler',
+    # path_audit matches these source-qualified suffixes in any SDK checkout.
+    'src/rp2_common/pico_stdio_usb/stdio_usb.c:low_priority_worker_irq',
+    'src/common/pico_time/time.c:alarm_pool_irq_handler',
+    'src/rp2_common/hardware_gpio/gpio.c:gpio_default_irq_handler',
+    'src/rp2_common/pico_multicore/multicore.c:multicore_lockout_handler',
 )
 EXTRA_ROOTS = ('http_tick','mqtt_tick','app_execute_command','preparation_tick','store_write_step','core1_wrapper')
 
