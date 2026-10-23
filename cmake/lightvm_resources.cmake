@@ -22,5 +22,5 @@ lightvm_resource_option(LIGHTVM_MAX_REFRESH_HZ "Optional refresh cap; zero runs 
 lightvm_resource_option(LIGHTVM_RENDER_WORKERS "Number of render workers" 1 2)
 lightvm_resource_option(LIGHTVM_RENDER_SLICE_US "Maximum render slice before yielding at an operation boundary" 50 10000)
 lightvm_resource_option(LIGHTVM_RENDER_EPOCH_US "Coordinator work target before returning to ingress" 100 100000)
-lightvm_resource_option(LIGHTVM_INVOCATION_LIMIT "Maximum VM dispatches per initialization or render" 1024 2147483647)
+lightvm_resource_option(LIGHTVM_INVOCATION_LIMIT "Maximum weighted VM work units per initialization or render" 1024 2147483647)
 lightvm_resource_option(LIGHTVM_BYTECODE_CACHE_BYTES "Per-instance instruction cache bytes (power of two)" 64 16384)

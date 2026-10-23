@@ -52,6 +52,7 @@ if(LIGHTVM_PLATFORM STREQUAL "host")
         foreach(fixture bytecode portable)
             add_test(NAME ${fixture}_fixtures_current COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/generate_${fixture}_fixtures.py" --check)
         endforeach()
+        add_test(NAME numeric_metadata_current COMMAND "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tools/generate_numeric_metadata.py" --check)
         add_executable(test_release tests/test_release.c)
         target_compile_options(test_release PRIVATE -Wall -Wextra -Werror)
         target_link_libraries(test_release PRIVATE lightvm_core)
@@ -63,7 +64,7 @@ if(LIGHTVM_PLATFORM STREQUAL "host")
         add_test(NAME numeric_runtime_contract COMMAND "${CMAKE_COMMAND}" -E env
             "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
             "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_numeric_runtime.py")
-        foreach(suite bulk_numeric native_math)
+        foreach(suite bulk_numeric native_math semantic_floors easing numeric_work independent_emitter numeric_matrix)
             add_test(NAME ${suite}_contract COMMAND "${CMAKE_COMMAND}" -E env
                 "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
                 "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_${suite}.py")

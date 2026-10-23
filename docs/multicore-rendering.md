@@ -153,7 +153,7 @@ the serial executor; this change does not introduce an ESP32 worker task.
 | `LIGHTVM_MAX_REFRESH_HZ` | 0 for readiness-driven output; optional 1–1000 Hz cap |
 | `LIGHTVM_RENDER_SLICE_US` | Target yield interval at VM operation boundaries; Pico W defaults to 2000 µs, other profiles to 500 µs |
 | `LIGHTVM_RENDER_EPOCH_US` | Coordinator admission target, default 4000 µs; valid range 100–100000 µs |
-| `LIGHTVM_INVOCATION_LIMIT` | Total dispatch limit per initialization/render; default 10,000,000 |
+| `LIGHTVM_INVOCATION_LIMIT` | Weighted VM work limit per initialization/render; default 10,000,000; see [accounting semantics](bytecode-emitter.md#prepared-pixel-kernels) |
 
 For example, append these options to the normal Pico 2 W configuration command:
 

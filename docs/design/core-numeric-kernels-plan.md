@@ -1,12 +1,13 @@
 # Core numeric types, bulk kernels and native math
 
-22 October 2026. **Status: S0–S5 implemented.** Stable numeric gathers, lazy
-conditional kernels and native f32 math join the scalar fixed-point foundation.
-Python, JavaScript and Blocks share the explicit numeric contract, with an
-independent full-profile emitter fixture. See the
+23 October 2026. **Status: implementation corrections verified; physical R5/R6
+acceptance open.** Fixed arithmetic, prepared kernels, native math and
+frontend/emitter integration are present. The [implementation follow-up below](#implementation-follow-up--23-october-2026)
+closes the verifier, semantic feature-floor, easing, metadata and work-accounting
+corrections from the original review. The
 [S2–S4 validation record](numeric-s234-validation-2026-10-22.md) and
-[S5 integration record](numeric-s5-validation-2026-10-22.md) for measured
-attached-Pico scope. The complete multi-board release matrix (S6) remains open.
+[S5 integration record](numeric-s5-validation-2026-10-22.md) retain their measured
+attached-Pico scope; their completion statements predate this review.
 
 The [numeric contract](../numeric-types.md),
 [operation catalogue](numeric-operations.json),
@@ -39,7 +40,8 @@ The first delivery comprises an explicit Q16.16 value type, ordinary integer
 bitwise operations, broader verified pixel kernels, and native math justified by
 our existing effects. It preserves the current separation between animation code,
 the execution engine and hardware output. The linked S0 contract now fixes the
-numeric rules; the remaining kernel and integration work follows the stages below.
+numeric rules; the review and delivery stages below distinguish implemented
+features from acceptance and remaining work.
 
 ## Design principles
 
@@ -128,7 +130,224 @@ actually reused. Do not claim that existing effects already use new arithmetic.
 - Current inputs and settings use the existing scalar types. There is no need
   to extend their wire formats to introduce an internal fixed numeric type.
 
-## Proposed numeric contract
+## Implementation review — 23 October 2026
+
+Reviewed original plan `e37634a` against implementation `129ebbf56c52f97f2f4fdc2e3d4e61d049d627a9`
+(`codex/core-numeric-foundation`, based on Pico repair `a9c8611`). This assessment
+supersedes the earlier blanket S0–S5 completion claim. The validation archives
+remain historical evidence; this review does not rewrite their measured results.
+
+### What is delivered
+
+- Exact Q16.16 scalar operations, conversions, fixed arrays and i32 bit operations
+  are integrated through the shared core. Independent integer-oracle, folding,
+  admission, lifetime and allocation checks support S1's implementation.
+- Stable gathers, lazy forward branches, prepared plans and the required native
+  math exist. Existing positive fixtures agree across scalar/bulk execution,
+  workers and forced yields. The plan/stack costs are accounted for.
+- Python, JavaScript, Blocks and a standard-library-only independent emitter
+  execute the numeric contract. Browser packaging includes the numeric module.
+- Recorded RP2040 repeat-gather and fixed-branch improvements exceed the 15%
+  gate: approximately 80%/79% with one worker and 89%/88% with two. The five
+  matched controls have no unexplained median regression above 5%. This closes
+  those measured cases, not the full S6 workload/board matrix.
+
+The implementation follows the local typed execution and ownership model. There
+is no reason to replace the fixed representation, add effect-specific natives or
+introduce a separate source-language runtime. The work below repairs concrete
+contract gaps and completes the original scope.
+
+### Implementation follow-up — 23 October 2026
+
+The implementation corrections are complete; physical release acceptance remains
+open. See the [follow-up validation record](numeric-followup-validation-2026-10-23.md)
+for source/package identities, checked configurations and the board disposition.
+The original review findings below refer to `129ebbf` and remain as rationale.
+
+| Item | Current disposition | Evidence / remaining gate |
+| --- | --- | --- |
+| R1 | Implemented and verified | Independent admission and plan analysis reject index/bound aliases; allocation preserves separate controls; malformed empty/positive maps retain the active generation and release allocations |
+| R2 | Implemented and verified | Compiler and loader enforce 1.3.0 for scalar/declaration f32 min/max and both sine encodings, including typed callbacks; shared signed-zero semantics and target/rejection tests pass; recompile experimental packages |
+| R3 | Implemented and verified | Nine normalized guest easing helpers; endpoints, adjacent values, clamp/monotonic/equation checks, explicit fixed conversion, hygienic imports and all four frontend paths pass |
+| R4 | Implemented and verified | Catalogue-generated C/Python signatures, work, effects, floors and eligibility; native probe checks signatures and actual loader operands/results/floors; independent emitter retains literal IDs and tests RGB boundaries; complete core wire reference |
+| R5 | Accounting implemented; physical calibration open | Separate first/steady costs, 1,024-unit first-path admission cap, weighted invocation reservations including faults and speculative suffixes, explicit watchdog semantics; exact boundary and lazy-path tests pass. No physical latency/performance claim for this candidate |
+| R6 | Host matrix and cross-builds pass; physical campaign open | 2,210 host replays across 34 cases, including full parameter grids/five-impulse damping and unchanged controls; RP2040/RP2350 strict RAM/stack gates and ESP32-S3 build pass. Board timing, network load and deployment acceptance still require connected hardware |
+
+First-pixel paths over 1,024 units remain ordinary resumable source loops with
+an explicit compiler advisory. Explicitly encoded over-budget maps fail
+admission; there is no oversized one-pixel exception. The historical expensive
+math-body fixture remains in the benchmark corpus as ordered code. Weight units
+are not microseconds, and the watchdog is deliberately a conservative execution
+work reservation rather than an optimizer-neutral instruction count. The
+[emitter contract](../bytecode-emitter.md#prepared-pixel-kernels) defines its
+behaviour, including early faults and recomputation. The 10 ms service gate is
+unchanged. Further scratch/lookup/math optimizations require profiling evidence.
+
+### Original review findings at `129ebbf`
+
+**R1 — Keep the captured bound independent of the induction register.**
+`valid_instruction()` in [portable.c](../../src/portable.c) checks both operands'
+types but does not require `b != c` for PIXEL_MAP. `analyze()` in
+[portable_map.c](../../src/portable_map.c) also omits that condition. At each
+continuation `pbc_map_run()` reads the bound again and writes the completed index
+back to the same register. An admitted aliased header therefore shortens its own
+remaining range. This is an inherited verifier edge uncovered by the expanded
+independent-emitter review, not a demonstrated regression introduced by S1–S5.
+
+Reproduction from the independent fixture (the fixture's render map is PC 2):
+
+```python
+import struct
+import sys
+sys.path.insert(0, "tests/fixtures")
+from independent_emitter import emit
+
+package = bytearray(emit())
+code = 96 + 8 * struct.unpack_from('<I', package, 8)[0]
+map_pc = 2
+index = package[code + 8 * map_pc + 2]
+package[code + 8 * map_pc + 3] = index
+struct.pack_into('<I', package, 96 + 8 * index + 4, 129)
+# Write package to a .lbc file and run test_platform --numeric-package FILE 129 TICK WORKERS.
+```
+
+At reviewed HEAD, load/prepare/execution report success, but only 14/28 of 129
+pixels are written with one/two workers at tick 0. With a forced clock tick of
+1,000 the counts are 1/2. The unmodified fixture writes all 129 in all four cases.
+Reject this header during validation, before plan preparation or activation.
+Keep the ordinary compiler's distinct bound temporary; test the invariant after
+register allocation too. Add empty/positive ranges, multiple chunks, both worker
+counts, forced yields, allocation cleanup and active-scene retention on rejection.
+Do not silently repair malformed bytecode or add an alternate execution mode.
+
+**R2 — Version behaviour, not only newly assigned opcodes.**
+For example, a new program evaluating `min(1e38 * 1e38, 1.0)` compiles for a
+1.1.0 target with `requires: 1.0.0`. The current finite-f32 evaluator faults on
+the overflowing intermediate; repair `a9c8611` uses `fminf` and returns 1.0 for
+that input. Thus a successful target-version check does not establish the
+advertised fault contract. Existing sine also changed from `sinf` to the new
+subnormal-preserving evaluator while its native binding keeps floor 1.0.0.
+
+Raise the required floor for use of these contracted f32 operations to 1.3.0,
+including the existing sine binding, FMIN/FMAX, kernel uses and applicable
+initialization expressions. Independently reject forged lower floors in the
+loader. Update source diagnostics, catalogue entries, versioning/emitter docs and
+fixtures together. Audit declaration-time min/max separately: they currently use
+`fminf`/`fmaxf`, not the shared evaluator. Preserve the selected finite-input and
+signed-zero rules at every supported evaluation boundary. This does not require
+new runtime modes or a second ABI version. Recompile affected experimental
+packages; retain archived old packages only as identified benchmark evidence.
+Acceptance includes old-target rejection, raw signed zeros, nonfinite arithmetic
+feeding min/max, scalar/bulk/declaration agreement and retention of the active
+scene after rejection. The existing old-device tests with fixed-type packages
+do not exercise this older-opcode case.
+
+**R3 — Finish generic helper coverage.**
+Implement normalized sine, circular and exponential in/out/in-out easing in the
+SDK, following the existing naming and independently written equation-based
+style. Specify clamping to [0,1], exact endpoint behaviour and f32 intermediates;
+use explicit branches for exponential endpoints and valid circular-root domains.
+Keep helpers as guest equations using generic math, with no per-curve native.
+Expose them consistently through Python, JavaScript, Blocks and the Blocks
+learning view. Test endpoints, adjacent values, monotonic regions, out-of-range
+clamping and scalar/bulk execution. Fixed callers continue to convert explicitly;
+this is not a request for implicit mixed arithmetic or fixed transcendental math.
+The sibling's attributed easing implementation remains a coverage reference,
+not code to copy. A decision to defer these curves must explicitly change S4's
+scope; the current plan still requires them.
+
+**R4 — Make the contract executable end to end.**
+`test_randomized_fold_matches_independent_oracle` checks the fixed catalogue
+against Python signatures but explicitly excludes f32 entries. The C signature
+table, math enum ordering, kernel cost/eligibility lists and Python tables remain
+manually synchronized. Existing vector tests are valuable, but do not prove all
+metadata agrees. Generate tables from the small catalogue or add an independent
+C metadata probe and exhaustive comparisons, including reused EQ/min/max/sine
+encodings, operands, result types, effects, feature floors and kernel eligibility.
+Retain the independent emitter's literal wire IDs: it must not import the compiler
+or become a second generated copy of the implementation it is checking.
+
+Complete the emitter reference for the core operations/resources needed by an
+independent compiler, rather than documenting only the minimal demonstration's
+instruction subset. Include faults and initialization-versus-execution rules.
+This review corrects one concrete documentation error immediately: RGB channels
+outside 0..255 **fault**, rather than clamp. Add boundary cases to the independent
+fixture so future documentation drift is detected. No RGB runtime change is made.
+
+**R5 — Separate first-pixel cost, steady cost and total invocation work.**
+The current verifier changes a cached instruction's cost to 1, while the first
+pixel in every lane/chunk still executes that instruction. Its 1,024-unit quotient
+therefore budgets steady work, not the complete first evaluation. Require a
+conservative first-pixel path cost and a steady-pixel cost; where possible choose
+`first_cost + (pixels - 1) * steady_cost <= budget` per lane. A body exceeding
+that budget for one pixel needs an explicit policy and measured disposition.
+Keep first evaluation at its original position and keep branches lazy.
+
+Calibrate weights using worst observed operation/path costs on the target,
+including cold/warm plans, invariant-heavy log/exp/pow, mixed branches and tiny
+loops. The reported costly-body jobs reach 4,983/5,559 µs and epochs about 6 ms;
+the implementation cannot yield midway through a pixel. These are measurements,
+not proof that every admitted 128-instruction body meets the 10 ms service target.
+If the required campaign fails, reduce admitted work or introduce a bounded,
+charged continuation within a pixel; do not merely rename a failed gate or
+silently select a low-memory fallback.
+
+Also specify the invocation watchdog explicitly. `pbc_resume()` increments
+`p->used` once per outer map dispatch, not once per body operation/pixel, so
+`LIGHTVM_INVOCATION_LIMIT` is currently a dispatch limit, not an optimizer-neutral
+work limit. Keep `dispatch_count` useful as a performance counter. Decide and
+verify the total-work charging contract separately, including partial chunks,
+recomputed transient suffixes and exceptional termination. Numeric/domain-fault
+equivalence must not be presented as watchdog equivalence without such a proof.
+
+Potential later optimizations are conditional on profiling: reduce unused lane
+scratch or repeated invariant evaluation, improve plan lookup for many kernels,
+and compare target-native math with the binary64 implementation under the same
+accuracy contract. No measured bottleneck or speedup is established for these
+changes. Preserve ordered first faults, bounded memory and the existing positive
+regression results when evaluating them.
+
+**R6 — Close the release matrix with scoped evidence.**
+
+- Complete G1/G2 table lengths 3/17/64 and signed offsets, Q1 phase boundaries,
+  the full five-impulse Q2 study, B1/B2 size/control cases and M1/M2 parameter
+  grids in [numeric-workloads.md](numeric-workloads.md). Keep ordered negative
+  controls and unchanged Color/Rainbow/Stars/Sweep visible in the result matrix.
+- Extend repeated timing to 200/500/1,024 pixels where admitted, one/two workers
+  and mixed scenes. The extra large/math cases currently have single-pair
+  screens; distinguish those from five-pair acceptance. Publish small-loop
+  break-even results and operation-level fixed versus f32 costs by target.
+- RP2040 has corpus/functional/performance evidence; RP2350 has build and stack
+  evidence, not physical numeric conformance or performance. ESP32-S3 builds,
+  but physical portable-arithmetic/native-math conformance is still absent.
+  Record those pending states or explicitly limit intended deployment support;
+  do not infer conformance from a common C source or build success.
+- Complete the required network/control-load and simultaneous old-scene,
+  candidate and transition memory cases. Attribute the inherited near-boot
+  roughly 54 ms ingress gap and separate steady rendering, preparation,
+  uploads, DESCRIPTION and synchronous manual FRAME. The S5 campaign's 119
+  ingress-over-10-ms increments and the long manual-frame gaps cannot close a
+  steady-service gate. Keep both foreground and actual-ingress metrics.
+- Preserve strict SRAM/whole-path stack gates after corrections. Pico W has only
+  640 bytes left after configured reservations in the recorded build; changing
+  SRAM placement, plan representation or continuations needs a fresh accounting.
+  Do not enlarge global reserves or relax gates to absorb an unmeasured change.
+
+### Review verification
+
+Fresh host checks on the reviewed source: 19/19 CTests in an ASan/UBSan build,
+8/8 standalone numeric tests, 54/54 focused frontend/compiler-file tests using the
+instrumented VM, and 2/2 independent-emitter tests pass. The R1 mutation above
+is an additional counterexample outside those passing suites. RGB out-of-range
+execution was checked separately and faults. Required easing imports are absent;
+existing polynomial imports compile. No firmware was flashed or board result
+newly measured by this review.
+
+The S2–S4 and S5 archive/summary hashes and all 195/72 archived members verify;
+all 20 recorded S5 source hashes match the reviewed checkout. Evidence therefore
+supports the existing measured claims without closing the newly identified gaps.
+
+## Numeric contract
 
 ### Representation and authoring
 
@@ -151,9 +370,10 @@ types are deferred; unsupported declarations must produce a clear diagnostic.
 
 ### Exact arithmetic rules
 
-Freeze these rules as vectors and an independent integer reference model:
+These rules are frozen in the linked contract, vectors and independent integer
+reference model; the review found no required change to their arithmetic policy:
 
-| Operation | Proposed behaviour |
+| Operation | Contracted behaviour |
 | --- | --- |
 | Fixed literal | Quantize its numeric literal directly to Q16.16, nearest with ties to even; no intermediate f32 rounding. Range-check the quantized result |
 | i32 to fixed | Exact scaling by 65536; fault if outside the fixed range |
@@ -230,6 +450,7 @@ ordinary loop remains a valid program and the reference execution path.
 ### Work bounds, faults and parallelism
 
 Choose pixels per chunk from the longest validated path and per-operation cost,
+including the first evaluation of cached invariants (R5),
 with the current maxima of 128 split, 64 unsplit transient and 32 persistent
 destination pixels. Start with a conservative weighted-work ceiling equivalent
 to the current 32-by-32 cheap-operation budget;
@@ -427,7 +648,12 @@ sampling.
 
 ## Delivery sequence
 
-S0–S5 are complete for the specified numeric, kernel and frontend scope.
+S0–S5 and R1–R4 are implemented and checked. R5's first/steady work accounting,
+watchdog contract and oversized-body selection rule are implemented. R5/R6
+physical calibration and current-candidate performance/service gates remain
+open; cross-build and host checks do not replace them. The
+[23 October follow-up](numeric-followup-validation-2026-10-23.md) supersedes the
+review's implementation gaps while preserving the historical measurements.
 [S1 evidence](numeric-s1-validation-2026-10-22.md),
 [S2–S4 evidence](numeric-s234-validation-2026-10-22.md) and
 [S5 evidence](numeric-s5-validation-2026-10-22.md) are separate from the Pico repair
@@ -435,20 +661,21 @@ archive. S6's full board/workload release matrix remains open; the recorded
 RP2040 measurements do not establish RP2350 or ESP32 physical results.
 Optional procedural sampling remains its own evaluation.
 
-| Stage | Deliverable and likely files | Completion gate |
-| --- | --- | --- |
-| S0 | Freeze numeric/operation contracts, catalogue and local workload definitions; add `docs/numeric-types.md`, bytecode-emitter documentation and benchmark specifications | Every operation has types, units, rounding, faults and test vectors; required/optional scope is explicit |
-| S1 | Fixed scalar values/arrays and i32 bitwise operations in `src/bytecode_core.*`, `src/portable.*`, a shared numeric module, `lightvm/compiler_core.py`, `lightvm/portable.py` and SDK declarations | Exact oracle/scalar agreement, valid admission, forged-type rejection and no render allocation; basic fixed programs execute |
-| S2 | Stable array reads and fixed expressions in `src/portable_map.*`; preparation/lifetime accounting; compiler recognition and liveness | Pattern/Colors-style gathers enter the bulk path and exactly match scalar execution; aliases and resource mutation remain ordered |
-| S3 | Lazy forward branches, compact admitted plans, larger bodies and weighted chunks; compiler CFG proof and source diagnostics | Branch/long-body fixtures use bulk execution; dead-arm faults remain dormant; memory and per-chunk bounds pass |
-| S4 | Required native math, shared evaluator integration and generic helper coverage in the SDK/frontends | All required functions run through scalar and bulk paths with documented error/domain results; Flame/Candle math and colour equations compile |
-| S5 | Full frontend parity, external-emitter fixture, feature floors, documentation and integration regression coverage | No separate language runtime; all current examples and new fixtures pass; newer instructions are rejected by insufficient targets before replacing live state |
-| S6 | Matched hardware measurements, stack/RAM gates and final workload review | Correctness, performance, responsiveness and memory gates below have recorded evidence; unresolved physical results remain explicitly pending |
+| Stage | Reviewed status | Deliverable and likely files | Completion gate |
+| --- | --- | --- | --- |
+| S0 | Generated contract and emitter reference verified | Freeze numeric/operation contracts, catalogue and local workload definitions; add `docs/numeric-types.md`, bytecode-emitter documentation and benchmark specifications | Every operation has types, units, rounding, faults and test vectors; required/optional scope is explicit |
+| S1 | Implemented; fresh arithmetic checks pass | Fixed scalar values/arrays and i32 bitwise operations in `src/bytecode_core.*`, `src/portable.*`, a shared numeric module, `lightvm/compiler_core.py`, `lightvm/portable.py` and SDK declarations | Exact oracle/scalar agreement, valid admission, forged-type rejection and no render allocation; basic fixed programs execute |
+| S2 | Implemented; retain gather/ownership tests | Stable array reads and fixed expressions in `src/portable_map.*`; preparation/lifetime accounting; compiler recognition and liveness | Pattern/Colors-style gathers enter the bulk path and exactly match scalar execution; aliases and resource mutation remain ordered |
+| S3 | Verifier/accounting complete; physical service gate open | Lazy forward branches, compact admitted plans, larger bodies and weighted chunks; compiler CFG proof and source diagnostics | Branch/long-body fixtures use bulk execution; dead-arm faults remain dormant; memory and per-chunk bounds pass |
+| S4 | Math, semantic floors and helper coverage verified | Required native math, shared evaluator integration and generic helper coverage in the SDK/frontends | All required functions run through scalar and bulk paths with documented error/domain results; Flame/Candle math and colour equations compile |
+| S5 | Frontend, emitter and metadata integration verified | Full frontend parity, external-emitter fixture, feature floors, documentation and integration regression coverage | No separate language runtime; all current examples and new fixtures pass; newer instructions are rejected by insufficient targets before replacing live state |
+| S6 | Full host matrix/cross-builds pass; physical R5/R6 open | Matched hardware measurements, stack/RAM gates and final workload review | Correctness, performance, responsiveness and memory gates below have recorded evidence; unresolved physical results remain explicitly pending |
 
 S1 follows S0. S2 follows S1; S3 follows S2. S4 can be implemented after S1 but
-must be revalidated against the completed S3 kernel path. S5 joins S1-S4. S6 is
-the release gate. Land a working scalar operation and its validation before
-enabling that operation in a kernel.
+must be revalidated against the completed S3 kernel path. S5 joins S1-S4. For
+the next campaign, measure the current candidate for R5/R6 using the frozen
+parameter matrix and unchanged controls. S6 is the release gate. Land a working scalar operation
+and its validation before enabling that operation in a kernel.
 
 Evaluate the Stars proposal alongside this sequence: S0 defines its sampling,
 timeline and workload contracts; after S1, prototype reconstruction and assess
@@ -541,8 +768,10 @@ Physical acceptance is pending until measured; host results cannot close it.
 
 ## Boundary after the first delivery
 
-The core is ready for another compiler when S0-S5 are complete and S6 has a
-documented disposition for the intended deployment boards. An independent
+The core is ready for another compiler when S0–S5 meet their corrected gates,
+R1–R5 have explicit closure, and S6/R6 has a documented disposition for the
+intended deployment boards. A passing happy-path independent fixture alone
+does not establish this boundary. An independent
 emitter should then need only the operation contract, packaging rules and
 conformance fixtures, not imports from compiler internals.
 

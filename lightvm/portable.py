@@ -94,6 +94,8 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.generic_visit(call)
                 if isinstance(call.func, ast.Name) and call.func.id in functions:
                     call.func.id = module + '.' + call.func.id
+                elif isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name) and call.func.value.id == 'math':
+                    call.func = ast.Name(id='lightvm.math.' + call.func.attr, ctx=ast.Load())
                 elif isinstance(call.func, ast.Name) and call.func.id in ('min','max','float','int'):
                     call.func.id = 'lightvm.builtin.' + call.func.id
                 return call
@@ -135,6 +137,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         return super().typ(register)
 
     def emit(self, op, a=0, b=0, c=0, imm=0):
+        if op in ('FMIN', 'FMAX'): self.kernels_used = True
         self.code.append([P_OP[op], a, b, c, imm])
         return len(self.code) - 1
 
@@ -193,6 +196,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             ta, tb = self.expressions[a][1], self.expressions[b][1]
             if Q in (ta, tb): return self.declarative_numeric('Q' + node.func.id.upper(), [a, b], node)
             if ta not in (I, F) or tb not in (I, F): self.fail(node, 'numeric declaration required')
+            if F in (ta, tb): self.kernels_used = True
             value = (9 if node.func.id == 'min' else 10, F if F in (ta, tb) else I, a, b, 0)
         else:
             self.fail(node, 'declaration needs literals, runtime.pixel_count or earlier settings')
@@ -226,6 +230,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
 
     def native(self, name, args, node):
         binding, result, types, rights = NATIVES[name]
+        if binding == 7: self.kernels_used = True
         if len(args) != len(types) or rights & ~self.rights:
             self.fail(node, 'native call arguments or stage permissions do not match')
         args = [self.convert(r, t) for r, t in zip(args, types)]
@@ -255,6 +260,8 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if live_input is not None: return live_input
         feature = self.feature_expr(n)
         if feature is not None: return feature
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id.startswith('lightvm.math.'):
+            return self.math_call(n.func.id.rsplit('.',1)[1], n)
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id.startswith('lightvm.builtin.'):
             return super().expr(ast.Call(func=ast.Name(id=n.func.id.rsplit('.',1)[1]), args=n.args, keywords=n.keywords))
         if isinstance(n, ast.Attribute):
@@ -647,8 +654,18 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif isinstance(n, ast.If):
                 cond = self.truth(self.expr(n.test))
                 jump = self.emit('JZ', cond); before = dict(self.env); before_decl = dict(self.declarations); self.depth += 1; self.statements(n.body); body_decl = dict(self.declarations)
-                end = self.emit('JMP'); self.code[jump][4] = len(self.code); self.env = dict(before)
-                self.declarations = dict(before_decl); self.statements(n.orelse); self.depth -= 1; self.code[end][4] = len(self.code); self.env = before
+                # An exiting arm has no fallthrough to skip. Emitting another
+                # jump after it would leave unreachable code in pure map CFGs.
+                def exits(body):
+                    if not body: return False
+                    last = body[-1]
+                    return isinstance(last, (ast.Return, ast.Break, ast.Continue)) or (
+                        isinstance(last, ast.If) and exits(last.body) and exits(last.orelse))
+                end = self.emit('JMP') if n.orelse and not exits(n.body) else None
+                self.code[jump][4] = len(self.code); self.env = dict(before)
+                self.declarations = dict(before_decl); self.statements(n.orelse); self.depth -= 1
+                if end is not None: self.code[end][4] = len(self.code)
+                self.env = before
                 self.declarations = {k:v for k,v in self.declarations.items() if body_decl.get(k) == v}
             else: self.fail(n, 'unsupported statement in portable profile')
 
@@ -699,15 +716,20 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         # Acyclic definite assignment. Reads of written locals must be defined
         # on every incoming path, so no iteration carries hidden dependencies.
         incoming=[None]*len(body);incoming[0]={index}
+        work=[0]*(len(body)+1)
         for offset,(op,a,b,c,d) in enumerate(body):
             defined=incoming[offset]
             if defined is None:return 'the body contains an unreachable instruction'
             if any(r in written and r not in defined for r in read_sets[offset]):return 'a local has a loop-carried dependency or is not defined on every path'
+            weight=numeric.instruction_work(op,self.calls[d][0] if op==P_OP['NATIVE'] else None)
+            total=work[offset]+weight
+            if total>numeric.MAP_WORK_BUDGET:return 'the body exceeds the 1024 first-pixel work budget'
             after=defined | ({a} if op not in (P_OP['STORE_ELEM'],P_OP['JMP'],P_OP['JZ']) else set())
             targets=[] if offset+1==len(body) else [offset+1]
             if op==P_OP['JMP']:targets=[d-first]
             elif op==P_OP['JZ']:targets.append(d-first)
             for target in targets:
+                work[target]=max(work[target],total)
                 incoming[target]=after.copy() if incoming[target] is None else incoming[target]&after
         for ins in body:
             if ins[0] in (P_OP['JMP'],P_OP['JZ']):ins[4]-=1
@@ -831,6 +853,10 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             if op == P_OP['NATIVE']: return [1] if a != -1 else [], []
             return [], []
         graph = [set() for _ in self.regs]
+        # A map writes its index while retaining the bound across every chunk.
+        for op, _, index, bound, _ in self.code:
+            if op == P_OP['PIXEL_MAP']:
+                graph[index].add(bound); graph[bound].add(index)
         for start,end,*_ in functions:
             map_tails = {ins[4]-1:pc for pc,ins in enumerate(self.code[start:end],start) if ins[0]==P_OP['PIXEL_MAP']}
             live = [set() for _ in range(end-start)]
@@ -868,6 +894,8 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         for ins in self.code:
             defs, uses = operands(ins)
             for k in defs+uses: ins[k] = mapping[ins[k]]
+            if ins[0] == P_OP['PIXEL_MAP'] and ins[2] == ins[3]:
+                raise CompileError('internal error: pixel map index aliases its bound')
             if ins[0] == P_OP['NATIVE'] and ins[1] == -1: ins[1] = 255
         self.calls = [(binding,[mapping[r] for r in args]) for binding,args in self.calls]
         self.expressions = [(op,typ,mapping[a] if op == 2 else a,b,v) for op,typ,a,b,v in self.expressions]

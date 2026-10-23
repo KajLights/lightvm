@@ -380,11 +380,15 @@ static void indicator_effect_contract(void) {
     session_destroy(&session);app_destroy(&app);
 }
 int main(int argc,char **argv) {
+    if(argc==2&&!strcmp(argv[1],"--numeric-metadata"))return numeric_metadata_driver();
     if((argc==2||argc==3)&&!strcmp(argv[1],"--numeric-driver"))return numeric_driver(argc==3?argv[2]:"nearest");
-    if(argc>=3&&argc<=6&&!strcmp(argv[1],"--numeric-package")){
+    if(argc>=3&&argc<=7&&(!strcmp(argv[1],"--numeric-package")||!strcmp(argv[1],"--numeric-frames"))){
+        bool frames_mode=!strcmp(argv[1],"--numeric-frames");
         if(argc>5)numeric_workers=(unsigned)strtoul(argv[5],NULL,10);
         CHECK(numeric_workers==1||numeric_workers==2);
-        return numeric_package_driver(argv[2],argc>3?(unsigned)strtoul(argv[3],NULL,10):67,argc>4?(unsigned)strtoul(argv[4],NULL,10):0);
+        if(frames_mode&&argc==7)CHECK(strtoul(argv[6],NULL,10)>=1&&strtoul(argv[6],NULL,10)<=512);
+        unsigned budget=argc==7&&!frames_mode?(unsigned)strtoul(argv[6],NULL,10):LIGHTVM_INVOCATION_LIMIT;CHECK(budget<=LIGHTVM_INVOCATION_LIMIT);
+        return numeric_package_driver(argv[2],argc>3?(unsigned)strtoul(argv[3],NULL,10):67,argc>4?(unsigned)strtoul(argv[4],NULL,10):0,budget,argc==7&&!frames_mode,frames_mode&&argc==7?(unsigned)strtoul(argv[6],NULL,10):1);
     }
     CHECK(argc==1);
     storage_faults();storage_available=true;memset(flash,255,sizeof(flash));
@@ -474,6 +478,31 @@ int main(int argc,char **argv) {
     app.service_io=advance_service;upload(&session, &reply, fault_lbc, sizeof(fault_lbc));app.service_io=NULL;
     CHECK(reply.code == STATUS_LOAD && app_output(&app,NULL)->vm.ready); /* failed preparation retains old instance */
     CHECK(app_output(&app,NULL)->vm.generation==generation&&app_output(&app,NULL)->vm.playing&&app_output(&app,NULL)->vm.frame_count>live_frames&&service_calls>0);
+    /* A malformed map must never replace the running scene, including an
+       empty aliased range. Admission rejects it before allocating a plan. */
+    for(unsigned bound=0;bound<2;bound++){
+        uint8_t bad_map[sizeof(pixel_map_lbc)];memcpy(bad_map,pixel_map_lbc,sizeof(bad_map));
+        unsigned code=96+8*lbc_u32(bad_map+8);bool patched=false;
+        for(unsigned pc=0;pc<lbc_u32(bad_map+12);pc++){
+            uint8_t *ins=bad_map+code+8*pc;if(ins[0]!=39)continue;
+            ins[3]=ins[2];write_u32(bad_map+96+8*ins[2]+4,bound?129:0);patched=true;break;
+        }
+        CHECK(patched);size_t heap=vm_heap_used();
+        upload(&session,&reply,bad_map,sizeof(bad_map));
+        CHECK(reply.code==STATUS_LOAD&&app_output(&app,NULL)->vm.ready);
+        CHECK(app_output(&app,NULL)->vm.generation==generation&&app_output(&app,NULL)->vm.playing);
+        CHECK(vm_heap_used()==heap);
+    }
+    {
+        uint8_t old_math[sizeof(semantic_math_lbc)+1]={0};memcpy(old_math,semantic_math_lbc,sizeof(semantic_math_lbc));
+        char *manifest=(char*)old_math+sizeof(semantic_math_lbc)-lbc_u32(old_math+76);
+        char *floor=strstr(manifest,"\"requires\":\"1.3.0\"");CHECK(floor);
+        floor[strlen("\"requires\":\"1.")]='2';
+        size_t heap=vm_heap_used();upload(&session,&reply,old_math,sizeof(semantic_math_lbc));
+        CHECK(reply.code==STATUS_LOAD&&app_output(&app,NULL)->vm.ready);
+        CHECK(app_output(&app,NULL)->vm.generation==generation&&app_output(&app,NULL)->vm.playing);
+        CHECK(vm_heap_used()==heap);
+    }
     // A native link-loss callback may arrive at a flash checkpoint; cancellation
     // waits for the serialized command to release its upload workspace.
     write_u32(begin,sizeof(render_lbc));write_u32(begin+4,crc32_bytes(render_lbc,sizeof(render_lbc)));

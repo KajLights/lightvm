@@ -139,7 +139,7 @@ class NumericContractTests(unittest.TestCase):
             if op['implementation'] == 'runtime':
                 self.assertIn(op['name'], exact | native, op)
                 self.assertEqual(op['wire_id']['kind'], 'instruction')
-                expected='1.0.0' if op['name'] in ('f32.min','f32.max') else '1.3.0' if op['name'].startswith('f32.') else '1.2.0'
+                expected='1.3.0' if op['name'].startswith('f32.') else '1.2.0'
                 self.assertEqual(op['feature_floor']['release'], expected)
             elif op['name'] == 'q16.literal':
                 self.assertTrue(self.vectors['literals'])

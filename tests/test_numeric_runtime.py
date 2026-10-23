@@ -114,6 +114,26 @@ class NumericCompilerTests(unittest.TestCase):
                      '0x7fff':2147418112, '1_000.25':65552384}[spelling]
             self.assertEqual(self.run_package(package)['state'], [value & oracle.MASK])
 
+    def test_complete_metadata_matches_native_and_python(self):
+        run = subprocess.run([str(self.driver), '--numeric-metadata'], capture_output=True, text=True, check=True)
+        self.assertFalse(run.stderr)
+        native = {r.pop('name'):r for r in json.loads(run.stdout)}
+        catalogue = json.loads(standalone.CATALOGUE.read_text())
+        entries = [r for r in catalogue['operations'] if r['implementation']=='runtime']
+        self.assertEqual(set(native), {r['name'] for r in entries})
+        types = {'i32':1, 'f32':2, 'bool':4, 'q16':7}
+        for row in entries:
+            expected = {'id':row['wire_id']['id'], 'signature':[types[t] for t in [row['result'],*row['arguments']]],
+                        'release':row['feature_floor']['release'], 'kernel_release':row['kernel_feature_floor'],
+                        'work':row['work_cost'], 'effects':0, 'kernel':row['kernel_admitted']}
+            self.assertEqual(native[row['name']], expected)
+            self.assertEqual(numeric.OPERATIONS[row['wire_name']], expected)
+            if 'existing_binding' in row:
+                binding = row['existing_binding']
+                self.assertEqual(numeric.NATIVE_OPERATIONS[binding['id']], row['wire_name'])
+                self.assertEqual(binding['feature_floor'], expected['release'])
+                self.assertEqual(binding['kernel_feature_floor'], expected['kernel_release'])
+
     def test_randomized_fold_matches_independent_oracle(self):
         rng = random.Random(0x51f01d)
         catalogue = json.loads(standalone.CATALOGUE.read_text())

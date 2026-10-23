@@ -3,23 +3,9 @@
 #include "numeric.h"
 #include "native_math.h"
 #include <math.h>
+#include "numeric_metadata.inc"
 LbcNumericSignature lbc_numeric_signature(unsigned op){
-    static const LbcNumericSignature signatures[]={
-        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,T_FIXED},
-        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,T_FIXED},
-        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,0},
-        {T_FIXED,T_FIXED,T_FIXED}, {T_FIXED,T_FIXED,T_FIXED},
-        {T_BOOL,T_FIXED,T_FIXED}, {T_FIXED,T_INT,0}, {T_INT,T_FIXED,0},
-        {T_FIXED,T_FLOAT,0}, {T_FLOAT,T_FIXED,0},
-        {T_FIXED,T_INT,0}, {T_INT,T_FIXED,0}, {T_FIXED,T_FIXED,0},
-        {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT},
-        {T_INT,T_INT,0}, {T_INT,T_INT,T_INT}, {T_INT,T_INT,T_INT},
-        {T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},
-        {T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},
-        {T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},{T_FLOAT,T_FLOAT,0},
-        {T_FLOAT,T_FLOAT,T_FLOAT}
-    };
-    return op>=QADD&&op<=FPOW?signatures[op-QADD]:(LbcNumericSignature){0};
+    return op>=QADD&&op<=FPOW?lbc_numeric_metadata(op).signature:(LbcNumericSignature){0};
 }
 bool lbc_numeric_eval(unsigned op,uint32_t left,uint32_t right,uint32_t *out){
     if(op>=FABS&&op<=FPOW)return lvm_f32_eval(op-FABS,left,right,out);

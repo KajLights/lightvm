@@ -18,13 +18,21 @@ enum { END=0, RETURN, MOV, IADD, ISUB, IMUL, IDIV, IMOD, FADD, FSUB, FMUL, FDIV,
        IAND, IOR, IXOR, INOT, ISHL, ISHR,
        FABS, FFLOOR, FCEIL, FTRUNC, FSIN, FCOS, FSQRT, FLOG, FEXP, FPOW };
 enum { T_INT=1,T_FLOAT,T_COLOR,T_BOOL,T_FIXED=7 };
-enum { LBC_FIXED_ARRAY=20 };
+enum { LBC_FIXED_ARRAY=20, LBC_MAP_WORK_BUDGET=1024 };
 #define LBC_NUMERIC_RELEASE "1.2.0"
 #define LBC_KERNEL_RELEASE "1.3.0"
 typedef struct { uint8_t result,left,right; } LbcNumericSignature;
 /* New scalar instructions share types and exact evaluation with declaration
  * expressions. A zero right type denotes a unary operation. Unknown IDs have
  * a zero result and cannot be emitted or admitted. */
+typedef struct {
+    LbcNumericSignature signature;
+    uint8_t release_minor,kernel_minor,work,effects,kernel;
+} LbcNumericMetadata;
+/* EQ metadata describes its fixed specialization; the base EQ is polymorphic. */
+LbcNumericMetadata lbc_numeric_metadata(unsigned op);
+LbcNumericMetadata lbc_native_numeric_metadata(unsigned binding);
+unsigned lbc_instruction_work(unsigned op);
 LbcNumericSignature lbc_numeric_signature(unsigned op);
 bool lbc_numeric_eval(unsigned op,uint32_t left,uint32_t right,uint32_t *out);
 enum { R_LOCAL,R_INPUT,R_CONST,R_STATE };

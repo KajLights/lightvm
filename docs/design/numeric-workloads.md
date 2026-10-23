@@ -1,10 +1,11 @@
 # Numeric and kernel workload specification
 
-22 October 2026. **S0 specification with S2–S4 fixtures and attached-RP2040
-validation.** Follow the [numeric contract](../numeric-types.md),
+23 October 2026. **Full host parameter matrix and cross-builds pass; physical
+acceptance remains open.** Follow the [numeric contract](../numeric-types.md),
 [delivery plan](core-numeric-kernels-plan.md) and
-[validation record](numeric-s234-validation-2026-10-22.md). The complete S6
-multi-board matrix remains pending; host results establish correctness only.
+[current validation record](numeric-followup-validation-2026-10-23.md). The
+[earlier measurements](numeric-s234-validation-2026-10-22.md) retain their
+attached-RP2040 scope. The complete S6 physical matrix remains pending.
 
 ## Source grounding
 
@@ -123,3 +124,34 @@ margin. Plans and scratch consume admitted heap or audited stacks. Update
 whole-path stack contracts from the resulting call graph, not by copying an old
 hash manifest. The first merged hardware run must establish a fresh integrated
 baseline; standalone test results do not carry forward a performance claim.
+
+## 23 October follow-up matrix
+
+`tools/numeric_matrix.py --prepare --packages DIRECTORY` now freezes 34 original
+cases, both emission modes and their source/package hashes. It covers G1 lengths
+3/17/64 with all signed offsets; G2 at all lengths; every Q1 raw phase; all five
+Q2 impulses with recorded raw position/velocity histories; lazy B1; exact B2
+33/64/128/129-instruction boundaries; all M1/M2 parameter pairs; ordered state,
+RNG, sparse, scatter and source-mutation controls; and unchanged example sources
+for Color/Rainbow/Stars/Sweep. G1/G2 construct their prepared tables with an init
+loop, avoiding a register for every literal index/colour in a 64-entry initializer.
+
+`--driver PATH --packages DIRECTORY --result FILE` replays the full count grid
+through the native test port with one/two workers and forced yields. All 2,210
+replays pass. G1/G2 and Q1 also check independent arithmetic pixel expectations;
+Q2 checks every raw history value. The native driver fixes default RNG seed to
+24301 and advances explicit 0.25-second frame inputs from 1.25 seconds. This is
+host correctness evidence, not a physical timing result. A shorter 510-replay
+version is part of CTest.
+
+The package manifest works with `tools/benchmark_numeric.py`; select explicit
+cases for mixed-scene timing. Its preparation mode retains over-budget bodies
+as ordered controls and records the compiler reason. In particular, the prior
+30 log/exp-pair fixture exceeds the new first-pixel cap and is no longer a map.
+Do not omit it or compare it as a successful bulk specialization.
+
+See the [current validation record](numeric-followup-validation-2026-10-23.md).
+Five alternating physical windows at 200/500/1,024 pixels, small-loop break-even,
+per-operation fixed/f32 timings, mixed scenes, network load and simultaneous
+old/candidate/transition peaks remain unmeasured for the current candidate.
+The target-specific physical gates stay open without connected boards.

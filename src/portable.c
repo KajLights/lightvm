@@ -180,7 +180,7 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     if(op==P_MAP){
         int id=resource_id(p,a);
         return id>=0&&draw_channels(pbc_spec(p,(unsigned)id).kind)&&resource_write(p,a,fn->rights)&&
-            bt==T_INT&&ct==T_INT&&pbc_role(p,b)==R_LOCAL&&d>pc+1&&d<fn->end&&
+            bt==T_INT&&ct==T_INT&&b!=c&&pbc_role(p,b)==R_LOCAL&&d>pc+1&&d<fn->end&&
             pbc_map_valid(p,pc+1,d,a,b,c);
     }
     if(op==P_NATIVE){
@@ -203,7 +203,9 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     switch(op){
     case MOV:return at==bt&&!c&&!d;
     case IADD:case ISUB:case IMUL:case IDIV:case IMOD:case IMIN:case IMAX:return at==T_INT&&bt==T_INT&&ct==T_INT&&!d;
-    case FADD:case FSUB:case FMUL:case FDIV:case FMOD:case FMIN:case FMAX:return at==T_FLOAT&&bt==T_FLOAT&&ct==T_FLOAT&&!d;
+    case FMIN:case FMAX:if(lbc_numeric_metadata(op).release_minor==3&&!p->kernels_allowed)return false; /* Semantic floor, including scalar callbacks. */
+        /* fall through */
+    case FADD:case FSUB:case FMUL:case FDIV:case FMOD:return at==T_FLOAT&&bt==T_FLOAT&&ct==T_FLOAT&&!d;
     case ITOF:return at==T_FLOAT&&bt==T_INT&&!c&&!d;
     case FTOI:return at==T_INT&&bt==T_FLOAT&&!c&&!d;
     case ILT:return at==T_BOOL&&bt==T_INT&&ct==T_INT&&!d;
@@ -250,6 +252,7 @@ static bool valid_expressions(Portable *p){
             if((a!=T_INT&&a!=T_FLOAT)||(b!=T_INT&&b!=T_FLOAT))return false;
             unsigned expected=a==T_FLOAT||b==T_FLOAT||e->op==8?T_FLOAT:T_INT;
             if(e->type!=expected||(e->op==6&&expected!=T_INT))return false;
+            if((e->op==9||e->op==10)&&expected==T_FLOAT&&!p->kernels_allowed)return false;
             dependencies[n]=dependencies[e->a]|dependencies[e->b];
         }
     }
@@ -347,6 +350,7 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         if(loader->index<p->ncalls){unsigned n=loader->index++;
         PbcCall item=pbc_call(p,n);const PbcCall *call=&item;
         if((call->binding<3||(call->binding>=18&&call->binding<=26))||call->binding>=sizeof(natives)/sizeof(*natives)){error="invalid native binding";goto fail;}
+        if(lbc_native_numeric_metadata(call->binding).release_minor==3&&!p->kernels_allowed){error="native math requires release " LBC_KERNEL_RELEASE;goto fail;}
         const NativeSignature *sig=&natives[call->binding];
         if(call->argc!=sig->argc)goto fail;
         for(unsigned k=0;k<8;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
@@ -430,7 +434,7 @@ static bool evaluate(Portable *p,unsigned id,unsigned count,const PbcValue *bind
             float a=(float)number(values[e->a],pbc_expression((Portable*)p,e->a).type),b=(float)number(values[e->b],pbc_expression((Portable*)p,e->b).type);
             switch(e->op){case 3:v.f=a+b;break;case 4:v.f=a-b;break;case 5:v.f=a*b;break;
             case 8:if(b==0)return false;v.f=a/b;break;case 7:if(b==0)return false;v.f=a-floorf(a/b)*b;break;
-            case 9:v.f=fminf(a,b);break;case 10:v.f=fmaxf(a,b);break;default:return false;}
+            case 9:case 10:{PbcValue x={.f=a},y={.f=b};if(!lbc_numeric_eval(e->op==9?FMIN:FMAX,x.u,y.u,&v.u))return false;break;}default:return false;}
             if(!lbc_finite(v.f))return false;
         }
         values[n]=v;
@@ -707,7 +711,10 @@ int pbc_resume(Portable *p,unsigned quota){
         /* Completing a chunk clears bulk. Check before the next expensive
            operation as well, but let cheap tail instructions commit the frame. */
         if(op>=P_FILL&&!checked&&dispatched>1&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
-        p->pc++;p->used++;p->dispatch_count++;
+        unsigned work=lbc_instruction_work(op);
+        if(op==P_NATIVE){LbcNumericMetadata meta=lbc_native_numeric_metadata(pbc_call(p,d).binding);if(meta.work)work=meta.work;}
+        if(work>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+        p->pc++;p->used+=work;p->dispatch_count++;
         PbcValue r[4]={register_value(p,a),register_value(p,b),register_value(p,c),register_value(p,d)};
         if(p->io_fault)goto fault;
         bool writes=true;
@@ -737,6 +744,8 @@ int pbc_resume(Portable *p,unsigned quota){
             PbcResource *resource=&p->resources[r[0].u];
             if(r[2].u>r[3].u||r[3].u>resource->count)goto fault;
             uint32_t start=r[2].u+p->bulk,end=start+32;if(end>r[3].u)end=r[3].u;
+            if(end-start>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+            p->used+=end-start;
             for(unsigned k=start;k<end;k++)if(!store_value(resource,k,r[1]))goto fault;
             if(end<r[3].u){p->bulk=end-r[2].u;p->pc--;}else p->bulk=0;break;
         }
@@ -745,6 +754,8 @@ int pbc_resume(Portable *p,unsigned quota){
             if(dst->count!=src->count||dst->sealed)goto fault;
             if(dst==src)break;
             unsigned end=p->bulk+32;if(end>dst->count)end=dst->count;
+            if(3u*(end-p->bulk)>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+            p->used+=3u*(end-p->bulk);
             for(unsigned k=p->bulk;k<end;k++){PbcValue v;if(!load_value(p,src,k,&v)||!store_value(dst,k,v))goto fault;}
             if(end<dst->count){p->bulk=end;p->pc--;}else p->bulk=0;break;
         }

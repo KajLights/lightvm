@@ -35,12 +35,12 @@ def prepare(directory):
             compiler = PortableCompiler(source, optimize=optimize)
             data, metadata = compiler.compile()
             maps = sum(row[0] == 39 for row in compiler.code)
-            if (maps > 0) != optimize:
-                raise ValueError((file.name, variant, maps))
+            if maps and not optimize: raise ValueError((file.name, variant, maps))
             name = file.stem + '-' + variant
             (directory / (name + '.lbc')).write_bytes(data)
             manifest[name] = {'source_sha256': sha(source.encode()), 'bytecode_sha256': sha(data),
-                              'bytes': len(data), 'maps': maps, 'requires': metadata['requires']}
+                              'bytes': len(data), 'maps': maps, 'requires': metadata['requires'],
+                              'ordered_reasons': [reason for _, admitted, reason in compiler.map_reports if not admitted]}
     (directory / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 
 

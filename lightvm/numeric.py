@@ -13,20 +13,16 @@ SCALE = 65536
 RELEASE = '1.2.0'
 MATH_RELEASE = '1.3.0'
 I, F, B, Q = 1, 2, 4, 7
-# ID order also defines bytecode declaration-expression encodings.
-SIGNATURES = {
-    'QADD': (Q, Q, Q), 'QSUB': (Q, Q, Q), 'QMUL': (Q, Q, Q),
-    'QDIV': (Q, Q, Q), 'QMOD': (Q, Q, Q), 'QNEG': (Q, Q),
-    'QMIN': (Q, Q, Q), 'QMAX': (Q, Q, Q), 'QLT': (B, Q, Q),
-    'ITOQ': (Q, I), 'QTOI': (I, Q), 'FTOQ': (Q, F), 'QTOF': (F, Q),
-    'QFROMBITS': (Q, I), 'QBITS': (I, Q), 'QSQRT': (Q, Q),
-    'IAND': (I, I, I), 'IOR': (I, I, I), 'IXOR': (I, I, I),
-    'INOT': (I, I), 'ISHL': (I, I, I), 'ISHR': (I, I, I),
-}
-MATH_SIGNATURES = {name:(F,F,F) if name=='FPOW' else (F,F) for name in
-                   ('FABS','FFLOOR','FCEIL','FTRUNC','FSIN','FCOS','FSQRT','FLOG','FEXP','FPOW')}
-SIGNATURES.update(MATH_SIGNATURES)
-OPCODES = {name: 40 + index for index, name in enumerate(SIGNATURES)}
+from .numeric_metadata import OPERATIONS, NATIVE_OPERATIONS, BASE_WORK, MAP_WORK_BUDGET
+SIGNATURES = {name:tuple(row['signature']) for name,row in OPERATIONS.items() if row['id']>=40}
+MATH_SIGNATURES = {name:sig for name,sig in SIGNATURES.items() if OPERATIONS[name]['id']>=62}
+OPCODES = {name:OPERATIONS[name]['id'] for name in SIGNATURES}
+WORK = BASE_WORK | {row['id']:row['work'] for row in OPERATIONS.values()}
+
+
+def instruction_work(op, binding=None):
+    if binding in NATIVE_OPERATIONS: return OPERATIONS[NATIVE_OPERATIONS[binding]]['work']
+    return WORK.get(op, 1)
 
 
 def signed(bits):

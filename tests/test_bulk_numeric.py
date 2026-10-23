@@ -40,6 +40,8 @@ class BulkNumericTests(unittest.TestCase):
         _,scalar,_=self.compile(source,False);compiler,bulk,manifest=self.compile(source)
         self.assertIn(P_OP['PIXEL_MAP'],[i[0] for i in compiler.code])
         self.assertEqual(manifest['requires'],floor)
+        for op, _, index, bound, _ in compiler.code:
+            if op == P_OP['PIXEL_MAP']: self.assertNotEqual(index,bound)
         for count in counts:
             expected=self.run_package(scalar,count);self.assertEqual(expected['status'],-1 if fault else 1)
             for workers,tick in ((1,0),(2,0),(1,1000),(2,1000)):
@@ -214,7 +216,7 @@ def draw(ctx,runtime,pixels):
   value='''+expression+'''
   pixels[i]=rgb(int(min(255.0,max(0.0,100.0+value*10.0))),0,0)
  ctx.last=value
-''',counts=(1,33,129),floor='1.0.0' if expression in ('math.sin(x)','min(x,-0.0)','max(-x,-0.0)') else '1.3.0')
+''',counts=(1,33,129),floor='1.3.0')
 
     def test_forged_control_flow_effects_references_and_floor(self):
         compiler,package,_=self.compile('''@init

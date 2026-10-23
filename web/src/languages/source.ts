@@ -15,7 +15,7 @@ export function sourceDiagnostic(error: unknown): Diagnostic {
 }
 export const SDK_IMPORTS = `from lightvm import profile, setting, Input, Ramp, rgb, hsv, hash01, init, render, PixelArray, Sprite, SpriteBatch, Transform, ColorTransform, red, green, blue, colorwheel, pico_colorwheel, hue_degrees, floor, ceil, trunc, fixed, fixed_bits, fixed_from_bits, fixed_sqrt, FixedArray
 from lightvm.motion import repeat, pingpong, clamp01, lerp, fit_start, fit_end
-from lightvm.easing import linear, smoothstep, quadratic_in, quadratic_out, quadratic_in_out, cubic_in, cubic_out, cubic_in_out
+from lightvm.easing import linear, smoothstep, quadratic_in, quadratic_out, quadratic_in_out, cubic_in, cubic_out, cubic_in_out, sine_in, sine_out, sine_in_out, circular_in, circular_out, circular_in_out, exponential_in, exponential_out, exponential_in_out
 from lightvm.transitions import crossfade, wipe
 from array import array
 import math

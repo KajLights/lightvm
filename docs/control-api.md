@@ -29,8 +29,9 @@ Each native instance owns registers and a checked view of a native RGBA working
 buffer. Guest numbers cannot become pointers. Admission checks instruction types,
 register write permissions, branch/entry boundaries, palette sizes, setting declarations and the manifest before execution. A normal resume slice executes at
 most 4096 dispatches and also yields at the configured wall-time quantum;
-cooperative servicing can request smaller slices. The per-invocation dispatch
-limit faults runaway initialization/rendering. Native operations use bounded
+cooperative servicing can request smaller slices. The per-invocation weighted work
+limit faults runaway initialization/rendering; scalar operations, map attempts
+and resource chunks are charged as described in the [emitter contract](bytecode-emitter.md#prepared-pixel-kernels). Native operations use bounded
 chunks, with their size depending on worker availability. Output transfer failures do not fault the animation; playback
 continues and retries output on subsequent frames.
 The renderer retains its execution state across slices. Scene preparation is a

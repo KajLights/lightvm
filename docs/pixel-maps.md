@@ -26,7 +26,8 @@ there is no hidden execution mode if its memory allocation fails.
 The optimizer accepts `for i in range(stop)` with one final assignment
 to `image[i]`, where `image` is a writable output or PixelArray. Intermediate
 local calculations, forward conditionals and inlined helpers are supported. The body
-must lower to at most 128 operations and cannot carry a value from one iteration
+must lower to at most 128 operations and a worst first-pixel path of at most
+1,024 work units, and cannot carry a value from one iteration
 to the next. Its output is an opaque RGB replacement, matching indexed writes:
 alpha becomes 255 and white becomes zero where those channels exist.
 
@@ -105,3 +106,9 @@ python tools/benchmark_pixel_maps.py --process build/composition-host/lightvm \
 branch and native-math fixtures with scalar/bulk replay. See the
 [S2–S4 validation record](design/numeric-s234-validation-2026-10-22.md) for attached
 RP2040 evidence and its limits; host timings do not establish board performance.
+
+The plan records first-pixel and steady-pixel work separately. Chunk selection
+includes the full first evaluation in each lane. A source loop over the work
+limit stays ordered with a compiler advisory; an explicitly encoded over-budget
+map is rejected. See the [work-accounting contract](bytecode-emitter.md#prepared-pixel-kernels)
+for cache costs, watchdog reservations and speculative suffix charging.

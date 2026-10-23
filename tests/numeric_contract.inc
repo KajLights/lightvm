@@ -33,6 +33,41 @@ static size_t numeric_package(uint8_t bytes[256],const NumericCase *test){
     memcpy(bytes+176,manifest,sizeof(manifest)-1);
     return 176+sizeof(manifest)-1;
 }
+static int numeric_metadata_driver(void){
+    puts("[");
+    for(unsigned n=0;n<sizeof(numeric_cases)/sizeof(*numeric_cases);n++){
+        const NumericCase *test=&numeric_cases[n];LbcNumericMetadata m=lbc_numeric_metadata(test->op);
+        CHECK(m.signature.left==test->left&&m.signature.right==test->right&&m.signature.result==test->result);
+        /* Exercise the loader's real signatures, not only the generated table. */
+        uint8_t bytes[256];PortableBytes source={bytes,numeric_package(bytes,test)};Portable *p=NULL;
+        CHECK(!pbc_open(&p,portable_read,&source,source.size));pbc_destroy(p);CHECK(vm_heap_used()==0);
+        const unsigned types[]={1,2,3,4,7};
+        for(unsigned k=0;k<5;k++)if(types[k]!=test->left){
+            bytes[96]=(uint8_t)types[k];p=NULL;
+            CHECK(pbc_open(&p,portable_read,&source,source.size));CHECK(!p&&vm_heap_used()==0);
+        }
+        bytes[96]=(uint8_t)test->left;
+        if(test->right)for(unsigned k=0;k<5;k++)if(types[k]!=test->right){
+            bytes[104]=(uint8_t)types[k];p=NULL;
+            CHECK(pbc_open(&p,portable_read,&source,source.size));CHECK(!p&&vm_heap_used()==0);
+        }
+        bytes[104]=(uint8_t)(test->right?test->right:1);
+        for(unsigned k=0;k<5;k++)if(types[k]!=test->result){
+            bytes[112]=(uint8_t)types[k];write_u32(bytes+116,0);write_u32(bytes+148,types[k]);p=NULL;
+            CHECK(pbc_open(&p,portable_read,&source,source.size));CHECK(!p&&vm_heap_used()==0);
+        }
+        numeric_package(bytes,test);
+        char *minor=strstr((char*)bytes+176,"1.3.0")+2;
+        *minor=(char)('0'+m.release_minor-1);p=NULL;
+        CHECK(pbc_open(&p,portable_read,&source,source.size));CHECK(!p&&vm_heap_used()==0);
+        printf("%s{\"name\":\"%s\",\"id\":%u,\"signature\":[%u,%u%s",n?",":"",test->name,test->op,m.signature.result,m.signature.left,m.signature.right?",":"");
+        if(m.signature.right)printf("%u",m.signature.right);
+        printf("],\"release\":\"1.%u.0\",\"kernel_release\":\"1.%u.0\",\"work\":%u,\"effects\":%u,\"kernel\":%s}\n",m.release_minor,m.kernel_minor,m.work,m.effects,m.kernel?"true":"false");
+    }
+    LbcNumericMetadata sine=lbc_native_numeric_metadata(7),instruction=lbc_numeric_metadata(FSIN);
+    CHECK(!memcmp(&sine,&instruction,sizeof(sine)));
+    puts("]");return 0;
+}
 static int numeric_driver(const char *rounding){
     int mode=!strcmp(rounding,"nearest")?FE_TONEAREST:!strcmp(rounding,"down")?FE_DOWNWARD:
         !strcmp(rounding,"up")?FE_UPWARD:!strcmp(rounding,"zero")?FE_TOWARDZERO:-1;
@@ -56,22 +91,26 @@ static int numeric_driver(const char *rounding){
     }
     return ferror(stdin)?1:0;
 }
-static int numeric_package_driver(const char *path,unsigned count,unsigned tick){
+static int numeric_package_driver(const char *path,unsigned count,unsigned tick,unsigned budget,bool stats,unsigned frames){
     static uint8_t bytes[32769],pixels[1024*4];CHECK(count>=1&&count<=1024);
     FILE *file=fopen(path,"rb");CHECK(file);
     size_t size=fread(bytes,1,sizeof(bytes),file);CHECK(!ferror(file));fclose(file);
     PortableBytes source={bytes,size};Portable *p=NULL;
     const char *error=pbc_open(&p,portable_read,&source,size);
     if(error){puts("{\"load\":false}");CHECK(vm_heap_used()==0);return 0;}
+    p->deterministic_random=true;p->default_seed=0x5eed;
     LbcBuffer output={.data=pixels,.count=count,.generation=1};
     error=pbc_prepare(p,p->profile==3?&output:NULL);
     if(error){puts("{\"load\":true,\"prepare\":false}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;}
     PbcValue args[3]={{.i=(int32_t)count},{.f=1.25f},{.f=0.25f}};clock_step=tick;
     unsigned before=allocations;deny_allocation=true;
     int status=1;
-    for(unsigned fn=0;fn<(p->profile==3?2u:1u)&&status==1;fn++){
+    for(unsigned invocation=0;invocation<(p->profile==3?1u+frames:1u)&&status==1;invocation++){
+        unsigned fn=invocation?1:0;
+        if(invocation>1)args[1].f+=args[2].f;
+        p->now_us=(uint64_t)(args[1].f*1000000.0f);
         if(!pbc_invoke(p,fn,p->profile==3?args:NULL,p->profile==3?3:0))status=-1;
-        else {do{status=pbc_resume(p,1);}while(!status);}
+        else {if(stats&&fn==(p->profile==3?1u:0u))p->used=LIGHTVM_INVOCATION_LIMIT-budget;do{status=pbc_resume(p,1);}while(!status);}
     }
     deny_allocation=false;CHECK(allocations==before);
     printf("{\"load\":true,\"prepare\":true,\"status\":%d,\"state\":[",status);
@@ -91,7 +130,8 @@ static int numeric_package_driver(const char *path,unsigned count,unsigned tick)
         PbcResource *r=&p->resources[n];printf("%s\"",comma?",":"");comma=true;
         for(unsigned k=0;k<r->count*draw_stride(r->kind);k++)printf("%02x",r->data[k]);printf("\"");
     }
-    puts("]}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;
+    printf("]");if(stats)printf(",\"work\":%u,\"dispatches\":%llu",p->used-(LIGHTVM_INVOCATION_LIMIT-budget),(unsigned long long)p->dispatch_count);
+    puts("}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;
 }
 static void numeric_contract(void){
     clock_now=clock_step=0;CHECK(vm_heap_used()==0);

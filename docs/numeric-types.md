@@ -1,10 +1,14 @@
 # Numeric foundation contract
 
-22 October 2026. **Fixed scalar operations use floor 1.2.0; extended kernels and
+23 October 2026. **Fixed scalar operations use floor 1.2.0; extended kernels and
 new f32 math use floor 1.3.0.** The compiler, loader and shared firmware core support
 explicit fixed values, stable array gathers, lazy conditional maps and native math.
-These implement S1 through S5 of the
-[core SDK plan](design/core-numeric-kernels-plan.md).
+These supply the S1–S5 foundation in the
+[core SDK plan](design/core-numeric-kernels-plan.md). Its
+[23 October review](design/core-numeric-kernels-plan.md#implementation-review--23-october-2026)
+identified implementation gaps now closed by the
+[follow-up](design/numeric-followup-validation-2026-10-23.md). Physical performance
+and service acceptance remains open; implementation availability is not release acceptance.
 
 ## Scope and provenance
 
@@ -18,9 +22,12 @@ references. The numeric implementation and fixtures are independently written.
 The [operation catalogue](design/numeric-operations.json) records signatures,
 units, fault conditions, accuracy and intended kernel eligibility. Its names are
 semantic identifiers, not opcode numbers or source-language execution modes.
-The encodings and feature floors are assigned. Existing sine and min/max retain
-their earlier bindings/floors; the new FSIN instruction uses 1.3.0. Fixed and
-bitwise scalar instructions retain 1.2.0, while their use inside maps needs 1.3.0.
+The encodings are assigned. The compiler and loader enforce floor 1.3.0 for
+finite-f32 min/max (including declaration expressions), native sine binding 7,
+and the new math instructions. This versions the finite-input and signed-zero
+contract even where an encoding is reused. Recompile earlier experimental
+packages that use these operations. Fixed and bitwise scalar instructions retain
+1.2.0, while their use inside maps needs 1.3.0.
 
 ## Values and conversions
 
@@ -189,9 +196,11 @@ Coarse range guards keep exp/pow away from binary64 range errors that would
 write bare-metal libm's shared `errno`. The standalone host and Pico probes also
 assert that every corpus call preserves an `errno` sentinel, including faults.
 
-Clamp, interpolation, periodic wrapping and easing remain SDK equations. Fixed
+Clamp, interpolation, periodic wrapping and polynomial easing remain SDK
+equations. Sine, circular and exponential easing are also ordinary guest helpers,
+with their contract [specified below](#normalized-easing-helpers). Fixed
 transcendental approximations, noise and indexed sampling remain separate scope.
-For now fixed programs explicitly convert to f32 for transcendental work. Do not
+Fixed programs explicitly convert to f32 for transcendental work. Do not
 accumulate a long-lived elapsed clock in Q16.16.
 
 ## Implementation and verification
@@ -236,3 +245,22 @@ measurements. The [S5 validation record](design/numeric-s5-validation-2026-10-22
 adds frontend raw-vector/literal/domain parity, production browser compilation,
 independent full-profile emission and attached-Pico rejection/retention checks.
 The complete multi-board performance matrix (S6) remains a separate gate.
+
+## Normalized easing helpers
+
+`lightvm.easing` supplies `sine_in`, `sine_out`, `sine_in_out`,
+`circular_in`, `circular_out`, `circular_in_out`, `exponential_in`,
+`exponential_out` and `exponential_in_out` alongside the polynomial curves.
+Pass f32 values (for example `sine_in(0.5)`). Finite inputs clamp to [0,1]; both
+endpoints are exact, including positive zero. Fixed callers use `float(q)`.
+These independently written guest equations use shared generic math, with f32
+intermediates in compiled execution. Desktop Python evaluates the same equations
+in its native float precision. Exponential curves use the conventional ten-octave
+shape with explicit endpoint branches, so their endpoint limits have a small jump.
+The circular roots stay in-domain after clamping; rationalized equations retain
+small positive values. The native reference tests allow 2e-6 absolute error across
+the checked endpoint/adjacent/interior grid; scalar and kernel results match exactly.
+
+JavaScript uses `sineIn`, `circularInOut`, `exponentialOut` and the corresponding
+camel-case names. Blocks exposes the same curves in its motion dropdown and
+learning view. All use floor 1.3.0, without curve-specific runtime bindings.

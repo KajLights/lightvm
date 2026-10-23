@@ -48,7 +48,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QADD",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.sub",
@@ -72,7 +75,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QSUB",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.mul",
@@ -96,7 +102,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QMUL",
+      "work_cost": 4,
+      "kernel_admitted": true
     },
     {
       "name": "q16.neg",
@@ -119,7 +128,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QNEG",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.div",
@@ -146,7 +158,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QDIV",
+      "work_cost": 8,
+      "kernel_admitted": true
     },
     {
       "name": "q16.mod",
@@ -172,7 +187,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QMOD",
+      "work_cost": 8,
+      "kernel_admitted": true
     },
     {
       "name": "q16.min",
@@ -196,7 +214,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QMIN",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.max",
@@ -220,7 +241,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QMAX",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.lt",
@@ -244,7 +268,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QLT",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.eq",
@@ -268,7 +295,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "EQ",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.sqrt",
@@ -293,7 +323,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QSQRT",
+      "work_cost": 32,
+      "kernel_admitted": true
     },
     {
       "name": "q16.from_i32",
@@ -318,7 +351,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "ITOQ",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.to_i32",
@@ -341,7 +377,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QTOI",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.from_f32",
@@ -367,7 +406,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FTOQ",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.to_f32",
@@ -390,7 +432,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QTOF",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.bits",
@@ -413,7 +458,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QBITS",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "q16.from_bits",
@@ -436,7 +484,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "QFROMBITS",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "i32.and",
@@ -460,7 +511,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "IAND",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "i32.or",
@@ -484,7 +538,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "IOR",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "i32.xor",
@@ -508,7 +565,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "IXOR",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "i32.not",
@@ -531,7 +591,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "INOT",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "i32.shl",
@@ -557,7 +620,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "ISHL",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "i32.shr",
@@ -583,7 +649,10 @@
         "release": "1.2.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "ISHR",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "f32.abs",
@@ -608,7 +677,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FABS",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "f32.floor",
@@ -633,7 +705,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FFLOOR",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "f32.ceil",
@@ -658,7 +733,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FCEIL",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "f32.trunc",
@@ -683,7 +761,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FTRUNC",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "f32.sin",
@@ -713,9 +794,12 @@
       "existing_binding": {
         "kind": "native",
         "id": 7,
-        "feature_floor": "1.0.0",
-        "kernel_feature_floor": "1.0.0"
-      }
+        "feature_floor": "1.3.0",
+        "kernel_feature_floor": "1.3.0"
+      },
+      "wire_name": "FSIN",
+      "work_cost": 64,
+      "kernel_admitted": true
     },
     {
       "name": "f32.cos",
@@ -741,7 +825,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FCOS",
+      "work_cost": 64,
+      "kernel_admitted": true
     },
     {
       "name": "f32.sqrt",
@@ -768,7 +855,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FSQRT",
+      "work_cost": 32,
+      "kernel_admitted": true
     },
     {
       "name": "f32.log",
@@ -795,7 +885,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FLOG",
+      "work_cost": 128,
+      "kernel_admitted": true
     },
     {
       "name": "f32.exp",
@@ -821,7 +914,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FEXP",
+      "work_cost": 128,
+      "kernel_admitted": true
     },
     {
       "name": "f32.pow",
@@ -850,7 +946,10 @@
         "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.3.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FPOW",
+      "work_cost": 128,
+      "kernel_admitted": true
     },
     {
       "name": "f32.min",
@@ -873,10 +972,13 @@
       },
       "feature_floor": {
         "status": "implemented",
-        "release": "1.0.0"
+        "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.0.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FMIN",
+      "work_cost": 1,
+      "kernel_admitted": true
     },
     {
       "name": "f32.max",
@@ -899,10 +1001,22 @@
       },
       "feature_floor": {
         "status": "implemented",
-        "release": "1.0.0"
+        "release": "1.3.0"
       },
       "kernel_eligibility": "admitted only by the verified pure map CFG, resource and definite-assignment contract",
-      "kernel_feature_floor": "1.0.0"
+      "kernel_feature_floor": "1.3.0",
+      "wire_name": "FMAX",
+      "work_cost": 1,
+      "kernel_admitted": true
     }
-  ]
+  ],
+  "base_instruction_work": {
+    "6": 8,
+    "7": 8,
+    "11": 8,
+    "12": 8,
+    "21": 4,
+    "33": 2
+  },
+  "map_work_budget": 1024
 }

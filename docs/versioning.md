@@ -50,7 +50,7 @@ def draw(ctx, runtime, pixels):
 
 The compiler normalizes `requires("1.2")` to `1.2.0`. One optional top-level
 `requires(...)` declaration is accepted. Omitting it selects the source's feature
-floor: `1.3.0` for extended pixel kernels or new native f32 instructions,
+floor: `1.3.0` for extended pixel kernels, native f32 math, f32 min/max or sine,
 `1.2.0` for scalar fixed values/arrays or i32 bitwise/shift operations, `1.1.0`
 for an `Input(..., control=...)` declaration, otherwise `1.0.0`. The highest
 applicable floor wins, including numeric source operations folded to constants.
@@ -61,14 +61,21 @@ only baseline operations.
 When a future release adds a feature, its compiler path must raise the program's
 minimum only when that feature is emitted. An explicit requirement below the
 feature's introduction release must produce a diagnostic. Updating the compiler's
-own version must never raise existing programs' requirements. Do not add another
-schema, profile, drawing API or interpreter revision for such additions.
+own version must never by itself raise existing programs' requirements. A
+semantic contract change is different: its minimum must cover the firmware that
+actually supplies the new behaviour, even if an opcode number is reused. The
+compiler and loader enforce 1.3.0 for finite-f32 min/max and sine, including
+reused encodings and f32 declaration min/max. Recompile affected experimental
+packages rather than add per-release execution modes. Do
+not add another schema, profile, drawing API or interpreter revision for such
+additions.
 
 The loader also checks a package's claimed floor against its numeric encodings.
 A fixed register/resource, fixed declaration expression or new numeric instruction
 cannot claim a floor below 1.2.0, even on firmware that implements it. This check
 also applies to generic typed callbacks. Extended kernels and instructions 62..71
-require 1.3.0. Existing sine binding 7 and FMIN/FMAX retain 1.0.0. Application
+require 1.3.0. Existing sine binding 7, FMIN/FMAX and f32 declaration min/max
+also require 1.3.0 for their current semantic contract. Application
 release 1.3.0 keeps the current container layout; it introduces no storage migration.
 
 Firmware `describe` and `STATUS` report `version`. Target-aware Python compilation

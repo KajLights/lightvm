@@ -11,9 +11,10 @@ const aliases: Record<string, string> = {
   cubicIn: 'cubic_in', cubicOut: 'cubic_out', cubicInOut: 'cubic_in_out', copyComposition: 'copy_composition',
   hasChannel: 'has_channel', setChannel: 'set_channel', setAlpha: 'set_alpha', multiplyAlpha: 'multiply_alpha',
   fixedBits: 'fixed_bits', fixedFromBits: 'fixed_from_bits', fixedSqrt: 'fixed_sqrt',
+  sineIn: 'sine_in', sineOut: 'sine_out', sineInOut: 'sine_in_out', circularIn: 'circular_in', circularOut: 'circular_out', circularInOut: 'circular_in_out', exponentialIn: 'exponential_in', exponentialOut: 'exponential_out', exponentialInOut: 'exponential_in_out',
   copyFrom: 'copy_from',
 };
-const calls = new Set('setting Input Ramp rgb hsv hash01 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out crossfade wipe fixed fixed_bits fixed_from_bits fixed_sqrt FixedArray floor ceil trunc'.split(' '));
+const calls = new Set('setting Input Ramp rgb hsv hash01 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out sine_in sine_out sine_in_out circular_in circular_out circular_in_out exponential_in exponential_out exponential_in_out crossfade wipe fixed fixed_bits fixed_from_bits fixed_sqrt FixedArray floor ceil trunc'.split(' '));
 const keywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
 const methods = new Set('input fill clear draw copy copy_from transform point colorwheel gradient palette mix copy_composition has_channel set_channel set_alpha multiply_alpha spawn render remove'.split(' '));
 // Equal-sign operands avoid losing a tiny f32 remainder when correcting a

@@ -28,8 +28,12 @@ produce the same position as frequent frames, including across reversals. Sprite
 | `fit_end(width, count, scale=1.0, origin=0.0)` | Maximum fitting translation. |
 
 `lightvm.easing` exports `linear`, `quadratic_in`, `quadratic_out`,
-`quadratic_in_out`, `cubic_in`, `cubic_out`, `cubic_in_out` and `smoothstep`.
-They clamp input to `[0, 1]` and return normalized progress. Smoothstep has zero
+`quadratic_in_out`, `cubic_in`, `cubic_out`, `cubic_in_out` and `smoothstep`, plus
+the `sine_in`/`sine_out`/`sine_in_out`, `circular_in`/`circular_out`/`circular_in_out`
+and `exponential_in`/`exponential_out`/`exponential_in_out` families. They clamp
+finite input to `[0, 1]` and return normalized progress. The new families use f32;
+fixed inputs require `float(...)`. See the [numeric helper contract](numeric-types.md#normalized-easing-helpers)
+for endpoint and precision rules. Smoothstep has zero
 velocity at either end, making it useful for soft reversals. Hue cycles normally
 use linear progress so their angular speed stays constant.
 

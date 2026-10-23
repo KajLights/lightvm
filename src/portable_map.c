@@ -25,10 +25,10 @@ static bool decode(Portable *p,unsigned pc,Instruction *ins) {
 typedef struct { uint32_t word[4]; } Mask;
 static bool has(Mask m,unsigned r){return (m.word[r/32]>>(r%32))&1u;}
 static void add(Mask *m,unsigned r){m->word[r/32]|=1u<<(r%32);}
-typedef struct { Mask written,captured,cached; unsigned weight; bool branches; } MapInfo;
+typedef struct { Mask written,captured,cached; unsigned first_weight,weight; bool branches; } MapInfo;
 struct PbcMapPlan {
     struct PbcMapPlan *next;
-    uint16_t first,end,weight;
+    uint16_t first,end,first_weight,weight;
     uint8_t dst,index,bound;
     bool branches;
     Mask written,captured;
@@ -61,17 +61,11 @@ static int reads(Instruction i,unsigned out[3]) {
     }
 }
 static unsigned cost(unsigned op){
-    if(op==MAP_SIN||op==FSIN||op==FCOS)return 64;
-    if(op==FLOG||op==FEXP||op==FPOW)return 128;
-    if(op==QSQRT||op==FSQRT)return 32;
-    if(op==IDIV||op==IMOD||op==FDIV||op==FMOD||op==QDIV||op==QMOD)return 8;
-    if(op==HSV||op==QMUL)return 4;
-    if(op==MAP_LOAD)return 2;
-    return 1;
+    return lbc_instruction_work(op==MAP_SIN?FSIN:op);
 }
 static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound,MapInfo *info){
-    if(end<=first||end-first>128||index>=p->nregs||bound>=p->nregs)return false;
-    *info=(MapInfo){0};unsigned length=end-first,stores=0;
+    if(end<=first||end-first>128||index>=p->nregs||bound>=p->nregs||index==bound)return false;
+    *info=(MapInfo){0};unsigned length=end-first,stores=0,first_weight=0;
     bool extended=length>32;
     for(unsigned n=0;n<length;n++){
         Instruction i;if(!decode(p,first+n,&i))return false;
@@ -94,6 +88,8 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
                 }
             }
         }
+        LbcNumericMetadata metadata=lbc_numeric_metadata(i.op);
+        if(metadata.signature.result&&(!metadata.kernel||metadata.effects))return false;
         if(lbc_numeric_signature(i.op).result)extended=true;
         for(int k=0;k<count;k++)if(pbc_type(p,operands[k])==T_FIXED)extended=true;
         if(i.op!=JMP&&i.op!=JZ&&i.op!=MAP_STORE&&pbc_type(p,i.a)==T_FIXED)extended=true;
@@ -113,7 +109,7 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
             if(has(info->written,r)&&!has(before[n],r))return false;
             if(!has(info->written,r)&&r!=index)add(&info->captured,r);
         }
-        Mask after=before[n];unsigned work=cost(i.op);
+        Mask after=before[n];unsigned work=cost(i.op);first_weight+=work;
         if(i.op!=MAP_STORE&&i.op!=JMP&&i.op!=JZ){
             add(&after,i.a);dependent[i.a]=varies;
             if(!info->branches&&!varies){add(&info->cached,n);work=1;}
@@ -128,7 +124,8 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
             unsigned total=weight[n]+work;if(total>weight[to])weight[to]=(uint16_t)total;
         }
     }
-    info->weight=weight[length];return !p->io_fault;
+    info->weight=weight[length];info->first_weight=info->branches?info->weight:first_weight;
+    return info->first_weight<=LBC_MAP_WORK_BUDGET&&!p->io_fault;
 }
 bool pbc_map_valid(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound){
     MapInfo info;return analyze(p,first,end,dst,index,bound,&info);
@@ -161,7 +158,7 @@ int pbc_map_prepare(Portable *p,unsigned *pc,unsigned *index){
         return 0;
     }
     MapInfo info;if(!analyze(p,plan->first,plan->end,plan->dst,plan->index,plan->bound,&info))return -1;
-    plan->written=info.written;plan->captured=info.captured;plan->weight=(uint16_t)info.weight;plan->branches=info.branches;
+    plan->written=info.written;plan->captured=info.captured;plan->first_weight=(uint16_t)info.first_weight;plan->weight=(uint16_t)info.weight;plan->branches=info.branches;
     for(unsigned n=0;n<length;n++){
         Instruction *i=&plan->code[n];
         if(i->op==EQ)i->op=pbc_type(p,i->b)==T_FLOAT?MAP_FEQ:MAP_EQ;
@@ -214,7 +211,7 @@ static bool evaluate(Instruction i,Value *v,const Portable *p) {
 }
 typedef struct {
     const struct PbcMapPlan *plan;const Portable *vm;PbcResource *image;
-    unsigned first,end,completed,stride;uint64_t deadline;bool success;
+    unsigned first,end,completed,stride,work,budget;uint64_t deadline;bool success;
     Mask written;Value values[128];
 } MapTask;
 static LIGHTVM_DRAW_CODE void map_pixels(void *context){
@@ -226,6 +223,11 @@ static LIGHTVM_DRAW_CODE void map_pixels(void *context){
     if(!k->branches)task->written=k->written;
     for(unsigned pixel=task->first;pixel<task->end;pixel++){
         if(pixel>task->first&&platform_time_us()>=task->deadline)break;
+        /* Reserve the verified worst path before starting a pixel. Charge
+         * attempts too, including faults and unpublished/recomputed suffixes. */
+        unsigned work=pixel==task->first?k->first_weight:k->weight;
+        if(work>task->budget-task->work)return;
+        task->work+=work;
         values[k->index].u=pixel;
         for(unsigned n=0;n<length;){
             Instruction i=k->code[n];bool cached=(i.op&128)!=0;i.op&=127;
@@ -261,7 +263,14 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     if(image->sealed||!image->data||image->generation!=p->generation)return false;
     bool transient=p->output&&image->data==p->output->data&&image->kind==DRAW_RGBA;
     bool parallel=transient&&render_executor_can_split();
-    unsigned pixels=1024u/plan->weight;if(!pixels)pixels=1;
+    unsigned remaining=LIGHTVM_INVOCATION_LIMIT-p->used;
+    /* Near the watchdog limit, use one lane so unused branch reservations do
+     * not make a second worker fault while the first still has spare budget. */
+    if(remaining<2u*LBC_MAP_WORK_BUDGET)parallel=false;
+    unsigned budget=remaining/(parallel?2u:1u);
+    if(budget>LBC_MAP_WORK_BUDGET)budget=LBC_MAP_WORK_BUDGET;
+    if(budget<plan->first_weight)return false;
+    unsigned pixels=1u+(budget-plan->first_weight)/plan->weight;
     if(parallel)pixels*=2;
     unsigned cap=parallel?128u:transient?64u:32u;if(pixels>cap)pixels=cap;
     unsigned start=p->bulk,limit=start+pixels;if(limit>(unsigned)stop)limit=(unsigned)stop;
@@ -270,12 +279,14 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     MapTask tasks[2]={0};uint64_t deadline=platform_time_us()+LIGHTVM_RENDER_SLICE_US;
     for(unsigned n=0;n<count;n++){
         tasks[n].plan=plan;tasks[n].vm=p;tasks[n].image=image;tasks[n].stride=draw_stride(image->kind);
-        tasks[n].first=n?middle:start;tasks[n].end=n?limit:middle;tasks[n].deadline=deadline;
+        tasks[n].first=n?middle:start;tasks[n].end=n?limit:middle;tasks[n].deadline=deadline;tasks[n].budget=budget;
         for(unsigned r=0;r<p->nregs;r++)if(has(plan->captured,r))tasks[n].values[r].u=pbc_value(p,r).u;
     }
     if(p->io_fault)return false;
     RenderJob jobs[2]={{map_pixels,&tasks[0],0},{map_pixels,&tasks[1],0}};render_execute(jobs,count);
-    for(unsigned n=0;n<count;n++)if(!tasks[n].success)return false;
+    bool success=true;
+    for(unsigned n=0;n<count;n++){p->used+=tasks[n].work;success&=tasks[n].success;}
+    if(!success)return false;
     /* Only the contiguous completed prefix advances. A speculative transient
      * suffix is unpublished and will be recomputed if the first lane yielded. */
     if(tasks[0].completed<middle)count=1;

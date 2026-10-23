@@ -29,6 +29,29 @@ function valid(sources: { python: string }[], options = {}) {
 }
 
 describe('explicit numeric frontend contracts', () => {
+  it('exposes normalized easing in Python, JavaScript, Blocks and the learning view', { timeout: 30000 }, () => {
+    const curves = ['sine', 'circular', 'exponential'].flatMap(f => ['in', 'out', 'in_out'].map(d => `${f}_${d}`));
+    const samples = [-0.5, 0, 2 ** -149, 0.125, 0.5, 0.875, 1 - 2 ** -24, 1, 1.5];
+    const sources: { python: string }[] = [];
+    for (const name of curves) for (const t of samples) {
+      const blocks = blocksResult(b('lm_motion', { FUNCTION: name }, { VALUE: num(t) }));
+      const camel = name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+      sources.push({ python: `from lightvm import profile,init,render\nfrom lightvm.easing import ${name}\nprofile("animation")\n@init\ndef setup(s,r):s.result=${name}(${Number.isInteger(t) ? t + ".0" : t})\n@render\ndef draw(s,r,p):pass\n` }, jsResult(`${camel}(${t})`), blocks, lowerJavaScript(blocks.javascript));
+    }
+    const results = valid(sources);
+    results.forEach((r, i) => {
+      expect(r.manifest.requires).toBe('1.3.0');
+      if (runtime) {
+        expect(r.runtime.status).toBe(1);
+        expect(r.runtime.state).toEqual(results[i - i % 4].runtime.state);
+        const t = samples[Math.floor(i / 4) % samples.length];
+        if (t <= 0) expect(r.runtime.state).toEqual([0]);
+        if (t >= 1) expect(r.runtime.state).toEqual([0x3f800000]);
+      }
+    });
+    expect(run([jsResult('sineIn(fixed(0.5))')])[0].diagnostics.length).toBeGreaterThan(0);
+    valid([jsResult('sineIn(float(fixed(0.5)))')]);
+  });
   it('preserves every decimal digit through JS and Blocks lowering', () => {
     for (const token of ['0.0000076293945312500000001', '0.0000076293945312499999999', '-0.000022888183593750000001', '32767.9999847412109375']) {
       const blocks = blocksResult(fixed(token));

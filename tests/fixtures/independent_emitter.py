@@ -17,7 +17,7 @@ def expected_pixels(count, rgba=True):
                     for i in range(count))
 
 
-def emit(bulk=True, invalid=None, oversized=False):
+def emit(bulk=True, invalid=None, oversized=False, rgb=None):
     # (type, role, raw bits): the first three registers bind native arguments.
     regs = [(1, 1, 0), (2, 1, 0), (2, 1, 0), (6, 2, 0), (6, 2, 1),
             (1, 2, 0), (1, 2, 1), (1, 2, 31), (1, 2, 16),
@@ -30,6 +30,7 @@ def emit(bulk=True, invalid=None, oversized=False):
         code.append((39, 3, 10, 0, 0))  # output, local index, count, end (patched)
     else:
         code += [(2, 10, 5, 0, 0), (15, 11, 10, 0, 0), (18, 11, 0, 0, 0)]
+    if invalid == 'map-work-budget': code += [(70,16,15,0,0)] * 8
     body = len(code)
     code += [(33, 12, 4, 10, 0),       # fixed array gather
              (15, 11, 10, 8, 0),      # index < 16
@@ -44,6 +45,11 @@ def emit(bulk=True, invalid=None, oversized=False):
              (14, 17, 16, 0, 0),      # -> integer 2
              (20, 19, 14, 17, 18),    # RGB(r,2,7)
              (34, 3, 10, 19, 0)]      # one common output store
+    if rgb is not None:
+        channel, value = rgb
+        regs.append((1,2,value&0xffffffff))
+        instruction=list(code[body+11]);instruction[2+channel]=len(regs)-1
+        code[body+11]=tuple(instruction)
     if bulk:
         code[start] = (39, 3, 10, 0, len(code))
     else:
@@ -65,8 +71,12 @@ def emit(bulk=True, invalid=None, oversized=False):
     elif invalid == 'state-permission': functions[0] = (0, start, 8, 0, 0, 3)
     elif invalid == 'branch-target': code[body+2] = (18, 11, 0, 0, len(code)+1)
     elif invalid == 'map-uninitialized': code[body+2] = (18, 11, 0, 0, body+8)
+    elif invalid == 'map-control-alias':
+        regs[10] = (1, 0, 129)
+        code[start] = (39, 3, 10, 10, len(code)-1)
     elif invalid == 'map-source-mutation': code[body+8] = (34, 4, 10, 12, 0)
     elif invalid == 'reserved-operand': code[body+9] = (68, 16, 15, 1, 0)
+    elif invalid == 'map-work-budget': pass
     elif invalid == 'fixed-floor': requires = '1.1.0'
     elif invalid == 'kernel-floor': requires = '1.2.0'
     elif invalid == 'future-floor': requires = '99.0.0'
@@ -87,8 +97,8 @@ def emit(bulk=True, invalid=None, oversized=False):
 
 
 INVALID = ('operand-type', 'resource-identity', 'resource-flags', 'state-permission',
-           'branch-target', 'map-uninitialized', 'map-source-mutation',
-           'reserved-operand', 'fixed-floor', 'kernel-floor', 'future-floor')
+           'branch-target', 'map-uninitialized', 'map-source-mutation', 'map-control-alias',
+           'reserved-operand', 'map-work-budget', 'fixed-floor', 'kernel-floor', 'future-floor')
 
 
 def corpus():

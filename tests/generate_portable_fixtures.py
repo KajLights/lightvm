@@ -5,6 +5,14 @@ import struct
 from bytecode_fixtures import program
 prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation")\n'
 fixtures={
+ 'semantic_math_lbc':program(prefix+"""import math
+@init
+def setup(ctx,runtime):
+ ctx.limit=setting(min(1.0,2.0))
+ ctx.last=0.0
+@render
+def draw(ctx,runtime,pixels):ctx.last=min(ctx.limit,math.sin(runtime.time))
+"""),
  'extended_map_lbc':program('''import math
 from lightvm import profile,init,render,FixedArray,fixed,fixed_sqrt,rgb
 profile("animation")
