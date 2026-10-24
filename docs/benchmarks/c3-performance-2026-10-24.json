@@ -1,0 +1,4957 @@
+{
+  "schema": "lightvm.validation.c3-profile",
+  "date": "2026-10-24",
+  "source_base": "fe97e17",
+  "scope": "USB-connected ESP32-C3; historical Pico W comparison, no simultaneous Pico attached",
+  "profile": {
+    "selection": "AUTO selects c3 on xiao_esp32c3; standard on S3/C6",
+    "core_optimization": "-O3; strict floating point; IDF default switch options",
+    "draw_kernels": "IRAM",
+    "storage_reads": "persistent memory mapping",
+    "workers": 1,
+    "slice_us": 2000,
+    "epoch_us": 2000,
+    "usb_disconnect_confirmation_us": 100000,
+    "cpu_hz": 160000000,
+    "flash": "DIO 40 MHz",
+    "bytecode_cache_bytes": 256,
+    "vm_heap_bytes": 131072
+  },
+  "method": {
+    "paired_blocks": 5,
+    "pixels": 200,
+    "status_poll_hz": 20,
+    "control_seconds": 3,
+    "control_warmup_seconds": 1,
+    "saved_stars_seconds": 30,
+    "saved_stars_warmup_seconds": 7,
+    "stable_stars_warmup": "at least 2 seconds and 25 completed frames",
+    "c3_network": "services compiled; unprovisioned network",
+    "pico_network": "configured Wi-Fi and MQTT, no intentional command load",
+    "c3_pin": "D1/GPIO3",
+    "pico_pin": "GP16",
+    "c3_brightness_limit": 32,
+    "pico_saved_stars_brightness_limit": 255,
+    "saved_stars": "same frozen color/stars bytes, settings and input bindings; steady composition without entry fade",
+    "optical_validation": false
+  },
+  "comparisons": [
+    {
+      "case": "map",
+      "layer": "A/layer0",
+      "standard_updates_hz": 24.178410002074372,
+      "final_updates_hz": 72.15745949790556,
+      "gain_percent": 198.43757092263243,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 2937.5871964679914,
+          "min": 2936.2713347921226,
+          "max": 2939.8640350877195
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 151.26918080833258,
+          "min": 150.64054029045295,
+          "max": 151.41461426980464
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 150.9374501486652,
+          "min": 150.3080004664122,
+          "max": 151.34327298741167
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.17545803450048,
+          "min": 4.709583008661866,
+          "max": 6.023665890097618
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 6.070249946787953,
+          "min": 5.839374847710133,
+          "max": 6.253542145714164
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            10344,
+            10344
+          ],
+          [
+            10344,
+            10344
+          ],
+          [
+            10344,
+            10344
+          ],
+          [
+            10344,
+            10344
+          ],
+          [
+            10344,
+            10344
+          ]
+        ]
+      }
+    },
+    {
+      "case": "scalar",
+      "layer": "A/layer0",
+      "standard_updates_hz": 4.311695747490671,
+      "final_updates_hz": 11.262342020539066,
+      "gain_percent": 161.20446989084388,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 90748.13793103448,
+          "min": 90720.5172413793,
+          "max": 90755.27586206897
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 9.624723657816952,
+          "min": 9.616310987575568,
+          "max": 9.636258183265618
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 9.624723657816952,
+          "min": 9.616310987575568,
+          "max": 9.636258183265618
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 4.2924589943140745,
+          "min": 4.12066699936986,
+          "max": 4.5499170664697886
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 4.750292049720883,
+          "min": 4.41025011241436,
+          "max": 5.365125136449933
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            10244,
+            10244
+          ],
+          [
+            10244,
+            10244
+          ],
+          [
+            10244,
+            10244
+          ],
+          [
+            10244,
+            10244
+          ],
+          [
+            10244,
+            10244
+          ]
+        ]
+      }
+    },
+    {
+      "case": "draw",
+      "layer": "A/layer0",
+      "standard_updates_hz": 35.4551165706047,
+      "final_updates_hz": 46.76474249334712,
+      "gain_percent": 31.898431077558655,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 7973.98969072165,
+          "min": 7930.053872053872,
+          "max": 7989.9446366782
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 95.94018935441031,
+          "min": 95.43194350776989,
+          "max": 98.15520541545195
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 95.94018935441031,
+          "min": 95.43194350776989,
+          "max": 98.15520541545195
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 8.626749971881509,
+          "min": 8.029874879866838,
+          "max": 8.761209202930331
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 27.52554090693593,
+          "min": 15.204833820462227,
+          "max": 55.38249993696809
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 3,
+            "ingress_over_10ms": 1
+          },
+          {
+            "over_10ms": 1,
+            "ingress_over_10ms": 1
+          },
+          {
+            "over_10ms": 1,
+            "ingress_over_10ms": 1
+          },
+          {
+            "over_10ms": 3,
+            "ingress_over_10ms": 1
+          },
+          {
+            "over_10ms": 1,
+            "ingress_over_10ms": 1
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            10400,
+            10400
+          ],
+          [
+            10400,
+            10400
+          ],
+          [
+            10400,
+            10400
+          ],
+          [
+            10400,
+            10400
+          ],
+          [
+            10400,
+            10400
+          ]
+        ]
+      }
+    },
+    {
+      "case": "sprites",
+      "layer": "A/layer0",
+      "standard_updates_hz": 5.3086327445335835,
+      "final_updates_hz": 42.386638449322625,
+      "gain_percent": 698.4473684484783,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 9874.199095022625,
+          "min": 9867.800904977375,
+          "max": 9882.695454545454
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 73.3064038714491,
+          "min": 72.83303010764709,
+          "max": 73.3488694511783
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 72.97470068651042,
+          "min": 72.83303010764709,
+          "max": 73.01697411429514
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 4.925667075440288,
+          "min": 4.897250095382333,
+          "max": 5.0791248213499784
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 5.323291989043355,
+          "min": 5.270957946777344,
+          "max": 5.568166961893439
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            11262,
+            11262
+          ],
+          [
+            11262,
+            11262
+          ],
+          [
+            11262,
+            11262
+          ],
+          [
+            11262,
+            11262
+          ],
+          [
+            11262,
+            11262
+          ]
+        ]
+      }
+    },
+    {
+      "case": "control-rainbow",
+      "layer": "A/layer0",
+      "standard_updates_hz": 38.79099359176637,
+      "final_updates_hz": 91.61186343810463,
+      "gain_percent": 136.16787031088015,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 1663.7968397291197,
+          "min": 1623.8247191011235,
+          "max": 1668.7900677200903
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 147.69062270387687,
+          "min": 146.97434808752016,
+          "max": 147.85603968520965
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 147.40555333321922,
+          "min": 146.64257755007657,
+          "max": 147.69062270387687
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.297499941661954,
+          "min": 5.154875107109547,
+          "max": 5.4407501593232155
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 6.311625009402633,
+          "min": 5.467040929943323,
+          "max": 11.398333823308349
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            10876,
+            10876
+          ],
+          [
+            10876,
+            10876
+          ],
+          [
+            10876,
+            10876
+          ],
+          [
+            10876,
+            10876
+          ],
+          [
+            10876,
+            10876
+          ]
+        ]
+      }
+    },
+    {
+      "case": "control-sweep",
+      "layer": "A/layer0",
+      "standard_updates_hz": 18.243819782531418,
+      "final_updates_hz": 71.97998459099539,
+      "gain_percent": 294.5444838252388,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 3961.312643678161,
+          "min": 3958.496551724138,
+          "max": 3968.794457274827
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 144.32451516364645,
+          "min": 143.93819400946495,
+          "max": 144.48840066967168
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 143.78943880444618,
+          "min": 143.6057732380805,
+          "max": 144.10251852048756
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.088415928184986,
+          "min": 4.757625050842762,
+          "max": 5.387041950598359
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 5.719499895349145,
+          "min": 5.289166932925582,
+          "max": 6.404582876712084
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            11046,
+            11046
+          ],
+          [
+            11046,
+            11046
+          ],
+          [
+            11046,
+            11046
+          ],
+          [
+            11046,
+            11046
+          ],
+          [
+            11046,
+            11046
+          ]
+        ]
+      }
+    },
+    {
+      "case": "stable-stars",
+      "layer": "A/layer0",
+      "standard_updates_hz": 2.656154015112407,
+      "final_updates_hz": 21.877884485314134,
+      "gain_percent": 723.6677677889952,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 18984.712,
+          "min": 18965.112,
+          "max": 19000.145161290322
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 41.46651328258269,
+          "min": 41.187824753937555,
+          "max": 41.507888615569456
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 41.1758255066449,
+          "min": 41.13478117632203,
+          "max": 41.19004290078652
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.033582914620638,
+          "min": 4.734749905765057,
+          "max": 5.062874872237444
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 5.561999976634979,
+          "min": 5.242374958470464,
+          "max": 6.028417032212019
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            12284,
+            12284
+          ],
+          [
+            12284,
+            12284
+          ],
+          [
+            12284,
+            12284
+          ],
+          [
+            12284,
+            12284
+          ],
+          [
+            12284,
+            12284
+          ]
+        ]
+      }
+    },
+    {
+      "case": "mixed",
+      "layer": "A/layer0",
+      "standard_updates_hz": 19.21767973566392,
+      "final_updates_hz": 38.09313416924262,
+      "gain_percent": 98.21921633208336,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 5653.864705882353,
+          "min": 5652.544117647059,
+          "max": 5657.126470588235
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 112.61385514330291,
+          "min": 112.54013172813981,
+          "max": 113.02788015457767
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 112.61385514330291,
+          "min": 112.54013172813981,
+          "max": 112.87358705658596
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.317292176187038,
+          "min": 5.076125031337142,
+          "max": 5.499167134985328
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 5.749708972871304,
+          "min": 5.55962510406971,
+          "max": 6.0989579651504755
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ]
+        ]
+      }
+    },
+    {
+      "case": "mixed",
+      "layer": "A/layer1",
+      "standard_updates_hz": 2.650714446298472,
+      "final_updates_hz": 5.636936524838137,
+      "gain_percent": 112.65725294211543,
+      "pico": {
+        "render_us": {
+          "count": 5,
+          "median": 97797.66666666667,
+          "min": 97738.76190476191,
+          "max": 97839.61904761905
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 6.954175124074009,
+          "min": 6.951008136149812,
+          "max": 6.9606612411910005
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 112.61385514330291,
+          "min": 112.54013172813981,
+          "max": 112.87358705658596
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.317292176187038,
+          "min": 5.076125031337142,
+          "max": 5.499167134985328
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 5.749708972871304,
+          "min": 5.55962510406971,
+          "max": 6.0989579651504755
+        },
+        "steady_service_deltas": [
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          },
+          {
+            "over_10ms": 0,
+            "ingress_over_10ms": 0
+          }
+        ],
+        "heap_current_ranges": [
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ],
+          [
+            14380,
+            14380
+          ]
+        ]
+      }
+    },
+    {
+      "case": "saved-rainbow",
+      "layer": "A/layer0",
+      "standard_updates_hz": 47.478697844432915,
+      "final_updates_hz": 103.88918326180088,
+      "gain_percent": 118.81219995165124,
+      "pico": null
+    },
+    {
+      "case": "saved-stars",
+      "layer": "A/layer0",
+      "standard_updates_hz": 0.0,
+      "final_updates_hz": 0.0,
+      "gain_percent": null,
+      "pico": null
+    },
+    {
+      "case": "saved-stars",
+      "layer": "A/layer1",
+      "standard_updates_hz": 4.464319931783708,
+      "final_updates_hz": 36.14405494651244,
+      "gain_percent": 709.6206252868436,
+      "pico": {
+        "updates_hz": {
+          "count": 5,
+          "median": 40.17899397605434,
+          "min": 39.33997154547107,
+          "max": 49.26398221336139
+        },
+        "render_us": {
+          "count": 5,
+          "median": 14724.026533996683,
+          "min": 11746.526031102096,
+          "max": 15072.879762912786
+        }
+      }
+    }
+  ],
+  "standard": {
+    "groups": [
+      {
+        "case": "map",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 11485.430555555555,
+          "min": 11473.191780821919,
+          "max": 11615.666666666666
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 24.178410002074372,
+          "min": 23.87444429380679,
+          "max": 24.54616917995765
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 23.90324563306824,
+          "min": 23.87444429380679,
+          "max": 24.54616917995765
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 6.389041896909475,
+          "min": 5.676290951669216,
+          "max": 6.4968750812113285
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 7.472583092749119,
+          "min": 6.703125080093741,
+          "max": 7.654666900634766
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ]
+        ]
+      },
+      {
+        "case": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 56121.0,
+          "min": 55745.307692307695,
+          "max": 56332.307692307695
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 4.311695747490671,
+          "min": 4.310211681853196,
+          "max": 4.319041206425172
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 4.311695747490671,
+          "min": 4.310211681853196,
+          "max": 4.319041206425172
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 4.950291011482477,
+          "min": 4.773749969899654,
+          "max": 5.436667008325458
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 6.324124988168478,
+          "min": 6.040416890755296,
+          "max": 6.884250091388822
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ]
+        ]
+      },
+      {
+        "case": "draw",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 12040.58878504673,
+          "min": 12037.26168224299,
+          "max": 12102.858490566037
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 35.4551165706047,
+          "min": 35.17304172903842,
+          "max": 35.76962424321857
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 35.46187311753538,
+          "min": 35.43842401874433,
+          "max": 35.52278164539423
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 8.448000065982342,
+          "min": 7.531000068411231,
+          "max": 9.171499870717525
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.403749998658895,
+          "min": 8.907499955967069,
+          "max": 12.679541017860174
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ]
+        ]
+      },
+      {
+        "case": "sprites",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 48784.125,
+          "min": 48543.0625,
+          "max": 48986.5
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 5.3086327445335835,
+          "min": 5.304879763530331,
+          "max": 5.313411325462657
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 5.3086327445335835,
+          "min": 5.304879763530331,
+          "max": 5.313411325462657
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.529749905690551,
+          "min": 5.395541898906231,
+          "max": 7.635041838511825
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 7.934750057756901,
+          "min": 6.7767908331006765,
+          "max": 8.781665936112404
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ]
+        ]
+      },
+      {
+        "case": "control-rainbow",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 6097.068376068376,
+          "min": 6052.228813559322,
+          "max": 6554.48623853211
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 38.79099359176637,
+          "min": 36.100834929453555,
+          "max": 39.163445841378504
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 38.79099359176637,
+          "min": 36.100834929453555,
+          "max": 38.831552232553264
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.331291912123561,
+          "min": 6.209375103935599,
+          "max": 7.435333216562867
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 9.828499983996153,
+          "min": 7.52395810559392,
+          "max": 10.940375039353967
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ]
+        ]
+      },
+      {
+        "case": "control-sweep",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 14138.072727272727,
+          "min": 14084.392857142857,
+          "max": 14223.436363636363
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 18.243819782531418,
+          "min": 18.237923034930336,
+          "max": 18.584414501154058
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 18.2450855283617,
+          "min": 18.237923034930336,
+          "max": 18.584414501154058
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.4423329420387745,
+          "min": 5.378291010856628,
+          "max": 6.300166016444564
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 7.538875099271536,
+          "min": 6.358916172757745,
+          "max": 7.858833996579051
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ]
+        ]
+      },
+      {
+        "case": "stable-stars",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 97250.5,
+          "min": 96646.11111111111,
+          "max": 97812.75
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 2.656154015112407,
+          "min": 2.652775719498653,
+          "max": 2.985627067489111
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 2.653243465793779,
+          "min": 2.652775719498653,
+          "max": 2.656154015112407
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.5217500776052475,
+          "min": 5.367207806557417,
+          "max": 6.1737908981740475
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 6.742459023371339,
+          "min": 6.077332887798548,
+          "max": 7.879916811361909
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ]
+        ]
+      },
+      {
+        "case": "mixed",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 11434.775862068966,
+          "min": 11394.586206896553,
+          "max": 11570.48275862069
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 19.21767973566392,
+          "min": 19.2099253020049,
+          "max": 19.250576442696683
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 21.561125552373106,
+          "min": 21.528364562591698,
+          "max": 21.868394181962394
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.30750011280179,
+          "min": 6.229375023394823,
+          "max": 7.875457871705294
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 9.049084037542343,
+          "min": 7.649499922990799,
+          "max": 9.79916681535542
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ]
+        ]
+      },
+      {
+        "case": "mixed",
+        "layer": "A/layer1",
+        "render_us": {
+          "count": 5,
+          "median": 58247.125,
+          "min": 58046.125,
+          "max": 58354.75
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 2.650714446298472,
+          "min": 2.649644869242055,
+          "max": 2.6552519231305767
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 21.561125552373106,
+          "min": 21.528364562591698,
+          "max": 21.868394181962394
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.30750011280179,
+          "min": 6.229375023394823,
+          "max": 7.875457871705294
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 9.049084037542343,
+          "min": 7.649499922990799,
+          "max": 9.79916681535542
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ]
+        ]
+      },
+      {
+        "case": "saved-rainbow",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 5882.895104895105,
+          "min": 5865.181818181818,
+          "max": 5977.510791366906
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 47.478697844432915,
+          "min": 46.1524650340374,
+          "max": 47.7628138431087
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 47.14667897838793,
+          "min": 46.1524650340374,
+          "max": 47.49454806272855
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 6.56570796854794,
+          "min": 6.337624974548817,
+          "max": 6.808958016335964
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 7.511707954108715,
+          "min": 7.393792038783431,
+          "max": 9.167707990854979
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ]
+        ]
+      },
+      {
+        "case": "saved-stars",
+        "layer": "A/layer0",
+        "render_us": null,
+        "updates_hz": {
+          "count": 5,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 4.464319931783708,
+          "min": 4.430092317787264,
+          "max": 4.464919159335021
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.649250000715256,
+          "min": 5.558958044275641,
+          "max": 5.880916956812143
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 7.381832925602794,
+          "min": 7.3171250987797976,
+          "max": 7.497250102460384
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ]
+        ]
+      },
+      {
+        "case": "saved-stars",
+        "layer": "A/layer1",
+        "render_us": {
+          "count": 5,
+          "median": 53694.58955223881,
+          "min": 53638.87313432836,
+          "max": 53771.246268656716
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 4.464319931783708,
+          "min": 4.463401282582657,
+          "max": 4.464919159335021
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 4.464319931783708,
+          "min": 4.430092317787264,
+          "max": 4.464919159335021
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 5.649250000715256,
+          "min": 5.558958044275641,
+          "max": 5.880916956812143
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 7.381832925602794,
+          "min": 7.3171250987797976,
+          "max": 7.497250102460384
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ]
+        ]
+      }
+    ],
+    "files": [
+      "paired-1-standard.json",
+      "paired-2-standard.json",
+      "paired-3-standard.json",
+      "paired-4-standard.json",
+      "paired-5-standard.json"
+    ],
+    "firmware_sha256": "bdb48da06b5db0bdc9bd93f9504fa980f4b2a88da9110beb629a593da25af2c5",
+    "samples": 50,
+    "status_samples": 5750,
+    "ingress_over_10ms": 0,
+    "max_usb_p95_ms": 9.171499870717525,
+    "max_main_stack_peak_bytes": 5632
+  },
+  "tuning_candidate": {
+    "groups": [
+      {
+        "case": "map",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 5698.792626728111,
+          "min": 5683.197247706422,
+          "max": 5706.036697247707
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 72.15745949790556,
+          "min": 71.97596369050515,
+          "max": 72.27173526414003
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 71.99372741213543,
+          "min": 71.94021354274489,
+          "max": 72.25431729531505
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.800834020599723,
+          "min": 7.176999934017658,
+          "max": 8.485832950100303
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.69554197601974,
+          "min": 9.169333847239614,
+          "max": 11.007917113602161
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ],
+          [
+            10496,
+            10496
+          ]
+        ]
+      },
+      {
+        "case": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 42379.514285714286,
+          "min": 42306.32352941176,
+          "max": 42447.09090909091
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 11.262342020539066,
+          "min": 10.918816475498858,
+          "max": 11.574186903048036
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 11.257303847542357,
+          "min": 11.243495848675234,
+          "max": 11.280059960382712
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 6.681292084977031,
+          "min": 6.224708165973425,
+          "max": 7.074624998494983
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 8.285541087388992,
+          "min": 6.643499946221709,
+          "max": 10.440540965646505
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ],
+          [
+            10380,
+            10380
+          ]
+        ]
+      },
+      {
+        "case": "draw",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 9654.794326241135,
+          "min": 9634.957746478873,
+          "max": 9683.45
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 46.76474249334712,
+          "min": 46.425188302244635,
+          "max": 47.09463743554025
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 46.76298505923363,
+          "min": 46.44130668083053,
+          "max": 46.795621101781954
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 8.399458136409521,
+          "min": 7.648875005543232,
+          "max": 9.098416892811656
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.216208873316646,
+          "min": 8.851999882608652,
+          "max": 10.531583102419972
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ],
+          [
+            10536,
+            10536
+          ]
+        ]
+      },
+      {
+        "case": "sprites",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 9743.5,
+          "min": 9717.03125,
+          "max": 9774.203125
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 42.386638449322625,
+          "min": 42.15078705836065,
+          "max": 42.455348124156686
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 42.41355669978142,
+          "min": 42.37778670820993,
+          "max": 42.4826830194501
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.532333955168724,
+          "min": 7.00874999165535,
+          "max": 8.338374784216285
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 11.877834098413587,
+          "min": 8.447416825219989,
+          "max": 12.085124850273132
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ],
+          [
+            11398,
+            11398
+          ]
+        ]
+      },
+      {
+        "case": "control-rainbow",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 3541.299270072993,
+          "min": 3495.60553633218,
+          "max": 3560.981617647059
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 91.61186343810463,
+          "min": 90.2397648961295,
+          "max": 95.76443473217759
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 91.61186343810463,
+          "min": 90.2397648961295,
+          "max": 95.76443473217759
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.841666927561164,
+          "min": 7.200582884252071,
+          "max": 7.93633284047246
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 9.360458003357053,
+          "min": 9.08649992197752,
+          "max": 11.131541104987264
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ],
+          [
+            11044,
+            11044
+          ]
+        ]
+      },
+      {
+        "case": "control-sweep",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 5276.94930875576,
+          "min": 5268.40366972477,
+          "max": 5305.185185185185
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 71.97998459099539,
+          "min": 71.53503913033795,
+          "max": 72.23921767605476
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 71.97998459099539,
+          "min": 71.86621986705248,
+          "max": 72.23921767605476
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.771624950692058,
+          "min": 7.3861670680344105,
+          "max": 8.270167047157884
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 9.634000016376376,
+          "min": 9.040750097483397,
+          "max": 11.01558399386704
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ],
+          [
+            11182,
+            11182
+          ]
+        ]
+      },
+      {
+        "case": "stable-stars",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 20371.257575757576,
+          "min": 20148.02985074627,
+          "max": 20396.353846153845
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 21.877884485314134,
+          "min": 21.55579726886961,
+          "max": 22.210685005454263
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 21.887424919159912,
+          "min": 21.867971821675848,
+          "max": 22.210685005454263
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.513459073379636,
+          "min": 7.016583112999797,
+          "max": 8.080500178039074
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 11.056791990995407,
+          "min": 9.964499855414033,
+          "max": 12.126374989748001
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ],
+          [
+            12436,
+            12436
+          ]
+        ]
+      },
+      {
+        "case": "mixed",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 5226.710526315789,
+          "min": 5188.130434782609,
+          "max": 5234.460176991151
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 38.09313416924262,
+          "min": 37.501595841724935,
+          "max": 38.13221766802269
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 41.15219366702559,
+          "min": 41.08007893531631,
+          "max": 41.40558061874197
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.208332885056734,
+          "min": 6.831167032942176,
+          "max": 7.3094170074909925
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.056916857138276,
+          "min": 9.122499963268638,
+          "max": 10.904167080298066
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ]
+        ]
+      },
+      {
+        "case": "mixed",
+        "layer": "A/layer1",
+        "render_us": {
+          "count": 5,
+          "median": 45508.117647058825,
+          "min": 45457.529411764706,
+          "max": 45667.17647058824
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 5.636936524838137,
+          "min": 5.629036092118449,
+          "max": 5.963237264803981
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 41.15219366702559,
+          "min": 41.08007893531631,
+          "max": 41.40558061874197
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.208332885056734,
+          "min": 6.831167032942176,
+          "max": 7.3094170074909925
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.056916857138276,
+          "min": 9.122499963268638,
+          "max": 10.904167080298066
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ],
+          [
+            14604,
+            14604
+          ]
+        ]
+      },
+      {
+        "case": "saved-rainbow",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 5,
+          "median": 3423.7667731629394,
+          "min": 3389.78164556962,
+          "max": 3470.326923076923
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 103.88918326180088,
+          "min": 103.32734114460366,
+          "max": 104.52522053760507
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 103.88918326180088,
+          "min": 103.32734114460366,
+          "max": 104.52522053760507
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 8.229999803006649,
+          "min": 7.698834175243974,
+          "max": 8.386417059227824
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.848250007256866,
+          "min": 9.039208991453052,
+          "max": 12.063500005751848
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "heap_ranges": [
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ],
+          [
+            10558,
+            10558
+          ]
+        ]
+      },
+      {
+        "case": "saved-stars",
+        "layer": "A/layer0",
+        "render_us": null,
+        "updates_hz": {
+          "count": 5,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 36.14405494651244,
+          "min": 34.54151221787151,
+          "max": 40.40930744649618
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.437999825924635,
+          "min": 7.379957940429449,
+          "max": 7.684583077207208
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.348584037274122,
+          "min": 9.347167098894715,
+          "max": 10.969792027026415
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ]
+        ]
+      },
+      {
+        "case": "saved-stars",
+        "layer": "A/layer1",
+        "render_us": {
+          "count": 5,
+          "median": 11124.805529953917,
+          "min": 9735.21252059308,
+          "max": 11711.888996138996
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 36.14405494651244,
+          "min": 34.50820314148012,
+          "max": 40.44262097283295
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 36.14405494651244,
+          "min": 34.54151221787151,
+          "max": 40.40930744649618
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.437999825924635,
+          "min": 7.379957940429449,
+          "max": 7.684583077207208
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.348584037274122,
+          "min": 9.347167098894715,
+          "max": 10.969792027026415
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ]
+        ]
+      }
+    ],
+    "files": [
+      "paired-1-final.json",
+      "paired-2-final.json",
+      "paired-3-final.json",
+      "paired-4-final.json",
+      "paired-5-final.json"
+    ],
+    "firmware_sha256": "a81cf646effc04762cb8956dd9b46bb524887d9b2fcc5afd60ae540d2da3481b",
+    "samples": 50,
+    "status_samples": 5749,
+    "ingress_over_10ms": 1,
+    "max_usb_p95_ms": 9.098416892811656,
+    "max_main_stack_peak_bytes": 5296,
+    "stage": "Performance profile before USB disconnect confirmation fix; five paired blocks"
+  },
+  "comparisons_stage": "Five-pair tuning candidate before USB disconnect confirmation fix",
+  "deployed_firmware_sha256": "367991f4015f9ced086c67f3eb1575cea549b1f9787573bf1bcc5134621ff492",
+  "deployed_confirmation": {
+    "groups": [
+      {
+        "case": "map",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 5729.728110599079,
+          "min": 5729.728110599079,
+          "max": 5729.728110599079
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 72.03317559750504,
+          "min": 72.03317559750504,
+          "max": 72.03317559750504
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 72.03317559750504,
+          "min": 72.03317559750504,
+          "max": 72.03317559750504
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 7.2887910064309835,
+          "min": 7.2887910064309835,
+          "max": 7.2887910064309835
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 10.964542161673307,
+          "min": 10.964542161673307,
+          "max": 10.964542161673307
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            10496,
+            10496
+          ]
+        ]
+      },
+      {
+        "case": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 42723.41176470588,
+          "min": 42723.41176470588,
+          "max": 42723.41176470588
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 11.255111404561411,
+          "min": 11.255111404561411,
+          "max": 11.255111404561411
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 11.255111404561411,
+          "min": 11.255111404561411,
+          "max": 11.255111404561411
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 6.708124885335565,
+          "min": 6.708124885335565,
+          "max": 6.708124885335565
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 9.537082863971591,
+          "min": 9.537082863971591,
+          "max": 9.537082863971591
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            10380,
+            10380
+          ]
+        ]
+      },
+      {
+        "case": "draw",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 9605.886524822696,
+          "min": 9605.886524822696,
+          "max": 9605.886524822696
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 46.67222840160636,
+          "min": 46.67222840160636,
+          "max": 46.67222840160636
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 46.67222840160636,
+          "min": 46.67222840160636,
+          "max": 46.67222840160636
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 7.794416043907404,
+          "min": 7.794416043907404,
+          "max": 7.794416043907404
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 12.399915838614106,
+          "min": 12.399915838614106,
+          "max": 12.399915838614106
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            10536,
+            10536
+          ]
+        ]
+      },
+      {
+        "case": "sprites",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 9817.975806451614,
+          "min": 9817.975806451614,
+          "max": 9817.975806451614
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 41.081591325491374,
+          "min": 41.081591325491374,
+          "max": 41.081591325491374
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 41.412894481342114,
+          "min": 41.412894481342114,
+          "max": 41.412894481342114
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 7.727541960775852,
+          "min": 7.727541960775852,
+          "max": 7.727541960775852
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 9.449874982237816,
+          "min": 9.449874982237816,
+          "max": 9.449874982237816
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            11398,
+            11398
+          ]
+        ]
+      },
+      {
+        "case": "control-rainbow",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 3606.629090909091,
+          "min": 3606.629090909091,
+          "max": 3606.629090909091
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 91.15076473264435,
+          "min": 91.15076473264435,
+          "max": 91.15076473264435
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 91.15076473264435,
+          "min": 91.15076473264435,
+          "max": 91.15076473264435
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 8.274582913145423,
+          "min": 8.274582913145423,
+          "max": 8.274582913145423
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 10.289542144164443,
+          "min": 10.289542144164443,
+          "max": 10.289542144164443
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            11044,
+            11044
+          ]
+        ]
+      },
+      {
+        "case": "control-sweep",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 5238.00462962963,
+          "min": 5238.00462962963,
+          "max": 5238.00462962963
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 71.57751175586218,
+          "min": 71.57751175586218,
+          "max": 71.57751175586218
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 71.90888912510228,
+          "min": 71.90888912510228,
+          "max": 71.90888912510228
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 8.18150001578033,
+          "min": 8.18150001578033,
+          "max": 8.18150001578033
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 9.394958848133683,
+          "min": 9.394958848133683,
+          "max": 9.394958848133683
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            11182,
+            11182
+          ]
+        ]
+      },
+      {
+        "case": "stable-stars",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 20891.91935483871,
+          "min": 20891.91935483871,
+          "max": 20891.91935483871
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 20.558134846550438,
+          "min": 20.558134846550438,
+          "max": 20.558134846550438
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 20.88971766665609,
+          "min": 20.88971766665609,
+          "max": 20.88971766665609
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 7.266457891091704,
+          "min": 7.266457891091704,
+          "max": 7.266457891091704
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 10.168874869123101,
+          "min": 10.168874869123101,
+          "max": 10.168874869123101
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            12436,
+            12436
+          ]
+        ]
+      },
+      {
+        "case": "mixed",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 5288.027027027027,
+          "min": 5288.027027027027,
+          "max": 5288.027027027027
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 36.820316854360655,
+          "min": 36.820316854360655,
+          "max": 36.820316854360655
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 39.47403338440466,
+          "min": 39.47403338440466,
+          "max": 39.47403338440466
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 6.838290952146053,
+          "min": 6.838290952146053,
+          "max": 6.838290952146053
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 8.7438749615103,
+          "min": 8.7438749615103,
+          "max": 8.7438749615103
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            14604,
+            14604
+          ]
+        ]
+      },
+      {
+        "case": "mixed",
+        "layer": "A/layer1",
+        "render_us": {
+          "count": 1,
+          "median": 45649.94117647059,
+          "min": 45649.94117647059,
+          "max": 45649.94117647059
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 5.639147626343523,
+          "min": 5.639147626343523,
+          "max": 5.639147626343523
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 39.47403338440466,
+          "min": 39.47403338440466,
+          "max": 39.47403338440466
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 6.838290952146053,
+          "min": 6.838290952146053,
+          "max": 6.838290952146053
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 8.7438749615103,
+          "min": 8.7438749615103,
+          "max": 8.7438749615103
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            14604,
+            14604
+          ]
+        ]
+      },
+      {
+        "case": "saved-rainbow",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 1,
+          "median": 3417.709265175719,
+          "min": 3417.709265175719,
+          "max": 3417.709265175719
+        },
+        "updates_hz": {
+          "count": 1,
+          "median": 103.66031587256099,
+          "min": 103.66031587256099,
+          "max": 103.66031587256099
+        },
+        "presentations_hz": {
+          "count": 1,
+          "median": 103.66031587256099,
+          "min": 103.66031587256099,
+          "max": 103.66031587256099
+        },
+        "usb_p95_ms": {
+          "count": 1,
+          "median": 7.419166853651404,
+          "min": 7.419166853651404,
+          "max": 7.419166853651404
+        },
+        "usb_p99_ms": {
+          "count": 1,
+          "median": 8.351665921509266,
+          "min": 8.351665921509266,
+          "max": 8.351665921509266
+        },
+        "ingress_over_10ms_deltas": [
+          0
+        ],
+        "heap_ranges": [
+          [
+            10558,
+            10558
+          ]
+        ]
+      },
+      {
+        "case": "saved-stars",
+        "layer": "A/layer0",
+        "render_us": null,
+        "updates_hz": {
+          "count": 5,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 33.91353574168561,
+          "min": 32.9115813373199,
+          "max": 39.410198862104245
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.5628748163580894,
+          "min": 7.276666816323996,
+          "max": 7.784334011375904
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.671541094779968,
+          "min": 9.423375129699707,
+          "max": 11.114958208054304
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ]
+        ]
+      },
+      {
+        "case": "saved-stars",
+        "layer": "A/layer1",
+        "render_us": {
+          "count": 5,
+          "median": 11837.832023575638,
+          "min": 10011.578191039729,
+          "max": 12288.271255060728
+        },
+        "updates_hz": {
+          "count": 5,
+          "median": 33.91353574168561,
+          "min": 32.9115813373199,
+          "max": 39.410198862104245
+        },
+        "presentations_hz": {
+          "count": 5,
+          "median": 33.91353574168561,
+          "min": 32.9115813373199,
+          "max": 39.410198862104245
+        },
+        "usb_p95_ms": {
+          "count": 5,
+          "median": 7.5628748163580894,
+          "min": 7.276666816323996,
+          "max": 7.784334011375904
+        },
+        "usb_p99_ms": {
+          "count": 5,
+          "median": 10.671541094779968,
+          "min": 9.423375129699707,
+          "max": 11.114958208054304
+        },
+        "ingress_over_10ms_deltas": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "heap_ranges": [
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ],
+          [
+            17048,
+            17048
+          ]
+        ]
+      }
+    ],
+    "files": [
+      "final-confirmation.json",
+      "final-stars-repeats.json"
+    ],
+    "samples": 14,
+    "ingress_over_10ms": 0,
+    "max_usb_p95_ms": 8.274582913145423
+  },
+  "screens": {
+    "slice-o3-iram-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "ea1401eb85c146e6bdbb6f39be705212df960a0b591ec3fc54ea55710d12050a",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5817.502304147465
+          },
+          "updates_hz": {
+            "A/layer0": 71.88019063419397
+          },
+          "usb_p95_ms": 7.8125
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 42618.55882352941
+          },
+          "updates_hz": {
+            "A/layer0": 11.270276060110467
+          },
+          "usb_p95_ms": 6.176707800477743
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9853.741258741258
+          },
+          "updates_hz": {
+            "A/layer0": 47.419622299003585
+          },
+          "usb_p95_ms": 7.9585828352719545
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 27356.50980392157
+          },
+          "updates_hz": {
+            "A/layer0": 16.917040713591184
+          },
+          "usb_p95_ms": 7.173457881435752
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.025749862194061
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3716.8229508196723
+          },
+          "updates_hz": {
+            "A/layer0": 100.95959195963579
+          },
+          "usb_p95_ms": 8.034332888200879
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 13036.841584158416
+          },
+          "updates_hz": {
+            "A/layer0": 33.47982113092989
+          },
+          "usb_p95_ms": 7.845999905839562
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 9174.15107913669
+          },
+          "updates_hz": {
+            "A/layer0": 46.12111854668643
+          },
+          "usb_p95_ms": 7.79141578823328
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5488.139072847682,
+            "A/layer1": 45501.2
+          },
+          "updates_hz": {
+            "A/layer0": 50.01509457138046,
+            "A/layer1": 6.624515837268935
+          },
+          "usb_p95_ms": 9.394999826326966
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 56432.4
+          },
+          "updates_hz": {
+            "A/layer0": 8.293912711667508
+          },
+          "usb_p95_ms": 6.782250013202429
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 57368.64
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 8.299094956394985
+          },
+          "usb_p95_ms": 7.196458056569099
+        }
+      ]
+    },
+    "slice4-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "e5706dc0a13e31c42eafaa7ff9bd3e70f48d5a44ddf4b152e1e835800e122abc",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5735.111111111111
+          },
+          "updates_hz": {
+            "A/layer0": 83.4801505537422
+          },
+          "usb_p95_ms": 10.162458056584
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 40648.02127659575
+          },
+          "updates_hz": {
+            "A/layer0": 15.572093235565594
+          },
+          "usb_p95_ms": 8.660791907459497
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9560.471264367816
+          },
+          "updates_hz": {
+            "A/layer0": 57.64188298560062
+          },
+          "usb_p95_ms": 9.069167077541351
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 7301.564220183486
+          },
+          "updates_hz": {
+            "A/layer0": 71.9018155945054
+          },
+          "usb_p95_ms": 11.184958973899484
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.305500071495771
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3318.5403726708073
+          },
+          "updates_hz": {
+            "A/layer0": 106.71135950467387
+          },
+          "usb_p95_ms": 9.187791962176561
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 4583.7871621621625
+          },
+          "updates_hz": {
+            "A/layer0": 97.93506790461934
+          },
+          "usb_p95_ms": 9.555791039019823
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 3839.791788856305
+          },
+          "updates_hz": {
+            "A/layer0": 113.06963388440565
+          },
+          "usb_p95_ms": 9.428832912817597
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5651.696551724138,
+            "A/layer1": 41329.333333333336
+          },
+          "updates_hz": {
+            "A/layer0": 47.998737794261764,
+            "A/layer1": 8.937696003069432
+          },
+          "usb_p95_ms": 12.143375119194388
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 13508.483870967742
+          },
+          "updates_hz": {
+            "A/layer0": 41.048061564608325
+          },
+          "usb_p95_ms": 9.068540995940566
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 13559.084033613446
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 39.30756395118907
+          },
+          "usb_p95_ms": 11.28170802257955
+        }
+      ]
+    },
+    "idle4-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "ea76d218f57efee1534c9d99d26d5c0c3909747baea792031188c0eda6d278eb",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5737.258620689655
+          },
+          "updates_hz": {
+            "A/layer0": 76.85447817723383
+          },
+          "usb_p95_ms": 7.532250136137009
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 42238.28947368421
+          },
+          "updates_hz": {
+            "A/layer0": 12.612099368484795
+          },
+          "usb_p95_ms": 6.347582908347249
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9723.054794520547
+          },
+          "updates_hz": {
+            "A/layer0": 48.39149715972365
+          },
+          "usb_p95_ms": 7.560292026028037
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 9954.341085271319
+          },
+          "updates_hz": {
+            "A/layer0": 42.82969248900521
+          },
+          "usb_p95_ms": 6.8870410323143005
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.08599991351366
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3515.3612903225808
+          },
+          "updates_hz": {
+            "A/layer0": 102.69756479515759
+          },
+          "usb_p95_ms": 7.737041916698217
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 4448.678861788618
+          },
+          "updates_hz": {
+            "A/layer0": 81.49250712275867
+          },
+          "usb_p95_ms": 7.537625031545758
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 5321.144144144144
+          },
+          "updates_hz": {
+            "A/layer0": 73.55059564584495
+          },
+          "usb_p95_ms": 7.710082922130823
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5410.065359477124,
+            "A/layer1": 44900.9
+          },
+          "updates_hz": {
+            "A/layer0": 50.6038815963994,
+            "A/layer1": 6.614886483189464
+          },
+          "usb_p95_ms": 9.43233398720622
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 21013.515151515152
+          },
+          "updates_hz": {
+            "A/layer0": 21.873703967316555
+          },
+          "usb_p95_ms": 6.579666864126921
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 21273.451612903227
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 20.55259832232409
+          },
+          "usb_p95_ms": 7.767499890178442
+        }
+      ]
+    },
+    "serial-batch-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "fe59257347ba2dbbb5e28613b070e36dbdb14feea773ad4c3b3763c87aad8606",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5548.619230769231
+          },
+          "updates_hz": {
+            "A/layer0": 85.87120649370307
+          },
+          "usb_p95_ms": 8.450667141005397
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 41207.78571428572
+          },
+          "updates_hz": {
+            "A/layer0": 13.91521584714004
+          },
+          "usb_p95_ms": 7.187708979472518
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9391.607142857143
+          },
+          "updates_hz": {
+            "A/layer0": 55.885264825670255
+          },
+          "usb_p95_ms": 9.6238749101758
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 7968.039325842697
+          },
+          "updates_hz": {
+            "A/layer0": 58.90719459703594
+          },
+          "usb_p95_ms": 8.28516692854464
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.05783299356699
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3738.814432989691
+          },
+          "updates_hz": {
+            "A/layer0": 96.3934528917107
+          },
+          "usb_p95_ms": 8.397709112614393
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 4342.234875444839
+          },
+          "updates_hz": {
+            "A/layer0": 93.03774572139562
+          },
+          "usb_p95_ms": 8.240167051553726
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 4424.586572438163
+          },
+          "updates_hz": {
+            "A/layer0": 93.63190228000498
+          },
+          "usb_p95_ms": 8.798833005130291
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 4774.697478991597,
+            "A/layer1": 44369.541666666664
+          },
+          "updates_hz": {
+            "A/layer0": 39.35281241002402,
+            "A/layer1": 7.936701662525853
+          },
+          "usb_p95_ms": 8.148499997332692
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 15190.356435643564
+          },
+          "updates_hz": {
+            "A/layer0": 33.46649819612461
+          },
+          "usb_p95_ms": 8.243750082328916
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 15180.443298969072
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 32.075756986751664
+          },
+          "usb_p95_ms": 8.486957987770438
+        }
+      ]
+    },
+    "jump-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "7e285f5707cd96bb1ae689eb716abf1d7632224a5f91776125a407d8f7b626f0",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5703.6313364055295
+          },
+          "updates_hz": {
+            "A/layer0": 71.92322807799846
+          },
+          "usb_p95_ms": 8.187040919438004
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 41553.294117647056
+          },
+          "updates_hz": {
+            "A/layer0": 11.266257556815992
+          },
+          "usb_p95_ms": 6.558124907314777
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9758.104166666666
+          },
+          "updates_hz": {
+            "A/layer0": 47.71352072998014
+          },
+          "usb_p95_ms": 8.90237488783896
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 9558.526717557252
+          },
+          "updates_hz": {
+            "A/layer0": 43.39356864305422
+          },
+          "usb_p95_ms": 7.5709158554673195
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.138415912166238
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3569.380794701987
+          },
+          "updates_hz": {
+            "A/layer0": 100.10404786270215
+          },
+          "usb_p95_ms": 8.447624975815415
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 4009.6974169741698
+          },
+          "updates_hz": {
+            "A/layer0": 89.82850275726801
+          },
+          "usb_p95_ms": 7.203083951026201
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 5262.330316742082
+          },
+          "updates_hz": {
+            "A/layer0": 73.18050113833358
+          },
+          "usb_p95_ms": 8.25391709804535
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5424.648648648648,
+            "A/layer1": 45155.36842105263
+          },
+          "updates_hz": {
+            "A/layer0": 48.92645581989291,
+            "A/layer1": 6.281099057959224
+          },
+          "usb_p95_ms": 10.03362494520843
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 20229.238805970148
+          },
+          "updates_hz": {
+            "A/layer0": 22.202761512091307
+          },
+          "usb_p95_ms": 7.84862507134676
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 20357.53846153846
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 21.558560664414554
+          },
+          "usb_p95_ms": 6.680082995444536
+        }
+      ]
+    },
+    "mmap-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "bead5e514378e2c23217a688f32a3999cc584ee196efca77c4f0355c09785fb5",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5734.995391705069
+          },
+          "updates_hz": {
+            "A/layer0": 71.87752201809914
+          },
+          "usb_p95_ms": 7.978500099852681
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 42310.294117647056
+          },
+          "updates_hz": {
+            "A/layer0": 11.290096183638633
+          },
+          "usb_p95_ms": 7.912999950349331
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9626.952380952382
+          },
+          "updates_hz": {
+            "A/layer0": 48.68654218296157
+          },
+          "usb_p95_ms": 8.148333057761192
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 9847.449612403101
+          },
+          "updates_hz": {
+            "A/layer0": 42.78763723256529
+          },
+          "usb_p95_ms": 7.496709004044533
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.184291930869222
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3520.5145631067962
+          },
+          "updates_hz": {
+            "A/layer0": 102.39050700181846
+          },
+          "usb_p95_ms": 7.915958063676953
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 3951.2
+          },
+          "updates_hz": {
+            "A/layer0": 89.46322252790362
+          },
+          "usb_p95_ms": 7.823041873052716
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 5217.256756756757
+          },
+          "updates_hz": {
+            "A/layer0": 73.55320362494004
+          },
+          "usb_p95_ms": 8.079417049884796
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5442.980263157895,
+            "A/layer1": 45389.4
+          },
+          "updates_hz": {
+            "A/layer0": 50.35362204011078,
+            "A/layer1": 6.625476584225103
+          },
+          "usb_p95_ms": 9.080916875973344
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 20366.283582089553
+          },
+          "updates_hz": {
+            "A/layer0": 22.201099118549305
+          },
+          "usb_p95_ms": 7.858166005462408
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 21006.650793650795
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 20.883029944240604
+          },
+          "usb_p95_ms": 7.834082935005426
+        }
+      ]
+    },
+    "epoch3-screen": {
+      "completed": true,
+      "samples": 6,
+      "firmware_sha256": "b72fac29a7af56a1711fd7f4dcc0175ff61cd765c0f882abea64edd42a4e6cfb",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5566.171206225681
+          },
+          "updates_hz": {
+            "A/layer0": 84.98395688922452
+          },
+          "usb_p95_ms": 8.742832811549306
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 41245.71428571428
+          },
+          "updates_hz": {
+            "A/layer0": 13.936431870104956
+          },
+          "usb_p95_ms": 7.422209018841386
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 7957.971910112359
+          },
+          "updates_hz": {
+            "A/layer0": 59.00723518002438
+          },
+          "usb_p95_ms": 8.78229201771319
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5461.379746835443,
+            "A/layer1": 44386.857142857145
+          },
+          "updates_hz": {
+            "A/layer0": 52.350620153438584,
+            "A/layer1": 6.95799381786209
+          },
+          "usb_p95_ms": 9.82629181817174
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 16032.177083333334
+          },
+          "updates_hz": {
+            "A/layer0": 31.803669325241316
+          },
+          "usb_p95_ms": 7.868957938626409
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 16552.422222222223
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 29.819325536337402
+          },
+          "usb_p95_ms": 7.605207851156592
+        }
+      ]
+    },
+    "final-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "a81cf646effc04762cb8956dd9b46bb524887d9b2fcc5afd60ae540d2da3481b",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5723.442396313364
+          },
+          "updates_hz": {
+            "A/layer0": 71.96901717211223
+          },
+          "usb_p95_ms": 7.972582941874862
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 42448.21212121212
+          },
+          "updates_hz": {
+            "A/layer0": 10.915062924927815
+          },
+          "usb_p95_ms": 6.716167088598013
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9746.697841726618
+          },
+          "updates_hz": {
+            "A/layer0": 46.01509453394374
+          },
+          "usb_p95_ms": 7.533208001405001
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 9764.875
+          },
+          "updates_hz": {
+            "A/layer0": 42.40958125715564
+          },
+          "usb_p95_ms": 7.657208014279604
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.106374923139811
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3556.7695035460993
+          },
+          "updates_hz": {
+            "A/layer0": 93.44543378795916
+          },
+          "usb_p95_ms": 7.8811668790876865
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 5744.3015873015875
+          },
+          "updates_hz": {
+            "A/layer0": 62.67943863322638
+          },
+          "usb_p95_ms": 7.1452921256423
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 5305.37037037037
+          },
+          "updates_hz": {
+            "A/layer0": 71.47262977451892
+          },
+          "usb_p95_ms": 7.340208161622286
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5263.669642857143,
+            "A/layer1": 45446.166666666664
+          },
+          "updates_hz": {
+            "A/layer0": 37.080570532699575,
+            "A/layer1": 5.959377407041003
+          },
+          "usb_p95_ms": 7.405250100418925
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 20337.784615384615
+          },
+          "updates_hz": {
+            "A/layer0": 21.50392940910718
+          },
+          "usb_p95_ms": 8.188375039026141
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 20709.301587301587
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 20.8606676901408
+          },
+          "usb_p95_ms": 6.768499966710806
+        }
+      ]
+    },
+    "baseline-screen": {
+      "completed": false,
+      "samples": 7,
+      "firmware_sha256": "a3353bb674d6bc8aa85f44a28ab3c713b319e9653fa86a15fd79b6a7bd9dd162",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 12235.984126984127
+          },
+          "updates_hz": {
+            "A/layer0": 20.926839476845107
+          },
+          "usb_p95_ms": 6.241749972105026
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 58063.769230769234
+          },
+          "updates_hz": {
+            "A/layer0": 4.316133063064328
+          },
+          "usb_p95_ms": 5.556375021114945
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 12088.8
+          },
+          "updates_hz": {
+            "A/layer0": 34.80043641628316
+          },
+          "usb_p95_ms": 6.993333110585809
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 49594.9375
+          },
+          "updates_hz": {
+            "A/layer0": 5.31675528394879
+          },
+          "usb_p95_ms": 5.731082987040281
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 3.879208117723465
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 6436.336363636364
+          },
+          "updates_hz": {
+            "A/layer0": 36.52167889366553
+          },
+          "usb_p95_ms": 6.498500006273389
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 19864.157894736843
+          },
+          "updates_hz": {
+            "A/layer0": 12.615207308075586
+          },
+          "usb_p95_ms": 5.603832891210914
+        }
+      ]
+    },
+    "slice3-screen": {
+      "completed": true,
+      "samples": 11,
+      "firmware_sha256": "6f75bb7d01a4f6c350476f4b49921481f3736c41d1aa2a810f29bde374f894db",
+      "cases": [
+        {
+          "case": "map",
+          "render_us": {
+            "A/layer0": 5559.307692307692
+          },
+          "updates_hz": {
+            "A/layer0": 86.08378854207118
+          },
+          "usb_p95_ms": 9.438708890229464
+        },
+        {
+          "case": "scalar",
+          "render_us": {
+            "A/layer0": 41344.04878048781
+          },
+          "updates_hz": {
+            "A/layer0": 13.607681052629818
+          },
+          "usb_p95_ms": 10.40195906534791
+        },
+        {
+          "case": "draw",
+          "render_us": {
+            "A/layer0": 9455.556886227545
+          },
+          "updates_hz": {
+            "A/layer0": 55.38141851637605
+          },
+          "usb_p95_ms": 9.404791984707117
+        },
+        {
+          "case": "sprites",
+          "render_us": {
+            "A/layer0": 8021.90395480226
+          },
+          "updates_hz": {
+            "A/layer0": 58.641691127562105
+          },
+          "usb_p95_ms": 8.50858399644494
+        },
+        {
+          "case": "control-color",
+          "render_us": {
+            "A/layer0": null
+          },
+          "updates_hz": {
+            "A/layer0": 0.0
+          },
+          "usb_p95_ms": 4.134417045861483
+        },
+        {
+          "case": "control-rainbow",
+          "render_us": {
+            "A/layer0": 3522.151125401929
+          },
+          "updates_hz": {
+            "A/layer0": 103.08228460142983
+          },
+          "usb_p95_ms": 9.23045794479549
+        },
+        {
+          "case": "control-stars",
+          "render_us": {
+            "A/layer0": 2511.470737913486
+          },
+          "updates_hz": {
+            "A/layer0": 130.17698043190236
+          },
+          "usb_p95_ms": 8.668666006997228
+        },
+        {
+          "case": "control-sweep",
+          "render_us": {
+            "A/layer0": 4637.311355311355
+          },
+          "updates_hz": {
+            "A/layer0": 90.57284149865151
+          },
+          "usb_p95_ms": 8.693291107192636
+        },
+        {
+          "case": "mixed",
+          "render_us": {
+            "A/layer0": 5477.215189873417,
+            "A/layer1": 44589.333333333336
+          },
+          "updates_hz": {
+            "A/layer0": 52.406160374819265,
+            "A/layer1": 6.965375746020282
+          },
+          "usb_p95_ms": 10.657791048288345
+        },
+        {
+          "case": "stable-stars",
+          "render_us": {
+            "A/layer0": 15988.556701030928
+          },
+          "updates_hz": {
+            "A/layer0": 32.1405813544613
+          },
+          "usb_p95_ms": 7.945541990920901
+        },
+        {
+          "case": "stars-background",
+          "render_us": {
+            "A/layer0": null,
+            "A/layer1": 16616.866666666665
+          },
+          "updates_hz": {
+            "A/layer0": 0.0,
+            "A/layer1": 29.783335547433573
+          },
+          "usb_p95_ms": 8.62900004722178
+        }
+      ]
+    }
+  },
+  "hardware-storage": {
+    "file": "hardware-storage.json",
+    "sha256": "f0ea9bca008aaf44feec479acc033b691dc920a7e7333a1423319364f64f352f",
+    "passed": true,
+    "cycles": 32,
+    "heap_values": [
+      10372
+    ]
+  },
+  "hardware-runtime": {
+    "file": "hardware-runtime.json",
+    "sha256": "f7e3684652df2516be89fd5fac7c5b509229187b5798abdcdba5a088a5a2854d",
+    "passed": true,
+    "cases": 4,
+    "rejected_candidates": 40
+  },
+  "hardware-matrix": {
+    "file": "hardware-matrix.json",
+    "sha256": "8a64bc76527c608f2ad9c5792ca763be1b3219df2b89d8c195aa0eafb75dc3e2",
+    "passed": true,
+    "pairs": 96,
+    "equal_pairs": 96
+  },
+  "hardware-throughput": {
+    "file": "hardware-throughput.json",
+    "sha256": "0b69aaea4440a56642a30f5bb1e71b01b6b4dd0cf6f8e74ae34f66f3b63fe85b",
+    "passed": true,
+    "groups": [
+      {
+        "case": "G1-l64-o-19",
+        "pixels": 200,
+        "variant": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 8743.568493150686,
+          "min": 8713.075342465754,
+          "max": 8756.524137931034
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 48.330494512536475,
+          "min": 48.02858362982449,
+          "max": 48.40888632466336
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.001416990533471,
+          "min": 6.8847499787807465,
+          "max": 8.118750061839819
+        }
+      },
+      {
+        "case": "G1-l64-o-19",
+        "pixels": 200,
+        "variant": "bulk",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 3263.1220930232557,
+          "min": 3261.5552325581393,
+          "max": 3268.2122093023254
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 113.97993202864373,
+          "min": 113.93053615827552,
+          "max": 114.02351938692898
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.816958008334041,
+          "min": 7.672958076000214,
+          "max": 7.868167012929916
+        }
+      },
+      {
+        "case": "G2-l17",
+        "pixels": 200,
+        "variant": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 9631.079710144928,
+          "min": 9617.83211678832,
+          "max": 9687.823529411764
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 45.463543755493575,
+          "min": 45.084161624669825,
+          "max": 45.77398935051468
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.076208014041185,
+          "min": 7.027958054095507,
+          "max": 7.689625024795532
+        }
+      },
+      {
+        "case": "G2-l17",
+        "pixels": 200,
+        "variant": "bulk",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 3573.0459016393443,
+          "min": 3565.830065359477,
+          "max": 3578.214521452145
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 100.97447611954753,
+          "min": 100.48486574364674,
+          "max": 101.3614300228394
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.438583066686988,
+          "min": 7.398959016427398,
+          "max": 7.609375054016709
+        }
+      },
+      {
+        "case": "Q1-p32768",
+        "pixels": 200,
+        "variant": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 14119.68817204301,
+          "min": 14117.075268817205,
+          "max": 14137.36559139785
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 30.833595158596808,
+          "min": 30.825443859338293,
+          "max": 30.863441916451826
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.294791983440518,
+          "min": 6.7928750067949295,
+          "max": 7.38699990324676
+        }
+      },
+      {
+        "case": "Q1-p32768",
+        "pixels": 200,
+        "variant": "bulk",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 4976.0881057268725,
+          "min": 4936.502202643172,
+          "max": 4996.8766519823785
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 75.16646049157754,
+          "min": 75.16194584220544,
+          "max": 75.19599871538482
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.862458936870098,
+          "min": 7.496166974306107,
+          "max": 8.181291865184903
+        }
+      },
+      {
+        "case": "B1-lazy-piecewise",
+        "pixels": 200,
+        "variant": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 14156.8,
+          "min": 14153.5,
+          "max": 14175.04255319149
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 31.175000275015897,
+          "min": 31.164503750810553,
+          "max": 31.488698881074914
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 6.915124831721187,
+          "min": 6.7465410102158785,
+          "max": 7.343875011429191
+        }
+      },
+      {
+        "case": "B1-lazy-piecewise",
+        "pixels": 200,
+        "variant": "bulk",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 5359.974248927038,
+          "min": 5358.729613733905,
+          "max": 5364.017094017094
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 77.3212447365562,
+          "min": 77.29230353180448,
+          "max": 77.54744549063537
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 8.277249988168478,
+          "min": 7.318125106394291,
+          "max": 8.495917078107595
+        }
+      },
+      {
+        "case": "M1-all-pairs",
+        "pixels": 200,
+        "variant": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 52126.81481481482,
+          "min": 52084.92592592593,
+          "max": 52282.666666666664
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 8.943226410320122,
+          "min": 8.940066169861833,
+          "max": 8.956740313090426
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 6.965417182072997,
+          "min": 6.837416905909777,
+          "max": 7.332500070333481
+        }
+      },
+      {
+        "case": "M1-all-pairs",
+        "pixels": 200,
+        "variant": "bulk",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 31303.739130434784,
+          "min": 31271.28888888889,
+          "max": 31316.5
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 15.225329705665137,
+          "min": 14.93770169291133,
+          "max": 15.241648782905274
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.185125024989247,
+          "min": 7.050291169434786,
+          "max": 7.258750032633543
+        }
+      },
+      {
+        "case": "M2-all-pairs",
+        "pixels": 200,
+        "variant": "scalar",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 60940.72727272727,
+          "min": 60913.681818181816,
+          "max": 61793.5
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 7.285438355535795,
+          "min": 7.281580008177309,
+          "max": 7.2976692169457325
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.104999851435423,
+          "min": 7.081292103976011,
+          "max": 7.625499973073602
+        }
+      },
+      {
+        "case": "M2-all-pairs",
+        "pixels": 200,
+        "variant": "bulk",
+        "layer": "A/layer0",
+        "render_us": {
+          "count": 3,
+          "median": 33296.5,
+          "min": 33263.325,
+          "max": 33443.625
+        },
+        "updates_hz": {
+          "count": 3,
+          "median": 13.25643176119037,
+          "min": 13.24430100316958,
+          "max": 13.259085675039262
+        },
+        "usb_p95_ms": {
+          "count": 3,
+          "median": 7.396291941404343,
+          "min": 7.367582991719246,
+          "max": 7.586542051285505
+        }
+      }
+    ]
+  },
+  "hardware-soak": {
+    "file": "hardware-soak.json",
+    "sha256": "f07c93b7fff3b9973bfc1b13b3b33c3def0bd25fba38a9bc8b5ce7eac27fc781",
+    "passed": true,
+    "samples": [
+      {
+        "case": "saved-stars",
+        "seconds": 120.01977656176314,
+        "updates_hz": {
+          "A/layer0": 0.0,
+          "A/layer1": 34.06105324563975
+        },
+        "heap_range": [
+          17048,
+          17048
+        ],
+        "ingress_over_10ms": 0,
+        "usb_p95_ms": 7.5237080454826355
+      },
+      {
+        "case": "mixed",
+        "seconds": 120.02247679210268,
+        "updates_hz": {
+          "A/layer0": 37.1097157719467,
+          "A/layer1": 5.673937234103212
+        },
+        "heap_range": [
+          14604,
+          14604
+        ],
+        "ingress_over_10ms": 1,
+        "usb_p95_ms": 7.359291194006801
+      }
+    ]
+  },
+  "builds": {
+    "base_commit": "fe97e17",
+    "files": {
+      "platforms/esp32/CMakeLists.txt": "b475db1ee1da5af70d5ea6f3e3e223f4480748bfc40fd8513a14460bc1571138",
+      "platforms/esp32/main/CMakeLists.txt": "e3b541635a36590fc6ec17d2a9130ef0c032e4c9ea6f630ddf2d22d470a92cdf",
+      "platforms/esp32/boards/xiao_esp32c3.h": "f3487128d5b44350f19d3b3c202f21cbe65eefb0f43dcdbbcc0700a44b35bcb4",
+      "platforms/esp32/main/main.c": "553345cfd80a72f4a3977f89684c45499d5b5ced299eb41bebf4add747d12b0d",
+      "platforms/esp32/main/platform.c": "1cb977db10242a199135d8685219b8422654872277e02269c5b745e375230bdb",
+      "src/vm.c": "004bcaa07bcb011323313b9523b62add1d3d2b5e617d747c8d6d64aeb728d758",
+      "platforms/esp32/main/usb_connection.h": "ac3553d447cf21be7281ffaccd43510a29f76bf9a4e61c3f6fab202ceb7a1168",
+      "tests/test_esp32_usb_connection.c": "2e85c36db1d1f4c2da0b3b2e0767a682ac85dace6ff0886ae72bf89cc0799cf3",
+      "CMakeLists.txt": "27eef142cb4d5358ec8ebcf146e6370f74e84ee6cc64aa8413deee293a8079e9"
+    },
+    "firmwares": {
+      "slice-o3-iram": "ea1401eb85c146e6bdbb6f39be705212df960a0b591ec3fc54ea55710d12050a",
+      "mmap": "bead5e514378e2c23217a688f32a3999cc584ee196efca77c4f0355c09785fb5",
+      "epoch3": "b72fac29a7af56a1711fd7f4dcc0175ff61cd765c0f882abea64edd42a4e6cfb",
+      "pre-usb-fix": "a81cf646effc04762cb8956dd9b46bb524887d9b2fcc5afd60ae540d2da3481b",
+      "baseline": "a3353bb674d6bc8aa85f44a28ab3c713b319e9653fa86a15fd79b6a7bd9dd162",
+      "jump": "7e285f5707cd96bb1ae689eb716abf1d7632224a5f91776125a407d8f7b626f0",
+      "idle4": "ea76d218f57efee1534c9d99d26d5c0c3909747baea792031188c0eda6d278eb",
+      "standard": "bdb48da06b5db0bdc9bd93f9504fa980f4b2a88da9110beb629a593da25af2c5",
+      "slice4": "e5706dc0a13e31c42eafaa7ff9bd3e70f48d5a44ddf4b152e1e835800e122abc",
+      "slice3": "6f75bb7d01a4f6c350476f4b49921481f3736c41d1aa2a810f29bde374f894db",
+      "final": "367991f4015f9ced086c67f3eb1575cea549b1f9787573bf1bcc5134621ff492",
+      "serial-batch": "fe59257347ba2dbbb5e28613b070e36dbdb14feea773ad4c3b3763c87aad8606"
+    }
+  },
+  "linked_memory": {
+    "standard": {
+      "binary_bytes": 1089856,
+      "iram_bytes": 87040,
+      "dram_data_bss_bytes": 117108,
+      "flash_text_rodata_bytes": 991000,
+      "sections": {
+        ".rtc.text": 0,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 32,
+        ".rtc_reserved": 24,
+        ".iram0.text": 86876,
+        ".dram0.dummy": 87040,
+        ".dram0.data": 11580,
+        ".noinit": 0,
+        ".dram0.bss": 105528,
+        ".flash.text": 881300,
+        ".flash_rodata_dummy": 917504,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 109700,
+        ".flash.tdata": 0,
+        ".flash.rodata_noload": 29515,
+        ".iram0.text_end": 164,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".dram0.heap_start": 8,
+        ".debug_aranges": 54240,
+        ".debug_info": 3738053,
+        ".debug_abbrev": 427372,
+        ".debug_line": 2876430,
+        ".debug_frame": 261184,
+        ".debug_str": 469748,
+        ".debug_loc": 1993248,
+        ".debug_ranges": 285976,
+        ".debug_line_str": 12210,
+        ".debug_loclists": 76793,
+        ".debug_rnglists": 5013,
+        ".comment": 134,
+        ".riscv.attributes": 106
+      }
+    },
+    "pre-usb-fix": {
+      "binary_bytes": 1141808,
+      "iram_bytes": 92672,
+      "dram_data_bss_bytes": 117116,
+      "flash_text_rodata_bytes": 1037284,
+      "sections": {
+        ".rtc.text": 0,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 32,
+        ".rtc_reserved": 24,
+        ".iram0.text": 92548,
+        ".dram0.dummy": 92672,
+        ".dram0.data": 11580,
+        ".noinit": 0,
+        ".dram0.bss": 105536,
+        ".flash.text": 927568,
+        ".flash_rodata_dummy": 983040,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 109716,
+        ".flash.tdata": 0,
+        ".flash.rodata_noload": 29515,
+        ".iram0.text_end": 124,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".dram0.heap_start": 0,
+        ".debug_aranges": 53992,
+        ".debug_info": 3781708,
+        ".debug_abbrev": 427280,
+        ".debug_line": 3030893,
+        ".debug_frame": 262392,
+        ".debug_str": 469791,
+        ".debug_loc": 2075083,
+        ".debug_ranges": 308128,
+        ".debug_line_str": 12210,
+        ".debug_loclists": 76793,
+        ".debug_rnglists": 5013,
+        ".comment": 134,
+        ".riscv.attributes": 106
+      }
+    },
+    "final": {
+      "binary_bytes": 1141904,
+      "iram_bytes": 92672,
+      "dram_data_bss_bytes": 117116,
+      "flash_text_rodata_bytes": 1037368,
+      "sections": {
+        ".rtc.text": 0,
+        ".rtc.force_fast": 0,
+        ".rtc_noinit": 0,
+        ".rtc.force_slow": 32,
+        ".rtc_reserved": 24,
+        ".iram0.text": 92548,
+        ".dram0.dummy": 92672,
+        ".dram0.data": 11580,
+        ".noinit": 0,
+        ".dram0.bss": 105536,
+        ".flash.text": 927652,
+        ".flash_rodata_dummy": 983040,
+        ".flash.appdesc": 256,
+        ".flash.rodata": 109716,
+        ".flash.tdata": 0,
+        ".flash.rodata_noload": 29515,
+        ".iram0.text_end": 124,
+        ".iram0.data": 0,
+        ".iram0.bss": 0,
+        ".dram0.heap_start": 0,
+        ".debug_aranges": 53992,
+        ".debug_info": 3781897,
+        ".debug_abbrev": 427320,
+        ".debug_line": 3031079,
+        ".debug_frame": 262400,
+        ".debug_str": 469850,
+        ".debug_loc": 2075514,
+        ".debug_ranges": 308200,
+        ".debug_line_str": 12210,
+        ".debug_loclists": 76793,
+        ".debug_rnglists": 5013,
+        ".comment": 134,
+        ".riscv.attributes": 106
+      }
+    }
+  },
+  "software_validation": {
+    "host_ctest_suites": 25,
+    "asan_ubsan_suites": 25,
+    "host_numeric_cases": 34,
+    "host_numeric_replays": 2210,
+    "python_performance_tests": 10,
+    "python_numeric_runtime_tests": 18,
+    "python_composition_tests": 19,
+    "client_transport_tests": 4,
+    "cross_builds": [
+      "Pico W all services + RAM/software stack checks",
+      "C3 USB default profile",
+      "ESP32-S3 standard",
+      "ESP32-C6 standard"
+    ],
+    "usb_disconnect_unit_test": "transient gaps, traffic recovery, sustained loss, reconnect"
+  },
+  "failures_retained": [
+    "baseline screen stopped responding and was terminated; incomplete, excluded from estimates",
+    "fifth tuned block lost upload state before sampling; successful repeat recorded separately",
+    "pre-fix numeric matrix timed out during uploads",
+    "traced pre-fix matrix lost staged configuration after 13 successful pairs without reboot; followed by USB disconnect confirmation fix"
+  ],
+  "final_device": {
+    "firmware_sha256": "367991f4015f9ced086c67f3eb1575cea549b1f9787573bf1bcc5134621ff492",
+    "before": {
+      "version": "1.3.0",
+      "connections": true,
+      "light_controls": true,
+      "schema": "lightvm.config",
+      "platform": "esp32",
+      "controller_id": "esp32-d4f98d0449c0",
+      "boot_id": "f9b6bfd5e1b00358",
+      "build_compiler": "14.2.0",
+      "cpu_clock_hz": 160000000,
+      "wifi_supported": true,
+      "wifi_ap_supported": true,
+      "recovery_supported": true,
+      "mqtt_supported": true,
+      "http_supported": true,
+      "websocket_supported": true,
+      "boot_sequence_supported": true,
+      "boot_sequence": {
+        "count": 1,
+        "triggered": false,
+        "error": ""
+      },
+      "network_revision": 0,
+      "vm_heap_limit": 131072,
+      "preparation_memory_bytes": 0,
+      "preparation_pending": false,
+      "board": "xiao_esp32c3",
+      "output_types": [
+        {
+          "type": "ws2812b",
+          "required": [
+            "pin",
+            "count"
+          ],
+          "order_default": "GRB",
+          "brightness_default": 255
+        }
+      ],
+      "pins": [
+        "D0",
+        "GPIO2",
+        "D1",
+        "GPIO3",
+        "D2",
+        "GPIO4",
+        "D3",
+        "GPIO5",
+        "D4",
+        "GPIO6",
+        "D5",
+        "GPIO7",
+        "D6",
+        "GPIO21",
+        "D7",
+        "GPIO20",
+        "D8",
+        "GPIO8",
+        "D9",
+        "GPIO9",
+        "D10",
+        "GPIO10"
+      ],
+      "pixel_capacity": 1024,
+      "outputs": [],
+      "inputs": [],
+      "input_event_overflow": 0,
+      "config_limit": 8192,
+      "module_limit": 32768,
+      "render_workers": 1,
+      "pico2_dcp_enabled": false,
+      "max_refresh_hz": 0,
+      "render_slice_us": 2000,
+      "invocation_limit": 10000000,
+      "bytecode_cache_bytes": 256,
+      "http_clients": 4,
+      "native_headroom_bytes": 16384,
+      "render_offloads": 0,
+      "render_worker_us": 0,
+      "render_pair_imbalance_us": 0,
+      "render_join_wait_us": 0,
+      "render_max_job_us": 0,
+      "worker_stack_peak_bytes": 0,
+      "main_stack_peak_bytes": 3504,
+      "render_epoch_target_us": 2000,
+      "render_epochs": 2,
+      "render_epoch_total_us": 137,
+      "render_epoch_max_us": 90,
+      "render_epoch_overruns": 0,
+      "foreground_calls": 2,
+      "foreground_max_gap_us": 2316,
+      "foreground_over_10ms": 0,
+      "ingress_calls": 2,
+      "ingress_max_gap_us": 2698,
+      "ingress_over_10ms": 0,
+      "instance_context_bytes": 736,
+      "app_context_bytes": 25424,
+      "upload_workspace_bytes": 72,
+      "upload_page_bytes": 256,
+      "animation_reset": true,
+      "activation_settings": true,
+      "slots": [
+        "A",
+        "B"
+      ],
+      "slot_binding": "output",
+      "pixel_format": "rgb8",
+      "frame_policy": "transparent_before_render",
+      "alpha": true,
+      "compositions": true,
+      "composition_layer_limit": 8,
+      "layer_pixel_format": "rgba8-premul",
+      "composition": true,
+      "program_generation": 1,
+      "ab_transitions": true,
+      "transition_sources": true,
+      "transition_programs": true,
+      "custom_transitions": true,
+      "transition_effects": [
+        "crossfade",
+        "wipe",
+        "soft_wipe",
+        "dissolve",
+        "dip_black",
+        "white_flash",
+        "custom"
+      ],
+      "transient_settings": true,
+      "preset_transitions": true,
+      "presets": true,
+      "typed_storage": true,
+      "live_inputs": true,
+      "input_limit": 8,
+      "input_source_limit": 16,
+      "composition_blend_modes": [
+        "over",
+        "add",
+        "screen",
+        "multiply"
+      ],
+      "storage_available": true,
+      "storage_backend": "extent",
+      "storage_writable": true,
+      "storage_bytes": 1048576,
+      "free_bytes": 1040384,
+      "largest_free_bytes": 520192,
+      "storage_allocation_unit": 4096,
+      "catalog_revision": 982,
+      "active_revision": 0,
+      "saved_revision": 0,
+      "active_program": "",
+      "active_crc32": 0,
+      "boot_error": "",
+      "animation_error": "",
+      "target": "A",
+      "uploading": false
+    },
+    "persisted_program_execution": true,
+    "after": {
+      "version": "1.3.0",
+      "connections": true,
+      "light_controls": true,
+      "schema": "lightvm.config",
+      "platform": "esp32",
+      "controller_id": "esp32-d4f98d0449c0",
+      "boot_id": "536f24f97bd141c2",
+      "build_compiler": "14.2.0",
+      "cpu_clock_hz": 160000000,
+      "wifi_supported": true,
+      "wifi_ap_supported": true,
+      "recovery_supported": true,
+      "mqtt_supported": true,
+      "http_supported": true,
+      "websocket_supported": true,
+      "boot_sequence_supported": true,
+      "boot_sequence": {
+        "count": 3,
+        "triggered": true,
+        "error": ""
+      },
+      "network_revision": 0,
+      "vm_heap_limit": 131072,
+      "preparation_memory_bytes": 3536,
+      "preparation_pending": false,
+      "board": "xiao_esp32c3",
+      "output_types": [
+        {
+          "type": "ws2812b",
+          "required": [
+            "pin",
+            "count"
+          ],
+          "order_default": "GRB",
+          "brightness_default": 255
+        }
+      ],
+      "pins": [
+        "D0",
+        "GPIO2",
+        "D1",
+        "GPIO3",
+        "D2",
+        "GPIO4",
+        "D3",
+        "GPIO5",
+        "D4",
+        "GPIO6",
+        "D5",
+        "GPIO7",
+        "D6",
+        "GPIO21",
+        "D7",
+        "GPIO20",
+        "D8",
+        "GPIO8",
+        "D9",
+        "GPIO9",
+        "D10",
+        "GPIO10"
+      ],
+      "pixel_capacity": 1024,
+      "outputs": [],
+      "inputs": [],
+      "input_event_overflow": 0,
+      "config_limit": 8192,
+      "module_limit": 32768,
+      "render_workers": 1,
+      "pico2_dcp_enabled": false,
+      "max_refresh_hz": 0,
+      "render_slice_us": 2000,
+      "invocation_limit": 10000000,
+      "bytecode_cache_bytes": 256,
+      "http_clients": 4,
+      "native_headroom_bytes": 16384,
+      "render_offloads": 0,
+      "render_worker_us": 0,
+      "render_pair_imbalance_us": 0,
+      "render_join_wait_us": 0,
+      "render_max_job_us": 148,
+      "worker_stack_peak_bytes": 0,
+      "main_stack_peak_bytes": 5120,
+      "render_epoch_target_us": 2000,
+      "render_epochs": 338,
+      "render_epoch_total_us": 9137,
+      "render_epoch_max_us": 863,
+      "render_epoch_overruns": 0,
+      "foreground_calls": 59,
+      "foreground_max_gap_us": 54575,
+      "foreground_over_10ms": 8,
+      "ingress_calls": 59,
+      "ingress_max_gap_us": 54464,
+      "ingress_over_10ms": 8,
+      "instance_context_bytes": 736,
+      "app_context_bytes": 25424,
+      "upload_workspace_bytes": 72,
+      "upload_page_bytes": 256,
+      "animation_reset": true,
+      "activation_settings": true,
+      "slots": [
+        "A",
+        "B"
+      ],
+      "slot_binding": "output",
+      "pixel_format": "rgb8",
+      "frame_policy": "transparent_before_render",
+      "alpha": true,
+      "compositions": true,
+      "composition_layer_limit": 8,
+      "layer_pixel_format": "rgba8-premul",
+      "composition": true,
+      "program_generation": 1,
+      "ab_transitions": true,
+      "transition_sources": true,
+      "transition_programs": true,
+      "custom_transitions": true,
+      "transition_effects": [
+        "crossfade",
+        "wipe",
+        "soft_wipe",
+        "dissolve",
+        "dip_black",
+        "white_flash",
+        "custom"
+      ],
+      "transient_settings": true,
+      "preset_transitions": true,
+      "presets": true,
+      "typed_storage": true,
+      "live_inputs": true,
+      "input_limit": 8,
+      "input_source_limit": 16,
+      "composition_blend_modes": [
+        "over",
+        "add",
+        "screen",
+        "multiply"
+      ],
+      "storage_available": true,
+      "storage_backend": "extent",
+      "storage_writable": true,
+      "storage_bytes": 1048576,
+      "free_bytes": 1040384,
+      "largest_free_bytes": 520192,
+      "storage_allocation_unit": 4096,
+      "catalog_revision": 984,
+      "active_revision": 3,
+      "saved_revision": 0,
+      "active_program": "",
+      "active_crc32": 0,
+      "boot_error": "",
+      "animation_error": "",
+      "target": "A",
+      "uploading": false
+    },
+    "config": {
+      "schema": "lightvm.config",
+      "outputs": []
+    },
+    "programs": [],
+    "passed": true
+  },
+  "validation_status": [
+    {
+      "label": "hardware-smoke",
+      "exit_code": 0,
+      "start_unix": 1792834243.671446,
+      "end_unix": 1792834246.042797
+    },
+    {
+      "label": "hardware-storage",
+      "exit_code": 0,
+      "start_unix": 1792834246.043555,
+      "end_unix": 1792834273.166205
+    },
+    {
+      "label": "hardware-runtime",
+      "exit_code": 0,
+      "start_unix": 1792834273.166875,
+      "end_unix": 1792834278.166136
+    },
+    {
+      "label": "hardware-matrix",
+      "exit_code": 0,
+      "start_unix": 1792834278.166498,
+      "end_unix": 1792834404.166635
+    },
+    {
+      "label": "hardware-throughput",
+      "exit_code": 0,
+      "start_unix": 1792834404.167388,
+      "end_unix": 1792834562.5818748
+    },
+    {
+      "label": "final-confirmation",
+      "exit_code": 0,
+      "start_unix": 1792834562.58374,
+      "end_unix": 1792834642.895807
+    },
+    {
+      "label": "final-stars-repeats",
+      "exit_code": 0,
+      "start_unix": 1792834642.896864,
+      "end_unix": 1792834793.1804469
+    },
+    {
+      "label": "hardware-soak",
+      "exit_code": 0,
+      "start_unix": 1792834793.1810172,
+      "end_unix": 1792835043.609735
+    },
+    {
+      "label": "final-device",
+      "exit_code": 0,
+      "start_unix": 1792835043.6103199,
+      "end_unix": 1792835047.250907
+    }
+  ],
+  "evidence_archive": {
+    "file": "c3-performance-2026-10-24.tar.gz",
+    "sha256": "f2366835d129467ca730cc226fef0e32bdd5c2ad6bcd577f89cfb91b6a558684",
+    "bytes": 25454934,
+    "files": 353,
+    "private_device_dump_included": false
+  }
+}

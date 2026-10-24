@@ -222,6 +222,10 @@ harness. Sprite tests check Stars, Rainbow Sprite and Sweep, including transpare
 motion, frame-independent trails and bounded memory. Composition tests cover each layer blend mode.
 Rainbow permits one channel level for f32 arithmetic. Memory telemetry includes contexts and replacement peaks.
 
+For repeatable optimisation work across every supported target, follow the
+[optimisation protocol](docs/optimisation-protocol.md). It includes frozen
+workloads, historical timings, matched-run commands and regression gates.
+
 Measure the current Rainbow on a controller with:
 
 ```sh
