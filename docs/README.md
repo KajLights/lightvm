@@ -20,6 +20,7 @@ animation. The guides below describe the current implementation.
 - [Networking](networking.md)
 - [Pico 2 W builds, installation and acceptance](pico2-w.md)
 - [Multicore rendering and tunable resource budgets](multicore-rendering.md)
+- [Optimisation protocol, regression gates and historical baselines](optimisation-protocol.md)
 - [Multicore hardware measurements and validation](multicore-validation.md)
 - [Original Pico W multicore measurements and comparison](multicore-rp2040-validation.md)
 - [Multicore design research and decisions](design/feature-proposal-pico-multicore.md)
