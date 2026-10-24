@@ -27,6 +27,7 @@ animation. The guides below describe the current implementation.
 - [Pico regression review and optimisation priorities](design/pico-performance-review.md)
 - [Pico performance and command-lifetime implementation plan](design/pico-performance-plan.md)
 - [C3 default execution profile and Pico hardware comparison](design/c3-performance-2026-10-24.md)
+- [ESP32 optimisation campaign and thermal validation](design/esp32-optimisation-2026-10-24.md)
 - [MQTT, Home Assistant lights and keypad inputs](mqtt.md)
 - [Boot sequence and power recovery](boot-sequence.md)
 - [Browser workspace](web-editor.md)

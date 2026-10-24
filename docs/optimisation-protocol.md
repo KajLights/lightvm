@@ -37,11 +37,16 @@ The linked reports and raw packages take precedence over rounded chat summaries.
 The C3 [report](design/c3-performance-2026-10-24.md),
 [structured results](benchmarks/c3-performance-2026-10-24.json) and
 [raw archive](benchmarks/c3-performance-2026-10-24.tar.gz) have been preserved here
-from that chat. Its profile implementation was still in the separate `c314`
-worktree when this protocol was written; importing its evidence and tools does
-not install that implementation in this checkout. Inspect the actual build.
-In particular, do not assume `LIGHTVM_ESP32_PROFILE=AUTO` works until that code
-is integrated, or label a current ordinary C3 build as the measured optimised one.
+from that chat. Its profile implementation was in the separate `c314` worktree when protocol
+v1 was first written. The follow-up below integrates it; other checkouts that
+only import this protocol or its evidence do not acquire that implementation.
+Inspect the actual source and image hash before labelling a build as optimised.
+
+The [ESP32 follow-up](design/esp32-optimisation-2026-10-24.md) merges that
+implementation with this protocol and the native board sensors. Its new matched
+baselines are rebuilt from the integrated source; the historical C3 denominator
+above remains unchanged. Temperature-filter polling is explicitly recorded in
+each run and must match across firmware groups.
 
 Keep four different evidence classes distinct:
 
