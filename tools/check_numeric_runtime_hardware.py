@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check lazy faults, frame retention, recovery and rejected admission on a controller."""
 import argparse
+import board_monitor
 import hashlib
 import json
 from pathlib import Path
@@ -45,6 +46,7 @@ def reject(action):
 
 def run(args):
     client = Client(SerialTransport(args.port, no_reset=args.no_reset) if args.port else ProcessTransport(args.process), timeout=120)
+    board_monitor.attach(client, args)
     result = {'firmware_sha256': hashlib.sha256(args.firmware.read_bytes()).hexdigest(),
               'source': SOURCE, 'oversized_source': LARGE, 'cases': []}
     created = []
@@ -123,6 +125,7 @@ if __name__ == '__main__':
     parser.add_argument('--process', type=Path)
     parser.add_argument('--firmware', type=Path, required=True)
     parser.add_argument('--result', type=Path, required=True)
+    board_monitor.add_arguments(parser)
     args = parser.parse_args()
     if bool(args.port) == bool(args.process):
         parser.error('select exactly one transport')

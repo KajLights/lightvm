@@ -5,6 +5,7 @@ Exercises reclaimed flash extents, readback, rejected deletion while live, and a
 through the normal API. The temporary program and active config are restored.
 """
 import argparse
+import board_monitor
 import hashlib
 import json
 from pathlib import Path
@@ -20,6 +21,7 @@ from benchmark_controller import DEFAULT_PINS
 def run(args):
     client = Client(SerialTransport(args.port, no_reset=args.board.startswith('xiao_esp32'))
                     if args.port else ProcessTransport(args.process), timeout=30)
+    board_monitor.attach(client, args)
     name = 'storage_coherence_probe'
     result = {'firmware_sha256': hashlib.sha256(args.firmware.read_bytes()).hexdigest(),
               'cycles': [], 'package_sha256': []}
@@ -110,6 +112,7 @@ if __name__ == '__main__':
     parser.add_argument('--firmware', required=True, type=Path)
     parser.add_argument('--result', required=True, type=Path)
     parser.add_argument('--cycles', type=int, default=32)
+    board_monitor.add_arguments(parser)
     args = parser.parse_args()
     if args.cycles < 1:
         parser.error('cycles must be positive')

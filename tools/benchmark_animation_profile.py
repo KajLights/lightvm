@@ -6,6 +6,7 @@ Restores active configuration and removes temporary programs; never saves config
 Reported layer completions distinguish useful animation work from presentations.
 """
 import argparse
+import board_monitor
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -51,6 +52,7 @@ def run(args):
         packages[name] = data
     result = {"schema": "lightvm.optimisation-run.v1", "run_id": str(uuid.uuid4()),
               "started_utc": datetime.now(timezone.utc).isoformat(),
+              "temperature_monitor": {"interval_seconds": 2, "limit_c": args.temperature_limit} if args.temperature_log else None,
               "rig": args.rig, "ingress_instrumented": args.ingress_instrumented,
               "selected_cases": selected, "samples_requested": args.samples,
               "poll_hz": args.poll_hz, "brightness_limit": 32, "output_type": "ws2812b",
@@ -62,6 +64,7 @@ def run(args):
     transport = (SerialTransport(args.port, no_reset=args.board.startswith("xiao_esp32"))
                  if args.port else ProcessTransport(args.process))
     client = Client(transport, timeout=15)
+    board_monitor.attach(client, args)
     created = []
 
     def checkpoint():
@@ -98,7 +101,7 @@ def run(args):
                 client.configure_composition(layers, output="bench")
                 warmup_started = time.monotonic()
                 warmup = max(7, args.warmup) if case == 'saved-stars' else max(2, args.warmup) if stable else args.warmup
-                time.sleep(warmup)
+                board_monitor.sleep(client, warmup)
                 if stable:
                     while client.composition(output="bench")["layers"][-1]["frames"] < 25:
                         if time.monotonic() - warmup_started > 60:
@@ -167,6 +170,7 @@ def main():
     parser.add_argument("--seconds", type=float, default=3)
     parser.add_argument("--warmup", type=float, default=1)
     parser.add_argument("--poll-hz", type=float, default=20)
+    board_monitor.add_arguments(parser)
     args = parser.parse_args()
     if args.result.exists():
         parser.error("result already exists; keep previous attempts and use a new label/path")

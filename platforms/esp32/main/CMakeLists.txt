@@ -16,8 +16,8 @@ endif()
 idf_component_register(SRCS ${port_sources} INCLUDE_DIRS "." REQUIRES ${port_requires})
 include("${LIGHTVM_ROOT}/cmake/lightvm_core.cmake")
 lightvm_add_core()
-if(LIGHTVM_ESP32_SELECTED_PROFILE STREQUAL "c3")
-    target_compile_definitions(lightvm_config INTERFACE LIGHTVM_ESP32_C3_PROFILE=1)
+if(NOT LIGHTVM_ESP32_SELECTED_PROFILE STREQUAL "standard")
+    target_compile_definitions(lightvm_config INTERFACE LIGHTVM_ESP32_OPTIMIZED=1)
     # Optimise the interpreter/kernels without changing IDF or floating-point
     # semantics. Keep the core's -ffp-contract=off and the SDK's ISR options.
     target_compile_options(lightvm_core PRIVATE -O3)

@@ -143,18 +143,18 @@ static bool flash_ready(void) {
     return true;
 }
 static const esp_partition_t *partition;
-#if LIGHTVM_ESP32_C3_PROFILE
+#if LIGHTVM_ESP32_OPTIMIZED
 static const uint8_t *storage_mapping;
 static esp_partition_mmap_handle_t storage_mapping_handle;
 #endif
 uint32_t platform_storage_capacity(void) { return partition ? partition->size : 0; }
 bool platform_storage_available(void) {
-#if LIGHTVM_ESP32_C3_PROFILE
+#if LIGHTVM_ESP32_OPTIMIZED
     if (storage_mapping) return true;
 #endif
     partition=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_ANY,"lightvm");
     if (!partition || partition->size<16384 || partition->size%8192 || partition->erase_size!=4096) return false;
-#if LIGHTVM_ESP32_C3_PROFILE
+#if LIGHTVM_ESP32_OPTIMIZED
     // VM instructions, call records and immutable artwork are small, frequent
     // reads. Map the store once instead of entering the SPI driver for each.
     // IDF write/erase operations invalidate cached aliases before returning.
@@ -168,7 +168,7 @@ bool platform_storage_available(void) {
 static bool bounds(uint32_t offset,size_t size) { return partition && offset<=partition->size && size<=partition->size-offset; }
 bool platform_storage_read(uint32_t offset,void *bytes,size_t size) {
     if (!bounds(offset,size)) return false;
-#if LIGHTVM_ESP32_C3_PROFILE
+#if LIGHTVM_ESP32_OPTIMIZED
     if (!storage_mapping) return false;
     memcpy(bytes,storage_mapping+offset,size);
     return true;
