@@ -129,8 +129,13 @@ floors; upgrading the compiler does not require noise support for other programs
   disabled. SRAM reservation gate passed with 20,336 bytes remaining after the
   configured reserves. Closed software stack accounting passed: main 11,496 of
   16,384 bytes including interrupt allowances; worker 5,104 of 8,192. The compiled
-  noise evaluator's own frame is 224 bytes. Hardware timings and stack watermarks
-  were not measured for this change.
+  noise evaluator's own frame is 224 bytes. Pico hardware timings and stack
+  watermarks were not measured for this change.
+- ESP32 C3/C6/S3 hardware: 576 exact RGB input replays passed across scalar and
+  prepared execution at 200, 500 and 1,024 pixels. All 72 animated and 72 live-input
+  windows completed without in-window resets or thermal stops. The
+  [hardware report](design/noise-esp32-2026-10-24.md) records render cost, updates,
+  live input latency, temperature and the substantial latency at high pixel counts.
 
 The example uses 1,226 package bytes, 24 registers and 28 instructions, including
 one prepared pixel map. Older runtime tests were adjusted for the new application
@@ -172,8 +177,8 @@ skipped field counts, the sign bit of the seed and restoring the original field.
 
 The initial host validation passed 192 reference comparisons across 200, 500 and
 1,024 logical pixels, plus 24 timing and 24 live-input windows. These validate
-the harness, not embedded performance. Hardware measurements require the board
-optimisation branch's `tools/board_monitor.py` and filtered temperature telemetry.
+the harness, not embedded performance. Hardware runs use `tools/board_monitor.py`
+and filtered temperature telemetry.
 It checks temperature on the same connection every two seconds, including warmup,
 and stops outputs at 80 °C or on invalid/stale readings. This is a test threshold.
 

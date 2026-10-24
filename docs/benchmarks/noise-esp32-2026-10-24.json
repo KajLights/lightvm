@@ -1,0 +1,5524 @@
+{
+  "evidence_class": "short hardware screen; no long-run stability claim",
+  "boards": {
+    "c3": {
+      "source": "c3-noise-screen.json",
+      "passed": true,
+      "cleanup": "configuration restored and temporary programs removed",
+      "firmware_sha256": "f3c24984f8aed5c1e54fc7ed92ec25ef000feb3caae531d5a924950de40991ed",
+      "description_before": {
+        "version": "1.4.0",
+        "connections": true,
+        "light_controls": true,
+        "schema": "lightvm.config",
+        "platform": "esp32",
+        "controller_id": "esp32-d4f98d0449c0",
+        "boot_id": "2f25ead5bd6d0e5a",
+        "build_compiler": "14.2.0",
+        "cpu_clock_hz": 160000000,
+        "reset_reason": "usb",
+        "wifi_supported": true,
+        "wifi_ap_supported": true,
+        "recovery_supported": true,
+        "mqtt_supported": true,
+        "http_supported": true,
+        "websocket_supported": true,
+        "boot_sequence_supported": true,
+        "boot_sequence": {
+          "count": 2,
+          "triggered": false,
+          "error": ""
+        },
+        "network_revision": 0,
+        "vm_heap_limit": 131072,
+        "preparation_memory_bytes": 0,
+        "preparation_pending": false,
+        "board": "xiao_esp32c3",
+        "output_types": [
+          {
+            "type": "ws2812b",
+            "required": [
+              "pin",
+              "count"
+            ],
+            "order_default": "GRB",
+            "brightness_default": 255
+          }
+        ],
+        "pins": [
+          "D0",
+          "GPIO2",
+          "D1",
+          "GPIO3",
+          "D2",
+          "GPIO4",
+          "D3",
+          "GPIO5",
+          "D4",
+          "GPIO6",
+          "D5",
+          "GPIO7",
+          "D6",
+          "GPIO21",
+          "D7",
+          "GPIO20",
+          "D8",
+          "GPIO8",
+          "D9",
+          "GPIO9",
+          "D10",
+          "GPIO10"
+        ],
+        "pixel_capacity": 1024,
+        "outputs": [],
+        "inputs": [],
+        "input_event_overflow": 0,
+        "config_limit": 8192,
+        "module_limit": 32768,
+        "render_workers": 1,
+        "pico2_dcp_enabled": false,
+        "max_refresh_hz": 0,
+        "render_slice_us": 2000,
+        "invocation_limit": 10000000,
+        "bytecode_cache_bytes": 256,
+        "http_clients": 4,
+        "native_headroom_bytes": 16384,
+        "render_offloads": 0,
+        "render_worker_us": 0,
+        "render_pair_imbalance_us": 0,
+        "render_join_wait_us": 0,
+        "render_max_job_us": 0,
+        "worker_stack_peak_bytes": 0,
+        "main_stack_peak_bytes": 4192,
+        "render_epoch_target_us": 2000,
+        "render_epochs": 1864,
+        "render_epoch_total_us": 58785,
+        "render_epoch_max_us": 396,
+        "render_epoch_overruns": 0,
+        "foreground_calls": 1864,
+        "foreground_max_gap_us": 5376,
+        "foreground_over_10ms": 0,
+        "ingress_calls": 1864,
+        "ingress_max_gap_us": 6307,
+        "ingress_over_10ms": 0,
+        "instance_context_bytes": 728,
+        "app_context_bytes": 26248,
+        "upload_workspace_bytes": 68,
+        "upload_page_bytes": 256,
+        "animation_reset": true,
+        "activation_settings": true,
+        "slots": [
+          "A",
+          "B"
+        ],
+        "slot_binding": "output",
+        "pixel_format": "rgb8",
+        "frame_policy": "transparent_before_render",
+        "alpha": true,
+        "compositions": true,
+        "composition_layer_limit": 8,
+        "layer_pixel_format": "rgba8-premul",
+        "composition": true,
+        "program_generation": 1,
+        "ab_transitions": true,
+        "transition_sources": true,
+        "transition_programs": true,
+        "custom_transitions": true,
+        "transition_effects": [
+          "crossfade",
+          "wipe",
+          "soft_wipe",
+          "dissolve",
+          "dip_black",
+          "white_flash",
+          "custom"
+        ],
+        "transient_settings": true,
+        "preset_transitions": true,
+        "presets": true,
+        "typed_storage": true,
+        "live_inputs": true,
+        "input_limit": 8,
+        "input_source_limit": 16,
+        "board_status_supported": true,
+        "composition_blend_modes": [
+          "over",
+          "add",
+          "screen",
+          "multiply"
+        ],
+        "storage_available": true,
+        "storage_backend": "extent",
+        "storage_writable": true,
+        "storage_bytes": 524288,
+        "free_bytes": 516096,
+        "largest_free_bytes": 258048,
+        "storage_allocation_unit": 4096,
+        "catalog_revision": 0,
+        "active_revision": 0,
+        "saved_revision": 0,
+        "active_program": "",
+        "active_crc32": 0,
+        "boot_error": "",
+        "animation_error": "",
+        "target": "A",
+        "uploading": false
+      },
+      "description_after": {
+        "version": "1.4.0",
+        "connections": true,
+        "light_controls": true,
+        "schema": "lightvm.config",
+        "platform": "esp32",
+        "controller_id": "esp32-d4f98d0449c0",
+        "boot_id": "2f25ead5bd6d0e5a",
+        "build_compiler": "14.2.0",
+        "cpu_clock_hz": 160000000,
+        "reset_reason": "usb",
+        "wifi_supported": true,
+        "wifi_ap_supported": true,
+        "recovery_supported": true,
+        "mqtt_supported": true,
+        "http_supported": true,
+        "websocket_supported": true,
+        "boot_sequence_supported": true,
+        "boot_sequence": {
+          "count": 0,
+          "triggered": false,
+          "error": ""
+        },
+        "network_revision": 0,
+        "vm_heap_limit": 131072,
+        "preparation_memory_bytes": 3536,
+        "preparation_pending": false,
+        "board": "xiao_esp32c3",
+        "output_types": [
+          {
+            "type": "ws2812b",
+            "required": [
+              "pin",
+              "count"
+            ],
+            "order_default": "GRB",
+            "brightness_default": 255
+          }
+        ],
+        "pins": [
+          "D0",
+          "GPIO2",
+          "D1",
+          "GPIO3",
+          "D2",
+          "GPIO4",
+          "D3",
+          "GPIO5",
+          "D4",
+          "GPIO6",
+          "D5",
+          "GPIO7",
+          "D6",
+          "GPIO21",
+          "D7",
+          "GPIO20",
+          "D8",
+          "GPIO8",
+          "D9",
+          "GPIO9",
+          "D10",
+          "GPIO10"
+        ],
+        "pixel_capacity": 1024,
+        "outputs": [
+          {
+            "id": "noise",
+            "type": "ws2812b",
+            "mode": "animation",
+            "slot": "A",
+            "pixels": 1024,
+            "ready": true,
+            "playing": true,
+            "frames": 43,
+            "render_us": 177357,
+            "show_us": 33594,
+            "preset": null,
+            "power": true,
+            "light": {
+              "revision": 0,
+              "composition_revision": 1,
+              "power": true,
+              "brightness": 1,
+              "color": 16777215,
+              "color_control": false,
+              "preset": null
+            },
+            "light_error": "",
+            "selected_preset": null,
+            "active_program": "composition",
+            "animation_error": "",
+            "composition": {
+              "revision": 1,
+              "sampled_at_us": 351525064,
+              "active": true,
+              "preset": null,
+              "playing": true,
+              "frames": 43,
+              "composite_frames": 43,
+              "composite_us": 37504,
+              "output_us": 1444555,
+              "error": "",
+              "layers": [
+                {
+                  "id": "field",
+                  "program": "nb_simplex3-bulk",
+                  "generation": 2,
+                  "opacity": 255,
+                  "blend": "over",
+                  "playing": true,
+                  "faulted": false,
+                  "frames": 43,
+                  "render_us": 177357,
+                  "render_total_us": 7501272,
+                  "render_reusable": false,
+                  "dependency_current": null,
+                  "displayed_frame": 43,
+                  "distinct_presentations": 43,
+                  "displayed_sample_age_us": 700511,
+                  "completion_to_display_us": 59226,
+                  "dependency_revision": 933,
+                  "dirty_to_display_us": 2133809,
+                  "dirty_age_us": null,
+                  "runnable_wait_us": 15768963,
+                  "composite_wait_us": 759684,
+                  "output_wait_us": 0,
+                  "native_draw_us": 6917803,
+                  "error": ""
+                }
+              ]
+            }
+          }
+        ],
+        "inputs": [],
+        "input_event_overflow": 0,
+        "config_limit": 8192,
+        "module_limit": 32768,
+        "render_workers": 1,
+        "pico2_dcp_enabled": false,
+        "max_refresh_hz": 0,
+        "render_slice_us": 2000,
+        "invocation_limit": 10000000,
+        "bytecode_cache_bytes": 256,
+        "http_clients": 4,
+        "native_headroom_bytes": 16384,
+        "render_offloads": 0,
+        "render_worker_us": 0,
+        "render_pair_imbalance_us": 0,
+        "render_join_wait_us": 0,
+        "render_max_job_us": 4004,
+        "worker_stack_peak_bytes": 0,
+        "main_stack_peak_bytes": 6224,
+        "render_epoch_target_us": 2000,
+        "render_epochs": 60012,
+        "render_epoch_total_us": 152047602,
+        "render_epoch_max_us": 4932,
+        "render_epoch_overruns": 54004,
+        "foreground_calls": 60116,
+        "foreground_max_gap_us": 115980,
+        "foreground_over_10ms": 2933,
+        "ingress_calls": 60116,
+        "ingress_max_gap_us": 115930,
+        "ingress_over_10ms": 4456,
+        "instance_context_bytes": 728,
+        "app_context_bytes": 26248,
+        "upload_workspace_bytes": 68,
+        "upload_page_bytes": 256,
+        "animation_reset": true,
+        "activation_settings": true,
+        "slots": [
+          "A",
+          "B"
+        ],
+        "slot_binding": "output",
+        "pixel_format": "rgb8",
+        "frame_policy": "transparent_before_render",
+        "alpha": true,
+        "compositions": true,
+        "composition_layer_limit": 8,
+        "layer_pixel_format": "rgba8-premul",
+        "composition": true,
+        "program_generation": 1,
+        "ab_transitions": true,
+        "transition_sources": true,
+        "transition_programs": true,
+        "custom_transitions": true,
+        "transition_effects": [
+          "crossfade",
+          "wipe",
+          "soft_wipe",
+          "dissolve",
+          "dip_black",
+          "white_flash",
+          "custom"
+        ],
+        "transient_settings": true,
+        "preset_transitions": true,
+        "presets": true,
+        "typed_storage": true,
+        "live_inputs": true,
+        "input_limit": 8,
+        "input_source_limit": 16,
+        "board_status_supported": true,
+        "composition_blend_modes": [
+          "over",
+          "add",
+          "screen",
+          "multiply"
+        ],
+        "storage_available": true,
+        "storage_backend": "extent",
+        "storage_writable": true,
+        "storage_bytes": 524288,
+        "free_bytes": 479232,
+        "largest_free_bytes": 258048,
+        "storage_allocation_unit": 4096,
+        "catalog_revision": 8,
+        "active_revision": 48,
+        "saved_revision": 0,
+        "active_program": "",
+        "active_crc32": 0,
+        "boot_error": "",
+        "animation_error": "",
+        "target": "A",
+        "uploading": false
+      },
+      "temperature_c": {
+        "count": 172,
+        "median": 55.0999985,
+        "p95": 56.0999985,
+        "max": 57.0999985
+      },
+      "groups": {
+        "perlin2-scalar/200": {
+          "timing": {
+            "render_ms": 25.74918,
+            "updates_hz": 16.57106222453544,
+            "status_p95_ms": 7.542874896898866,
+            "render_reusable": false,
+            "seconds": 3.0173080833628774
+          },
+          "live": {
+            "updates_per_second": 17.29739870797586,
+            "mean_render_us": 24631.44230769231,
+            "actual_publish_hz": 9.979268485370687,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.9495205748826265,
+              "p95": 8.271166123449802,
+              "max": 9.256957797333598
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.267979042604566,
+              "p95": 7.857042131945491,
+              "max": 13.200457906350493
+            },
+            "seconds": 3.0062323750462383,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.10020900517702,
+              "p95": 100.69358395412564,
+              "max": 100.81662493757904
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 178.18250006530434,
+              "p95": 182.32491705566645,
+              "max": 182.32491705566645
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 166.8,
+              "p95": 223.707,
+              "max": 223.707
+            }
+          }
+        },
+        "perlin2-bulk/200": {
+          "timing": {
+            "render_ms": 17.5736338028169,
+            "updates_hz": 23.457856073202564,
+            "status_p95_ms": 7.536791963502765,
+            "render_reusable": false,
+            "seconds": 3.0267045623622835
+          },
+          "live": {
+            "updates_per_second": 26.261880227811762,
+            "mean_render_us": 17073.46835443038,
+            "actual_publish_hz": 9.972865909295606,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.717333475127816,
+              "p95": 6.66750012896955,
+              "max": 8.668874856084585
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.076853955164552,
+              "p95": 7.892749970778823,
+              "max": 12.320667039602995
+            },
+            "seconds": 3.00816237507388,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.11912509799004,
+              "p95": 100.69749993272126,
+              "max": 100.97491717897356
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 123.53400001302361,
+              "p95": 158.72900001704693,
+              "max": 158.72900001704693
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 113.739,
+              "p95": 142.71,
+              "max": 142.71
+            }
+          }
+        },
+        "perlin3-scalar/200": {
+          "timing": {
+            "render_ms": 42.89732258064516,
+            "updates_hz": 10.284947584245113,
+            "status_p95_ms": 7.035375107079744,
+            "render_reusable": false,
+            "seconds": 3.014113562181592
+          },
+          "live": {
+            "updates_per_second": 10.982629141420817,
+            "mean_render_us": 41059.0,
+            "actual_publish_hz": 9.984208310382561,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.262916976585984,
+              "p95": 8.546208962798119,
+              "max": 9.136708918958902
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.209729006513953,
+              "p95": 7.288292050361633,
+              "max": 9.549584006890655
+            },
+            "seconds": 3.0047450000420213,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.98537506908178,
+              "p95": 100.79387482255697,
+              "max": 100.79475003294647
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 284.87422957550734,
+              "p95": 295.3250000718981,
+              "max": 295.3250000718981
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 275.797,
+              "p95": 801.659,
+              "max": 801.659
+            }
+          }
+        },
+        "perlin3-bulk/200": {
+          "timing": {
+            "render_ms": 33.4513,
+            "updates_hz": 13.25120356854871,
+            "status_p95_ms": 7.42766703478992,
+            "render_reusable": false,
+            "seconds": 3.0185937294736505
+          },
+          "live": {
+            "updates_per_second": 14.641875935371132,
+            "mean_render_us": 32466.75,
+            "actual_publish_hz": 9.983097228662135,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.77579138148576,
+              "p95": 9.05970809981227,
+              "max": 9.949917206540704
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.128104054369032,
+              "p95": 7.384167052805424,
+              "max": 10.10824996046722
+            },
+            "seconds": 3.0050794170238078,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.89608288742602,
+              "p95": 101.04637499898672,
+              "max": 101.05495899915695
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 226.47210455033928,
+              "p95": 231.24395799823105,
+              "max": 231.24395799823105
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 216.789,
+              "p95": 272.8,
+              "max": 272.8
+            }
+          }
+        },
+        "simplex2-scalar/200": {
+          "timing": {
+            "render_ms": 31.927722222222222,
+            "updates_hz": 11.937347412587101,
+            "status_p95_ms": 7.328832987695932,
+            "render_reusable": false,
+            "seconds": 3.0157453541178256
+          },
+          "live": {
+            "updates_per_second": 13.969645896695043,
+            "mean_render_us": 30647.619047619046,
+            "actual_publish_hz": 9.978318497639316,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.500874551013112,
+              "p95": 6.817457964643836,
+              "max": 7.820167113095522
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.171208457089961,
+              "p95": 8.00499995239079,
+              "max": 10.088208131492138
+            },
+            "seconds": 3.006518583977595,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.08358280174434,
+              "p95": 100.5377909168601,
+              "max": 100.65008304081857
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 213.15552107989788,
+              "p95": 238.78204100765288,
+              "max": 238.78204100765288
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 200.777,
+              "p95": 224.611,
+              "max": 224.611
+            }
+          }
+        },
+        "simplex2-bulk/200": {
+          "timing": {
+            "render_ms": 23.326618181818183,
+            "updates_hz": 18.224355482781654,
+            "status_p95_ms": 7.213166914880276,
+            "render_reusable": false,
+            "seconds": 3.0179393752478063
+          },
+          "live": {
+            "updates_per_second": 19.610588280834214,
+            "mean_render_us": 21920.474576271186,
+            "actual_publish_hz": 9.971485566525873,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.38402097299695,
+              "p95": 8.237499976530671,
+              "max": 11.230875039473176
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.442207959480584,
+              "p95": 8.562207920476794,
+              "max": 11.692875064909458
+            },
+            "seconds": 3.008578791981563,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.13799997977912,
+              "p95": 100.76737497001886,
+              "max": 100.78866686671972
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 138.69220844935626,
+              "p95": 153.2336249947548,
+              "max": 153.2336249947548
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 125.785,
+              "p95": 134.781,
+              "max": 134.781
+            }
+          }
+        },
+        "simplex3-scalar/200": {
+          "timing": {
+            "render_ms": 43.83974074074074,
+            "updates_hz": 8.940757175918494,
+            "status_p95_ms": 7.649499922990799,
+            "render_reusable": false,
+            "seconds": 3.019878458697349
+          },
+          "live": {
+            "updates_per_second": 9.983792696595707,
+            "mean_render_us": 43181.6,
+            "actual_publish_hz": 9.983792696595707,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.878416541032493,
+              "p95": 8.55016685090959,
+              "max": 8.749125059694052
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.1939164297655225,
+              "p95": 7.135625230148435,
+              "max": 11.480249930173159
+            },
+            "seconds": 3.0048700841143727,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.05083307623863,
+              "p95": 100.5927911028266,
+              "max": 101.09070804901421
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 276.55960456468165,
+              "p95": 286.0722078476101,
+              "max": 286.0722078476101
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 267.777,
+              "p95": 7391.053,
+              "max": 7391.053
+            }
+          }
+        },
+        "simplex3-bulk/200": {
+          "timing": {
+            "render_ms": 34.743358974358976,
+            "updates_hz": 12.935037010881084,
+            "status_p95_ms": 6.96662487462163,
+            "render_reusable": false,
+            "seconds": 3.015066749881953
+          },
+          "live": {
+            "updates_per_second": 12.96144994812506,
+            "mean_render_us": 33310.8717948718,
+            "actual_publish_hz": 9.970346113942353,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.9530204851180315,
+              "p95": 7.993249921128154,
+              "max": 11.481499997898936
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.347624468617141,
+              "p95": 7.227582857012749,
+              "max": 11.362709105014801
+            },
+            "seconds": 3.0089226248674095,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.10316618718207,
+              "p95": 100.58425017632544,
+              "max": 100.62141600064933
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 204.78572905994952,
+              "p95": 209.1898329090327,
+              "max": 209.1898329090327
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 191.78,
+              "p95": 288.8,
+              "max": 288.8
+            }
+          }
+        },
+        "perlin2-scalar/500": {
+          "timing": {
+            "render_ms": 64.07945,
+            "updates_hz": 6.629603362265359,
+            "status_p95_ms": 6.896415958181024,
+            "render_reusable": false,
+            "seconds": 3.0167717293370515
+          },
+          "live": {
+            "updates_per_second": 6.988939711759265,
+            "mean_render_us": 60897.95238095238,
+            "actual_publish_hz": 9.98419958822752,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.308562492951751,
+              "p95": 9.350958047434688,
+              "max": 10.464917169883847
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.228875019587576,
+              "p95": 7.552166003733873,
+              "max": 9.307707892730832
+            },
+            "seconds": 3.004747624974698,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.95645796880126,
+              "p95": 100.77962512150407,
+              "max": 100.80883395858109
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 488.8564170105383,
+              "p95": 505.55504206568,
+              "max": 505.55504206568
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 483.793,
+              "p95": 7520.187,
+              "max": 7520.187
+            }
+          }
+        },
+        "perlin2-bulk/500": {
+          "timing": {
+            "render_ms": 43.347433333333335,
+            "updates_hz": 9.937844373138047,
+            "status_p95_ms": 7.439750013872981,
+            "render_reusable": false,
+            "seconds": 3.0187633126042783
+          },
+          "live": {
+            "updates_per_second": 10.645382261146825,
+            "mean_render_us": 41993.8125,
+            "actual_publish_hz": 9.980045869825148,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.23522898927331,
+              "p95": 9.70887509174645,
+              "max": 9.922750061377883
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.111041526310146,
+              "p95": 7.904167054221034,
+              "max": 11.232499964535236
+            },
+            "seconds": 3.00599820795469,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.06258310750127,
+              "p95": 100.77229095622897,
+              "max": 100.90087493881583
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 318.2801869697869,
+              "p95": 373.6306659411639,
+              "max": 373.6306659411639
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 307.767,
+              "p95": 357.771,
+              "max": 357.771
+            }
+          }
+        },
+        "perlin3-scalar/500": {
+          "timing": {
+            "render_ms": 107.28723076923076,
+            "updates_hz": 4.312285815315459,
+            "status_p95_ms": 7.078124908730388,
+            "render_reusable": false,
+            "seconds": 3.0146424788981676
+          },
+          "live": {
+            "updates_per_second": 4.321806833791133,
+            "mean_render_us": 102270.0,
+            "actual_publish_hz": 9.973400385671845,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.146125098690391,
+              "p95": 8.804084034636617,
+              "max": 9.233541088178754
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.247021025046706,
+              "p95": 7.433457998558879,
+              "max": 8.292290847748518
+            },
+            "seconds": 3.008001167094335,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.98770896345377,
+              "p95": 100.84420815110207,
+              "max": 101.03658284060657
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 791.4338124683127,
+              "p95": 826.4794999267906,
+              "max": 826.4794999267906
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 776.798,
+              "p95": 8151.167,
+              "max": 8151.167
+            }
+          }
+        },
+        "perlin3-bulk/500": {
+          "timing": {
+            "render_ms": 83.55658823529411,
+            "updates_hz": 5.641095385260998,
+            "status_p95_ms": 7.342166965827346,
+            "render_reusable": false,
+            "seconds": 3.0135991042479873
+          },
+          "live": {
+            "updates_per_second": 5.983902554461799,
+            "mean_render_us": 80569.33333333333,
+            "actual_publish_hz": 9.973170924102998,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.478916991502047,
+              "p95": 9.820707840844989,
+              "max": 11.291875038295984
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.382917053997517,
+              "p95": 7.95066705904901,
+              "max": 11.873750016093254
+            },
+            "seconds": 3.008070374839008,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.9880840536207,
+              "p95": 100.91900010593235,
+              "max": 100.9894588496536
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 597.3521040286869,
+              "p95": 658.213583054021,
+              "max": 658.213583054021
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 601.803,
+              "p95": 7692.587,
+              "max": 7692.587
+            }
+          }
+        },
+        "simplex2-scalar/500": {
+          "timing": {
+            "render_ms": 79.16526666666667,
+            "updates_hz": 4.975273753755421,
+            "status_p95_ms": 7.304624887183309,
+            "render_reusable": false,
+            "seconds": 3.0149094788357615
+          },
+          "live": {
+            "updates_per_second": 5.984225995193952,
+            "mean_render_us": 75994.38888888889,
+            "actual_publish_hz": 9.973709991989919,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.376645945943892,
+              "p95": 9.305833140388131,
+              "max": 9.939499897882342
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.191436899825931,
+              "p95": 9.189374977722764,
+              "max": 11.741541093215346
+            },
+            "seconds": 3.007907791994512,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.02754093147814,
+              "p95": 100.84575018845499,
+              "max": 100.96187493763864
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 585.9191875206307,
+              "p95": 607.1779169142246,
+              "max": 607.1779169142246
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 583.777,
+              "p95": 7856.119,
+              "max": 7856.119
+            }
+          }
+        },
+        "simplex2-bulk/500": {
+          "timing": {
+            "render_ms": 57.62991304347826,
+            "updates_hz": 7.616569736842226,
+            "status_p95_ms": 7.6661668717861176,
+            "render_reusable": false,
+            "seconds": 3.0197320834267884
+          },
+          "live": {
+            "updates_per_second": 8.31318367499069,
+            "mean_render_us": 54081.84,
+            "actual_publish_hz": 9.97582040998883,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.325749982148409,
+              "p95": 10.499292053282261,
+              "max": 11.215917067602277
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.2827084911987185,
+              "p95": 7.824416970834136,
+              "max": 9.1299160849303
+            },
+            "seconds": 3.0072714590933174,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.9887918587774,
+              "p95": 101.05716693215072,
+              "max": 101.21666709892452
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 353.4350624540821,
+              "p95": 373.22641583159566,
+              "max": 373.22641583159566
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 344.777,
+              "p95": 7612.542,
+              "max": 7612.542
+            }
+          }
+        },
+        "simplex3-scalar/500": {
+          "timing": {
+            "render_ms": 108.88518181818182,
+            "updates_hz": 3.644074669242045,
+            "status_p95_ms": 7.602917030453682,
+            "render_reusable": false,
+            "seconds": 3.018598958151415
+          },
+          "live": {
+            "updates_per_second": 3.9893803799079173,
+            "mean_render_us": 107475.83333333333,
+            "actual_publish_hz": 9.973450949769793,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.4022914953529835,
+              "p95": 7.191292010247707,
+              "max": 8.017458021640778
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.203437456861138,
+              "p95": 7.688250159844756,
+              "max": 11.535000056028366
+            },
+            "seconds": 3.0079859169200063,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.97991705313325,
+              "p95": 100.68954201415181,
+              "max": 100.8348329924047
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 747.8353959741071,
+              "p95": 805.3214170504361,
+              "max": 805.3214170504361
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 740.777,
+              "p95": 7926.19,
+              "max": 7926.19
+            }
+          }
+        },
+        "simplex3-bulk/500": {
+          "timing": {
+            "render_ms": 86.9545625,
+            "updates_hz": 5.290474391495903,
+            "status_p95_ms": 8.07887502014637,
+            "render_reusable": false,
+            "seconds": 3.0243034586310387
+          },
+          "live": {
+            "updates_per_second": 5.32158991447623,
+            "mean_render_us": 82528.625,
+            "actual_publish_hz": 9.977981089642933,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.555562558583915,
+              "p95": 7.964042015373707,
+              "max": 11.276999954134226
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.213271175511181,
+              "p95": 7.493625162169337,
+              "max": 18.911499995738268
+            },
+            "seconds": 3.0066202501766384,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.07699998095632,
+              "p95": 100.69391690194607,
+              "max": 100.86799995042384
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 544.6491874754429,
+              "p95": 591.2317498587072,
+              "max": 591.2317498587072
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 555.792,
+              "p95": 7764.8,
+              "max": 7764.8
+            }
+          }
+        },
+        "perlin2-scalar/1024": {
+          "timing": {
+            "render_ms": 130.6452,
+            "updates_hz": 3.313748230066144,
+            "status_p95_ms": 6.843250012025237,
+            "render_reusable": false,
+            "seconds": 3.0177307706326246
+          },
+          "live": {
+            "updates_per_second": 3.3250520141769746,
+            "mean_render_us": 123710.5,
+            "actual_publish_hz": 9.975156042530925,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.9106665644794703,
+              "p95": 6.756082875654101,
+              "max": 8.07333318516612
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.223208154551685,
+              "p95": 7.774166995659471,
+              "max": 11.084791040048003
+            },
+            "seconds": 3.007471750024706,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.95137504301965,
+              "p95": 100.63816700130701,
+              "max": 100.69591691717505
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 1194.819833501242,
+              "p95": 1226.8425000365824,
+              "max": 1226.8425000365824
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 1653.7845,
+              "p95": 8154.904,
+              "max": 8154.904
+            }
+          }
+        },
+        "perlin2-bulk/1024": {
+          "timing": {
+            "render_ms": 87.90907142857144,
+            "updates_hz": 4.641591115288601,
+            "status_p95_ms": 7.118083070963621,
+            "render_reusable": false,
+            "seconds": 3.0162070833612233
+          },
+          "live": {
+            "updates_per_second": 5.657241075419123,
+            "mean_render_us": 85029.82352941176,
+            "actual_publish_hz": 9.983366603680805,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.155958468094468,
+              "p95": 8.983999956399202,
+              "max": 12.488791020587087
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.233125575818121,
+              "p95": 7.698750123381615,
+              "max": 13.072667177766562
+            },
+            "seconds": 3.0049983328208327,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.19412497058511,
+              "p95": 100.69699981249869,
+              "max": 102.36683301627636
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 792.8649164969102,
+              "p95": 825.1861669123173,
+              "max": 825.1861669123173
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 801.79,
+              "p95": 8104.423,
+              "max": 8104.423
+            }
+          }
+        },
+        "perlin3-scalar/1024": {
+          "timing": {
+            "render_ms": 219.439,
+            "updates_hz": 1.987966767899015,
+            "status_p95_ms": 6.653124932199717,
+            "render_reusable": false,
+            "seconds": 3.0181591045111418
+          },
+          "live": {
+            "updates_per_second": 2.327104740491918,
+            "mean_render_us": 208753.2857142857,
+            "actual_publish_hz": 9.973306030679648,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.317374899983406,
+              "p95": 6.89312512986362,
+              "max": 8.023667149245739
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.241937051527202,
+              "p95": 8.152791066095233,
+              "max": 11.12325000576675
+            },
+            "seconds": 3.008029625052586,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01666704192758,
+              "p95": 100.72341584600508,
+              "max": 100.78650014474988
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 2008.9471868705004,
+              "p95": 2041.4818341378123,
+              "max": 2041.4818341378123
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 2771.7965000000004,
+              "p95": 10170.886,
+              "max": 10170.886
+            }
+          }
+        },
+        "perlin3-bulk/1024": {
+          "timing": {
+            "render_ms": 170.071375,
+            "updates_hz": 2.6467692112090617,
+            "status_p95_ms": 7.7216660138219595,
+            "render_reusable": false,
+            "seconds": 3.022552917012945
+          },
+          "live": {
+            "updates_per_second": 2.9896592669064104,
+            "mean_render_us": 164768.22222222222,
+            "actual_publish_hz": 9.965530889688035,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.574083490297198,
+              "p95": 9.991374798119068,
+              "max": 11.305582942441106
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.128479028120637,
+              "p95": 7.705042138695717,
+              "max": 13.067875057458878
+            },
+            "seconds": 3.010376499965787,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.91241712123156,
+              "p95": 101.69325000606477,
+              "max": 102.06291591748595
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 1429.7052919864655,
+              "p95": 1680.4385408759117,
+              "max": 1680.4385408759117
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 1913.2885,
+              "p95": 9589.296,
+              "max": 9589.296
+            }
+          }
+        },
+        "simplex2-scalar/1024": {
+          "timing": {
+            "render_ms": 163.31585714285714,
+            "updates_hz": 2.31495147701983,
+            "status_p95_ms": 7.599875098094344,
+            "render_reusable": false,
+            "seconds": 3.0238214794080704
+          },
+          "live": {
+            "updates_per_second": 2.6614236248880117,
+            "mean_render_us": 155094.25,
+            "actual_publish_hz": 9.980338593330043,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.436083534732461,
+              "p95": 9.343333076685667,
+              "max": 10.17316710203886
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.170104607008398,
+              "p95": 7.419457891955972,
+              "max": 8.687332971021533
+            },
+            "seconds": 3.0059100419748574,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.20741703920066,
+              "p95": 101.70704079791903,
+              "max": 101.79745801724494
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 1466.9191460125148,
+              "p95": 1508.1004581879824,
+              "max": 1508.1004581879824
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 2036.788,
+              "p95": 9638.822,
+              "max": 9638.822
+            }
+          }
+        },
+        "simplex2-bulk/1024": {
+          "timing": {
+            "render_ms": 116.84336363636363,
+            "updates_hz": 3.639005574569655,
+            "status_p95_ms": 8.053000085055828,
+            "render_reusable": false,
+            "seconds": 3.022803833242506
+          },
+          "live": {
+            "updates_per_second": 3.9849651686259864,
+            "mean_render_us": 110648.41666666667,
+            "actual_publish_hz": 9.962412921564965,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.080208065919578,
+              "p95": 7.435833103954792,
+              "max": 12.006874894723296
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.478687981143594,
+              "p95": 7.653875043615699,
+              "max": 11.767416028305888
+            },
+            "seconds": 3.011318667093292,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.98562512919307,
+              "p95": 102.04795794561505,
+              "max": 107.42458398453891
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 990.8146250527352,
+              "p95": 1043.402833165601,
+              "max": 1043.402833165601
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 1037.9015,
+              "p95": 8037.247,
+              "max": 8037.247
+            }
+          }
+        },
+        "simplex3-scalar/1024": {
+          "timing": {
+            "render_ms": 222.86316666666664,
+            "updates_hz": 1.9860839786921263,
+            "status_p95_ms": 7.81016587279737,
+            "render_reusable": false,
+            "seconds": 3.0210202913731337
+          },
+          "live": {
+            "updates_per_second": 1.9953327232674383,
+            "mean_render_us": 219005.16666666666,
+            "actual_publish_hz": 9.976663616337191,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.863395937718451,
+              "p95": 8.119167061522603,
+              "max": 10.362166911363602
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.253291969187558,
+              "p95": 7.931333035230637,
+              "max": 11.431457940489054
+            },
+            "seconds": 3.0070172909181565,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01112497411668,
+              "p95": 101.79937491193414,
+              "max": 102.26900014095008
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 2002.258645487018,
+              "p95": 2043.3552081231028,
+              "max": 2043.3552081231028
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 2769.4809999999998,
+              "p95": 9883.912,
+              "max": 9883.912
+            }
+          }
+        },
+        "simplex3-bulk/1024": {
+          "timing": {
+            "render_ms": 178.34725,
+            "updates_hz": 2.6500421610881264,
+            "status_p95_ms": 7.8749998938292265,
+            "render_reusable": false,
+            "seconds": 3.0188198955729604
+          },
+          "live": {
+            "updates_per_second": 2.659944985702449,
+            "mean_render_us": 168745.75,
+            "actual_publish_hz": 9.974793696384182,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.505521083250642,
+              "p95": 7.92695814743638,
+              "max": 9.580708108842373
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.389541900716722,
+              "p95": 7.760625099763274,
+              "max": 9.425750002264977
+            },
+            "seconds": 3.0075809999834746,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01550009474158,
+              "p95": 101.05174989439547,
+              "max": 101.81670798920095
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 1503.0697921756655,
+              "p95": 1542.8589168004692,
+              "max": 1542.8589168004692
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 2106.303,
+              "p95": 9222.343,
+              "max": 9222.343
+            }
+          }
+        }
+      },
+      "replays": 192,
+      "steady_ingress_over_10ms": {
+        "timing_sampled_delta": 0,
+        "live_sampled_delta": 0
+      }
+    },
+    "c6": {
+      "source": "c6-noise-screen.json",
+      "passed": true,
+      "cleanup": "configuration restored and temporary programs removed",
+      "firmware_sha256": "cd22eb7fbff0ff33309782f1d481f5ec18461c34fdc26e182b2217aadc468d28",
+      "description_before": {
+        "version": "1.4.0",
+        "connections": true,
+        "light_controls": true,
+        "schema": "lightvm.config",
+        "platform": "esp32",
+        "controller_id": "esp32-10bda3999904",
+        "boot_id": "87a27e7d7208fb14",
+        "build_compiler": "14.2.0",
+        "cpu_clock_hz": 160000000,
+        "reset_reason": "usb",
+        "wifi_supported": true,
+        "wifi_ap_supported": true,
+        "recovery_supported": true,
+        "mqtt_supported": true,
+        "http_supported": true,
+        "websocket_supported": true,
+        "boot_sequence_supported": true,
+        "boot_sequence": {
+          "count": 2,
+          "triggered": false,
+          "error": ""
+        },
+        "network_revision": 0,
+        "vm_heap_limit": 131072,
+        "preparation_memory_bytes": 0,
+        "preparation_pending": false,
+        "board": "xiao_esp32c6",
+        "output_types": [
+          {
+            "type": "ws2812b",
+            "required": [
+              "pin",
+              "count"
+            ],
+            "order_default": "GRB",
+            "brightness_default": 255
+          }
+        ],
+        "pins": [
+          "D0",
+          "GPIO0",
+          "D1",
+          "GPIO1",
+          "D2",
+          "GPIO2",
+          "D3",
+          "GPIO21",
+          "D4",
+          "GPIO22",
+          "D5",
+          "GPIO23",
+          "D6",
+          "GPIO16",
+          "D7",
+          "GPIO17",
+          "D8",
+          "GPIO19",
+          "D9",
+          "GPIO20",
+          "D10",
+          "GPIO18"
+        ],
+        "pixel_capacity": 1024,
+        "outputs": [],
+        "inputs": [],
+        "input_event_overflow": 0,
+        "config_limit": 8192,
+        "module_limit": 32768,
+        "render_workers": 1,
+        "pico2_dcp_enabled": false,
+        "max_refresh_hz": 0,
+        "render_slice_us": 2000,
+        "invocation_limit": 10000000,
+        "bytecode_cache_bytes": 256,
+        "http_clients": 4,
+        "native_headroom_bytes": 16384,
+        "render_offloads": 0,
+        "render_worker_us": 0,
+        "render_pair_imbalance_us": 0,
+        "render_join_wait_us": 0,
+        "render_max_job_us": 0,
+        "worker_stack_peak_bytes": 0,
+        "main_stack_peak_bytes": 4228,
+        "render_epoch_target_us": 2000,
+        "render_epochs": 1819,
+        "render_epoch_total_us": 11456,
+        "render_epoch_max_us": 215,
+        "render_epoch_overruns": 0,
+        "foreground_calls": 1819,
+        "foreground_max_gap_us": 4651,
+        "foreground_over_10ms": 0,
+        "ingress_calls": 1819,
+        "ingress_max_gap_us": 4973,
+        "ingress_over_10ms": 0,
+        "instance_context_bytes": 728,
+        "app_context_bytes": 26248,
+        "upload_workspace_bytes": 68,
+        "upload_page_bytes": 256,
+        "animation_reset": true,
+        "activation_settings": true,
+        "slots": [
+          "A",
+          "B"
+        ],
+        "slot_binding": "output",
+        "pixel_format": "rgb8",
+        "frame_policy": "transparent_before_render",
+        "alpha": true,
+        "compositions": true,
+        "composition_layer_limit": 8,
+        "layer_pixel_format": "rgba8-premul",
+        "composition": true,
+        "program_generation": 1,
+        "ab_transitions": true,
+        "transition_sources": true,
+        "transition_programs": true,
+        "custom_transitions": true,
+        "transition_effects": [
+          "crossfade",
+          "wipe",
+          "soft_wipe",
+          "dissolve",
+          "dip_black",
+          "white_flash",
+          "custom"
+        ],
+        "transient_settings": true,
+        "preset_transitions": true,
+        "presets": true,
+        "typed_storage": true,
+        "live_inputs": true,
+        "input_limit": 8,
+        "input_source_limit": 16,
+        "board_status_supported": true,
+        "composition_blend_modes": [
+          "over",
+          "add",
+          "screen",
+          "multiply"
+        ],
+        "storage_available": true,
+        "storage_backend": "extent",
+        "storage_writable": true,
+        "storage_bytes": 524288,
+        "free_bytes": 516096,
+        "largest_free_bytes": 258048,
+        "storage_allocation_unit": 4096,
+        "catalog_revision": 0,
+        "active_revision": 0,
+        "saved_revision": 0,
+        "active_program": "",
+        "active_crc32": 0,
+        "boot_error": "",
+        "animation_error": "",
+        "target": "A",
+        "uploading": false
+      },
+      "description_after": {
+        "version": "1.4.0",
+        "connections": true,
+        "light_controls": true,
+        "schema": "lightvm.config",
+        "platform": "esp32",
+        "controller_id": "esp32-10bda3999904",
+        "boot_id": "87a27e7d7208fb14",
+        "build_compiler": "14.2.0",
+        "cpu_clock_hz": 160000000,
+        "reset_reason": "usb",
+        "wifi_supported": true,
+        "wifi_ap_supported": true,
+        "recovery_supported": true,
+        "mqtt_supported": true,
+        "http_supported": true,
+        "websocket_supported": true,
+        "boot_sequence_supported": true,
+        "boot_sequence": {
+          "count": 0,
+          "triggered": false,
+          "error": ""
+        },
+        "network_revision": 0,
+        "vm_heap_limit": 131072,
+        "preparation_memory_bytes": 3536,
+        "preparation_pending": false,
+        "board": "xiao_esp32c6",
+        "output_types": [
+          {
+            "type": "ws2812b",
+            "required": [
+              "pin",
+              "count"
+            ],
+            "order_default": "GRB",
+            "brightness_default": 255
+          }
+        ],
+        "pins": [
+          "D0",
+          "GPIO0",
+          "D1",
+          "GPIO1",
+          "D2",
+          "GPIO2",
+          "D3",
+          "GPIO21",
+          "D4",
+          "GPIO22",
+          "D5",
+          "GPIO23",
+          "D6",
+          "GPIO16",
+          "D7",
+          "GPIO17",
+          "D8",
+          "GPIO19",
+          "D9",
+          "GPIO20",
+          "D10",
+          "GPIO18"
+        ],
+        "pixel_capacity": 1024,
+        "outputs": [
+          {
+            "id": "noise",
+            "type": "ws2812b",
+            "mode": "animation",
+            "slot": "A",
+            "pixels": 1024,
+            "ready": true,
+            "playing": true,
+            "frames": 62,
+            "render_us": 102584,
+            "show_us": 33467,
+            "preset": null,
+            "power": true,
+            "light": {
+              "revision": 0,
+              "composition_revision": 1,
+              "power": true,
+              "brightness": 1,
+              "color": 16777215,
+              "color_control": false,
+              "preset": null
+            },
+            "light_error": "",
+            "selected_preset": null,
+            "active_program": "composition",
+            "animation_error": "",
+            "composition": {
+              "revision": 1,
+              "sampled_at_us": 244536724,
+              "active": true,
+              "preset": null,
+              "playing": true,
+              "frames": 62,
+              "composite_frames": 62,
+              "composite_us": 41424,
+              "output_us": 2074978,
+              "error": "",
+              "layers": [
+                {
+                  "id": "field",
+                  "program": "nb_simplex3-bulk",
+                  "generation": 2,
+                  "opacity": 255,
+                  "blend": "over",
+                  "playing": true,
+                  "faulted": false,
+                  "frames": 62,
+                  "render_us": 102584,
+                  "render_total_us": 6187077,
+                  "render_reusable": false,
+                  "dependency_current": null,
+                  "displayed_frame": 62,
+                  "distinct_presentations": 62,
+                  "displayed_sample_age_us": 523324,
+                  "completion_to_display_us": 66781,
+                  "dependency_revision": 1346,
+                  "dirty_to_display_us": 659876,
+                  "dirty_age_us": null,
+                  "runnable_wait_us": 5516303,
+                  "composite_wait_us": 506312,
+                  "output_wait_us": 0,
+                  "native_draw_us": 6062009,
+                  "error": ""
+                }
+              ]
+            }
+          }
+        ],
+        "inputs": [],
+        "input_event_overflow": 0,
+        "config_limit": 8192,
+        "module_limit": 32768,
+        "render_workers": 1,
+        "pico2_dcp_enabled": false,
+        "max_refresh_hz": 0,
+        "render_slice_us": 2000,
+        "invocation_limit": 10000000,
+        "bytecode_cache_bytes": 256,
+        "http_clients": 4,
+        "native_headroom_bytes": 16384,
+        "render_offloads": 0,
+        "render_worker_us": 0,
+        "render_pair_imbalance_us": 0,
+        "render_join_wait_us": 0,
+        "render_max_job_us": 2923,
+        "worker_stack_peak_bytes": 0,
+        "main_stack_peak_bytes": 5908,
+        "render_epoch_target_us": 2000,
+        "render_epochs": 67646,
+        "render_epoch_total_us": 140597280,
+        "render_epoch_max_us": 4117,
+        "render_epoch_overruns": 59025,
+        "foreground_calls": 67610,
+        "foreground_max_gap_us": 36218,
+        "foreground_over_10ms": 236,
+        "ingress_calls": 67610,
+        "ingress_max_gap_us": 36047,
+        "ingress_over_10ms": 141,
+        "instance_context_bytes": 728,
+        "app_context_bytes": 26248,
+        "upload_workspace_bytes": 68,
+        "upload_page_bytes": 256,
+        "animation_reset": true,
+        "activation_settings": true,
+        "slots": [
+          "A",
+          "B"
+        ],
+        "slot_binding": "output",
+        "pixel_format": "rgb8",
+        "frame_policy": "transparent_before_render",
+        "alpha": true,
+        "compositions": true,
+        "composition_layer_limit": 8,
+        "layer_pixel_format": "rgba8-premul",
+        "composition": true,
+        "program_generation": 1,
+        "ab_transitions": true,
+        "transition_sources": true,
+        "transition_programs": true,
+        "custom_transitions": true,
+        "transition_effects": [
+          "crossfade",
+          "wipe",
+          "soft_wipe",
+          "dissolve",
+          "dip_black",
+          "white_flash",
+          "custom"
+        ],
+        "transient_settings": true,
+        "preset_transitions": true,
+        "presets": true,
+        "typed_storage": true,
+        "live_inputs": true,
+        "input_limit": 8,
+        "input_source_limit": 16,
+        "board_status_supported": true,
+        "composition_blend_modes": [
+          "over",
+          "add",
+          "screen",
+          "multiply"
+        ],
+        "storage_available": true,
+        "storage_backend": "extent",
+        "storage_writable": true,
+        "storage_bytes": 524288,
+        "free_bytes": 479232,
+        "largest_free_bytes": 258048,
+        "storage_allocation_unit": 4096,
+        "catalog_revision": 8,
+        "active_revision": 48,
+        "saved_revision": 0,
+        "active_program": "",
+        "active_crc32": 0,
+        "boot_error": "",
+        "animation_error": "",
+        "target": "A",
+        "uploading": false
+      },
+      "temperature_c": {
+        "count": 120,
+        "median": 61.5999985,
+        "p95": 63.5999985,
+        "max": 63.5999985
+      },
+      "groups": {
+        "perlin2-scalar/200": {
+          "timing": {
+            "render_ms": 15.448121739130434,
+            "updates_hz": 38.15677003311902,
+            "status_p95_ms": 6.147291976958513,
+            "render_reusable": false,
+            "seconds": 3.0138819376006722
+          },
+          "live": {
+            "updates_per_second": 37.92794218355967,
+            "mean_render_us": 15349.552631578947,
+            "actual_publish_hz": 9.98103741672623,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.54074954520911,
+              "p95": 6.054166005924344,
+              "max": 6.230541970580816
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.866999923251569,
+              "p95": 6.653417134657502,
+              "max": 8.34129098802805
+            },
+            "seconds": 3.005699582863599,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.0620829872787,
+              "p95": 100.68816691637039,
+              "max": 100.97395908087492
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 90.4622080270201,
+              "p95": 107.87466610781848,
+              "max": 107.87466610781848
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 77.942,
+              "p95": 96.903,
+              "max": 96.903
+            }
+          }
+        },
+        "perlin2-bulk/200": {
+          "timing": {
+            "render_ms": 10.181693181818183,
+            "updates_hz": 58.36311726153504,
+            "status_p95_ms": 6.3122499268502,
+            "render_reusable": false,
+            "seconds": 3.015603145584464
+          },
+          "live": {
+            "updates_per_second": 58.24351455040172,
+            "mean_render_us": 10141.834285714285,
+            "actual_publish_hz": 9.984602494354581,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.806374967098236,
+              "p95": 7.275500101968646,
+              "max": 7.698458153754473
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.006958497688174,
+              "p95": 6.930333096534014,
+              "max": 9.002457838505507
+            },
+            "seconds": 3.004626375157386,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.05141608417034,
+              "p95": 100.70387506857514,
+              "max": 100.70904204621911
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 57.04666662495583,
+              "p95": 68.10012483038008,
+              "max": 68.10012483038008
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 46.938,
+              "p95": 53.968,
+              "max": 53.968
+            }
+          }
+        },
+        "perlin3-scalar/200": {
+          "timing": {
+            "render_ms": 24.360157894736844,
+            "updates_hz": 25.200732324868344,
+            "status_p95_ms": 5.96516695804894,
+            "render_reusable": false,
+            "seconds": 3.015785375609994
+          },
+          "live": {
+            "updates_per_second": 24.618124508412258,
+            "mean_render_us": 24315.12162162162,
+            "actual_publish_hz": 9.980320746653618,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.4104795195162296,
+              "p95": 6.139374803751707,
+              "max": 8.11029109172523
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.917708574794233,
+              "p95": 6.421583006158471,
+              "max": 9.075416950508952
+            },
+            "seconds": 3.005915417103097,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01820791512728,
+              "p95": 100.79516703262925,
+              "max": 100.82500008866191
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 137.85306247882545,
+              "p95": 143.79804208874702,
+              "max": 143.79804208874702
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 126.909,
+              "p95": 132.917,
+              "max": 132.917
+            }
+          }
+        },
+        "perlin3-bulk/200": {
+          "timing": {
+            "render_ms": 19.090626262626262,
+            "updates_hz": 32.86057577434853,
+            "status_p95_ms": 6.714666029438376,
+            "render_reusable": false,
+            "seconds": 3.012728708097711
+          },
+          "live": {
+            "updates_per_second": 32.29050895085292,
+            "mean_render_us": 19112.144329896906,
+            "actual_publish_hz": 9.986755345624614,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.910292056389153,
+              "p95": 6.357291014865041,
+              "max": 6.942542036995292
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.898354061879218,
+              "p95": 7.22162495367229,
+              "max": 10.53779199719429
+            },
+            "seconds": 3.003978665918112,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.97529094107449,
+              "p95": 101.08833410777152,
+              "max": 101.12208384089172
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 95.53568798583001,
+              "p95": 119.783875066787,
+              "max": 119.783875066787
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 84.94,
+              "p95": 108.946,
+              "max": 108.946
+            }
+          }
+        },
+        "simplex2-scalar/200": {
+          "timing": {
+            "render_ms": 18.8262,
+            "updates_hz": 31.54406431314202,
+            "status_p95_ms": 5.120750050991774,
+            "render_reusable": false,
+            "seconds": 3.011660103686154
+          },
+          "live": {
+            "updates_per_second": 31.29421382308586,
+            "mean_render_us": 18782.159574468085,
+            "actual_publish_hz": 9.987515049921019,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.5243749152868986,
+              "p95": 5.47941611148417,
+              "max": 7.480083964765072
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.6542709460482,
+              "p95": 6.033665966242552,
+              "max": 8.623375091701746
+            },
+            "seconds": 3.003750167088583,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.04124999977648,
+              "p95": 100.56920885108411,
+              "max": 101.09616699628532
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 101.93410411011428,
+              "p95": 125.62337494455278,
+              "max": 125.62337494455278
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 91.99,
+              "p95": 114.914,
+              "max": 114.914
+            }
+          }
+        },
+        "simplex2-bulk/200": {
+          "timing": {
+            "render_ms": 13.339235294117646,
+            "updates_hz": 45.14768917692609,
+            "status_p95_ms": 5.41716581210494,
+            "render_reusable": false,
+            "seconds": 3.0123357912525535
+          },
+          "live": {
+            "updates_per_second": 44.56567465561872,
+            "mean_render_us": 13423.701492537313,
+            "actual_publish_hz": 9.977389848272848,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.5945415729656816,
+              "p95": 6.66466704569757,
+              "max": 7.660459028556943
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.833187558688223,
+              "p95": 6.073750089854002,
+              "max": 9.501666063442826
+            },
+            "seconds": 3.006798416841775,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.03841598518193,
+              "p95": 100.71533289738,
+              "max": 100.76741618104279
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 63.02972906269133,
+              "p95": 95.9699999075383,
+              "max": 95.9699999075383
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 49.643,
+              "p95": 83.674,
+              "max": 83.674
+            }
+          }
+        },
+        "simplex3-scalar/200": {
+          "timing": {
+            "render_ms": 25.221208333333333,
+            "updates_hz": 23.876200247490743,
+            "status_p95_ms": 5.511583061888814,
+            "render_reusable": false,
+            "seconds": 3.0155552078504115
+          },
+          "live": {
+            "updates_per_second": 23.9537423277828,
+            "mean_render_us": 24995.694444444445,
+            "actual_publish_hz": 9.9807259699095,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.576354472897947,
+              "p95": 6.0330829583108425,
+              "max": 6.413582945242524
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.877917002886534,
+              "p95": 5.841125035658479,
+              "max": 7.01791699975729
+            },
+            "seconds": 3.0057933751959354,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.02637514844537,
+              "p95": 100.80787492915988,
+              "max": 100.9816660080105
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 130.9782291064039,
+              "p95": 170.65362492576241,
+              "max": 170.65362492576241
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 119.95,
+              "p95": 159.976,
+              "max": 159.976
+            }
+          }
+        },
+        "simplex3-bulk/200": {
+          "timing": {
+            "render_ms": 19.68766315789474,
+            "updates_hz": 31.518647004166652,
+            "status_p95_ms": 4.896791884675622,
+            "render_reusable": false,
+            "seconds": 3.0140887706074864
+          },
+          "live": {
+            "updates_per_second": 31.612766457541984,
+            "mean_render_us": 19600.02105263158,
+            "actual_publish_hz": 9.982978881329048,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.1933545833453536,
+              "p95": 6.851292215287685,
+              "max": 9.485916933044791
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.8901879927143455,
+              "p95": 6.99641602113843,
+              "max": 8.799624862149358
+            },
+            "seconds": 3.005115041974932,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.06104200147092,
+              "p95": 100.54904199205339,
+              "max": 100.56420904584229
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 87.29027106892318,
+              "p95": 102.87433303892612,
+              "max": 102.87433303892612
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 77.082,
+              "p95": 91.997,
+              "max": 91.997
+            }
+          }
+        },
+        "perlin2-scalar/500": {
+          "timing": {
+            "render_ms": 38.41308510638298,
+            "updates_hz": 15.594271563208318,
+            "status_p95_ms": 5.325416103005409,
+            "render_reusable": false,
+            "seconds": 3.0139272494707257
+          },
+          "live": {
+            "updates_per_second": 15.639188611811106,
+            "mean_render_us": 38129.29787234042,
+            "actual_publish_hz": 9.982460816049642,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.9811874739825726,
+              "p95": 6.145707797259092,
+              "max": 7.52574997022748
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.799749935045838,
+              "p95": 6.068125134333968,
+              "max": 8.787333033978939
+            },
+            "seconds": 3.005271000089124,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.06454098038375,
+              "p95": 100.90974997729063,
+              "max": 100.95654195174575
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 255.4524374427274,
+              "p95": 261.2807499244809,
+              "max": 261.2807499244809
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 251.272,
+              "p95": 615.347,
+              "max": 615.347
+            }
+          }
+        },
+        "perlin2-bulk/500": {
+          "timing": {
+            "render_ms": 25.183123287671233,
+            "updates_hz": 24.24021002247438,
+            "status_p95_ms": 5.594959016889334,
+            "render_reusable": false,
+            "seconds": 3.011525062378496
+          },
+          "live": {
+            "updates_per_second": 23.964805686088518,
+            "mean_render_us": 25064.916666666668,
+            "actual_publish_hz": 9.985335702536883,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.7131879944354296,
+              "p95": 5.750083131715655,
+              "max": 5.955041851848364
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.9978544702753425,
+              "p95": 6.440167082473636,
+              "max": 8.38145799934864
+            },
+            "seconds": 3.004405749961734,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.0409999396652,
+              "p95": 100.90504097752273,
+              "max": 101.06983315199614
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 145.7473331829533,
+              "p95": 199.01062501594424,
+              "max": 199.01062501594424
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 135.969,
+              "p95": 186.851,
+              "max": 186.851
+            }
+          }
+        },
+        "perlin3-scalar/500": {
+          "timing": {
+            "render_ms": 60.65145161290323,
+            "updates_hz": 10.285442599685187,
+            "status_p95_ms": 5.3289171773940325,
+            "render_reusable": false,
+            "seconds": 3.0139684996102005
+          },
+          "live": {
+            "updates_per_second": 9.983754351509225,
+            "mean_render_us": 60421.6,
+            "actual_publish_hz": 9.983754351509225,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.7938959430903196,
+              "p95": 5.4681249894201756,
+              "max": 8.389292052015662
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.997541545890272,
+              "p95": 7.591583067551255,
+              "max": 10.692666983231902
+            },
+            "seconds": 3.0048816250637174,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00029089860618,
+              "p95": 100.972541840747,
+              "max": 105.88450008071959
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 368.18656302057207,
+              "p95": 406.0986659023911,
+              "max": 406.0986659023911
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 374.343,
+              "p95": 7468.308,
+              "max": 7468.308
+            }
+          }
+        },
+        "perlin3-bulk/500": {
+          "timing": {
+            "render_ms": 47.362,
+            "updates_hz": 13.594499132419163,
+            "status_p95_ms": 6.475290982052684,
+            "render_reusable": false,
+            "seconds": 3.0159257506020367
+          },
+          "live": {
+            "updates_per_second": 12.97565694948222,
+            "mean_render_us": 47473.205128205125,
+            "actual_publish_hz": 9.981274576524784,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.599437535740435,
+              "p95": 6.249292055144906,
+              "max": 8.85479198768735
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.001437501050532,
+              "p95": 6.093249889090657,
+              "max": 8.422832936048508
+            },
+            "seconds": 3.005628166021779,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00420804135501,
+              "p95": 100.80308304168284,
+              "max": 100.83333309739828
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 261.3466870971024,
+              "p95": 277.0671669859439,
+              "max": 277.0671669859439
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 263.872,
+              "p95": 706.642,
+              "max": 706.642
+            }
+          }
+        },
+        "simplex2-scalar/500": {
+          "timing": {
+            "render_ms": 46.602256410256416,
+            "updates_hz": 12.93920747202739,
+            "status_p95_ms": 5.321500124409795,
+            "render_reusable": false,
+            "seconds": 3.014094957849011
+          },
+          "live": {
+            "updates_per_second": 12.974197388358304,
+            "mean_render_us": 46427.333333333336,
+            "actual_publish_hz": 9.980151837198695,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.3499374985694885,
+              "p95": 5.330415908247232,
+              "max": 5.885000107809901
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.784916993230581,
+              "p95": 6.234666798263788,
+              "max": 9.050749940797687
+            },
+            "seconds": 3.005966290831566,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.97429093346,
+              "p95": 100.82833282649517,
+              "max": 101.17233404889703
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 268.56685406528413,
+              "p95": 337.7388750668615,
+              "max": 337.7388750668615
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 276.234,
+              "p95": 345.204,
+              "max": 345.204
+            }
+          }
+        },
+        "simplex2-bulk/500": {
+          "timing": {
+            "render_ms": 32.878672413793105,
+            "updates_hz": 19.245216038260633,
+            "status_p95_ms": 5.9958340134471655,
+            "render_reusable": false,
+            "seconds": 3.013735979096964
+          },
+          "live": {
+            "updates_per_second": 18.631678957234577,
+            "mean_render_us": 33040.41071428572,
+            "actual_publish_hz": 9.98125658423281,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.7399380235001445,
+              "p95": 7.782291155308485,
+              "max": 7.783707929775119
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.5653753913939,
+              "p95": 6.330249831080437,
+              "max": 7.160790963098407
+            },
+            "seconds": 3.005633583990857,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.0561669934541,
+              "p95": 100.61287507414818,
+              "max": 100.61824996955693
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 174.34477037750185,
+              "p95": 239.96325000189245,
+              "max": 239.96325000189245
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 174.88,
+              "p95": 229.19,
+              "max": 229.19
+            }
+          }
+        },
+        "simplex3-scalar/500": {
+          "timing": {
+            "render_ms": 62.52713333333333,
+            "updates_hz": 9.945134695373616,
+            "status_p95_ms": 5.611042026430368,
+            "render_reusable": false,
+            "seconds": 3.0165503956377506
+          },
+          "live": {
+            "updates_per_second": 9.649808316430782,
+            "mean_render_us": 61061.31034482759,
+            "actual_publish_hz": 9.982560327342188,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.814083455130458,
+              "p95": 5.704042036086321,
+              "max": 5.9479589108377695
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.0737289711833,
+              "p95": 6.746124941855669,
+              "max": 7.511083967983723
+            },
+            "seconds": 3.0052410420030355,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00658384524286,
+              "p95": 100.59133381582797,
+              "max": 100.8018332067877
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 353.39849966112524,
+              "p95": 421.70474980957806,
+              "max": 421.70474980957806
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 349.362,
+              "p95": 409.837,
+              "max": 409.837
+            }
+          }
+        },
+        "simplex3-bulk/500": {
+          "timing": {
+            "render_ms": 48.79745,
+            "updates_hz": 13.270916893254023,
+            "status_p95_ms": 5.506207933649421,
+            "render_reusable": false,
+            "seconds": 3.0141097500454634
+          },
+          "live": {
+            "updates_per_second": 12.97903417437574,
+            "mean_render_us": 48535.4358974359,
+            "actual_publish_hz": 9.983872441827492,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.456312115304172,
+              "p95": 8.17012507468462,
+              "max": 8.544208016246557
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.980666562914848,
+              "p95": 6.013415986672044,
+              "max": 6.982333026826382
+            },
+            "seconds": 3.0048460830003023,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.038125179708,
+              "p95": 100.80000013113022,
+              "max": 101.06416721828282
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 256.0753751313314,
+              "p95": 360.2759998757392,
+              "max": 360.2759998757392
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 244.901,
+              "p95": 809.145,
+              "max": 809.145
+            }
+          }
+        },
+        "perlin2-scalar/1024": {
+          "timing": {
+            "render_ms": 78.11282608695653,
+            "updates_hz": 7.624374314283041,
+            "status_p95_ms": 5.685749929398298,
+            "render_reusable": false,
+            "seconds": 3.0166409795638174
+          },
+          "live": {
+            "updates_per_second": 7.649151173901695,
+            "mean_render_us": 77639.0,
+            "actual_publish_hz": 9.977153705089167,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.904478973709047,
+              "p95": 6.419208832085133,
+              "max": 6.469332845881581
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.862749949097633,
+              "p95": 6.271708058193326,
+              "max": 9.131624829024076
+            },
+            "seconds": 3.006869582924992,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.05204100161791,
+              "p95": 101.03141702711582,
+              "max": 101.04812495410442
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 580.2174374694005,
+              "p95": 627.6742920745164,
+              "max": 627.6742920745164
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 568.881,
+              "p95": 7758.05,
+              "max": 7758.05
+            }
+          }
+        },
+        "perlin2-bulk/1024": {
+          "timing": {
+            "render_ms": 51.08536111111111,
+            "updates_hz": 11.939546427605048,
+            "status_p95_ms": 6.4010838977992535,
+            "render_reusable": false,
+            "seconds": 3.0151899168267846
+          },
+          "live": {
+            "updates_per_second": 11.983539278597553,
+            "mean_render_us": 50790.22222222222,
+            "actual_publish_hz": 9.986282732164627,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.909312537871301,
+              "p95": 6.230999948456883,
+              "max": 6.7765419371426105
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.850103985518217,
+              "p95": 6.453332956880331,
+              "max": 9.029916021972895
+            },
+            "seconds": 3.004120833007619,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.88729190081358,
+              "p95": 100.86191608570516,
+              "max": 101.06825013644993
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 321.4999585179612,
+              "p95": 436.47433281876147,
+              "max": 436.47433281876147
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 338.856,
+              "p95": 7521.686,
+              "max": 7521.686
+            }
+          }
+        },
+        "perlin3-scalar/1024": {
+          "timing": {
+            "render_ms": 123.7242,
+            "updates_hz": 4.982292449023363,
+            "status_p95_ms": 4.872416844591498,
+            "render_reusable": false,
+            "seconds": 3.010662291198969
+          },
+          "live": {
+            "updates_per_second": 4.990244212065214,
+            "mean_render_us": 123451.0,
+            "actual_publish_hz": 9.980488424130428,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.606374957598746,
+              "p95": 6.048791809007525,
+              "max": 6.137541029602289
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.5562711311504245,
+              "p95": 6.071292096748948,
+              "max": 9.052791865542531
+            },
+            "seconds": 3.0058649161364883,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00337520614266,
+              "p95": 100.84716603159904,
+              "max": 100.8696248754859
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 942.864729440771,
+              "p95": 1039.3063330557197,
+              "max": 1039.3063330557197
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 933.844,
+              "p95": 9063.011,
+              "max": 9063.011
+            }
+          }
+        },
+        "perlin3-bulk/1024": {
+          "timing": {
+            "render_ms": 96.99265,
+            "updates_hz": 6.630163656081086,
+            "status_p95_ms": 5.586375016719103,
+            "render_reusable": false,
+            "seconds": 3.0165167916566133
+          },
+          "live": {
+            "updates_per_second": 6.650797862916591,
+            "mean_render_us": 97015.85,
+            "actual_publish_hz": 9.976196794374887,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.651562030427158,
+              "p95": 6.960541941225529,
+              "max": 7.312749978154898
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.7770621022209525,
+              "p95": 6.879917113110423,
+              "max": 9.848417015746236
+            },
+            "seconds": 3.007158000022173,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.08483403362334,
+              "p95": 100.66204192116857,
+              "max": 100.97995796240866
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 642.1784374397248,
+              "p95": 698.181290877983,
+              "max": 698.181290877983
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 642.52,
+              "p95": 7888.29,
+              "max": 7888.29
+            }
+          }
+        },
+        "simplex2-scalar/1024": {
+          "timing": {
+            "render_ms": 94.83142105263157,
+            "updates_hz": 6.299188406910731,
+            "status_p95_ms": 5.726707866415381,
+            "render_reusable": false,
+            "seconds": 3.016261583659798
+          },
+          "live": {
+            "updates_per_second": 6.657914469431749,
+            "mean_render_us": 94744.65,
+            "actual_publish_hz": 9.986871704147624,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.028812516480684,
+              "p95": 7.651708088815212,
+              "max": 7.908999919891357
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.727583029307425,
+              "p95": 5.90249989181757,
+              "max": 7.382957963272929
+            },
+            "seconds": 3.003943666117266,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00774986110628,
+              "p95": 100.46399990096688,
+              "max": 101.04304109700024
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 717.0390208484605,
+              "p95": 753.1574168242514,
+              "max": 753.1574168242514
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 717.908,
+              "p95": 7999.016,
+              "max": 7999.016
+            }
+          }
+        },
+        "simplex2-bulk/1024": {
+          "timing": {
+            "render_ms": 67.2403448275862,
+            "updates_hz": 9.621805730051877,
+            "status_p95_ms": 5.801207851618528,
+            "render_reusable": false,
+            "seconds": 3.013987271580845
+          },
+          "live": {
+            "updates_per_second": 9.31205915825722,
+            "mean_render_us": 67261.71428571429,
+            "actual_publish_hz": 9.97720624098988,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.873146022669971,
+              "p95": 5.990708013996482,
+              "max": 6.73537515103817
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.9333336064592,
+              "p95": 7.528875023126602,
+              "max": 8.47670785151422
+            },
+            "seconds": 3.006853749975562,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.13533290475607,
+              "p95": 100.79562501050532,
+              "max": 100.87729198858142
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 409.6488329814747,
+              "p95": 562.8610411658883,
+              "max": 562.8610411658883
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 414.831,
+              "p95": 7646.609,
+              "max": 7646.609
+            }
+          }
+        },
+        "simplex3-scalar/1024": {
+          "timing": {
+            "render_ms": 127.73992857142856,
+            "updates_hz": 4.645857451642545,
+            "status_p95_ms": 5.300750024616718,
+            "render_reusable": false,
+            "seconds": 3.0134372708853334
+          },
+          "live": {
+            "updates_per_second": 4.657977404118995,
+            "mean_render_us": 125908.07142857143,
+            "actual_publish_hz": 9.981380151683561,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.1004163902252913,
+              "p95": 6.401875056326389,
+              "max": 8.182374993339181
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 4.690582980401814,
+              "p95": 6.197000155225396,
+              "max": 10.00262494198978
+            },
+            "seconds": 3.0055963748600334,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.20829201675951,
+              "p95": 100.6779579911381,
+              "max": 100.88833305053413
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 943.3455835096538,
+              "p95": 1105.53191578947,
+              "max": 1105.53191578947
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 944.162,
+              "p95": 8804.487,
+              "max": 8804.487
+            }
+          }
+        },
+        "simplex3-bulk/1024": {
+          "timing": {
+            "render_ms": 99.96885,
+            "updates_hz": 6.624464275629748,
+            "status_p95_ms": 5.172000033780932,
+            "render_reusable": false,
+            "seconds": 3.019112062174827
+          },
+          "live": {
+            "updates_per_second": 6.656186316900477,
+            "mean_render_us": 99213.9,
+            "actual_publish_hz": 9.984279475350716,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.3294789027422667,
+              "p95": 6.257291883230209,
+              "max": 7.469499949365854
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.125103867612779,
+              "p95": 6.443333812057972,
+              "max": 8.228541119024158
+            },
+            "seconds": 3.0047235831152648,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00895918346941,
+              "p95": 101.8036250025034,
+              "max": 101.98283311910927
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 645.9121875232086,
+              "p95": 719.5780000183731,
+              "max": 719.5780000183731
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 634.878,
+              "p95": 8041.96,
+              "max": 8041.96
+            }
+          }
+        }
+      },
+      "replays": 192,
+      "steady_ingress_over_10ms": {
+        "timing_sampled_delta": 0,
+        "live_sampled_delta": 0
+      }
+    },
+    "s3": {
+      "source": "s3-noise-screen.json",
+      "passed": true,
+      "cleanup": "configuration restored and temporary programs removed",
+      "firmware_sha256": "ecb19269c44bba2e20d5cdee92c6c24e9bfd136de6920c839d07a22c94d1e374",
+      "description_before": {
+        "version": "1.4.0",
+        "connections": true,
+        "light_controls": true,
+        "schema": "lightvm.config",
+        "platform": "esp32",
+        "controller_id": "esp32-a4cb8fe03008",
+        "boot_id": "1ca0109ad24e178e",
+        "build_compiler": "14.2.0",
+        "cpu_clock_hz": 160000000,
+        "reset_reason": "usb",
+        "wifi_supported": true,
+        "wifi_ap_supported": true,
+        "recovery_supported": true,
+        "mqtt_supported": true,
+        "http_supported": true,
+        "websocket_supported": true,
+        "boot_sequence_supported": true,
+        "boot_sequence": {
+          "count": 2,
+          "triggered": false,
+          "error": ""
+        },
+        "network_revision": 0,
+        "vm_heap_limit": 131072,
+        "preparation_memory_bytes": 0,
+        "preparation_pending": false,
+        "board": "xiao_esp32s3",
+        "output_types": [
+          {
+            "type": "ws2812b",
+            "required": [
+              "pin",
+              "count"
+            ],
+            "order_default": "GRB",
+            "brightness_default": 255
+          }
+        ],
+        "pins": [
+          "D0",
+          "GPIO1",
+          "D1",
+          "GPIO2",
+          "D2",
+          "GPIO3",
+          "D3",
+          "GPIO4",
+          "D4",
+          "GPIO5",
+          "D5",
+          "GPIO6",
+          "D6",
+          "GPIO43",
+          "D7",
+          "GPIO44",
+          "D8",
+          "GPIO7",
+          "D9",
+          "GPIO8",
+          "D10",
+          "GPIO9"
+        ],
+        "pixel_capacity": 1024,
+        "outputs": [],
+        "inputs": [],
+        "input_event_overflow": 0,
+        "config_limit": 8192,
+        "module_limit": 32768,
+        "render_workers": 1,
+        "pico2_dcp_enabled": false,
+        "max_refresh_hz": 0,
+        "render_slice_us": 2000,
+        "invocation_limit": 10000000,
+        "bytecode_cache_bytes": 256,
+        "http_clients": 4,
+        "native_headroom_bytes": 16384,
+        "render_offloads": 0,
+        "render_worker_us": 0,
+        "render_pair_imbalance_us": 0,
+        "render_join_wait_us": 0,
+        "render_max_job_us": 0,
+        "worker_stack_peak_bytes": 0,
+        "main_stack_peak_bytes": 4424,
+        "render_epoch_target_us": 2000,
+        "render_epochs": 1822,
+        "render_epoch_total_us": 7988,
+        "render_epoch_max_us": 67,
+        "render_epoch_overruns": 0,
+        "foreground_calls": 1822,
+        "foreground_max_gap_us": 7110,
+        "foreground_over_10ms": 0,
+        "ingress_calls": 1822,
+        "ingress_max_gap_us": 7720,
+        "ingress_over_10ms": 0,
+        "instance_context_bytes": 728,
+        "app_context_bytes": 26248,
+        "upload_workspace_bytes": 68,
+        "upload_page_bytes": 256,
+        "animation_reset": true,
+        "activation_settings": true,
+        "slots": [
+          "A",
+          "B"
+        ],
+        "slot_binding": "output",
+        "pixel_format": "rgb8",
+        "frame_policy": "transparent_before_render",
+        "alpha": true,
+        "compositions": true,
+        "composition_layer_limit": 8,
+        "layer_pixel_format": "rgba8-premul",
+        "composition": true,
+        "program_generation": 1,
+        "ab_transitions": true,
+        "transition_sources": true,
+        "transition_programs": true,
+        "custom_transitions": true,
+        "transition_effects": [
+          "crossfade",
+          "wipe",
+          "soft_wipe",
+          "dissolve",
+          "dip_black",
+          "white_flash",
+          "custom"
+        ],
+        "transient_settings": true,
+        "preset_transitions": true,
+        "presets": true,
+        "typed_storage": true,
+        "live_inputs": true,
+        "input_limit": 8,
+        "input_source_limit": 16,
+        "board_status_supported": true,
+        "composition_blend_modes": [
+          "over",
+          "add",
+          "screen",
+          "multiply"
+        ],
+        "storage_available": true,
+        "storage_backend": "extent",
+        "storage_writable": true,
+        "storage_bytes": 524288,
+        "free_bytes": 516096,
+        "largest_free_bytes": 258048,
+        "storage_allocation_unit": 4096,
+        "catalog_revision": 0,
+        "active_revision": 0,
+        "saved_revision": 0,
+        "active_program": "",
+        "active_crc32": 0,
+        "boot_error": "",
+        "animation_error": "",
+        "target": "A",
+        "uploading": false
+      },
+      "description_after": {
+        "version": "1.4.0",
+        "connections": true,
+        "light_controls": true,
+        "schema": "lightvm.config",
+        "platform": "esp32",
+        "controller_id": "esp32-a4cb8fe03008",
+        "boot_id": "1ca0109ad24e178e",
+        "build_compiler": "14.2.0",
+        "cpu_clock_hz": 160000000,
+        "reset_reason": "usb",
+        "wifi_supported": true,
+        "wifi_ap_supported": true,
+        "recovery_supported": true,
+        "mqtt_supported": true,
+        "http_supported": true,
+        "websocket_supported": true,
+        "boot_sequence_supported": true,
+        "boot_sequence": {
+          "count": 0,
+          "triggered": false,
+          "error": ""
+        },
+        "network_revision": 0,
+        "vm_heap_limit": 131072,
+        "preparation_memory_bytes": 3520,
+        "preparation_pending": false,
+        "board": "xiao_esp32s3",
+        "output_types": [
+          {
+            "type": "ws2812b",
+            "required": [
+              "pin",
+              "count"
+            ],
+            "order_default": "GRB",
+            "brightness_default": 255
+          }
+        ],
+        "pins": [
+          "D0",
+          "GPIO1",
+          "D1",
+          "GPIO2",
+          "D2",
+          "GPIO3",
+          "D3",
+          "GPIO4",
+          "D4",
+          "GPIO5",
+          "D5",
+          "GPIO6",
+          "D6",
+          "GPIO43",
+          "D7",
+          "GPIO44",
+          "D8",
+          "GPIO7",
+          "D9",
+          "GPIO8",
+          "D10",
+          "GPIO9"
+        ],
+        "pixel_capacity": 1024,
+        "outputs": [
+          {
+            "id": "noise",
+            "type": "ws2812b",
+            "mode": "animation",
+            "slot": "A",
+            "pixels": 1024,
+            "ready": true,
+            "playing": true,
+            "frames": 53,
+            "render_us": 80019,
+            "show_us": 33290,
+            "preset": null,
+            "power": true,
+            "light": {
+              "revision": 0,
+              "composition_revision": 1,
+              "power": true,
+              "brightness": 1,
+              "color": 16777215,
+              "color_control": false,
+              "preset": null
+            },
+            "light_error": "",
+            "selected_preset": null,
+            "active_program": "composition",
+            "animation_error": "",
+            "composition": {
+              "revision": 1,
+              "sampled_at_us": 269088080,
+              "active": true,
+              "preset": null,
+              "playing": true,
+              "frames": 53,
+              "composite_frames": 53,
+              "composite_us": 62937,
+              "output_us": 1764414,
+              "error": "",
+              "layers": [
+                {
+                  "id": "field",
+                  "program": "nb_simplex3-bulk",
+                  "generation": 2,
+                  "opacity": 255,
+                  "blend": "over",
+                  "playing": true,
+                  "faulted": false,
+                  "frames": 53,
+                  "render_us": 80019,
+                  "render_total_us": 3951516,
+                  "render_reusable": false,
+                  "dependency_current": null,
+                  "displayed_frame": 53,
+                  "distinct_presentations": 53,
+                  "displayed_sample_age_us": 518055,
+                  "completion_to_display_us": 65804,
+                  "dependency_revision": 839,
+                  "dirty_to_display_us": 656879,
+                  "dirty_age_us": null,
+                  "runnable_wait_us": 7447460,
+                  "composite_wait_us": 777974,
+                  "output_wait_us": 0,
+                  "native_draw_us": 3606540,
+                  "error": ""
+                }
+              ]
+            }
+          }
+        ],
+        "inputs": [],
+        "input_event_overflow": 0,
+        "config_limit": 8192,
+        "module_limit": 32768,
+        "render_workers": 1,
+        "pico2_dcp_enabled": false,
+        "max_refresh_hz": 0,
+        "render_slice_us": 2000,
+        "invocation_limit": 10000000,
+        "bytecode_cache_bytes": 256,
+        "http_clients": 4,
+        "native_headroom_bytes": 16384,
+        "render_offloads": 0,
+        "render_worker_us": 0,
+        "render_pair_imbalance_us": 0,
+        "render_join_wait_us": 0,
+        "render_max_job_us": 3230,
+        "worker_stack_peak_bytes": 0,
+        "main_stack_peak_bytes": 6568,
+        "render_epoch_target_us": 2000,
+        "render_epochs": 49939,
+        "render_epoch_total_us": 118858609,
+        "render_epoch_max_us": 4875,
+        "render_epoch_overruns": 42176,
+        "foreground_calls": 49867,
+        "foreground_max_gap_us": 54033,
+        "foreground_over_10ms": 2406,
+        "ingress_calls": 49867,
+        "ingress_max_gap_us": 54037,
+        "ingress_over_10ms": 2391,
+        "instance_context_bytes": 728,
+        "app_context_bytes": 26248,
+        "upload_workspace_bytes": 68,
+        "upload_page_bytes": 256,
+        "animation_reset": true,
+        "activation_settings": true,
+        "slots": [
+          "A",
+          "B"
+        ],
+        "slot_binding": "output",
+        "pixel_format": "rgb8",
+        "frame_policy": "transparent_before_render",
+        "alpha": true,
+        "compositions": true,
+        "composition_layer_limit": 8,
+        "layer_pixel_format": "rgba8-premul",
+        "composition": true,
+        "program_generation": 1,
+        "ab_transitions": true,
+        "transition_sources": true,
+        "transition_programs": true,
+        "custom_transitions": true,
+        "transition_effects": [
+          "crossfade",
+          "wipe",
+          "soft_wipe",
+          "dissolve",
+          "dip_black",
+          "white_flash",
+          "custom"
+        ],
+        "transient_settings": true,
+        "preset_transitions": true,
+        "presets": true,
+        "typed_storage": true,
+        "live_inputs": true,
+        "input_limit": 8,
+        "input_source_limit": 16,
+        "board_status_supported": true,
+        "composition_blend_modes": [
+          "over",
+          "add",
+          "screen",
+          "multiply"
+        ],
+        "storage_available": true,
+        "storage_backend": "extent",
+        "storage_writable": true,
+        "storage_bytes": 524288,
+        "free_bytes": 479232,
+        "largest_free_bytes": 258048,
+        "storage_allocation_unit": 4096,
+        "catalog_revision": 8,
+        "active_revision": 48,
+        "saved_revision": 0,
+        "active_program": "",
+        "active_crc32": 0,
+        "boot_error": "",
+        "animation_error": "",
+        "target": "A",
+        "uploading": false
+      },
+      "temperature_c": {
+        "count": 132,
+        "median": 63.0999985,
+        "p95": 64.0999985,
+        "max": 64.0999985
+      },
+      "groups": {
+        "perlin2-scalar/200": {
+          "timing": {
+            "render_ms": 19.454637931034483,
+            "updates_hz": 19.196683078396976,
+            "status_p95_ms": 8.67545884102583,
+            "render_reusable": false,
+            "seconds": 3.0213552915956825
+          },
+          "live": {
+            "updates_per_second": 21.277534770632617,
+            "mean_render_us": 19512.703125,
+            "actual_publish_hz": 9.97384442373404,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.257812513969839,
+              "p95": 8.002041140571237,
+              "max": 10.91425004415214
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.100792088545859,
+              "p95": 7.604415994137526,
+              "max": 12.406208086758852
+            },
+            "seconds": 3.007867250125855,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.15379195101559,
+              "p95": 100.81508290022612,
+              "max": 100.92295799404383
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 135.3047500597313,
+              "p95": 147.93879189528525,
+              "max": 147.93879189528525
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 120.859,
+              "p95": 129.863,
+              "max": 129.863
+            }
+          }
+        },
+        "perlin2-bulk/200": {
+          "timing": {
+            "render_ms": 7.039333333333333,
+            "updates_hz": 48.6656339744075,
+            "status_p95_ms": 7.540666963905096,
+            "render_reusable": false,
+            "seconds": 3.0206120416987687
+          },
+          "live": {
+            "updates_per_second": 51.49762715015808,
+            "mean_render_us": 6984.98064516129,
+            "actual_publish_hz": 9.967282674224144,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.225229378789663,
+              "p95": 8.957874961197376,
+              "max": 8.987125009298325
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.50616648979485,
+              "p95": 7.862875005230308,
+              "max": 10.704540880396962
+            },
+            "seconds": 3.0098474158439785,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00258288346231,
+              "p95": 100.85658286698163,
+              "max": 100.9692910593003
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 65.97958353813738,
+              "p95": 78.88062484562397,
+              "max": 78.88062484562397
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 52.858,
+              "p95": 59.831,
+              "max": 59.831
+            }
+          }
+        },
+        "perlin3-scalar/200": {
+          "timing": {
+            "render_ms": 20.763685185185185,
+            "updates_hz": 17.90144063339117,
+            "status_p95_ms": 7.303167134523392,
+            "render_reusable": false,
+            "seconds": 3.01651700027287
+          },
+          "live": {
+            "updates_per_second": 19.948559315049135,
+            "mean_render_us": 20595.533333333333,
+            "actual_publish_hz": 9.974279657524567,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.210312501527369,
+              "p95": 9.160917019471526,
+              "max": 11.117458110675216
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.155624985694885,
+              "p95": 6.905916146934032,
+              "max": 11.411166982725263
+            },
+            "seconds": 3.007735999999568,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.04854202270508,
+              "p95": 100.76487483456731,
+              "max": 100.87550012394786
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 142.48368749395013,
+              "p95": 150.4165418446064,
+              "max": 150.4165418446064
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 127.859,
+              "p95": 136.863,
+              "max": 136.863
+            }
+          }
+        },
+        "perlin3-bulk/200": {
+          "timing": {
+            "render_ms": 8.825,
+            "updates_hz": 39.77860389224884,
+            "status_p95_ms": 7.123917108401656,
+            "render_reusable": false,
+            "seconds": 3.01669712504372
+          },
+          "live": {
+            "updates_per_second": 44.22883104126821,
+            "mean_render_us": 8556.774436090225,
+            "actual_publish_hz": 9.976428054421401,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.116666503250599,
+              "p95": 7.654417073354125,
+              "max": 8.09708284214139
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.003749906085432,
+              "p95": 7.579874945804477,
+              "max": 11.962458025664091
+            },
+            "seconds": 3.0070882921572775,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.96495908126235,
+              "p95": 100.7506251335144,
+              "max": 100.908667081967
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 86.27754100598395,
+              "p95": 89.74229218438268,
+              "max": 89.74229218438268
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 71.8,
+              "p95": 76.445,
+              "max": 76.445
+            }
+          }
+        },
+        "simplex2-scalar/200": {
+          "timing": {
+            "render_ms": 23.60966666666667,
+            "updates_hz": 15.89686017731443,
+            "status_p95_ms": 7.4575000908225775,
+            "render_reusable": false,
+            "seconds": 3.0194641875568777
+          },
+          "live": {
+            "updates_per_second": 17.971306563323534,
+            "mean_render_us": 23416.24074074074,
+            "actual_publish_hz": 9.984059201846406,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.685563035309315,
+              "p95": 10.406000073999166,
+              "max": 11.583666084334254
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.09729194547981,
+              "p95": 7.683959091082215,
+              "max": 10.925790993496776
+            },
+            "seconds": 3.0047898748889565,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.08070897310972,
+              "p95": 100.58945789933205,
+              "max": 100.82725016400218
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 161.08031303156167,
+              "p95": 196.1879162117839,
+              "max": 196.1879162117839
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 146.863,
+              "p95": 296.88,
+              "max": 296.88
+            }
+          }
+        },
+        "simplex2-bulk/200": {
+          "timing": {
+            "render_ms": 10.487028301886792,
+            "updates_hz": 35.12260186635574,
+            "status_p95_ms": 6.804250180721283,
+            "render_reusable": false,
+            "seconds": 3.017999646021053
+          },
+          "live": {
+            "updates_per_second": 35.930010842643036,
+            "mean_render_us": 10653.212962962964,
+            "actual_publish_hz": 9.980558567400843,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.040457890368998,
+              "p95": 9.747124975547194,
+              "max": 11.525833047926426
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.140062469057739,
+              "p95": 7.9013751819729805,
+              "max": 10.920000029727817
+            },
+            "seconds": 3.0058437909465283,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.92479206994176,
+              "p95": 100.95679201185703,
+              "max": 101.10487486235797
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 64.85237495508045,
+              "p95": 108.5816661361605,
+              "max": 108.5816661361605
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 51.151,
+              "p95": 89.782,
+              "max": 89.782
+            }
+          }
+        },
+        "simplex3-scalar/200": {
+          "timing": {
+            "render_ms": 27.410190476190476,
+            "updates_hz": 13.905287515425059,
+            "status_p95_ms": 7.030291948467493,
+            "render_reusable": false,
+            "seconds": 3.020433770492673
+          },
+          "live": {
+            "updates_per_second": 15.308745574400952,
+            "mean_render_us": 27400.782608695652,
+            "actual_publish_hz": 9.9839645050441,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.551813006401062,
+              "p95": 7.757750106975436,
+              "max": 7.999874884262681
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.134250084869564,
+              "p95": 7.219415856525302,
+              "max": 8.154582930728793
+            },
+            "seconds": 3.0048183749895543,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00262502580881,
+              "p95": 100.47412477433681,
+              "max": 100.90700001455843
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 185.32310449518263,
+              "p95": 213.0441248882562,
+              "max": 213.0441248882562
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 172.185,
+              "p95": 194.855,
+              "max": 194.855
+            }
+          }
+        },
+        "simplex3-bulk/200": {
+          "timing": {
+            "render_ms": 14.822454545454546,
+            "updates_hz": 25.5030059079613,
+            "status_p95_ms": 7.039125077426434,
+            "render_reusable": false,
+            "seconds": 3.0192519375123084
+          },
+          "live": {
+            "updates_per_second": 26.28048619369583,
+            "mean_render_us": 14866.911392405063,
+            "actual_publish_hz": 9.97993146596044,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.038062576204538,
+              "p95": 8.109332993626595,
+              "max": 12.470541056245565
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.521978881210089,
+              "p95": 8.361499989405274,
+              "max": 10.49541705287993
+            },
+            "seconds": 3.0060326668899506,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01775017008185,
+              "p95": 100.8422919549048,
+              "max": 101.17254196666181
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 88.88049994129688,
+              "p95": 94.41408305428922,
+              "max": 94.41408305428922
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 72.619,
+              "p95": 80.857,
+              "max": 80.857
+            }
+          }
+        },
+        "perlin2-scalar/500": {
+          "timing": {
+            "render_ms": 48.09175,
+            "updates_hz": 7.952987791227798,
+            "status_p95_ms": 7.681667106226087,
+            "render_reusable": false,
+            "seconds": 3.0177337913773954
+          },
+          "live": {
+            "updates_per_second": 8.97904166866409,
+            "mean_render_us": 48285.2962962963,
+            "actual_publish_hz": 9.97671296518232,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.260124987922609,
+              "p95": 9.046083083376288,
+              "max": 10.345750022679567
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.712458631023765,
+              "p95": 6.974666845053434,
+              "max": 7.100250106304884
+            },
+            "seconds": 3.007002416998148,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00745812430978,
+              "p95": 100.97270808182657,
+              "max": 101.12291597761214
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 394.89243796560913,
+              "p95": 418.44524978660047,
+              "max": 418.44524978660047
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 382.87,
+              "p95": 7613.171,
+              "max": 7613.171
+            }
+          }
+        },
+        "perlin2-bulk/500": {
+          "timing": {
+            "render_ms": 16.37595384615385,
+            "updates_hz": 21.46227516011322,
+            "status_p95_ms": 7.292875088751316,
+            "render_reusable": false,
+            "seconds": 3.0285698750521988
+          },
+          "live": {
+            "updates_per_second": 23.290489182488916,
+            "mean_render_us": 16341.157142857142,
+            "actual_publish_hz": 9.981638221066678,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.608562448993325,
+              "p95": 7.345790974795818,
+              "max": 7.350666914135218
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.077875033952296,
+              "p95": 8.76637501642108,
+              "max": 13.800666900351644
+            },
+            "seconds": 3.005518666934222,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01312498934567,
+              "p95": 101.19329206645489,
+              "max": 102.46725007891655
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 162.68664586823434,
+              "p95": 180.1855422090739,
+              "max": 180.1855422090739
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 148.86,
+              "p95": 162.787,
+              "max": 162.787
+            }
+          }
+        },
+        "perlin3-scalar/500": {
+          "timing": {
+            "render_ms": 51.56059090909091,
+            "updates_hz": 7.296647511572424,
+            "status_p95_ms": 6.991416914388537,
+            "render_reusable": false,
+            "seconds": 3.0150832920335233
+          },
+          "live": {
+            "updates_per_second": 8.317564041389744,
+            "mean_render_us": 51043.96,
+            "actual_publish_hz": 9.981076849667694,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.504936863668263,
+              "p95": 8.283833973109722,
+              "max": 11.54070789925754
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.862166988663375,
+              "p95": 7.0136249996721745,
+              "max": 10.57854201644659
+            },
+            "seconds": 3.0056877080351114,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.99504103325307,
+              "p95": 100.59379204176366,
+              "max": 101.2196249794215
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 400.46952036209404,
+              "p95": 410.01008404418826,
+              "max": 410.01008404418826
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 391.87,
+              "p95": 7460.191,
+              "max": 7460.191
+            }
+          }
+        },
+        "perlin3-bulk/500": {
+          "timing": {
+            "render_ms": 21.28837254901961,
+            "updates_hz": 16.91730282155899,
+            "status_p95_ms": 7.61279184371233,
+            "render_reusable": false,
+            "seconds": 3.0146649579983205
+          },
+          "live": {
+            "updates_per_second": 19.29072735128445,
+            "mean_render_us": 20840.48275862069,
+            "actual_publish_hz": 9.977962423078164,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.752833512611687,
+              "p95": 6.782541982829571,
+              "max": 7.424874929711223
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.336687947623432,
+              "p95": 7.885708007961512,
+              "max": 11.868499917909503
+            },
+            "seconds": 3.0066258748993278,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.97204202227294,
+              "p95": 101.11958393827081,
+              "max": 101.18254204280674
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 135.1842499570921,
+              "p95": 178.50491707213223,
+              "max": 178.50491707213223
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 122.639,
+              "p95": 163.877,
+              "max": 163.877
+            }
+          }
+        },
+        "simplex2-scalar/500": {
+          "timing": {
+            "render_ms": 58.47055,
+            "updates_hz": 6.614314367647734,
+            "status_p95_ms": 7.199290907010436,
+            "render_reusable": false,
+            "seconds": 3.0237450003623962
+          },
+          "live": {
+            "updates_per_second": 7.314264436405062,
+            "mean_render_us": 58200.954545454544,
+            "actual_publish_hz": 9.973996958734176,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.257915890775621,
+              "p95": 10.255458066239953,
+              "max": 10.463083162903786
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.097354576922953,
+              "p95": 6.864541908726096,
+              "max": 9.76100005209446
+            },
+            "seconds": 3.007821250008419,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.96966714970767,
+              "p95": 100.76966718770564,
+              "max": 100.79954215325415
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 428.2856665086001,
+              "p95": 489.7104168776423,
+              "max": 489.7104168776423
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 425.873,
+              "p95": 7756.11,
+              "max": 7756.11
+            }
+          }
+        },
+        "simplex2-bulk/500": {
+          "timing": {
+            "render_ms": 25.940113636363638,
+            "updates_hz": 14.570219703500848,
+            "status_p95_ms": 7.309374865144491,
+            "render_reusable": false,
+            "seconds": 3.0198583751916885
+          },
+          "live": {
+            "updates_per_second": 15.293580006170897,
+            "mean_render_us": 26076.760869565216,
+            "actual_publish_hz": 9.974073917067976,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.584999987855554,
+              "p95": 9.147666860371828,
+              "max": 9.212374920025468
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.168500054627657,
+              "p95": 8.044833783060312,
+              "max": 11.925458908081055
+            },
+            "seconds": 3.0077980421483517,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01325001940131,
+              "p95": 100.92454100959003,
+              "max": 100.94354185275733
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 195.18835400231183,
+              "p95": 256.54991692863405,
+              "max": 256.54991692863405
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 206.857,
+              "p95": 239.706,
+              "max": 239.706
+            }
+          }
+        },
+        "simplex3-scalar/500": {
+          "timing": {
+            "render_ms": 68.331875,
+            "updates_hz": 5.301489056014159,
+            "status_p95_ms": 7.126000011339784,
+            "render_reusable": false,
+            "seconds": 3.0180199998430908
+          },
+          "live": {
+            "updates_per_second": 6.32279157304778,
+            "mean_render_us": 68124.8947368421,
+            "actual_publish_hz": 9.9833551153386,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.941395367495716,
+              "p95": 8.683959022164345,
+              "max": 9.463959140703082
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.167353945784271,
+              "p95": 7.056500064209104,
+              "max": 13.503541937097907
+            },
+            "seconds": 3.0050017908215523,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.03791679628193,
+              "p95": 100.76900012791157,
+              "max": 101.20033309794962
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 484.4266459112987,
+              "p95": 538.4760829620063,
+              "max": 538.4760829620063
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 500.879,
+              "p95": 7682.212,
+              "max": 7682.212
+            }
+          }
+        },
+        "simplex3-bulk/500": {
+          "timing": {
+            "render_ms": 36.4528125,
+            "updates_hz": 10.620358361781108,
+            "status_p95_ms": 7.193374913185835,
+            "render_reusable": false,
+            "seconds": 3.013081000652164
+          },
+          "live": {
+            "updates_per_second": 10.981578551910284,
+            "mean_render_us": 36406.030303030304,
+            "actual_publish_hz": 9.983253229009348,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.583249963819981,
+              "p95": 9.56491706892848,
+              "max": 10.457416996359825
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.225854041986167,
+              "p95": 7.211416028439999,
+              "max": 11.759750079363585
+            },
+            "seconds": 3.0050324590411037,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01983284018934,
+              "p95": 100.8352090138942,
+              "max": 100.84141581319273
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 230.92264600563794,
+              "p95": 321.09720911830664,
+              "max": 321.09720911830664
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 223.851,
+              "p95": 301.86,
+              "max": 301.86
+            }
+          }
+        },
+        "perlin2-scalar/1024": {
+          "timing": {
+            "render_ms": 97.81963636363636,
+            "updates_hz": 3.6434435850633724,
+            "status_p95_ms": 7.815208053216338,
+            "render_reusable": false,
+            "seconds": 3.019121812423691
+          },
+          "live": {
+            "updates_per_second": 4.32061332837243,
+            "mean_render_us": 98140.38461538461,
+            "actual_publish_hz": 9.970646142397916,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 3.9838755037635565,
+              "p95": 7.187291979789734,
+              "max": 7.336166920140386
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.1314585618674755,
+              "p95": 7.976207882165909,
+              "max": 11.007958091795444
+            },
+            "seconds": 3.0088320828508586,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00799992121756,
+              "p95": 100.84183304570615,
+              "max": 101.02641605772078
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 961.1744584981352,
+              "p95": 985.1097499486059,
+              "max": 985.1097499486059
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 956.3815,
+              "p95": 8281.417,
+              "max": 8281.417
+            }
+          }
+        },
+        "perlin2-bulk/1024": {
+          "timing": {
+            "render_ms": 32.96015151515151,
+            "updates_hz": 10.93946132417093,
+            "status_p95_ms": 8.180458098649979,
+            "render_reusable": false,
+            "seconds": 3.0166019168682396
+          },
+          "live": {
+            "updates_per_second": 11.648073592493766,
+            "mean_render_us": 32698.285714285714,
+            "actual_publish_hz": 9.984063079280372,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.634083132259548,
+              "p95": 10.687333066016436,
+              "max": 13.336707837879658
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.168207968585193,
+              "p95": 7.494667079299688,
+              "max": 12.516124872490764
+            },
+            "seconds": 3.0047887079417706,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.99008406884968,
+              "p95": 100.70116608403623,
+              "max": 101.06104193255305
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 326.79106190335006,
+              "p95": 431.617041118443,
+              "max": 431.617041118443
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 357.819,
+              "p95": 7627.35,
+              "max": 7627.35
+            }
+          }
+        },
+        "perlin3-scalar/1024": {
+          "timing": {
+            "render_ms": 105.5592,
+            "updates_hz": 3.314616064273219,
+            "status_p95_ms": 7.466375129297376,
+            "render_reusable": false,
+            "seconds": 3.016940667061135
+          },
+          "live": {
+            "updates_per_second": 3.9934873993632496,
+            "mean_render_us": 104391.75,
+            "actual_publish_hz": 9.983718498408123,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.605437512509525,
+              "p95": 8.353374898433685,
+              "max": 8.768917061388493
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.231270497664809,
+              "p95": 7.619999814778566,
+              "max": 11.010041926056147
+            },
+            "seconds": 3.004892416065559,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.97829189524055,
+              "p95": 100.81070801243186,
+              "max": 101.11054219305515
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 983.0194789683446,
+              "p95": 1036.788749974221,
+              "max": 1036.788749974221
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 1003.8515,
+              "p95": 8121.058,
+              "max": 8121.058
+            }
+          }
+        },
+        "perlin3-bulk/1024": {
+          "timing": {
+            "render_ms": 43.016040000000004,
+            "updates_hz": 8.289776372271461,
+            "status_p95_ms": 7.846292108297348,
+            "render_reusable": false,
+            "seconds": 3.01576289604418
+          },
+          "live": {
+            "updates_per_second": 9.654416152539403,
+            "mean_render_us": 42115.862068965514,
+            "actual_publish_hz": 9.987327054351107,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 5.45241660438478,
+              "p95": 10.022375034168363,
+              "max": 10.909708915278316
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.055750069208443,
+              "p95": 7.888291962444782,
+              "max": 11.42804091796279
+            },
+            "seconds": 3.0038067079149187,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.0258750282228,
+              "p95": 100.77499994076788,
+              "max": 100.80224997363985
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 375.1515835756436,
+              "p95": 509.36658401042223,
+              "max": 509.36658401042223
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 358.893,
+              "p95": 7689.078,
+              "max": 7689.078
+            }
+          }
+        },
+        "simplex2-scalar/1024": {
+          "timing": {
+            "render_ms": 119.4511111111111,
+            "updates_hz": 2.9857657351106255,
+            "status_p95_ms": 7.493416080251336,
+            "render_reusable": false,
+            "seconds": 3.0143021249677986
+          },
+          "live": {
+            "updates_per_second": 3.6593451306361198,
+            "mean_render_us": 118066.18181818182,
+            "actual_publish_hz": 9.980032174462144,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.756396170705557,
+              "p95": 6.778208771720529,
+              "max": 10.356665821745992
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.2298745615407825,
+              "p95": 8.458124939352274,
+              "max": 11.70762488618493
+            },
+            "seconds": 3.0060023330152035,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 99.99100002460182,
+              "p95": 100.64770909957588,
+              "max": 100.6904998794198
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 1123.7468124600127,
+              "p95": 1229.583750013262,
+              "max": 1229.583750013262
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 1568.7055,
+              "p95": 9047.048,
+              "max": 9047.048
+            }
+          }
+        },
+        "simplex2-bulk/1024": {
+          "timing": {
+            "render_ms": 52.25995454545454,
+            "updates_hz": 7.275519628273108,
+            "status_p95_ms": 7.400082889944315,
+            "render_reusable": false,
+            "seconds": 3.0238390003796667
+          },
+          "live": {
+            "updates_per_second": 7.646502732306533,
+            "mean_render_us": 52861.47826086957,
+            "actual_publish_hz": 9.973699216052,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.937979043461382,
+              "p95": 7.987000048160553,
+              "max": 9.155915817245841
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 5.800833459943533,
+              "p95": 7.62220798060298,
+              "max": 11.400541989132762
+            },
+            "seconds": 3.007911041844636,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.01008305698633,
+              "p95": 101.34516702964902,
+              "max": 101.98133299127221
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 458.8188340421766,
+              "p95": 570.8846249617636,
+              "max": 570.8846249617636
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 460.883,
+              "p95": 7760.167,
+              "max": 7760.167
+            }
+          }
+        },
+        "simplex3-scalar/1024": {
+          "timing": {
+            "render_ms": 139.6341111111111,
+            "updates_hz": 2.9782610932384106,
+            "status_p95_ms": 6.876874947920442,
+            "render_reusable": false,
+            "seconds": 3.021897583268583
+          },
+          "live": {
+            "updates_per_second": 2.9943938290165355,
+            "mean_render_us": 139053.33333333334,
+            "actual_publish_hz": 9.981312763388452,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.322250024415553,
+              "p95": 6.423208164051175,
+              "max": 6.718332879245281
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.182729033753276,
+              "p95": 9.909833082929254,
+              "max": 13.565165922045708
+            },
+            "seconds": 3.0056166669819504,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.40470794774592,
+              "p95": 102.30154101736844,
+              "max": 103.7557499948889
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 1324.2204579291865,
+              "p95": 1442.2737921122462,
+              "max": 1442.2737921122462
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 8,
+              "median": 1841.384,
+              "p95": 9414.91,
+              "max": 9414.91
+            }
+          }
+        },
+        "simplex3-bulk/1024": {
+          "timing": {
+            "render_ms": 74.103625,
+            "updates_hz": 5.300243289012328,
+            "status_p95_ms": 7.323208963498473,
+            "render_reusable": false,
+            "seconds": 3.0187293540220708
+          },
+          "live": {
+            "updates_per_second": 5.315253277693082,
+            "mean_render_us": 73889.3125,
+            "actual_publish_hz": 9.966099895674528,
+            "requested_publish_hz": 10,
+            "acceptance_ms": {
+              "count": 30,
+              "median": 4.633583943359554,
+              "p95": 11.302582919597626,
+              "max": 11.864125030115247
+            },
+            "status_latency_ms": {
+              "count": 60,
+              "median": 6.2970834551379085,
+              "p95": 7.577584125101566,
+              "max": 12.01070798560977
+            },
+            "seconds": 3.0102046250831336,
+            "publish_intervals_ms": {
+              "count": 29,
+              "median": 100.00416589900851,
+              "p95": 101.92375001497567,
+              "max": 101.92879196256399
+            }
+          },
+          "replay": {
+            "count": 8,
+            "all_equal": true,
+            "input_to_readback_ms": {
+              "count": 8,
+              "median": 645.7734585274011,
+              "p95": 749.5332499966025,
+              "max": 749.5332499966025
+            },
+            "firmware_dirty_to_display_ms": {
+              "count": 7,
+              "median": 642.893,
+              "p95": 8066.087,
+              "max": 8066.087
+            }
+          }
+        }
+      },
+      "replays": 192,
+      "steady_ingress_over_10ms": {
+        "timing_sampled_delta": 1,
+        "live_sampled_delta": 0
+      }
+    }
+  },
+  "context": {
+    "schema": "lightvm.noise-campaign.v1",
+    "prepared_utc": "2026-10-24T12:03:48.631442+00:00",
+    "source_commit": "7b03d8978b82a6d01d73ab7ef827f2467966b389",
+    "noise_commit": "8332324",
+    "board_optimisation_commit": "e3c3dd36355a36cd9619e630ac958f83f5233904",
+    "cohort": "new core noise on AUTO profiles; separate from previous board A/B comparisons",
+    "boards": {
+      "c3": {
+        "board": "xiao_esp32c3",
+        "port": "/dev/cu.usbmodem1101",
+        "pin": "D1"
+      },
+      "c6": {
+        "board": "xiao_esp32c6",
+        "port": "/dev/cu.usbmodem1201",
+        "pin": "D0"
+      },
+      "s3": {
+        "board": "xiao_esp32s3",
+        "port": "/dev/cu.usbmodem4",
+        "pin": "D0"
+      }
+    },
+    "features": [
+      "wifi",
+      "http",
+      "websocket",
+      "mqtt",
+      "boot_sequence"
+    ],
+    "network_regime": "full-services-unprovisioned-ap",
+    "physical_strip_length": "unverified",
+    "optical_measurement": false,
+    "pixels": [
+      200,
+      500,
+      1024
+    ],
+    "samples_per_case": 1,
+    "seconds_per_lane": 3,
+    "warmup_seconds": 1,
+    "input_hz": 10,
+    "status_hz": 20,
+    "temperature_guard": {
+      "source": "board.temperature_c",
+      "interval_seconds": 2,
+      "stop_at_c": 80,
+      "invalid_or_stale": "stop outputs"
+    },
+    "host_validation": {
+      "ctest": {
+        "passed": 24,
+        "failed": 0
+      },
+      "targeted_python": {
+        "passed": 44,
+        "failed": 0
+      },
+      "frozen_reference_replays": 192
+    },
+    "device_access": "explicitly handed over, flashed and verified, measured, rebooted and verified clean, all ports released",
+    "evidence_class": "short hardware screen; not full optimisation acceptance",
+    "duration_decision": "user asked the ESP32 chat to avoid the full-hour test; collect bounded noise measurements first",
+    "coordinator_final_commit": "67b0675",
+    "postflight": {
+      "c3": {
+        "board": "xiao_esp32c3",
+        "phase": "complete",
+        "description": {
+          "version": "1.4.0",
+          "connections": true,
+          "light_controls": true,
+          "schema": "lightvm.config",
+          "platform": "esp32",
+          "controller_id": "esp32-d4f98d0449c0",
+          "boot_id": "ca0dec0b745b8b3d",
+          "build_compiler": "14.2.0",
+          "cpu_clock_hz": 160000000,
+          "reset_reason": "usb",
+          "wifi_supported": true,
+          "wifi_ap_supported": true,
+          "recovery_supported": true,
+          "mqtt_supported": true,
+          "http_supported": true,
+          "websocket_supported": true,
+          "boot_sequence_supported": true,
+          "boot_sequence": {
+            "count": 1,
+            "triggered": false,
+            "error": ""
+          },
+          "network_revision": 0,
+          "vm_heap_limit": 131072,
+          "preparation_memory_bytes": 0,
+          "preparation_pending": false,
+          "board": "xiao_esp32c3",
+          "output_types": [
+            {
+              "type": "ws2812b",
+              "required": [
+                "pin",
+                "count"
+              ],
+              "order_default": "GRB",
+              "brightness_default": 255
+            }
+          ],
+          "pins": [
+            "D0",
+            "GPIO2",
+            "D1",
+            "GPIO3",
+            "D2",
+            "GPIO4",
+            "D3",
+            "GPIO5",
+            "D4",
+            "GPIO6",
+            "D5",
+            "GPIO7",
+            "D6",
+            "GPIO21",
+            "D7",
+            "GPIO20",
+            "D8",
+            "GPIO8",
+            "D9",
+            "GPIO9",
+            "D10",
+            "GPIO10"
+          ],
+          "pixel_capacity": 1024,
+          "outputs": [],
+          "inputs": [],
+          "input_event_overflow": 0,
+          "config_limit": 8192,
+          "module_limit": 32768,
+          "render_workers": 1,
+          "pico2_dcp_enabled": false,
+          "max_refresh_hz": 0,
+          "render_slice_us": 2000,
+          "invocation_limit": 10000000,
+          "bytecode_cache_bytes": 256,
+          "http_clients": 4,
+          "native_headroom_bytes": 16384,
+          "render_offloads": 0,
+          "render_worker_us": 0,
+          "render_pair_imbalance_us": 0,
+          "render_join_wait_us": 0,
+          "render_max_job_us": 0,
+          "worker_stack_peak_bytes": 0,
+          "main_stack_peak_bytes": 4224,
+          "render_epoch_target_us": 2000,
+          "render_epochs": 1854,
+          "render_epoch_total_us": 57057,
+          "render_epoch_max_us": 238,
+          "render_epoch_overruns": 0,
+          "foreground_calls": 1854,
+          "foreground_max_gap_us": 5376,
+          "foreground_over_10ms": 0,
+          "ingress_calls": 1854,
+          "ingress_max_gap_us": 6298,
+          "ingress_over_10ms": 0,
+          "instance_context_bytes": 728,
+          "app_context_bytes": 26248,
+          "upload_workspace_bytes": 68,
+          "upload_page_bytes": 256,
+          "animation_reset": true,
+          "activation_settings": true,
+          "slots": [
+            "A",
+            "B"
+          ],
+          "slot_binding": "output",
+          "pixel_format": "rgb8",
+          "frame_policy": "transparent_before_render",
+          "alpha": true,
+          "compositions": true,
+          "composition_layer_limit": 8,
+          "layer_pixel_format": "rgba8-premul",
+          "composition": true,
+          "program_generation": 1,
+          "ab_transitions": true,
+          "transition_sources": true,
+          "transition_programs": true,
+          "custom_transitions": true,
+          "transition_effects": [
+            "crossfade",
+            "wipe",
+            "soft_wipe",
+            "dissolve",
+            "dip_black",
+            "white_flash",
+            "custom"
+          ],
+          "transient_settings": true,
+          "preset_transitions": true,
+          "presets": true,
+          "typed_storage": true,
+          "live_inputs": true,
+          "input_limit": 8,
+          "input_source_limit": 16,
+          "board_status_supported": true,
+          "composition_blend_modes": [
+            "over",
+            "add",
+            "screen",
+            "multiply"
+          ],
+          "storage_available": true,
+          "storage_backend": "extent",
+          "storage_writable": true,
+          "storage_bytes": 524288,
+          "free_bytes": 516096,
+          "largest_free_bytes": 258048,
+          "storage_allocation_unit": 4096,
+          "catalog_revision": 16,
+          "active_revision": 0,
+          "saved_revision": 0,
+          "active_program": "",
+          "active_crc32": 0,
+          "boot_error": "",
+          "animation_error": "",
+          "target": "A",
+          "uploading": false
+        },
+        "active_config": {
+          "schema": "lightvm.config",
+          "outputs": []
+        },
+        "saved_config": {
+          "schema": "lightvm.config",
+          "outputs": []
+        },
+        "programs": [],
+        "presets": [],
+        "benchmark_publishers": {
+          "noise.scale": [],
+          "noise.phase": [],
+          "noise.field": []
+        },
+        "passed": true
+      },
+      "c6": {
+        "board": "xiao_esp32c6",
+        "phase": "complete",
+        "description": {
+          "version": "1.4.0",
+          "connections": true,
+          "light_controls": true,
+          "schema": "lightvm.config",
+          "platform": "esp32",
+          "controller_id": "esp32-10bda3999904",
+          "boot_id": "c742e3cc25106d05",
+          "build_compiler": "14.2.0",
+          "cpu_clock_hz": 160000000,
+          "reset_reason": "usb",
+          "wifi_supported": true,
+          "wifi_ap_supported": true,
+          "recovery_supported": true,
+          "mqtt_supported": true,
+          "http_supported": true,
+          "websocket_supported": true,
+          "boot_sequence_supported": true,
+          "boot_sequence": {
+            "count": 1,
+            "triggered": false,
+            "error": ""
+          },
+          "network_revision": 0,
+          "vm_heap_limit": 131072,
+          "preparation_memory_bytes": 0,
+          "preparation_pending": false,
+          "board": "xiao_esp32c6",
+          "output_types": [
+            {
+              "type": "ws2812b",
+              "required": [
+                "pin",
+                "count"
+              ],
+              "order_default": "GRB",
+              "brightness_default": 255
+            }
+          ],
+          "pins": [
+            "D0",
+            "GPIO0",
+            "D1",
+            "GPIO1",
+            "D2",
+            "GPIO2",
+            "D3",
+            "GPIO21",
+            "D4",
+            "GPIO22",
+            "D5",
+            "GPIO23",
+            "D6",
+            "GPIO16",
+            "D7",
+            "GPIO17",
+            "D8",
+            "GPIO19",
+            "D9",
+            "GPIO20",
+            "D10",
+            "GPIO18"
+          ],
+          "pixel_capacity": 1024,
+          "outputs": [],
+          "inputs": [],
+          "input_event_overflow": 0,
+          "config_limit": 8192,
+          "module_limit": 32768,
+          "render_workers": 1,
+          "pico2_dcp_enabled": false,
+          "max_refresh_hz": 0,
+          "render_slice_us": 2000,
+          "invocation_limit": 10000000,
+          "bytecode_cache_bytes": 256,
+          "http_clients": 4,
+          "native_headroom_bytes": 16384,
+          "render_offloads": 0,
+          "render_worker_us": 0,
+          "render_pair_imbalance_us": 0,
+          "render_join_wait_us": 0,
+          "render_max_job_us": 0,
+          "worker_stack_peak_bytes": 0,
+          "main_stack_peak_bytes": 4228,
+          "render_epoch_target_us": 2000,
+          "render_epochs": 1803,
+          "render_epoch_total_us": 13089,
+          "render_epoch_max_us": 217,
+          "render_epoch_overruns": 0,
+          "foreground_calls": 1803,
+          "foreground_max_gap_us": 4655,
+          "foreground_over_10ms": 0,
+          "ingress_calls": 1803,
+          "ingress_max_gap_us": 4970,
+          "ingress_over_10ms": 0,
+          "instance_context_bytes": 728,
+          "app_context_bytes": 26248,
+          "upload_workspace_bytes": 68,
+          "upload_page_bytes": 256,
+          "animation_reset": true,
+          "activation_settings": true,
+          "slots": [
+            "A",
+            "B"
+          ],
+          "slot_binding": "output",
+          "pixel_format": "rgb8",
+          "frame_policy": "transparent_before_render",
+          "alpha": true,
+          "compositions": true,
+          "composition_layer_limit": 8,
+          "layer_pixel_format": "rgba8-premul",
+          "composition": true,
+          "program_generation": 1,
+          "ab_transitions": true,
+          "transition_sources": true,
+          "transition_programs": true,
+          "custom_transitions": true,
+          "transition_effects": [
+            "crossfade",
+            "wipe",
+            "soft_wipe",
+            "dissolve",
+            "dip_black",
+            "white_flash",
+            "custom"
+          ],
+          "transient_settings": true,
+          "preset_transitions": true,
+          "presets": true,
+          "typed_storage": true,
+          "live_inputs": true,
+          "input_limit": 8,
+          "input_source_limit": 16,
+          "board_status_supported": true,
+          "composition_blend_modes": [
+            "over",
+            "add",
+            "screen",
+            "multiply"
+          ],
+          "storage_available": true,
+          "storage_backend": "extent",
+          "storage_writable": true,
+          "storage_bytes": 524288,
+          "free_bytes": 516096,
+          "largest_free_bytes": 258048,
+          "storage_allocation_unit": 4096,
+          "catalog_revision": 16,
+          "active_revision": 0,
+          "saved_revision": 0,
+          "active_program": "",
+          "active_crc32": 0,
+          "boot_error": "",
+          "animation_error": "",
+          "target": "A",
+          "uploading": false
+        },
+        "active_config": {
+          "schema": "lightvm.config",
+          "outputs": []
+        },
+        "saved_config": {
+          "schema": "lightvm.config",
+          "outputs": []
+        },
+        "programs": [],
+        "presets": [],
+        "benchmark_publishers": {
+          "noise.scale": [],
+          "noise.phase": [],
+          "noise.field": []
+        },
+        "passed": true
+      },
+      "s3": {
+        "board": "xiao_esp32s3",
+        "phase": "complete",
+        "description": {
+          "version": "1.4.0",
+          "connections": true,
+          "light_controls": true,
+          "schema": "lightvm.config",
+          "platform": "esp32",
+          "controller_id": "esp32-a4cb8fe03008",
+          "boot_id": "f79062e600735143",
+          "build_compiler": "14.2.0",
+          "cpu_clock_hz": 160000000,
+          "reset_reason": "usb",
+          "wifi_supported": true,
+          "wifi_ap_supported": true,
+          "recovery_supported": true,
+          "mqtt_supported": true,
+          "http_supported": true,
+          "websocket_supported": true,
+          "boot_sequence_supported": true,
+          "boot_sequence": {
+            "count": 1,
+            "triggered": false,
+            "error": ""
+          },
+          "network_revision": 0,
+          "vm_heap_limit": 131072,
+          "preparation_memory_bytes": 0,
+          "preparation_pending": false,
+          "board": "xiao_esp32s3",
+          "output_types": [
+            {
+              "type": "ws2812b",
+              "required": [
+                "pin",
+                "count"
+              ],
+              "order_default": "GRB",
+              "brightness_default": 255
+            }
+          ],
+          "pins": [
+            "D0",
+            "GPIO1",
+            "D1",
+            "GPIO2",
+            "D2",
+            "GPIO3",
+            "D3",
+            "GPIO4",
+            "D4",
+            "GPIO5",
+            "D5",
+            "GPIO6",
+            "D6",
+            "GPIO43",
+            "D7",
+            "GPIO44",
+            "D8",
+            "GPIO7",
+            "D9",
+            "GPIO8",
+            "D10",
+            "GPIO9"
+          ],
+          "pixel_capacity": 1024,
+          "outputs": [],
+          "inputs": [],
+          "input_event_overflow": 0,
+          "config_limit": 8192,
+          "module_limit": 32768,
+          "render_workers": 1,
+          "pico2_dcp_enabled": false,
+          "max_refresh_hz": 0,
+          "render_slice_us": 2000,
+          "invocation_limit": 10000000,
+          "bytecode_cache_bytes": 256,
+          "http_clients": 4,
+          "native_headroom_bytes": 16384,
+          "render_offloads": 0,
+          "render_worker_us": 0,
+          "render_pair_imbalance_us": 0,
+          "render_join_wait_us": 0,
+          "render_max_job_us": 0,
+          "worker_stack_peak_bytes": 0,
+          "main_stack_peak_bytes": 4424,
+          "render_epoch_target_us": 2000,
+          "render_epochs": 1809,
+          "render_epoch_total_us": 8949,
+          "render_epoch_max_us": 261,
+          "render_epoch_overruns": 0,
+          "foreground_calls": 1809,
+          "foreground_max_gap_us": 7103,
+          "foreground_over_10ms": 0,
+          "ingress_calls": 1809,
+          "ingress_max_gap_us": 7720,
+          "ingress_over_10ms": 0,
+          "instance_context_bytes": 728,
+          "app_context_bytes": 26248,
+          "upload_workspace_bytes": 68,
+          "upload_page_bytes": 256,
+          "animation_reset": true,
+          "activation_settings": true,
+          "slots": [
+            "A",
+            "B"
+          ],
+          "slot_binding": "output",
+          "pixel_format": "rgb8",
+          "frame_policy": "transparent_before_render",
+          "alpha": true,
+          "compositions": true,
+          "composition_layer_limit": 8,
+          "layer_pixel_format": "rgba8-premul",
+          "composition": true,
+          "program_generation": 1,
+          "ab_transitions": true,
+          "transition_sources": true,
+          "transition_programs": true,
+          "custom_transitions": true,
+          "transition_effects": [
+            "crossfade",
+            "wipe",
+            "soft_wipe",
+            "dissolve",
+            "dip_black",
+            "white_flash",
+            "custom"
+          ],
+          "transient_settings": true,
+          "preset_transitions": true,
+          "presets": true,
+          "typed_storage": true,
+          "live_inputs": true,
+          "input_limit": 8,
+          "input_source_limit": 16,
+          "board_status_supported": true,
+          "composition_blend_modes": [
+            "over",
+            "add",
+            "screen",
+            "multiply"
+          ],
+          "storage_available": true,
+          "storage_backend": "extent",
+          "storage_writable": true,
+          "storage_bytes": 524288,
+          "free_bytes": 516096,
+          "largest_free_bytes": 258048,
+          "storage_allocation_unit": 4096,
+          "catalog_revision": 16,
+          "active_revision": 0,
+          "saved_revision": 0,
+          "active_program": "",
+          "active_crc32": 0,
+          "boot_error": "",
+          "animation_error": "",
+          "target": "A",
+          "uploading": false
+        },
+        "active_config": {
+          "schema": "lightvm.config",
+          "outputs": []
+        },
+        "saved_config": {
+          "schema": "lightvm.config",
+          "outputs": []
+        },
+        "programs": [],
+        "presets": [],
+        "benchmark_publishers": {
+          "noise.scale": [],
+          "noise.phase": [],
+          "noise.field": []
+        },
+        "passed": true
+      }
+    }
+  },
+  "images": {
+    "git_sha": "7b03d8978b82a6d01d73ab7ef827f2467966b389",
+    "idf_path": "/Users/kws/work/kajlights/lightvm/build/cleanup-deps/esp-idf",
+    "idf_tools_path": "/Users/kws/work/kajlights/lightvm/build/cleanup-deps/idf-tools",
+    "images": {
+      "c3": {
+        "configure": [
+          "/private/tmp/lightvm-control-tools/cmake/data/bin/cmake",
+          "-S",
+          "/Users/kws/.codex/worktrees/6164/lightvm/platforms/esp32",
+          "-B",
+          "/Users/kws/.codex/worktrees/6164/lightvm/build/noise-hardware/images/c3",
+          "-G",
+          "Unix Makefiles",
+          "-DLIGHTVM_BOARD=xiao_esp32c3",
+          "-DLIGHTVM_ESP32_PROFILE=AUTO",
+          "-DPYTHON=/Users/kws/work/kajlights/lightvm/build/cleanup-deps/idf-tools/python_env/idf5.5_py3.12_env/bin/python",
+          "-DLIGHTVM_WIFI=ON",
+          "-DLIGHTVM_HTTP=ON",
+          "-DLIGHTVM_WEBSOCKET=ON",
+          "-DLIGHTVM_MQTT=ON",
+          "-DLIGHTVM_BOOT_SEQUENCE=ON"
+        ],
+        "configure_exit": 0,
+        "build_exit": 0,
+        "sha256": {
+          "lightvm.bin": "f3c24984f8aed5c1e54fc7ed92ec25ef000feb3caae531d5a924950de40991ed",
+          "lightvm.elf": "24fbe5b6b34246cb060f5f01c20c19b4536bf21715531b0192622bbd854b2376",
+          "sdkconfig": "765e4575a6ade6387573b5bf1c1a4be46d75869bcf3bbff77768c1f9bc62bad0",
+          "CMakeCache.txt": "1c35302cfaa9b368378e8348277868424990a27dc979f85bdfd638e5d700deb1",
+          "flasher_args.json": "d2f39eeff4b16d383759298034a7b68c909df62c258450b8818b3fb4bd93c0ce"
+        }
+      },
+      "c6": {
+        "configure": [
+          "/private/tmp/lightvm-control-tools/cmake/data/bin/cmake",
+          "-S",
+          "/Users/kws/.codex/worktrees/6164/lightvm/platforms/esp32",
+          "-B",
+          "/Users/kws/.codex/worktrees/6164/lightvm/build/noise-hardware/images/c6",
+          "-G",
+          "Unix Makefiles",
+          "-DLIGHTVM_BOARD=xiao_esp32c6",
+          "-DLIGHTVM_ESP32_PROFILE=AUTO",
+          "-DPYTHON=/Users/kws/work/kajlights/lightvm/build/cleanup-deps/idf-tools/python_env/idf5.5_py3.12_env/bin/python",
+          "-DLIGHTVM_WIFI=ON",
+          "-DLIGHTVM_HTTP=ON",
+          "-DLIGHTVM_WEBSOCKET=ON",
+          "-DLIGHTVM_MQTT=ON",
+          "-DLIGHTVM_BOOT_SEQUENCE=ON"
+        ],
+        "configure_exit": 0,
+        "build_exit": 0,
+        "sha256": {
+          "lightvm.bin": "cd22eb7fbff0ff33309782f1d481f5ec18461c34fdc26e182b2217aadc468d28",
+          "lightvm.elf": "3088387a2d9f340307eaf86cd7030276f68ec27ab771f5eed6603669f7db996e",
+          "sdkconfig": "4c2602e2319b8bb96b1dfc6e8eb56abc2351a48393c5a3ca2fc163aa46a2278e",
+          "CMakeCache.txt": "e3118f27ca36e880c9118a786a302f0c6157aedd690f2826acc63189f99d7d42",
+          "flasher_args.json": "4753a3d4f8e009ddf7bd033ed4f457309c47513715afc595f690dc040f3af8fc"
+        }
+      },
+      "s3": {
+        "configure": [
+          "/private/tmp/lightvm-control-tools/cmake/data/bin/cmake",
+          "-S",
+          "/Users/kws/.codex/worktrees/6164/lightvm/platforms/esp32",
+          "-B",
+          "/Users/kws/.codex/worktrees/6164/lightvm/build/noise-hardware/images/s3",
+          "-G",
+          "Unix Makefiles",
+          "-DLIGHTVM_BOARD=xiao_esp32s3",
+          "-DLIGHTVM_ESP32_PROFILE=AUTO",
+          "-DPYTHON=/Users/kws/work/kajlights/lightvm/build/cleanup-deps/idf-tools/python_env/idf5.5_py3.12_env/bin/python",
+          "-DLIGHTVM_WIFI=ON",
+          "-DLIGHTVM_HTTP=ON",
+          "-DLIGHTVM_WEBSOCKET=ON",
+          "-DLIGHTVM_MQTT=ON",
+          "-DLIGHTVM_BOOT_SEQUENCE=ON"
+        ],
+        "configure_exit": 0,
+        "build_exit": 0,
+        "sha256": {
+          "lightvm.bin": "ecb19269c44bba2e20d5cdee92c6c24e9bfd136de6920c839d07a22c94d1e374",
+          "lightvm.elf": "8d3a19483a1b2b95b60b137e7f4fd7d596a9ac41b2f8af7d965f5f8ffb13aa2c",
+          "sdkconfig": "6b034d2e8c62cc78076478cbed5a25ea6d37d604bf591616fa38b7df85553702",
+          "CMakeCache.txt": "1b9ac1b4c3965c47c9e1e7708b641d09b3bcd28689420884942da5a92572dd72",
+          "flasher_args.json": "dc2cc57cc12adf9950a6a9d2f4932001dba7c4a973268a90ab1d4f4a22d85465"
+        }
+      }
+    }
+  },
+  "image_size_comparison": {
+    "c3": {
+      "baseline_bytes": 1136992,
+      "noise_bytes": 1142208,
+      "change_bytes": 5216
+    },
+    "c6": {
+      "baseline_bytes": 1178544,
+      "noise_bytes": 1183744,
+      "change_bytes": 5200
+    },
+    "s3": {
+      "baseline_bytes": 1033792,
+      "noise_bytes": 1039104,
+      "change_bytes": 5312
+    }
+  }
+}
