@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Check CDC packet boundaries and fragmented requests on an attached Pico."""
+"""Check CDC packet boundaries and fragmented requests on an attached controller."""
 import argparse
+import board_monitor
 import hashlib
 import json
 from pathlib import Path
@@ -10,7 +11,8 @@ from client import Client, MANAGE, SerialTransport, frame
 
 
 def run(args):
-    client = Client(SerialTransport(args.port), timeout=5)
+    client = Client(SerialTransport(args.port, no_reset=args.no_reset), timeout=5)
+    board_monitor.attach(client, args)
     result = {'label': args.label,
               'firmware_sha256': hashlib.sha256(args.firmware.read_bytes()).hexdigest(),
               'requests': []}
@@ -24,6 +26,7 @@ def run(args):
             for repeat in range(args.samples):
                 for wire_bytes in (*range(64, 513, 64), 528):
                     payload = body.ljust(wire_bytes - 16, b' ')
+                    if getattr(client, "board_monitor", None): client.board_monitor.check()
                     started = time.monotonic()
                     if fragmented:
                         client.request_id = client.request_id % 65535 + 1
@@ -65,6 +68,8 @@ if __name__ == '__main__':
     parser.add_argument('--label', required=True)
     parser.add_argument('--result', required=True, type=Path)
     parser.add_argument('--samples', type=int, default=10)
+    parser.add_argument('--no-reset', action='store_true')
+    board_monitor.add_arguments(parser)
     args = parser.parse_args()
     if args.samples < 1:
         parser.error('at least one sample required')

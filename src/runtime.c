@@ -42,6 +42,7 @@ void runtime_epoch_end(void){
 RuntimeEpochStats runtime_epoch_stats(void){return epoch_stats;}
 __attribute__((weak)) unsigned platform_main_stack_peak(void){return 0;}
 __attribute__((weak)) unsigned platform_cpu_hz(void){return 0;}
+__attribute__((weak)) const char *platform_reset_reason(void){return NULL;}
 void runtime_defer_begin(void){deferred++;}
 void runtime_defer_end(void){assert(deferred);deferred--;}
 void runtime_services(void (*fn)(void *),void *ctx){service=fn;context=ctx;}

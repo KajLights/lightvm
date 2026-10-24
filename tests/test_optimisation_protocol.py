@@ -83,6 +83,7 @@ class ComparisonTests(unittest.TestCase):
 
     def test_incompatible_runs_are_rejected(self):
         for key, value in (('board', 'xiao_esp32c3'), ('rig', 'other-board'),
+                           ('temperature_monitor', {'interval_seconds': 2, 'limit_c': 80}),
                            ('pixels', 500), ('network_regime', 'loaded'), ('poll_hz', 0),
                            ('packages', {'map': {'bytecode_sha256': 'b' * 64}})):
             with self.subTest(key=key):

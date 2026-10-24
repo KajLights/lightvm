@@ -5,6 +5,7 @@ Replaces the resident program, stops playback and restores active configuration.
 Persistent programs and saved configuration are untouched.
 """
 import argparse
+import board_monitor
 from pathlib import Path
 import struct
 import sys
@@ -88,10 +89,13 @@ def main():
     parser.add_argument('--board',required=True)
     parser.add_argument('--reference',type=Path,default=ROOT/'build/host/lightvm')
     parser.add_argument('--no-reset',action='store_true')
+    board_monitor.add_arguments(parser)
     args=parser.parse_args()
     controller=SerialTransport(args.port,no_reset=args.no_reset or args.board.startswith('xiao_esp32')) if args.port else ProcessTransport(args.process)
     reference=ProcessTransport(args.reference)
-    try:smoke(Client(controller),args.board,Client(reference))
+    client=Client(controller)
+    board_monitor.attach(client, args)
+    try:smoke(client,args.board,Client(reference))
     finally:controller.close();reference.close()
 
 if __name__=='__main__':main()

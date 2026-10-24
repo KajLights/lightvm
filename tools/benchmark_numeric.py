@@ -7,6 +7,7 @@ Only the selected output pin is driven. Logical counts above its physical length
 test execution and admission, not optical output.
 """
 import argparse
+import board_monitor
 import hashlib
 import json
 from pathlib import Path
@@ -79,6 +80,7 @@ def run(args):
     pin = args.pin
     client = Client(SerialTransport(args.port, no_reset=args.no_reset)
                     if args.port else ProcessTransport(args.process), timeout=120)
+    board_monitor.attach(client, args)
     result = {'label': args.label, 'firmware_sha256': sha(args.firmware.read_bytes()),
               'packages': {n: manifest[n] for n in names}, 'replays': [], 'samples': [],
               'warmup_seconds': args.warmup, 'pin': pin,
@@ -122,7 +124,7 @@ def run(args):
                             configure(client, [program], count, pin)
                             setup_ms = (time.monotonic() - began) * 1000
                             memory = client.program_state(output='numeric', layer='layer0')
-                            time.sleep(args.warmup)
+                            board_monitor.sleep(client, args.warmup)
                             row = sample(client, 'numeric', args.seconds)
                             row.update(case=name, variant=variant, trial=trial + 1, pixels=count,
                                        setup_ms=setup_ms, memory=memory)
@@ -135,7 +137,7 @@ def run(args):
             if args.mixed:
                 selected = [name + '-bulk' for name in cases[:2]]
                 configure(client, selected, args.pixels[0], pin)
-                time.sleep(args.warmup)
+                board_monitor.sleep(client, args.warmup)
                 row = sample(client, 'numeric', args.seconds)
                 row.update(case='mixed', programs=selected, pixels=args.pixels[0])
                 result['samples'].append(row)
@@ -174,6 +176,7 @@ def main():
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--seconds', type=float, default=10)
     parser.add_argument('--warmup', type=float, default=3)
+    board_monitor.add_arguments(parser)
     args = parser.parse_args()
     if args.prepare:
         prepare(args.packages)
