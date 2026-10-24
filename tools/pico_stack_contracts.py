@@ -14,7 +14,7 @@ def enabled_target(name, features):
     if name in ('tcp_tmr','tcpip_tcp_timer') and not (features['LIGHTVM_HTTP'] or features['LIGHTVM_MQTT']):return False
     if (name.startswith(('src/home_assistant.c:', 'src/ha_keys.c:', 'platforms/pico/mqtt_port.c:')) or
         name in ('ha_tick','mqtt_tick','error_stream','resolved','dns_tmr','dns_recv')) and not features['LIGHTVM_MQTT']:return False
-    if (name.startswith(('src/http.c:', 'src/discovery.c:')) or name in ('http_tick','failed','discovery_received','igmp_tmr') or
+    if (name.startswith(('shared/device-core/src/http.c:', 'shared/device-core/src/discovery.c:')) or name in ('http_tick','failed','discovery_received','igmp_tmr') or
         name.startswith('platforms/pico/network_port.c:') and name.split(':')[-1] in
         ('output','close_client','receive','accept_client','failed','discovery_send','discovery_received')) and not features['LIGHTVM_HTTP']:return False
     if (name.startswith('platforms/pico/network_port.c:') or name=='cyw43_gpio_irq_handler' or
@@ -24,8 +24,8 @@ def enabled_target(name, features):
 PIXELS = tuple('platform_'+kind+'_'+op for kind in ('pixels','apa102')
                for op in ('open','close','show','submit','poll','cancel'))
 SEND = ('src/session.c:send_message', 'platforms/pico/main.c:output_message',
-        'src/http.c:capture', 'src/home_assistant.c:response')
-WRITE = ('platforms/pico/main.c:output_bytes', 'src/http.c:capture_bytes')
+        'shared/device-core/src/http.c:capture', 'src/home_assistant.c:response')
+WRITE = ('platforms/pico/main.c:output_bytes', 'shared/device-core/src/http.c:capture_bytes')
 RANGES = ('src/transition.c:compose_pixels',
           'src/composition.c:compose_pixels')
 READ = ('vm_read', 'src/vm.c:stored_read')
@@ -46,7 +46,7 @@ CALLBACKS = {
     'src/render_executor.c:render_execute': ('render_job_execute',),
     'src/render_executor.c:render_platform_submit': ('render_job_execute',),
     'send_status': SEND, 'write_frame': WRITE,
-    'src/protocol.c:finish_frame': ('src/session.c:receive_message',)+SEND,
+    'shared/device-core/src/protocol.c:finish_frame': ('src/session.c:receive_message',)+SEND,
     'src/session.c:send_message': SEND[1:],
     'src/app.c:vm_send': SEND,
     'src/control.c:bytes': ('src/app.c:vm_send',),
@@ -54,12 +54,18 @@ CALLBACKS = {
     'input_binding_describe': ('src/app.c:binding_text','src/control.c:input_text'),
     'inputs_describe': ('src/control.c:input_text',),
     'src/outputs.c:parse': ('src/outputs.c:validate_pixels','src/outputs.c:validate_apa102'),
-    'http_tick': ('platforms/pico/network_port.c:output','platforms/pico/network_port.c:close_client'),
+    'http_tick': ('platforms/pico/network_port.c:output','platforms/pico/network_port.c:close_client',
+                  'src/device_host.c:busy','src/device_host.c:dispatch','src/device_host.c:disconnect','src/device_host.c:delivered'),
+    'http_disconnect_sessions': ('src/device_host.c:disconnect',),
+    'http_setup': ('src/device_host.c:save',),
+    'shared/device-core/src/http.c:expire': ('src/device_host.c:disconnect',),
+    'shared/device-core/src/http.c:command': ('src/device_host.c:dispatch',),
+    'shared/device-core/src/http.c:execute': ('src/device_host.c:disconnect','src/device_host.c:dispatch'),
     'mqtt_tick': STREAM+('src/home_assistant.c:message',), 'mqtt_close': STREAM,
     'network_apply': NETWORK, 'network_tick': NETWORK,
-    'src/network.c:configure_radio': NETWORK, 'src/network.c:backoff': NETWORK, 'src/network.c:next': NETWORK,
-    'src/discovery.c:query': ('platforms/pico/network_port.c:discovery_send',),
-    'src/discovery.c:response': ('platforms/pico/network_port.c:discovery_send',),
+    'shared/device-core/src/network.c:configure_radio': NETWORK, 'shared/device-core/src/network.c:backoff': NETWORK, 'shared/device-core/src/network.c:next': NETWORK,
+    'shared/device-core/src/discovery.c:query': ('platforms/pico/network_port.c:discovery_send',),
+    'shared/device-core/src/discovery.c:response': ('platforms/pico/network_port.c:discovery_send',),
 }
 for name in ('bytes','flush','describe','empty_config','config_apply','composition_output_command',
              'composition_state_for','error_reply','indicator_command','indicator_tick','key_feedback_command',
@@ -87,9 +93,9 @@ for caller, targets in {
     'store_put_config': ('write_step','write_cancel'), 'store_read': ('read_bytes',), 'store_unpin': (),
     'store_upload_begin': ('begin',), 'store_upload_cancel': ('cancel',), 'store_upload_chunk': ('chunk',),
     'store_upload_finish': ('finish',), 'store_write_cancel': ('write_cancel',), 'store_write_step': ('write_step',),
-}.items(): CALLBACKS[caller]=tuple('src/store_extent.c:'+n for n in targets)
+}.items(): CALLBACKS[caller]=tuple('shared/device-core/src/store_extent.c:'+n for n in targets)
 for name in ('chunk','commit_step','extent_crc','finish','mount','read_bytes','scan','write_step'):
-    CALLBACKS['src/store_extent.c:'+name]=tuple('src/store_extent.c:block_'+n for n in ('read','write','erase','sync'))
+    CALLBACKS['shared/device-core/src/store_extent.c:'+name]=tuple('shared/device-core/src/store_extent.c:block_'+n for n in ('read','write','erase','sync'))
 
 # Configured SDK callback registrations. Uninstalled hooks have an explicit
 # empty set; new source/SDK callsites remain errors until assigned here.

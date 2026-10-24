@@ -187,7 +187,7 @@ direct addresses remain available when multicast is blocked.
 ## Local controller discovery
 
 Wi-Fi/HTTP firmware on Pico W, Pico 2 W and all XIAO ESP32 profiles advertises
-`_lightvm._tcp.local` with its command port, stable controller ID, board and application release.
+`_lightvm._tcp.local` with its command port, stable device ID, board, application release, kind and capabilities.
 Each board also answers the shared `lightvm.local` IPv4 name. This bootstrap name
 may reach any LightVM board; each board retains its unique `lightvm-xxxxxx.local`
 name, probes for collisions and chooses another suffix if necessary.
@@ -211,7 +211,7 @@ curl http://lightvm.local/api/v1/controllers
 
 It returns `schema:"lightvm.discovery"`, `available`, `capacity:8`, `truncated`
 and `controllers`. The first entry is the responding board; entries contain
-`hostname`, `controller_id`, `board`, `ip`, `port` and `url`. The cache holds this board
+`hostname`, `controller_id`, `board`, `version`, `kind`, `capabilities`, `ip`, `port` and `url`. The cache holds this board
 and up to seven peers. Incomplete records are hidden, graceful shutdown removes
 peers immediately, and silent departures expire within 30 seconds. A full cache
 sets `truncated:true` instead of allocating or evicting live controllers.
@@ -371,3 +371,10 @@ including custom HTTP ports and explicitly disabled networking. AP startup and
 radio loss should retry without interrupting the VM; a missing station network
 must not trigger an AP. These checks require physical boards and complement the
 portable policy, DHCP packet, storage, HTTP and editor tests.
+
+The shared [device core](../shared/device-core/README.md) also serves kaj-fi audio
+analysers. Its TXT metadata includes `kind=audio_analyser,caps=13`; lighting peers
+use `kind=light_controller,caps=3`. The common DNS-SD service is unchanged, and
+hostname labels may use each product's prefix. The editor filters for the
+light-output capability (bit 1); an audio device can still serve as its discovery
+bridge. Reflash earlier experimental firmware lacking this metadata.

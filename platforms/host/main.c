@@ -24,7 +24,7 @@ static bool configure_network(void *context,const NetworkConfig *config) {
     if (host->listening && (!enabled || host->port!=port)) { host_http_stop(); host->listening=false; }
     if (!host->listening && enabled) {
         host->listening=host_http_start(host->app,host->address,port); host->port=port;
-        if (!host->listening) strcpy(host->app->network_error,"HTTP listener could not start");
+        if (!host->listening) strcpy(host->app->network_settings.error,"HTTP listener could not start");
         return host->listening;
     }
     return true;

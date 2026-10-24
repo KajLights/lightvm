@@ -113,6 +113,13 @@ set(COMPONENTS main)
 include("$ENV{IDF_PATH}/tools/cmake/project.cmake")
 project(lightvm)
 
+# Port hooks must be present in the final image, not merely compiled into an
+# archive whose members can be skipped in favour of the core's weak defaults.
+add_custom_command(TARGET lightvm.elf POST_BUILD
+    COMMAND "${PYTHON}" "${LIGHTVM_ROOT}/tools/check_esp32_telemetry.py"
+        "${CMAKE_NM}" "$<TARGET_FILE:lightvm.elf>"
+    VERBATIM)
+
 configure_file("${LIGHTVM_ROOT}/LICENSE" "${CMAKE_BINARY_DIR}/LICENSE" COPYONLY)
 configure_file("${LIGHTVM_ROOT}/THIRD_PARTY_NOTICES.md" "${CMAKE_BINARY_DIR}/THIRD_PARTY_NOTICES.md" COPYONLY)
 file(COPY "${LIGHTVM_ROOT}/licenses" DESTINATION "${CMAKE_BINARY_DIR}")

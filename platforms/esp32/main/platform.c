@@ -15,14 +15,18 @@
 #include <stdatomic.h>
 #include <string.h>
 #include "esp_attr.h"
-#include "esp_private/esp_clk.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/temperature_sensor.h"
+#include "esp_heap_caps.h"
+#include "esp_private/esp_clk.h"
+#if LIGHTVM_WIFI
+#include "esp_wifi.h"
+#endif
 
 static const PlatformInfo info={"esp32",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return (uint64_t)esp_timer_get_time(); }
-unsigned platform_cpu_hz(void) { return (unsigned)esp_clk_cpu_freq(); }
 unsigned platform_main_stack_peak(void) {
     return CONFIG_ESP_MAIN_TASK_STACK_SIZE - uxTaskGetStackHighWaterMark(NULL);
 }
@@ -202,3 +206,51 @@ bool platform_boot_storage_sync(void) { return boot_partition!=NULL; }
 void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
 void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }
+
+unsigned platform_cpu_hz(void) { return (unsigned)esp_clk_cpu_freq(); }
+bool platform_metric_supported(PlatformMetric metric) {
+    switch(metric){
+    case PLATFORM_METRIC_TEMPERATURE: return SOC_TEMP_SENSOR_SUPPORTED;
+    case PLATFORM_METRIC_CPU_FREQUENCY:
+    case PLATFORM_METRIC_HEAP_FREE:
+    case PLATFORM_METRIC_HEAP_MIN: return true;
+#if LIGHTVM_WIFI
+    case PLATFORM_METRIC_WIFI_RSSI: return true;
+#endif
+    default: return false; // No onboard supply-voltage measurement circuit.
+    }
+}
+static bool temperature(double *value) {
+    static temperature_sensor_handle_t sensor;
+    static bool high_range;
+    for(unsigned attempt=0;attempt<2;attempt++){
+        if(!sensor){
+            temperature_sensor_config_t config=TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10,80);
+            if(high_range){config.range_min=50;config.range_max=125;}
+            if(temperature_sensor_install(&config,&sensor)!=ESP_OK)return false;
+        }
+        if(temperature_sensor_enable(sensor)!=ESP_OK)return false;
+        float celsius=0;
+        esp_err_t result=temperature_sensor_get_celsius(sensor,&celsius);
+        esp_err_t disabled=temperature_sensor_disable(sensor);
+        if(result==ESP_OK&&disabled==ESP_OK){*value=celsius;return true;}
+        if(disabled!=ESP_OK)return false;
+        // Switch overlapping ranges to retain readings above 80 C. A failed
+        // retry is reported invalid, never replaced by a plausible temperature.
+        if(temperature_sensor_uninstall(sensor)!=ESP_OK)return false;
+        sensor=NULL;high_range=!high_range;
+    }
+    return false;
+}
+bool platform_metric_read(PlatformMetric metric,double *value) {
+    switch(metric){
+    case PLATFORM_METRIC_TEMPERATURE:return temperature(value);
+    case PLATFORM_METRIC_CPU_FREQUENCY:*value=platform_cpu_hz();return true;
+    case PLATFORM_METRIC_HEAP_FREE:*value=heap_caps_get_free_size(MALLOC_CAP_8BIT);return true;
+    case PLATFORM_METRIC_HEAP_MIN:*value=heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);return true;
+#if LIGHTVM_WIFI
+    case PLATFORM_METRIC_WIFI_RSSI:{wifi_ap_record_t ap;if(esp_wifi_sta_get_ap_info(&ap)!=ESP_OK)return false;*value=ap.rssi;return true;}
+#endif
+    default:return false;
+    }
+}

@@ -1,6 +1,6 @@
 #ifndef LIGHTVM_STATUS_H
 #define LIGHTVM_STATUS_H
-#include "json.h"
+#include "device/json.h"
 #include <string.h>
 /* Bounded key/value diagnostics. Keep large printf frames and generic integer
  * conversion off the frequent STATUS path used by USB and HTTP polling. */

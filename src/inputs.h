@@ -1,6 +1,6 @@
 #ifndef LIGHTVM_INPUTS_H
 #define LIGHTVM_INPUTS_H
-#include "json.h"
+#include "device/json.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -17,8 +17,14 @@ typedef struct {
     uint64_t received;
     InputValue value;
     bool valid;
+    float suggested_min, suggested_max;
+    const char *label, *unit; // Native source metadata; NULL for publishers.
 } InputSignal;
-typedef struct { InputSignal *signals; unsigned count; uint32_t generation; } InputRegistry;
+typedef struct {
+    InputSignal *signals, *native;
+    unsigned count, native_count;
+    uint32_t generation;
+} InputRegistry;
 typedef struct {
     InputKind kind;
     InputValue value;

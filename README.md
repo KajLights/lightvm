@@ -186,6 +186,9 @@ S3 and C6 select **standard**. Use `-DLIGHTVM_ESP32_PROFILE=standard` to compare
 without the C3 profile, or `c3` to require a C3 target explicitly.
 See the [C3 hardware comparison](docs/design/c3-performance-2026-10-24.md)
 for the measured tradeoffs and the archived Pico workloads used for comparison.
+Board temperature, supported supply-voltage readings and other
+[board-status measurements](docs/board-status.md) are available as native animation
+and transition input sources.
 
 ## Browser workspace and controller APIs
 
@@ -232,6 +235,10 @@ harness. Sprite tests check Stars, Rainbow Sprite and Sweep, including transpare
 motion, frame-independent trails and bounded memory. Composition tests cover each layer blend mode.
 Rainbow permits one channel level for f32 arithmetic. Memory telemetry includes contexts and replacement peaks.
 
+For repeatable optimisation work across every supported target, follow the
+[optimisation protocol](docs/optimisation-protocol.md). It includes frozen
+workloads, historical timings, matched-run commands and regression gates.
+
 Measure the current Rainbow on a controller with:
 
 ```sh
@@ -256,3 +263,11 @@ experimental installs require the documented
 [clean installation](docs/architecture.md#clean-installation-after-experimental-changes).
 
 See [JavaScript and blocks](docs/javascript-and-blocks.md) for the editor modes, language contracts and visual toolbox.
+
+## Shared device services
+
+[shared/device-core](shared/device-core/README.md) provides the Wi-Fi, HTTP,
+discovery, configuration and persistence services used by LightVM and kaj-fi.
+LightVM binds its output/animation policies through small application adapters;
+the audio firmware links the same core without the lighting engine. Discovery
+includes device kind and capabilities, and the editor selects light-output peers.

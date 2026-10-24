@@ -13,9 +13,9 @@ static PicoMqtt mqtt_stream;
 #include <stdio.h>
 #include <string.h>
 #if LIGHTVM_HTTP
-#include "http.h"
+#include "device/http.h"
 #if LIGHTVM_WEBSOCKET
-#include "websocket.h"
+#include "device/websocket.h"
 #endif
 #include "lwip/udp.h"
 #include "lwip/igmp.h"
@@ -142,7 +142,7 @@ static bool start_discovery(uint16_t port) {
     udp_bind_netif(discovery_pcb,netif);
     udp_recv(discovery_pcb,discovery_received,NULL);
     const ip4_addr_t *a=netif_ip4_addr(netif); uint8_t ip[4]={ip4_addr1(a),ip4_addr2(a),ip4_addr3(a),ip4_addr4(a)};
-    discovery_start(&discovery,hostname,engine->controller_id,platform_info()->board,ip,port,discovery_send,NULL,platform_time_us());
+    discovery_start(&discovery,hostname,&engine->device,ip,port,discovery_send,NULL,platform_time_us());
     if (!discovery.active) { stop_discovery(); return false; }
     return true;
 }
@@ -258,7 +258,7 @@ void pico_network_init(App *app) {
 #endif
     app->network.driver=(NetworkDriver){NULL,configure,scan,scan_poll,connect,link,disconnect,random_value};
 #if LIGHTVM_HTTP
-    http_init(&http,app);
+    http_init(&http,&app->device);
     http.discovery=&discovery;
 #endif
     network_bootstrap(&app->network,LIGHTVM_HTTP);
@@ -272,9 +272,9 @@ void pico_network_poll(void) {
     previous=engine->network.state;
     bool enabled=network_online(&engine->network) && network_http_enabled(&engine->network);
     uint16_t requested_port=network_http_port(&engine->network);
-    if (!engine->network_pending) {
+    if (!engine->network_settings.pending) {
         if (listener && (!enabled || port!=requested_port)) stop_http();
-        if (!listener && enabled) { if (start_http(requested_port)) port=requested_port; else strcpy(engine->network_error,"HTTP listener could not start"); }
+        if (!listener && enabled) { if (start_http(requested_port)) port=requested_port; else strcpy(engine->network_settings.error,"HTTP listener could not start"); }
     }
     uint64_t now=platform_time_us();
     static uint64_t discovery_retry;

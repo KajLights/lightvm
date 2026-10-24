@@ -10,14 +10,16 @@ import { crc32, frame, FrameDecoder, LightVMClient, COMMAND } from "../web/proto
 test("discovery bootstraps over HTTP, validates addresses and pins the bridge IP", async () => {
   const { ControllerDiscovery } = await import("../web/discovery.mjs");
   const calls = [], payload = { schema: "lightvm.discovery", controllers: [
-    { hostname: "lightvm-123456.local", controller_id: "pico-1234", board: "pico_w", ip: "192.168.1.20", port: 8080, url: "https://untrusted.example" },
-    { hostname: "lightvm-abcdef.local", controller_id: "esp32-abcdef", board: "xiao_esp32c6", ip: "192.168.1.21", port: 80 },
+    { kind: "light_controller", capabilities: 3, hostname: "lightvm-123456.local", controller_id: "pico-1234", board: "pico_w", ip: "192.168.1.20", port: 8080, url: "https://untrusted.example" },
+    { kind: "light_controller", capabilities: 3, hostname: "lightvm-abcdef.local", controller_id: "esp32-abcdef", board: "xiao_esp32c6", ip: "192.168.1.21", port: 80 },
+    { kind: "audio_analyser", capabilities: 13, hostname: "kaj-fi-abcdef.local", controller_id: "audio-abcdef", board: "xiao_esp32s3", ip: "192.168.1.22", port: 80 },
   ], truncated: true };
   const discovery = new ControllerDiscovery({ fetch: async (url, options) => { calls.push({ url, options }); return new Response(JSON.stringify(payload)); } });
   const found = await discovery.find();
   assert.equal(calls[0].url, "http://lightvm.local/api/v1/controllers");
   assert.equal(calls[0].options.method, "GET"); assert.equal(calls[0].options.credentials, "omit");
   assert.equal(calls[0].options.targetAddressSpace, "local"); assert.equal(calls[0].options.redirect, "error");
+  assert.equal(found.controllers.length, 2);
   assert.equal(found.controllers[0].url, "http://192.168.1.20:8080"); assert.equal(found.truncated, true);
   await discovery.find(); assert.equal(calls[1].url, "http://192.168.1.20:8080/api/v1/controllers");
   assert.equal(calls.some(call => call.url.includes("sessions") || call.url.includes("command")), false);

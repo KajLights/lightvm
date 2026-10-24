@@ -6,12 +6,7 @@
 
 /* Broker settings are independent of both LightVM and Home Assistant. Brokers
  * use IPv4 addresses or DNS hostnames and unencrypted MQTT 3.1.1. */
-#define MQTT_HOST_CAPACITY 128u
-typedef struct {
-    bool enabled;
-    uint16_t port;
-    char host[MQTT_HOST_CAPACITY], username[65], password[65];
-} MqttConfig;
+#include "device/mqtt_config.h"
 
 /* Nonblocking byte stream. open starts connecting; poll returns -1=failed,
  * 0=pending, 1=connected. read/write return -1=closed, 0=would block, >0=bytes.

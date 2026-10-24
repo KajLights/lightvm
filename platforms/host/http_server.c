@@ -1,7 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "http_server.h"
 #if LIGHTVM_WEBSOCKET
-#include "websocket.h"
+#include "device/websocket.h"
 #endif
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -43,7 +43,7 @@ void host_http_stop(void) {
     discovery_stop(&discovery,platform_time_us());
 }
 bool host_http_start(App *app,const char *address,unsigned port) {
-    http_init(&server,app); for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) clients[i].fd=-1;
+    http_init(&server,&app->device); for (unsigned i=0;i<LIGHTVM_HTTP_CLIENTS;i++) clients[i].fd=-1;
     signal(SIGPIPE,SIG_IGN);
     listener=socket(AF_INET,SOCK_STREAM,0); if (listener<0) return false;
     int yes=1; setsockopt(listener,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(yes));
@@ -53,7 +53,7 @@ bool host_http_start(App *app,const char *address,unsigned port) {
     // The simulator returns itself for browser/integration testing. It never
     // joins multicast or advertises the default loopback-only HTTP listener.
     uint8_t ip[4]; memcpy(ip,&addr.sin_addr.s_addr,4);
-    discovery_start(&discovery,"lightvm-host",app->controller_id,platform_info()->board,ip,ntohs(addr.sin_port),NULL,NULL,platform_time_us());
+    discovery_start(&discovery,"lightvm-host",&app->device,ip,ntohs(addr.sin_port),NULL,NULL,platform_time_us());
     server.discovery=&discovery;
     fprintf(stderr,"HTTP listening on http://%s:%u\n",address,ntohs(addr.sin_port)); fflush(stderr); return true;
 }

@@ -198,3 +198,23 @@ bytes, across 234 same-boot controller descriptions. VM heap peak is
 heap. The actual B2 ROM identity and audited helper bounds above remain
 applicable to the same physical device. The [repair report](pico-performance-repair-2026-10-22.md)
 links the exact ELF, linked paths, firmware readback and stress evidence.
+
+
+## Native board-status measurements
+
+The board-status addition uses direct calls from `app_init`/`app_tick` on core 0.
+It adds no callbacks, IRQ handlers, recursion, worker jobs or assembly. ADC
+initialization/reset is the SDK's existing blocking initialization contract;
+each subsequent conversion polls the READY/ERR registers with a 100 µs deadline.
+Eight conversions are bounded by the fixed loop. Temperature power is disabled
+after each read. VSYS is sampled only on the plain Pico. Wireless Pico VSYS
+and RSSI are not exposed: both require synchronous CYW43 firmware ioctls with
+up to a one-second wait, which is incompatible with the foreground latency
+budget. Board telemetry never enters the radio driver or holds its lock.
+Allocator status uses `mallinfo` and `sbrk(0)` without changing the break.
+
+Reviewed the new ADC C/header and RP2040/RP2350 register/struct dependencies,
+then added their identities to the existing SDK manifest union. The guarded
+project set now includes the two board-status implementations. The Pico,
+Pico W and Pico 2 W software RAM/stack gates pass; no physical sensor or stack
+watermark validation is implied by those software gates.

@@ -70,6 +70,11 @@ def replay(client, name, count, pin='GP16'):
 def run(args):
     manifest = json.loads((args.packages / 'manifest.json').read_text())
     cases = args.case or sorted({n.rsplit('-', 1)[0] for n in manifest})
+    if args.correctness:
+        unseeded = {'control-rainbow', 'control-stars'}
+        if args.case and unseeded.intersection(cases):
+            raise ValueError('unseeded controls are timing diagnostics, not exact independent-reset replays')
+        cases = [name for name in cases if name not in unseeded]
     names = [name + '-' + mode for name in cases for mode in ('scalar', 'bulk')]
     pin = args.pin
     client = Client(SerialTransport(args.port, no_reset=args.no_reset)

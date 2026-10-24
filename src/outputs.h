@@ -2,7 +2,7 @@
 #define LIGHTVM_OUTPUTS_H
 #include "platform.h"
 #include "config.h"
-#include "json.h"
+#include "device/json.h"
 #include "digital_inputs.h"
 #define EMPTY_CONFIG "{\"schema\":\"lightvm.config\",\"outputs\":[]}"
 #define HA_PRESET_LIMIT 16u

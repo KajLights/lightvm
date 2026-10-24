@@ -16,6 +16,7 @@ export interface Description {
   largest_free_bytes?: number; storage_allocation_unit?: number;
   boot_sequence_supported?: boolean;
   recovery_supported?: boolean;
+  board_status_supported?: boolean;
   live_inputs?: boolean; light_controls?: boolean; input_limit?: number; input_source_limit?: number;
   boot_sequence?: { count: number; triggered: boolean; error: string };
 }
@@ -44,7 +45,7 @@ export type InputBinding = { value: number | boolean } | { driver: RampDriver } 
 export type InputBindings = Record<string, InputBinding>;
 export interface InputDeclaration extends Setting { default: number | boolean; unit?: string; driver?: RampDriver; control?: LightControl }
 export interface InputState { value: number | boolean; fallback: boolean; binding: InputBinding }
-export interface InputSource { name: string; type: Setting['type']; valid: boolean; value: number | boolean | null; age_ms: number | null }
+export interface InputSource { name: string; origin?: 'board' | 'publisher'; label?: string; unit?: string; suggested_min?: number; suggested_max?: number; type: Setting['type']; valid: boolean; value: number | boolean | null; age_ms: number | null }
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[]; inputs?: InputDeclaration[] }
 export interface ProgramState {
   output?: string; layer?: string;
@@ -55,7 +56,7 @@ export interface ProgramState {
   inputs_revision?: number; inputs?: Record<string, InputState>;
   program_crc32?: number;
 }
-export interface NearbyController { controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
+export interface NearbyController { kind: string; capabilities: number; version: string; controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { blockId?: string; message: string; line: number; column: number; end_line?: number; end_column?: number }
 export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[]; advisories?: Diagnostic[] }
 export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', outputs: [] };

@@ -30,9 +30,12 @@ class FakeSerial:
 
 
 class SerialPolicyTests(unittest.TestCase):
-    def test_esp32_lines_are_deasserted_before_open(self):
-        with patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeSerial)}):
+    def test_esp32_open_leaves_modem_lines_untouched(self):
+        with patch.dict(sys.modules, {"serial": types.SimpleNamespace(Serial=FakeSerial)}), patch("device_client._keep_usb_connected") as keep:
             transport = SerialTransport("esp32-port", no_reset=True)
+        keep.assert_called_once_with(transport.serial)
+        self.assertIsNone(transport.serial._update_dtr_state())
+        self.assertIsNone(transport.serial._update_rts_state())
         self.assertEqual(transport.serial.open_state, ("esp32-port", False, False))
         self.assertEqual(transport.serial.reads, 3)
         self.assertFalse(transport.serial.incoming)

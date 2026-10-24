@@ -140,11 +140,11 @@ class PicoClosedStackTests(unittest.TestCase):
 
     def test_disabled_features_only_remove_their_known_registrations(self):
         minimal=dict.fromkeys(('LIGHTVM_WIFI','LIGHTVM_HTTP','LIGHTVM_MQTT'),False)
-        for name in ('http_tick','ha_tick','mqtt_tick','src/home_assistant.c:response','src/http.c:capture','platforms/pico/network_port.c:scan','cyw43_gpio_irq_handler'):
+        for name in ('http_tick','ha_tick','mqtt_tick','src/home_assistant.c:response','shared/device-core/src/http.c:capture','platforms/pico/network_port.c:scan','cyw43_gpio_irq_handler'):
             self.assertFalse(enabled_target(name,minimal),name)
         self.assertTrue(enabled_target('new_unknown_callback',minimal))
         http={**minimal,'LIGHTVM_WIFI':True,'LIGHTVM_HTTP':True}
-        self.assertTrue(enabled_target('src/http.c:capture',http))
+        self.assertTrue(enabled_target('shared/device-core/src/http.c:capture',http))
         self.assertFalse(enabled_target('src/home_assistant.c:response',http))
 
     def test_lwip_callbacks_follow_each_configured_protocol(self):

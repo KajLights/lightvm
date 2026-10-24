@@ -1,4 +1,5 @@
-#include "http.h"
+#include "app.h"
+#include "device/http.h"
 #include "runtime.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,9 +9,9 @@ typedef struct { uint8_t bytes[4096]; size_t used; bool stalled,close_stalled,cl
 static int output(void *context,const uint8_t *bytes,size_t size) { Sink *s=context; if (s->stalled) return 0; CHECK(size<=sizeof(s->bytes)-s->used); memcpy(s->bytes+s->used,bytes,size); s->used+=size; return (int)size; }
 static bool close_sink(void *context) { Sink *s=context; if (s->close_stalled) return false; s->closed=true; return true; }
 static void drain(Http *http,uint64_t now,Sink *sink) { for (unsigned i=0;i<200 && !sink->closed;i++) http_tick(http,now+i); CHECK(sink->closed); sink->bytes[sink->used]=0; }
-static void service_ingress(void *context) { Http *h=context;CHECK(h->app->command_active);http_tick(h,0); }
+static void service_ingress(void *context) { Http *h=context;CHECK(h->host->busy(h->host->context));http_tick(h,0); }
 int main(void) {
-    static App app; static Http http; app_init(&app,NULL,NULL); strcpy(app.controller_id,"test"); strcpy(app.boot_id,"boot"); http_init(&http,&app);
+    static App app; static Http http; app_init(&app,NULL,NULL); strcpy(app.controller_id,"test"); strcpy(app.boot_id,"boot"); http_init(&http,&app.device);
     Sink list={0}; HttpRequest get={.method="GET",.path="/api/v1/controllers",.io={&list,output,close_sink}};
     CHECK(http_submit(&http,&get));app.command_active=true;http_tick(&http,0);
     CHECK(http.count==1&&!list.used&&!http.sending);app.command_active=false;

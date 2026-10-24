@@ -2,7 +2,7 @@
 #include "platform.h"
 #include "config.h"
 #include "port.h"
-#include "protocol.h"
+#include "device/protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>

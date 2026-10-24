@@ -1,4 +1,5 @@
-#include "websocket.h"
+#include "app.h"
+#include "device/websocket.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +23,7 @@ static void upgrade(Http *http,WebSocket *ws,Sink *sink) {
 int main(void) {
     char accept[29]; CHECK(websocket_accept("dGhlIHNhbXBsZSBub25jZQ==",accept,sizeof(accept))==28);
     CHECK(!strcmp(accept,"s3pPLMBiTxaQ9kYGzzhZRbK+xOo="));
-    static App app; static Http http; app_init(&app,NULL,NULL); http_init(&http,&app);
+    static App app; static Http http; app_init(&app,NULL,NULL); http_init(&http,&app.device);
     WebSocket ws; Sink sink={0}; upgrade(&http,&ws,&sink);
     app.command_active=true; http_tick(&http,1); CHECK(!ws.source && http.count==1); app.command_active=false;
     for (unsigned i=0;i<100;i++) http_tick(&http,2+i);

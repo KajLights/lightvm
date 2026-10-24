@@ -1,4 +1,5 @@
-#include "store_backend.h"
+#include "assets.h"
+#include "device/store_backend.h"
 #include "vm.h"
 #include "vm_allocator.h"
 #include <stdio.h>
@@ -88,7 +89,7 @@ static void cancellable_writes(void){
     CHECK(store_put(&s,STORE_PRESET,"scene","old",3));
     unsigned boundary=0;
     for(;;boundary++){
-        StoreWrite write={0};uint32_t generation=s.generation,revision=s.preset_revision;
+        StoreWrite write={0};uint32_t generation=s.generation,revision=s.type_revision[STORE_PRESET];
         uint32_t free_before=store_info(&s).free_bytes;
         CHECK(store_write_begin(&s,&write,STORE_PRESET,"scene","new",3));
         CHECK(!store_put(&s,STORE_PRESET,"other","x",1));
@@ -98,10 +99,10 @@ static void cancellable_writes(void){
         for(unsigned n=0;n<boundary&&!status;n++){
             unsigned writes=f.writes;status=store_write_step(&write);
             CHECK(f.writes-writes<=2); /* final marker write + sync only */
-            if(!status){CHECK(s.generation==generation&&s.preset_revision==revision);expect(&s,store_find(&s,STORE_PRESET,"scene"),"old");}
+            if(!status){CHECK(s.generation==generation&&s.type_revision[STORE_PRESET]==revision);expect(&s,store_find(&s,STORE_PRESET,"scene"),"old");}
         }
         CHECK(status>=0);store_write_cancel(&write);CHECK(!s.writer);
-        if(status){CHECK(s.generation==generation+1&&s.preset_revision==revision+1);break;}
+        if(status){CHECK(s.generation==generation+1&&s.type_revision[STORE_PRESET]==revision+1);break;}
         CHECK(store_info(&s).free_bytes==free_before);
         store_destroy(&s);mount_flash(&s,&f);expect(&s,store_find(&s,STORE_PRESET,"scene"),"old");
         CHECK(boundary<200);

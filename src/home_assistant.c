@@ -144,8 +144,8 @@ static __attribute__((noinline)) bool discovery(HomeAssistant *h,HaOutput *l,con
 }
 static void reconcile(HomeAssistant *h) {
     /* Private remembered targets must not republish discovery on every power command. */
-    bool catalog_changed=h->catalog_generation!=h->app->store.preset_revision;
-    h->catalog_generation=h->app->store.preset_revision;
+    bool catalog_changed=h->catalog_generation!=h->app->store.type_revision[STORE_PRESET];
+    h->catalog_generation=h->app->store.type_revision[STORE_PRESET];
     for(unsigned i=0;i<HA_OUTPUT_LIMIT;i++){
         HaOutput *l=&h->outputs[i];if(!l->id[0])continue;
         AppOutput *d=app_output(h->app,l->id);
@@ -175,7 +175,7 @@ void ha_tick(HomeAssistant *h,bool ready,uint64_t now) {
     if(h->app->command_active)return;
     reconcile(h);
     ha_keys_reconcile(h);
-    mqtt_tick(&h->mqtt,&h->app->network.config.mqtt,ready && !h->app->network.recovery && !h->app->network_pending,now);
+    mqtt_tick(&h->mqtt,&h->app->network.config.mqtt,ready && !h->app->network.recovery && !h->app->network_settings.pending,now);
     h->app->mqtt_connected=h->mqtt.state==MQTT_ONLINE;
     if(h->mqtt.error[0])snprintf(h->app->mqtt_error,sizeof(h->app->mqtt_error),"%s",h->mqtt.error);
     if(!h->app->mqtt_connected){digital_inputs_discard_events(&h->app->digital_inputs);return;}

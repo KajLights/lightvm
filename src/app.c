@@ -3,7 +3,7 @@
 #include "release.h"
 #include "runtime.h"
 #include "render_executor.h"
-#include "json.h"
+#include "device/json.h"
 #include "vm_allocator.h"
 #include "draw.h"
 #include "preparation.h"
@@ -380,16 +380,11 @@ void app_init(App *a, SendMessage send, void *transport) {
             for(unsigned i=0;i<a->output_count;i++)a->outputs[i]->startup_pending=true;
         }
     }
-    const StoreEntry *saved_network=store_find(&a->store,STORE_NETWORK_SETTINGS,STORE_NETWORK);
-    if (saved_network) {
-        uint8_t *data=platform_calloc(1,saved_network->size);
-        NetworkConfig candidate;
-        if (!data || !store_read(&a->store,saved_network,0,data,saved_network->size) ||
-            !network_parse(data,saved_network->size,NULL,&candidate,a->network_error,sizeof(a->network_error))) {
-            if (!a->network_error[0]) strcpy(a->network_error,"network storage read failed");
-        } else { a->network.config=candidate; a->network.saved_valid=true; }
-        platform_free(data);
-    }
+    network_settings_init(&a->network_settings,&a->network,&a->store);
+    network_settings_load(&a->network_settings);
+    board_status_init(&a->board_status,&a->inputs);
+    board_status_tick(&a->board_status,&a->network,platform_time_us());
+    a->device=app_device_host(a);
     a->booting=false;runtime_defer_end();
 }
 void app_destroy(App *a) {
@@ -453,17 +448,13 @@ done:
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
     runtime_foreground(now);
+    board_status_tick(&a->board_status,&a->network,now);
     digital_inputs_tick(&a->digital_inputs,now);
 #if LIGHTVM_BOOT_SEQUENCE
     boot_sequence_tick(&a->boot_sequence,now);
 #endif
     if (a->upload_owner && now>=a->upload_deadline) app_disconnect(a,a->upload_owner);
-    if (a->network_pending && now>=a->network_due) {
-        a->network_pending=false; a->network.initial_setup=false;
-        network_apply(&a->network,&a->pending_network);
-        memset(&a->pending_network,0,sizeof(a->pending_network));
-    }
-    if (!a->network_pending) network_tick(&a->network,now);
+    network_settings_tick(&a->network_settings,now);
     /* Rendering and candidate preparation each have a bounded quantum. Do not
        concatenate both before the port can service another command. Five
        short preparation turns per render turn keep the old scene progressing
@@ -505,23 +496,12 @@ static void resume_clock(App *a) {
     }
 }
 enum Status app_save_network(App *a,const NetworkConfig *config,uint32_t revision,uint64_t source,char *error,size_t capacity) {
-    if (revision!=a->store.network_revision || a->network_pending) {
-        snprintf(error,capacity,"network revision must match; wait for pending changes"); return STATUS_CONFIG;
-    }
-    if (a->upload_owner && a->upload_owner!=source) {
-        snprintf(error,capacity,"another upload is in progress; try again after it finishes"); return STATUS_BUSY;
-    }
-    char *data=platform_calloc(4096,1);if(!data){snprintf(error,capacity,"network serialization allocation failed");return STATUS_STORAGE;}
-    size_t count=network_json(config,true,data,4096);
-    bool previous=a->command_active; a->command_active=true;
-    bool ok=count && update_store(a,STORE_NETWORK_SETTINGS,STORE_NETWORK,data,(uint32_t)count,false); resume_clock(a);
-    a->command_active=previous;memset(data,0,4096);platform_free(data);
-    if (!previous && a->disconnect_pending) { a->disconnect_pending=false; app_disconnect(a,a->upload_owner); }
-    if (!ok) { snprintf(error,capacity,"network save failed; active settings retained"); return STATUS_STORAGE; }
-    a->network.saved_valid=true; a->network_error[0]=0;
-    if (a->network.recovery) a->network.config=*config;
-    else { a->pending_network=*config; a->network_pending=true; a->network_due=platform_time_us()+1000000u; a->network_reply_source=source; }
-    return STATUS_OK;
+    if(a->upload_owner && a->upload_owner!=source){snprintf(error,capacity,"another upload is in progress; try again after it finishes");return STATUS_BUSY;}
+    bool previous=a->command_active;a->command_active=true;
+    enum Status status=network_settings_save(&a->network_settings,config,revision,source,error,capacity);
+    resume_clock(a);a->command_active=previous;
+    if(!previous && a->disconnect_pending){a->disconnect_pending=false;app_disconnect(a,a->upload_owner);}
+    return status;
 }
 static void transition_state(Writer *,AppOutput *);
 static void describe(App *a, uint16_t id) {
@@ -629,7 +609,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"ab_transitions\":true,\"transition_sources\":true,\"transition_programs\":true,\"custom_transitions\":true,\"transition_effects\":[");
     for(unsigned n=0;n<TRANSITION_PROGRAM;n++){if(n)literal(&w,",");quoted(&w,transition_effect_name((TransitionEffect)n));}literal(&w,"]");
     literal(&w,",\"transient_settings\":true,\"preset_transitions\":true,\"presets\":true,\"typed_storage\":true");
-    literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":16");
+    literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":16,\"board_status_supported\":true");
     literal(&w,",\"composition_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     StoreInfo storage=store_info(&a->store);
@@ -1367,7 +1347,7 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
 static __attribute__((noinline)) void network_get(App *a,uint16_t id){
     /* This reply buffer must not remain on the network-validation call path. */
     char *data=platform_calloc(4096,1);if(!data){reply(a,id,STATUS_CONFIG,0,"network reply allocation failed");return;}
-    size_t count=network_json(a->network_pending?&a->pending_network:&a->network.config,false,data,4096);
+    size_t count=network_json(a->network_settings.pending?&a->network_settings.candidate:&a->network.config,false,data,4096);
     Writer w={.app=a,.id=id};bytes(&w,data,count);flush(&w);platform_free(data);
     reply(a,id,STATUS_OK,(int32_t)a->store.network_revision,"network configuration; passwords omitted");
 }
@@ -1375,13 +1355,13 @@ static __attribute__((noinline)) bool manage_network(App *a,uint16_t id,const Ar
     if (!strcmp(args->op,"network_get")) {network_get(a,id);return true;}
     if (!strcmp(args->op,"network_status")) {
         Network *n=&a->network; Writer w={.app=a,.id=id};
-        literal(&w,"{\"state\":"); quoted(&w,a->network_pending?"reconfiguring":network_state_name(n->state));
+        literal(&w,"{\"state\":"); quoted(&w,a->network_settings.pending?"reconfiguring":network_state_name(n->state));
         literal(&w,",\"mode\":"); quoted(&w,network_mode(n)==NET_MODE_AP?"ap":"station");
         literal(&w,",\"initial_setup\":"); literal(&w,n->initial_setup?"true":"false");
         literal(&w,",\"recovery\":"); literal(&w,n->recovery?"true":"false");
         literal(&w,",\"ssid\":"); quoted(&w,n->state==NET_AP_ACTIVE?n->ap_ssid:n->state==NET_CONNECTED && n->connected_index>=0?n->config.networks[n->connected_index].ssid:"");
         literal(&w,",\"ip\":"); quoted(&w,n->ip);
-        literal(&w,",\"error\":"); quoted(&w,a->network_error[0]?a->network_error:n->error);
+        literal(&w,",\"error\":"); quoted(&w,a->network_settings.error[0]?a->network_settings.error:n->error);
         literal(&w,",\"retry_ms\":"); uint64_t now=platform_time_us(); number(&w,n->state==NET_BACKOFF && n->retry_at>now?(uint32_t)((n->retry_at-now)/1000u):0);
         literal(&w,",\"revision\":"); number(&w,a->store.network_revision); literal(&w,",\"http_port\":"); number(&w,network_http_port(n));
         literal(&w,",\"mqtt_connected\":");literal(&w,a->mqtt_connected?"true":"false");
@@ -1437,7 +1417,7 @@ static __attribute__((noinline)) bool manage_configuration(App *a,uint16_t id,co
     bool validate=!strcmp(args->op,"config_validate"),apply=!strcmp(args->op,"config_apply"),save=!strcmp(args->op,"config_save");
     if(!validate&&!apply&&!save)return false;
     if(!save&&(!a->staged||a->object_kind!=1||a->upload_owner!=a->source)){error_reply(a,id,STATUS_CONFIG,"no_candidate","upload and finish a configuration first");return true;}
-    if(!validate&&(!args->has_revision||args->revision!=a->revision||a->revision==UINT32_MAX||(save&&(!args->has_saved_revision||args->saved_revision!=a->store.config_revision)))){
+    if(!validate&&(!args->has_revision||!settings_revision_matches(a->revision,args->revision,NULL,0)||(save&&(!args->has_saved_revision||!settings_revision_matches(a->store.config_revision,args->saved_revision,NULL,0))))){
         error_reply(a,id,STATUS_CONFIG,"stale_revision","expected active and saved revisions must match");return true;
     }
     PreparationRequest pending={.kind=validate?PREPARE_CONFIG_VALIDATE:apply?PREPARE_CONFIG_APPLY:PREPARE_CONFIG_SAVE,.active_revision=a->revision,.saved_revision=a->store.config_revision};
@@ -1715,9 +1695,14 @@ static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
         else{
             Writer w={.app=a,.id=id};literal(&w,"[");
             static const char *const types[]={"","int","float","rgb8","bool"};
-            for(unsigned n=0;n<a->inputs.count;n++){
-                InputSignal *source=&a->inputs.signals[n];char value[48];if(n)literal(&w,",");
+            for(unsigned n=0;n<a->inputs.native_count+a->inputs.count;n++){
+                bool native=n<a->inputs.native_count;
+                InputSignal *source=native?&a->inputs.native[n]:&a->inputs.signals[n-a->inputs.native_count];char value[48];if(n)literal(&w,",");
                 literal(&w,"{\"name\":");quoted(&w,source->name);literal(&w,",\"type\":");quoted(&w,types[source->type]);
+                literal(&w,",\"origin\":");quoted(&w,native?"board":"publisher");
+                if(native){literal(&w,",\"label\":");quoted(&w,source->label);literal(&w,",\"unit\":");quoted(&w,source->unit);
+                    char range[100];snprintf(range,sizeof(range),",\"suggested_min\":%.9g,\"suggested_max\":%.9g",(double)source->suggested_min,(double)source->suggested_max);literal(&w,range);
+                }
                 literal(&w,",\"generation\":");number(&w,source->publisher);literal(&w,",\"sequence\":");number(&w,source->sequence);
                 literal(&w,",\"valid\":");literal(&w,source->valid?"true":"false");literal(&w,",\"value\":");
                 if(!source->valid)strcpy(value,"null");else if(source->type==T_FLOAT)snprintf(value,sizeof(value),"%.9g",(double)source->value.f);
@@ -1893,5 +1878,5 @@ void app_disconnect(App *a,uint64_t source) {
     memset(a->staging,0,sizeof(a->staging));
 }
 void app_reply_delivered(App *a,uint64_t source) {
-    if (a->network_pending && a->network_reply_source==source) { a->network_due=platform_time_us()+100000u; a->network_reply_source=0; }
+    network_settings_reply_delivered(&a->network_settings,source,platform_time_us());
 }

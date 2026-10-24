@@ -1,7 +1,7 @@
 #ifndef LIGHTVM_COMMAND_H
 #define LIGHTVM_COMMAND_H
-#include "json.h"
-#include "store.h"
+#include "device/json.h"
+#include "assets.h"
 
 /* Owned values only: this request survives release of its transport parser. */
 typedef enum { COMMAND_LIGHT_GET, COMMAND_LIGHT_SET, COMMAND_RECALL, COMMAND_POWER,

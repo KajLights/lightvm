@@ -1,0 +1,122 @@
+#include "device/store_backend.h"
+#include "device/protocol.h"
+#include "device/platform.h"
+#include <string.h>
+#include <limits.h>
+#ifndef DEVICE_STORAGE_BACKEND
+#define DEVICE_STORAGE_BACKEND store_extent_backend
+#endif
+extern const StoreBackend DEVICE_STORAGE_BACKEND;
+bool store_mount_with(Store *s,const StoreBackend *backend,const void *configuration) {
+    memset(s,0,sizeof(*s));s->backend=backend;
+    if(!backend||!backend->name||!backend->mount||!backend->entry||!backend->read||!backend->info)return false;
+    if(backend->begin&&(!backend->chunk||!backend->finish||!backend->cancel||!backend->publish))return false;
+    if(backend->mount(s,configuration)){for(unsigned i=0;i<STORE_TYPE_LIMIT;i++)s->type_revision[i]=s->generation;return true;}
+    if(backend->destroy)backend->destroy(s);
+    s->available=false;return false;
+}
+bool store_mount(Store *s) {
+#ifdef DEVICE_STORAGE_CONFIGURATION
+    extern const void *const DEVICE_STORAGE_CONFIGURATION;
+    return store_mount_with(s,&DEVICE_STORAGE_BACKEND,DEVICE_STORAGE_CONFIGURATION);
+#else
+    return store_mount_with(s,&DEVICE_STORAGE_BACKEND,NULL);
+#endif
+}
+void store_destroy(Store *s) {
+    while(s->pins){StorePin *p=s->pins;s->pins=p->next;if(s->backend->release)s->backend->release(s,&p->entry);platform_free(p);}
+    if(s->backend&&s->backend->destroy)s->backend->destroy(s);
+    memset(s,0,sizeof(*s));
+}
+const StoreEntry *store_list(const Store *s,StoreType type,uint32_t *cursor) {
+    if(!s->available)return NULL;
+    const StoreEntry *e;
+    while((e=s->backend->entry(s,*cursor))){++*cursor;if(type==STORE_ANY||e->type==type)return e;}
+    return NULL;
+}
+const StoreEntry *store_find(const Store *s,StoreType type,const char *name) {
+    uint32_t cursor=0;const StoreEntry *found=NULL,*e;
+    while((e=store_list(s,type,&cursor)))if(!strcmp(name,e->name)){if(found)return NULL;found=e;}
+    return found;
+}
+StoreInfo store_info(const Store *s) { return s->available?s->backend->info(s):(StoreInfo){0}; }
+const char *store_backend_name(const Store *s) { return s->backend?s->backend->name:""; }
+bool store_read(const Store *s,const StoreEntry *e,uint32_t at,void *bytes,size_t size) {
+    return s&&s->available&&e&&at<=e->size&&size<=e->size-at&&s->backend->read(s,e,at,bytes,size);
+}
+static bool same(const StoreEntry *a,const StoreEntry *b) { return a->id==b->id&&a->size==b->size&&a->crc==b->crc; }
+int store_pin(Store *s,const StoreEntry *e) {
+    if(!s->available||!e)return -1;
+    int id=0;
+    for(StorePin *p=s->pins;p;p=p->next){
+        if(same(e,&p->entry)){if(p->references==UINT_MAX)return -1;p->references++;return p->id;}
+        if(p->id==INT_MAX)return -1;
+        if(id<=p->id)id=p->id+1;
+    }
+    StorePin *p=platform_calloc(1,sizeof(*p));if(!p)return -1;
+    if(s->backend->retain&&!s->backend->retain(s,e)){platform_free(p);return -1;}
+    p->entry=*e;p->references=1;p->id=id;p->next=s->pins;s->pins=p;return id;
+}
+void store_unpin(Store *s,int id) {
+    if(!s||id<0)return;
+    StorePin **link=&s->pins;
+    while(*link){StorePin *p=*link;if(p->id==id){if(!--p->references){*link=p->next;if(s->backend->release)s->backend->release(s,&p->entry);platform_free(p);}return;}link=&p->next;}
+}
+void store_upload_cancel(StoreUpload *u) {
+    if(u->store){if(u->store->backend->cancel)u->store->backend->cancel(u);store_unpin(u->store,u->pin);}
+    memset(u,0,sizeof(*u));u->pin=-1;
+}
+bool store_upload_begin(Store *s,StoreUpload *u,StoreType type,const char *name,uint32_t size,uint32_t crc) {
+    StoreEntry e={.type=type,.size=size,.crc=crc};
+    if(type>=STORE_TYPE_LIMIT||strlen(name)>DEVICE_NAME_LIMIT)return false;
+    strcpy(e.name,name);
+    /* Empty names are private transient uploads, never publishable. */
+    if(s->writer||!s->available||!s->backend->begin||(!store_entry_valid(&e)&&(name[0]||!store_transient_valid(type,size))))return false;
+    store_upload_cancel(u);u->store=s;u->entry=e;
+    if(!s->backend->begin(s,u)){store_upload_cancel(u);return false;}
+    u->pin=store_pin(s,&u->entry);
+    if(u->pin<0){store_upload_cancel(u);return false;}
+    u->active=true;return true;
+}
+bool store_upload_chunk(StoreUpload *u,uint32_t at,const void *data,size_t size) {
+    return u->store&&!u->store->writer&&u->active&&size&&at<=u->received&&at<=u->entry.size&&size<=u->entry.size-at&&u->store->backend->chunk(u,at,data,size);
+}
+bool store_upload_finish(StoreUpload *u) {
+    if(!u->store||u->store->writer||!u->active||u->received!=u->entry.size||!u->store->backend->finish(u))return false;
+    u->active=false;u->complete=true;return true;
+}
+bool store_publish(Store *s,const StoreEntry *e) {
+    if(e->type>=STORE_TYPE_LIMIT||s->writer||!s->available||!store_entry_valid(e)||!s->backend->publish)return false;
+    int pin=store_pin(s,e);if(pin<0)return false;
+    StoreType type=e->type;
+    bool ok=s->backend->publish(s,e);if(ok&&type<STORE_TYPE_LIMIT)++s->type_revision[type];
+    store_unpin(s,pin);return ok;
+}
+bool store_write_begin(Store *s,StoreWrite *w,StoreType type,const char *name,const void *bytes,uint32_t size){
+    if(type>=STORE_TYPE_LIMIT||w->store||s->writer||!s->available||!s->backend->write_step||!s->backend->write_cancel||strlen(name)>DEVICE_NAME_LIMIT)return false;
+    StoreEntry e={.type=type,.size=size};strcpy(e.name,name);if(!store_entry_valid(&e))return false;
+    *w=(StoreWrite){.store=s,.entry=e,.data=bytes};s->writer=w;return true;
+}
+void store_write_cancel(StoreWrite *w){
+    if(w->store){Store *s=w->store;s->backend->write_cancel(w);if(s->writer==w)s->writer=NULL;}
+    memset(w,0,sizeof(*w));
+}
+int store_write_step(StoreWrite *w){
+    if(!w->store||w->store->writer!=w)return -1;
+    int status=w->store->backend->write_step(w);
+    if(status){if(status>0)++w->store->type_revision[w->entry.type];store_write_cancel(w);}
+    return status;
+}
+bool store_put(Store *s,StoreType type,const char *name,const void *bytes,uint32_t size) {
+    StoreWrite w={0};if(!store_write_begin(s,&w,type,name,bytes,size))return false;
+    int status;do{status=store_write_step(&w);device_checkpoint();}while(!status);return status>0;
+}
+bool store_put_config(Store *s,const void *bytes,uint32_t size) { return store_put(s,STORE_CONFIGURATION,STORE_CONFIG,bytes,size); }
+bool store_delete(Store *s,StoreType type,const char *name) {
+    if(s->writer)return false;
+    const StoreEntry *e=store_find(s,type,name);
+    if(e)type=e->type;
+    bool ok=e&&s->backend->remove&&s->backend->remove(s,e);
+    if(ok&&type<STORE_TYPE_LIMIT)++s->type_revision[type];
+    return ok;
+}
