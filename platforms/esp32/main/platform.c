@@ -8,6 +8,7 @@
 #include "esp_timer.h"
 #include "esp_mac.h"
 #include "esp_random.h"
+#include "esp_system.h"
 #include <stdio.h>
 #include "esp_partition.h"
 #include "soc/soc_caps.h"
@@ -27,6 +28,20 @@
 static const PlatformInfo info={"esp32",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return (uint64_t)esp_timer_get_time(); }
+const char *platform_reset_reason(void) {
+    switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: return "power_on";
+    case ESP_RST_SW: return "software";
+    case ESP_RST_PANIC: return "panic";
+    case ESP_RST_INT_WDT: return "interrupt_watchdog";
+    case ESP_RST_TASK_WDT: return "task_watchdog";
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_USB: return "usb";
+    case ESP_RST_JTAG: return "jtag";
+    default: return "other";
+    }
+}
 unsigned platform_main_stack_peak(void) {
     return CONFIG_ESP_MAIN_TASK_STACK_SIZE - uxTaskGetStackHighWaterMark(NULL);
 }

@@ -11,12 +11,15 @@
 #endif
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
+#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 typedef struct {
     bool failed;
     int64_t write_deadline;
+    uint8_t frame[HEADER_SIZE + FRAME_LIMIT];
+    size_t frame_size;
 } UsbTransport;
 
 static void output_bytes(void *context, const uint8_t *bytes, size_t size) {
@@ -37,6 +40,15 @@ static void output_bytes(void *context, const uint8_t *bytes, size_t size) {
         size -= (size_t)written;
     }
 }
+static void frame_bytes(void *context, const uint8_t *bytes, size_t size) {
+    UsbTransport *transport = context;
+    if (size > sizeof(transport->frame) - transport->frame_size) {
+        transport->failed = true;
+        return;
+    }
+    memcpy(transport->frame + transport->frame_size, bytes, size);
+    transport->frame_size += size;
+}
 static void output_message(void *context, uint8_t type, uint16_t id,
                            const uint8_t *payload, size_t size) {
     UsbTransport *transport = context;
@@ -44,8 +56,16 @@ static void output_message(void *context, uint8_t type, uint16_t id,
         return;
     // No terminal or a disconnected host must not suspend the engine forever.
     transport->write_deadline = esp_timer_get_time() + 100000;
-    write_frame(output_bytes, context, type, id, payload, size);
-    if (!transport->failed && usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(100)) != ESP_OK)
+    // A separate 16-byte header write can reach the USB FIFO before its
+    // payload and end a short host transfer. Enqueue the complete frame once.
+    transport->frame_size = 0;
+    write_frame(frame_bytes, context, type, id, payload, size);
+    output_bytes(context, transport->frame, transport->frame_size);
+    // IDF copies each write into its FIFO ring. Queue DATA/PIXELS fragments
+    // together: flushing every fragment adds host round trips while ingress is
+    // blocked. The final status still drains the reply before reply_delivered.
+    if (type == RESP_STATUS && !transport->failed &&
+        usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(100)) != ESP_OK)
         transport->failed = true;
 }
 static void service_io(void *context) {

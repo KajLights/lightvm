@@ -251,6 +251,17 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),in
         self.client.manage('input_list')
         self.assertEqual(len(json.loads(self.client.data_reply)),len(sources)+16)
 
+    def test_input_list_exact_source_filter(self):
+        self.client.claim_inputs({'external.test':'float'})
+        for name in ('board.uptime_s','external.test'):
+            self.client.manage('input_list',name=name)
+            rows=json.loads(self.client.data_reply)
+            self.assertEqual([row['name'] for row in rows],[name])
+        self.client.manage('input_list',name='missing.source')
+        self.assertEqual(json.loads(self.client.data_reply),[])
+        for value in ('', 'a'*33, 123, None):
+            with self.assertRaises(ProtocolError):self.client.manage('input_list',name=value)
+
     def test_preset_recipes_survive_reboot_and_do_not_save_live_samples(self):
         self.client.configure(config(20),save=True)
         self.client.save_program('eye',sample('eye'))

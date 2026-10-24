@@ -7,6 +7,11 @@ from datetime import datetime, timezone
 import json
 import math
 import time
+from client import ProtocolError
+
+
+class BoardMonitorError(ProtocolError):
+    pass
 
 
 class BoardMonitor:
@@ -31,19 +36,21 @@ class BoardMonitor:
 
     def check(self, force=False):
         if self.failure:
-            raise RuntimeError(self.failure)
+            raise BoardMonitorError(self.failure)
         if self.busy or not force and time.monotonic() < self.next_read:
             return
         self.busy = True
         saved = bytes(self.client.data_reply), bytes(self.client.pixel_snapshot)
         try:
-            self.client.manage('input_list')
+            started = time.monotonic()
+            self.client.manage('input_list', name='board.temperature_c')
+            query_ms = (time.monotonic() - started) * 1000
             sensors = json.loads(self.client.data_reply)
             temperature = next((s for s in sensors if s['name'] == 'board.temperature_c'), {})
             value, age = temperature.get('value'), temperature.get('age_ms')
             valid = (temperature.get('valid') and isinstance(value, (int, float))
                      and math.isfinite(value) and isinstance(age, (int, float)) and 0 <= age <= 2000)
-            self.record({'sensors': sensors, 'limit_c': self.limit_c})
+            self.record({'sensors': sensors, 'limit_c': self.limit_c, 'query_ms': query_ms})
             if not valid:
                 raise RuntimeError('temperature sensor unavailable or stale')
             if value >= self.limit_c:
@@ -59,7 +66,7 @@ class BoardMonitor:
                 stop['outputs_cleared'] = False
                 stop['stop_error'] = str(stop_error)
             self.record(stop)
-            raise RuntimeError(self.failure) from error
+            raise BoardMonitorError(self.failure) from error
         finally:
             self.client.data_reply[:] = saved[0]
             self.client.pixel_snapshot[:] = saved[1]

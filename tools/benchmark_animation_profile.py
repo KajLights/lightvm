@@ -52,7 +52,7 @@ def run(args):
         packages[name] = data
     result = {"schema": "lightvm.optimisation-run.v1", "run_id": str(uuid.uuid4()),
               "started_utc": datetime.now(timezone.utc).isoformat(),
-              "temperature_monitor": {"interval_seconds": 2, "limit_c": args.temperature_limit} if args.temperature_log else None,
+              "temperature_monitor": {"interval_seconds": 2, "source": "board.temperature_c", "limit_c": args.temperature_limit} if args.temperature_log else None,
               "rig": args.rig, "ingress_instrumented": args.ingress_instrumented,
               "selected_cases": selected, "samples_requested": args.samples,
               "poll_hz": args.poll_hz, "brightness_limit": 32, "output_type": "ws2812b",
@@ -144,8 +144,10 @@ def run(args):
             result["cleanup_error"] = str(error)
             raise
         finally:
-            client.close()
-            checkpoint()
+            try:
+                client.close()
+            finally:
+                checkpoint()
 
 
 def main():

@@ -80,6 +80,11 @@ existing binding timeout and `default`/`hold` policy determine fallback. A senso
 recovering resumes publication. Temperature circuits are disabled between reads.
 No samples are written to flash.
 
+`input_list` accepts an optional exact `name` filter, for example
+`{"op":"input_list","name":"board.temperature_c"}`. A missing source returns
+`[]`; invalid names are rejected. This avoids serializing every sensor and its
+metadata when a monitor needs only one measurement.
+
 `input_list` exposes `origin: "board"`, a human-readable `label`, `unit`,
 `suggested_min` and `suggested_max`, alongside the standard value/validity/age.
 `describe.board_status_supported` identifies firmware with this interface.

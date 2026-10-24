@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from board_monitor import BoardMonitor
+from client import Client, SerialTransport
 
 class FakeClient:
     def __init__(self):
@@ -13,7 +14,7 @@ class FakeClient:
         self.sensors=[{'name':'board.temperature_c','valid':True,'value':60,'age_ms':10}]
         self.reads=0;self.calls=[];self.cleared=False
     def command(self,*args,**kwargs):self.calls.append(args);return 'ok'
-    def manage(self,op):
+    def manage(self,op,**fields):
         self.command(op);self.reads+=1;self.data_reply[:]=json.dumps(self.sensors).encode()
     def configure(self,value):self.command('config');self.cleared=value['outputs']==[]
 
@@ -41,4 +42,15 @@ class MonitorTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'USB failure'):self.client.command('play')
         self.assertTrue(self.client.cleared)
         self.assertTrue(json.loads(self.path.read_text())['outputs_cleared'])
+    def test_latched_failure_still_closes_serial_transport(self):
+        transport=object.__new__(SerialTransport)
+        class Port:
+            closed=False
+            def close(self):self.closed=True
+        transport.serial=Port()
+        client=Client(transport);client.connections=True
+        monitor=BoardMonitor(client,self.path);monitor.failure='already stopped'
+        client.close()
+        self.assertTrue(transport.serial.closed)
+
 if __name__=='__main__':unittest.main()
