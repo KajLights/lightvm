@@ -117,6 +117,7 @@ bool inputs_call_valid(Portable *p,unsigned binding,unsigned reg){
         pbc_initial(p,reg)<p->ninputs&&p->inputs[pbc_initial(p,reg)].type==binding-54;
 }
 static InputSignal *signal(InputRegistry *registry,const char *name){
+    if(registry)for(unsigned n=0;n<registry->native_count;n++)if(!strcmp(registry->native[n].name,name))return &registry->native[n];
     if(registry)for(unsigned n=0;n<registry->count;n++)if(!strcmp(registry->signals[n].name,name))return &registry->signals[n];
     return NULL;
 }
@@ -324,6 +325,7 @@ const char *input_registry_claim(InputRegistry *registry,const Json *j,int decla
     for(int t=declarations+1;t<j->tokens[declarations].next;t=j->tokens[t].next){
         static const char *const fields[]={"name","type",NULL};char name[33];unsigned type,index;
         if(!json_fields(j,t,fields)||!json_string(j,json_get(j,t,"name"),name,sizeof(name))||!object_name_valid(name)||!(type=scalar_type(j,json_get(j,t,"type"))))goto done;
+        if(!strncmp(name,"board.",6)){error="board sources are reserved and read-only";goto done;}
         if(!strncmp(name,"light.",6)){error="light controls are reserved; use a control binding";goto done;}
         for(index=0;index<count;index++)if(!strcmp(candidate[index].name,name))break;
         if(index==count){if(count==INPUT_SOURCE_LIMIT){error="source limit exceeded";goto done;}count++;}

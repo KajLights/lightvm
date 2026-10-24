@@ -245,8 +245,10 @@ Transition-program inputs are captured alongside progress and completed A/B
 frames, outside restored guest state. Endpoints still bypass the callback.
 
 Python clients expose `set_inputs`, `claim_inputs` and `publish_inputs`, with
-optional activation/upload/reset `inputs`. Hardware acquisition, events,
-filtering and buffered history remain separate extensions to this scalar core.
+optional activation/upload/reset `inputs`. Native
+[board-status sensors](board-status.md) use reserved `board.*` sources through the same bindings, including temperature and supported supply-voltage
+measurements. Other hardware acquisition, events, filtering and buffered history
+remain separate extensions to this scalar core.
 The native [TCA9555/APA102 keypad path](mqtt.md#keypad-and-rgb-indicators) supplies
 HA/Matter-style tap, multi-press and hold events to HA and independently controlled RGB indicators. Its
 hardware adapters live in `src/digital_inputs.[ch]`; animation input declarations

@@ -226,6 +226,31 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),in
             with self.assertRaises(ProtocolError): self.client.save_program('tampered',candidate)
             self.assertEqual(self.client.program_state()['generation'],generation)
 
+    def test_board_sources_are_read_only_and_bind_with_mapping(self):
+        self.client.manage('input_list')
+        sources=json.loads(self.client.data_reply)
+        uptime=next(s for s in sources if s['name']=='board.uptime_s')
+        self.assertEqual((uptime['origin'],uptime['type'],uptime['unit']),('board','float','s'))
+        self.assertTrue(uptime['valid'])
+        self.assertGreaterEqual(uptime['value'],0)
+        self.assertNotIn('board.temperature_c',[s['name'] for s in sources]) # Host has no chip sensor.
+        with self.assertRaises(ProtocolError):
+            self.client.claim_inputs({'board.uptime_s':'float'})
+        with self.assertRaises(ProtocolError):
+            self.client.claim_inputs({'board.future':'float'})
+        # Native sources do not consume the publisher quota.
+        self.client.claim_inputs({f'external.{n}':'float' for n in range(8)})
+        self.client.claim_inputs({f'external.{n}':'float' for n in range(8,16)})
+        self.load()
+        self.client.set_inputs({'level':{'source':'board.uptime_s','map':{
+            'input_min':0,'input_max':0.000001,'output_min':0,'output_max':1}}})
+        self.frame()
+        state=self.client.program_state()['inputs']['level']
+        self.assertFalse(state['fallback'])
+        self.assertEqual(state['value'],1)
+        self.client.manage('input_list')
+        self.assertEqual(len(json.loads(self.client.data_reply)),len(sources)+16)
+
     def test_preset_recipes_survive_reboot_and_do_not_save_live_samples(self):
         self.client.configure(config(20),save=True)
         self.client.save_program('eye',sample('eye'))
@@ -237,4 +262,4 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),in
         self.assertEqual(state['inputs']['position']['binding'],{'value':0.5})
         self.assertEqual(state['inputs']['intensity']['binding']['source'],'future.level')
         self.assertTrue(state['inputs']['intensity']['fallback'])
-        self.client.manage('input_list');self.assertEqual(json.loads(self.client.data_reply),[])
+        self.client.manage('input_list');self.assertTrue(all(s['origin']=='board' for s in json.loads(self.client.data_reply)))

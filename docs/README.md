@@ -8,6 +8,7 @@ animation. The guides below describe the current implementation.
 - [Controllers and development workflow](architecture.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Live inputs, timed drivers and wiring](inputs.md)
+- [Board status and native sensor inputs](board-status.md)
 - [Native drawing and composition](composition.md)
 - [A/B compositions and transitions](transitions.md)
 - [Python transition profile and optimized helpers](transition-profile.md)

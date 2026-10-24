@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { InputBindingControl, defaultBinding } from './InputBindingControl';
+import { useRuntime } from './runtime';
+import type { InputSource } from './types';
 import { inputsFor } from './program';
 import type { InputBindings, Manifest } from './types';
 
@@ -7,14 +9,21 @@ export function InputRecipeFields({ manifest, values, onChange, onValidity, pref
   manifest: Manifest; values: InputBindings; onChange: (values: InputBindings) => void;
   onValidity?: (valid: boolean) => void; prefix: string;
 }) {
+  const { controllers } = useRuntime(), client = controllers.client;
+  const [sources, setSources] = useState<InputSource[]>([]);
+  useEffect(() => {
+    let alive = true; setSources([]);
+    if (client && manifest.inputs?.length) void client.json('input_list').then((values: InputSource[]) => { if (alive) setSources(values); }).catch(() => {});
+    return () => { alive = false; };
+  }, [client, manifest.inputs]);
   const encoded = JSON.stringify(values, null, 2);
   const [text, setText] = useState(encoded), [error, setError] = useState('');
   useEffect(() => { setText(encoded); setError(''); onValidity?.(true); }, [encoded]);
   if (!manifest.inputs?.length && !Object.keys(values).length && !error) return null;
-  return <details className="input-recipe"><summary>What controls this animation?</summary><p className="helper">Choose light controls, fixed values, timers or music. These bindings travel with the animation recipe.</p>
+  return <details className="input-recipe"><summary>What controls this animation?</summary><p className="helper">Choose light controls, fixed values, timers, board sensors or music. These bindings travel with the animation recipe.</p>
     {manifest.inputs?.map(input => {
       const binding = values[input.name] ?? defaultBinding(input);
-      return <InputBindingControl key={input.name} declaration={input} binding={binding} value={'value' in binding ? binding.value : input.default} publish={next => {
+      return <InputBindingControl sources={sources} key={input.name} declaration={input} binding={binding} value={'value' in binding ? binding.value : input.default} publish={next => {
         try { const updated = inputsFor(manifest, { ...values, [input.name]: next }); setError(''); onValidity?.(true); onChange(updated); }
         catch (problem) { setError((problem as Error).message); onValidity?.(false); }
       }} />;

@@ -1,3 +1,4 @@
+import { BoardStatus } from './BoardStatus';
 import { Presets } from './Presets';
 import { useEffect, useMemo, useState } from 'react';
 import { activityActions, useAppDispatch, useAppSelector } from './store';
@@ -234,10 +235,11 @@ function Network() {
 }
 
 export function Configure() {
-  const controller = useAppSelector(state => state.controller), [section, setSection] = useState<'presets' | 'output' | 'network'>('presets');
+  const controller = useAppSelector(state => state.controller), [section, setSection] = useState<'presets' | 'output' | 'network' | 'status'>('presets');
   const networkSupported = Boolean(controller.description?.wifi_supported || controller.description?.http_supported || controller.description?.mqtt_supported);
   return <><div className="intro"><div><p className="eyebrow">02 / CONFIGURATION</p><h1>Make the controller yours.</h1><p>Build presets, configure outputs, and connect Wi-Fi and MQTT.</p></div></div>
-    <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'presets' ? 'page' : undefined} onClick={() => setSection('presets')}>Presets</button><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{controller.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}</nav>
+    <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'presets' ? 'page' : undefined} onClick={() => setSection('presets')}>Presets</button><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{controller.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}<button aria-current={section === 'status' ? 'page' : undefined} onClick={() => setSection('status')}>Board status</button></nav>
+    <div hidden={section !== 'status'}><BoardStatus active={section === 'status'} /></div>
     <div hidden={section !== 'presets'}><Presets /></div>
     <div hidden={section !== 'output'}><Hardware /></div>
     {networkSupported && <div hidden={section !== 'network'}><Network /></div>}
