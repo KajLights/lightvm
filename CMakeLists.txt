@@ -79,7 +79,7 @@ if(LIGHTVM_PLATFORM STREQUAL "host")
         add_test(NAME numeric_runtime_contract COMMAND "${CMAKE_COMMAND}" -E env
             "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
             "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_numeric_runtime.py")
-        foreach(suite bulk_numeric native_math semantic_floors easing numeric_work independent_emitter numeric_matrix)
+        foreach(suite noise bulk_numeric native_math semantic_floors easing numeric_work independent_emitter numeric_matrix)
             add_test(NAME ${suite}_contract COMMAND "${CMAKE_COMMAND}" -E env
                 "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
                 "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_${suite}.py")

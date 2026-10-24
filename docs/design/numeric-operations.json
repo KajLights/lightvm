@@ -1018,5 +1018,78 @@
     "21": 4,
     "33": 2
   },
-  "map_work_budget": 1024
+  "map_work_budget": 1024,
+  "native_noise_operations": [
+    {
+      "name": "perlin2",
+      "binding": 59,
+      "arguments": [
+        "f32",
+        "f32",
+        "i32",
+        "i32",
+        "i32"
+      ],
+      "result": "f32",
+      "effects": [],
+      "work_cost": 128,
+      "feature_floor": "1.4.0",
+      "kernel_feature_floor": "1.4.0",
+      "kernel_admitted": true,
+      "semantics": "Pure seeded gradient noise; coordinate, range, hash, repeat and accuracy contract in docs/noise.md."
+    },
+    {
+      "name": "perlin3",
+      "binding": 60,
+      "arguments": [
+        "f32",
+        "f32",
+        "f32",
+        "i32",
+        "i32",
+        "i32",
+        "i32"
+      ],
+      "result": "f32",
+      "effects": [],
+      "work_cost": 192,
+      "feature_floor": "1.4.0",
+      "kernel_feature_floor": "1.4.0",
+      "kernel_admitted": true,
+      "semantics": "Pure seeded gradient noise; coordinate, range, hash, repeat and accuracy contract in docs/noise.md."
+    },
+    {
+      "name": "simplex2",
+      "binding": 61,
+      "arguments": [
+        "f32",
+        "f32",
+        "i32"
+      ],
+      "result": "f32",
+      "effects": [],
+      "work_cost": 128,
+      "feature_floor": "1.4.0",
+      "kernel_feature_floor": "1.4.0",
+      "kernel_admitted": true,
+      "semantics": "Pure seeded gradient noise; coordinate, range, hash, repeat and accuracy contract in docs/noise.md."
+    },
+    {
+      "name": "simplex3",
+      "binding": 62,
+      "arguments": [
+        "f32",
+        "f32",
+        "f32",
+        "i32"
+      ],
+      "result": "f32",
+      "effects": [],
+      "work_cost": 192,
+      "feature_floor": "1.4.0",
+      "kernel_feature_floor": "1.4.0",
+      "kernel_admitted": true,
+      "semantics": "Pure seeded gradient noise; coordinate, range, hash, repeat and accuracy contract in docs/noise.md."
+    }
+  ]
 }

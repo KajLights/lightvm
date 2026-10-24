@@ -29,6 +29,7 @@ NATIVES = {
     'color_int': (15, I, (C,), 0), 'int_color': (16, C, (I,), 0),
     'randint': (17, I, (I, I), 8),
 }
+NATIVES.update({name:(row['binding'], F, tuple(row['signature'][1:]), 0) for name,row in numeric.NOISE_OPERATIONS.items()})
 NATIVES.update(FEATURE_NATIVES)
 NATIVES.update({
     'composition_mix': (53, 0, (6, F, I, I), 0),
@@ -40,6 +41,7 @@ ARRAY_TYPES = {'i': (1, I), 'f': (2, F), 'B': (7, I), 'H': (8, I), 'I': (11, I)}
 PUBLIC = {'requires', 'profile', 'setting', 'Input', 'Ramp', 'rgb', 'hsv', 'hash01', 'init', 'render', 'SpriteBatch', 'Sprite', 'PixelArray', 'Transform', 'ColorTransform',
           'red', 'green', 'blue', 'colorwheel', 'pico_colorwheel', 'hue_degrees',
           'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt', 'FixedArray', 'floor', 'ceil', 'trunc'}
+PUBLIC.update(numeric.NOISE_OPERATIONS)
 EXPR_OPS = {ast.Add: 3, ast.Sub: 4, ast.Mult: 5, ast.FloorDiv: 6, ast.Mod: 7, ast.Div: 8}
 BIT_OPS = {ast.BitAnd:'IAND', ast.BitOr:'IOR', ast.BitXor:'IXOR', ast.LShift:'ISHL', ast.RShift:'ISHR'}
 LIBRARIES = {'lightvm.motion', 'lightvm.easing', 'lightvm.transitions'}
@@ -231,6 +233,14 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
     def native(self, name, args, node):
         binding, result, types, rights = NATIVES[name]
         if binding == 7: self.kernels_used = True
+        if name in numeric.NOISE_OPERATIONS:
+            self.noise_used = True
+            dimensions = int(name[-1])
+            defaults = [0] + ([256]*dimensions if name.startswith('perlin') else [])
+            if dimensions <= len(args) <= len(types):
+                args = args + [self.literal(v) for v in defaults[len(args)-dimensions:]]
+            if any(self.typ(r) != I for r in args[dimensions:]):
+                self.fail(node, 'noise seeds and repeat periods require i32 values')
         if len(args) != len(types) or rights & ~self.rights:
             self.fail(node, 'native call arguments or stage permissions do not match')
         args = [self.convert(r, t) for r, t in zip(args, types)]
@@ -691,7 +701,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif op in (P_OP['RGB'],P_OP['HSV']):reads=[b,c,d]
             elif op==P_OP['NATIVE']:
                 binding,reads=self.calls[d]
-                if binding not in (7,8,9,10,11):return 'a native call has state/RNG effects or is unsupported in a kernel'
+                if binding not in (7,8,9,10,11) and binding not in {row['binding'] for row in numeric.NOISE_OPERATIONS.values()}:return 'a native call has state/RNG effects or is unsupported in a kernel'
             elif op in (P_OP['JMP'],P_OP['JZ']):
                 if not first+offset<d<end:return 'the branch shape has a backward edge or can skip the final store'
                 reads=[a] if op==P_OP['JZ'] else []
@@ -805,6 +815,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
         if self.numeric_used: feature_floor = numeric.RELEASE
         if getattr(self, 'kernels_used', False): feature_floor = '1.3.0'
+        if getattr(self, 'noise_used', False): feature_floor = '1.4.0'
         if minimum_release and release_error(minimum_release, feature_floor):
             raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
         self.allocate(functions)

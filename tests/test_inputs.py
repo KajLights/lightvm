@@ -76,6 +76,26 @@ class InputTests(unittest.TestCase):
         self.assertEqual(after['generation'],before['generation']);self.assertEqual(after['program_us'],before['program_us'])
         self.assertEqual(after['settings_values'],{});self.assertEqual(after['inputs_revision'],1)
 
+    def test_noise_inputs_and_latched_trigger_count_preserve_instance(self):
+        source=(ROOT/'examples/animations/noise.py').read_text()
+        self.load(source, inputs={'phase':{'value':0.25}})
+        original=self.frame()
+        before=self.client.program_state()
+        self.client.set_inputs({'field':{'value':7}})
+        selected=self.frame();self.assertNotEqual(selected,original)
+        self.assertEqual(self.frame(),selected)
+        self.client.set_inputs({'field':{'value':7}})
+        self.assertEqual(self.frame(),selected)
+        self.client.set_inputs({'scale':{'value':12.0}})
+        self.assertNotEqual(self.frame(),selected)
+        self.client.set_inputs({'field':{'value':0},'scale':{'value':4.0}})
+        self.assertEqual(self.frame(),original)
+        after=self.client.program_state()
+        self.assertEqual(after['generation'],before['generation'])
+        self.assertEqual(after['program_us'],before['program_us'])
+        self.client.set_inputs({'phase':{'value':0.75}})
+        self.assertNotEqual(self.frame(),original)
+
     def test_ramp_rate_changes_preserve_phase_and_explicit_restart(self):
         self.load();self.frame(1000)
         self.client.set_inputs({'phase':{'driver':{'kind':'ramp','duration':2.0,'mode':'repeat'}}})

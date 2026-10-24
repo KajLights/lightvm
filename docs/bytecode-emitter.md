@@ -398,3 +398,11 @@ The [23 October validation](design/numeric-followup-validation-2026-10-23.md)
 closes the implementation corrections with generated metadata, exhaustive native
 signature/floor checks, malformed map and RGB-boundary independent fixtures, and
 the full host parameter matrix. Physical service/performance gates remain open.
+
+## Native gradient noise
+
+Release 1.4.0 adds pure native bindings 59..62 for seeded 2D/3D Perlin and
+simplex noise. Use the existing NATIVE call record with the exact signatures in
+[the noise contract](noise.md#native-and-bytecode-contract). All are valid in
+verified prepared pixel kernels; their 128/192 work costs apply in scalar and
+prepared execution, including fault attempts. No new instruction layout is used.

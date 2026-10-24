@@ -10,6 +10,7 @@ import color from '../../examples/animations/color.py?raw';
 import pattern from '../../examples/animations/pattern.py?raw';
 import rainbowSprite from '../../examples/animations/rainbow_sprite.py?raw';
 import sweep from '../../examples/animations/sweep.py?raw';
+import noise from '../../examples/animations/noise.py?raw';
 import eye from '../../examples/animations/eye.py?raw';
 import crossfade from '../../examples/transitions/crossfade.py?raw';
 import wipe from '../../examples/transitions/wipe.py?raw';
@@ -24,6 +25,8 @@ const PYTHON_EXAMPLES = [
     description: 'A colour cycle every 60 seconds. Use Live inputs to scrub phase, change spatial scale or adjust the timer.' },
   { id: 'eye', filename: 'eye.py', label: 'eye.py · live inputs', source: eye,
     description: 'An eye with live position, width, full RGB colour and local intensity. Follow light colour and bind other inputs to timers, music or sensors.' },
+  { id: 'noise', filename: 'noise.py', label: 'noise.py · live field', source: noise,
+    description: 'Smooth seeded noise with live scale, phase and brightness. Change the field input to select a new pattern.' },
   { id: 'stars', filename: 'stars.py', label: 'stars.py', source: stars,
     description: 'Three-pixel stars appear and fade over a transparent background. Run alone or over another animation.' },
   { id: 'color', filename: 'color.py', label: 'color.py', source: color,

@@ -175,3 +175,23 @@ def hue_degrees(color):
     delta = top - bottom
     hue = 0 if not delta else 60 * (((g-b)/delta) % 6) if top == r else 60 * ((b-r)/delta+2) if top == g else 60 * ((r-g)/delta+4)
     return float(round(hue))
+
+
+def perlin2(x, y, seed=0, repeat_x=256, repeat_y=256):
+    """Pure signed 2D gradient noise. Integer repeat periods are 1..65536."""
+    raise RuntimeError("perlin2 is provided by the compiled native runtime")
+
+
+def perlin3(x, y, z, seed=0, repeat_x=256, repeat_y=256, repeat_z=256):
+    """Pure signed 3D gradient noise, with explicit seed and repeat periods."""
+    raise RuntimeError("perlin3 is provided by the compiled native runtime")
+
+
+def simplex2(x, y, seed=0):
+    """Pure signed 2D simplex noise; coordinates are in [-65536,65536]."""
+    raise RuntimeError("simplex2 is provided by the compiled native runtime")
+
+
+def simplex3(x, y, z, seed=0):
+    """Pure signed 3D simplex noise; coordinates are in [-65536,65536]."""
+    raise RuntimeError("simplex3 is provided by the compiled native runtime")

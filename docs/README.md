@@ -14,6 +14,7 @@ animation. The guides below describe the current implementation.
 - [Python transition profile and optimized helpers](transition-profile.md)
 - [PixelArray and user-defined sprites](pixelarray-sprites.md)
 - [Motion, easing and strip boundaries](motion.md)
+- [Seeded gradient noise](noise.md): native Perlin/simplex, live inputs and field selection.
 - [Compiler-generated bulk pixel maps](pixel-maps.md)
 - [Control API](control-api.md)
 - [Controller configuration](configuration.md)

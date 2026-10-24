@@ -287,7 +287,7 @@ def draw(ctx,runtime,pixels):
                     client.require_ok(client.command(FRAME,struct.pack('<I',milliseconds)))
                     self.assertEqual(bytes(client.pixel_snapshot), bytes([expected,0,0])*5)
                 generation = client.program_state()['generation']
-                for required in ('1.1.0','1.4.0'):
+                for required in ('1.1.0','1.5.0'):
                     with self.assertRaises(ProtocolError):
                         client.save_program('invalid', manifest_variant(package,requires=required))
                     self.assertEqual(client.program_state()['generation'], generation)

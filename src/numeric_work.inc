@@ -6,6 +6,14 @@ static inline unsigned lbc_instruction_work(unsigned op){
 static inline unsigned lbc_native_instruction_work(unsigned binding){
     switch(binding){
     case 7:return 64;
+    case 59:return 128;
+    case 60:return 192;
+    case 61:return 128;
+    case 62:return 192;
     default:return 1;
     }
 }
+/* perlin2: native 59, work 128. */
+/* perlin3: native 60, work 192. */
+/* simplex2: native 61, work 128. */
+/* simplex3: native 62, work 192. */
