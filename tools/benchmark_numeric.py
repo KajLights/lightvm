@@ -3,7 +3,7 @@
 
 The caller selects and verifies firmware separately. Temporary programs and
 output configuration are restored on exit; saved configuration is never changed.
-Only the existing GP16 strip is driven. Logical counts above its physical length
+Only the selected output pin is driven. Logical counts above its physical length
 test execution and admission, not optical output.
 """
 import argparse
@@ -44,17 +44,17 @@ def prepare(directory):
     (directory / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 
 
-def configure(client, names, count):
+def configure(client, names, count, pin='GP16'):
     client.configure({'schema': 'lightvm.config', 'outputs': []})
     client.configure({'schema': 'lightvm.config', 'outputs': [{
         'id': 'numeric', 'type': 'ws2812b',
-        'config': {'pin': 'GP16', 'count': count, 'brightness_limit': 32}}]})
+        'config': {'pin': pin, 'count': count, 'brightness_limit': 32}}]})
     client.configure_composition([{'id': 'layer' + str(i), 'program': 'nt_' + name}
                                   for i, name in enumerate(names)], output='numeric')
 
 
-def replay(client, name, count):
-    configure(client, [name], count)
+def replay(client, name, count, pin='GP16'):
+    configure(client, [name], count, pin)
     client.require_ok(client.command(STOP, output='numeric'))
     client.reset_program(output='numeric', layer='layer0')
     before = client.program_state(output='numeric', layer='layer0')
@@ -71,10 +71,13 @@ def run(args):
     manifest = json.loads((args.packages / 'manifest.json').read_text())
     cases = args.case or sorted({n.rsplit('-', 1)[0] for n in manifest})
     names = [name + '-' + mode for name in cases for mode in ('scalar', 'bulk')]
-    client = Client(SerialTransport(args.port) if args.port else ProcessTransport(args.process), timeout=120)
+    pin = args.pin
+    client = Client(SerialTransport(args.port, no_reset=args.no_reset)
+                    if args.port else ProcessTransport(args.process), timeout=120)
     result = {'label': args.label, 'firmware_sha256': sha(args.firmware.read_bytes()),
               'packages': {n: manifest[n] for n in names}, 'replays': [], 'samples': [],
-              'warmup_seconds': args.warmup, 'network_regime': 'existing network configuration, USB status polling at 20 Hz'}
+              'warmup_seconds': args.warmup, 'pin': pin,
+              'network_regime': args.network_regime}
     created = []
 
     def checkpoint():
@@ -95,8 +98,8 @@ def run(args):
         if args.correctness:
             for count in args.pixels:
                 for name in cases:
-                    expected, scalar = replay(client, name + '-scalar', count)
-                    actual, bulk = replay(client, name + '-bulk', count)
+                    expected, scalar = replay(client, name + '-scalar', count, pin)
+                    actual, bulk = replay(client, name + '-bulk', count, pin)
                     result['replays'].append({'case': name, 'pixels': count,
                                               'equal': actual == expected, 'scalar': scalar, 'bulk': bulk})
                     checkpoint()
@@ -111,7 +114,7 @@ def run(args):
                         for variant in (('scalar', 'bulk') if trial % 2 == 0 else ('bulk', 'scalar')):
                             program = name + '-' + variant
                             began = time.monotonic()
-                            configure(client, [program], count)
+                            configure(client, [program], count, pin)
                             setup_ms = (time.monotonic() - began) * 1000
                             memory = client.program_state(output='numeric', layer='layer0')
                             time.sleep(args.warmup)
@@ -126,7 +129,7 @@ def run(args):
                                               'status_p95_ms': row['status_latency_ms']['p95']}), flush=True)
             if args.mixed:
                 selected = [name + '-bulk' for name in cases[:2]]
-                configure(client, selected, args.pixels[0])
+                configure(client, selected, args.pixels[0], pin)
                 time.sleep(args.warmup)
                 row = sample(client, 'numeric', args.seconds)
                 row.update(case='mixed', programs=selected, pixels=args.pixels[0])
@@ -152,6 +155,9 @@ def main():
     parser.add_argument('--prepare', action='store_true')
     parser.add_argument('--packages', type=Path, required=True)
     parser.add_argument('--port')
+    parser.add_argument('--pin', default='GP16', help='output pin; use D1 for XIAO ESP32-C3')
+    parser.add_argument('--no-reset', action='store_true', help='keep ESP32 USB control lines deasserted')
+    parser.add_argument('--network-regime', default='existing network configuration, USB status polling at 20 Hz')
     parser.add_argument('--process', type=Path)
     parser.add_argument('--firmware', type=Path)
     parser.add_argument('--label')

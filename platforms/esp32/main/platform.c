@@ -13,11 +13,19 @@
 #include "soc/soc_caps.h"
 #include <stdlib.h>
 #include <stdatomic.h>
+#include <string.h>
 #include "esp_attr.h"
+#include "esp_private/esp_clk.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const PlatformInfo info={"esp32",LIGHTVM_BOARD_NAME,"ws2812"};
 const PlatformInfo *platform_info(void) { return &info; }
 uint64_t platform_time_us(void) { return (uint64_t)esp_timer_get_time(); }
+unsigned platform_cpu_hz(void) { return (unsigned)esp_clk_cpu_freq(); }
+unsigned platform_main_stack_peak(void) {
+    return CONFIG_ESP_MAIN_TASK_STACK_SIZE - uxTaskGetStackHighWaterMark(NULL);
+}
 void esp32_port_init(void) {}
 void platform_identity(char *controller,size_t capacity,char *boot,size_t boot_capacity) {
     uint8_t mac[6]; esp_read_mac(mac,ESP_MAC_WIFI_STA);
@@ -131,13 +139,39 @@ static bool flash_ready(void) {
     return true;
 }
 static const esp_partition_t *partition;
+#if LIGHTVM_ESP32_C3_PROFILE
+static const uint8_t *storage_mapping;
+static esp_partition_mmap_handle_t storage_mapping_handle;
+#endif
 uint32_t platform_storage_capacity(void) { return partition ? partition->size : 0; }
 bool platform_storage_available(void) {
+#if LIGHTVM_ESP32_C3_PROFILE
+    if (storage_mapping) return true;
+#endif
     partition=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_ANY,"lightvm");
-    return partition && partition->size>=16384 && partition->size%8192==0 && partition->erase_size==4096;
+    if (!partition || partition->size<16384 || partition->size%8192 || partition->erase_size!=4096) return false;
+#if LIGHTVM_ESP32_C3_PROFILE
+    // VM instructions, call records and immutable artwork are small, frequent
+    // reads. Map the store once instead of entering the SPI driver for each.
+    // IDF write/erase operations invalidate cached aliases before returning.
+    const void *mapped;
+    if (esp_partition_mmap(partition,0,partition->size,ESP_PARTITION_MMAP_DATA,
+                           &mapped,&storage_mapping_handle)!=ESP_OK) return false;
+    storage_mapping=mapped;
+#endif
+    return true;
 }
 static bool bounds(uint32_t offset,size_t size) { return partition && offset<=partition->size && size<=partition->size-offset; }
-bool platform_storage_read(uint32_t offset,void *bytes,size_t size) { return bounds(offset,size) && esp_partition_read(partition,offset,bytes,size)==ESP_OK; }
+bool platform_storage_read(uint32_t offset,void *bytes,size_t size) {
+    if (!bounds(offset,size)) return false;
+#if LIGHTVM_ESP32_C3_PROFILE
+    if (!storage_mapping) return false;
+    memcpy(bytes,storage_mapping+offset,size);
+    return true;
+#else
+    return esp_partition_read(partition,offset,bytes,size)==ESP_OK;
+#endif
+}
 bool platform_storage_write(uint32_t offset,const void *bytes,size_t size) {
     return flash_ready() && bounds(offset,size) && offset%256==0 && size%256==0 && esp_partition_write(partition,offset,bytes,size)==ESP_OK;
 }

@@ -177,6 +177,16 @@ idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c3" -p PORT flash
 Use a separate directory and `xiao_esp32s3` or `xiao_esp32c6` for those boards.
 The normal partition tables and flash store are retained.
 
+`LIGHTVM_ESP32_PROFILE=AUTO` selects the measured **c3** execution profile for
+XIAO ESP32-C3: `-O3` for the shared core, instruction RAM for hot drawing kernels,
+memory-mapped flash reads, one render worker and 2 ms slice/epoch targets.
+Explicit resource options override the board defaults. CPU/flash clocks, numeric
+precision, instruction cache size and heap limits stay at their existing values.
+S3 and C6 select **standard**. Use `-DLIGHTVM_ESP32_PROFILE=standard` to compare
+without the C3 profile, or `c3` to require a C3 target explicitly.
+See the [C3 hardware comparison](docs/design/c3-performance-2026-10-24.md)
+for the measured tradeoffs and the archived Pico workloads used for comparison.
+
 ## Browser workspace and controller APIs
 
 ```sh
