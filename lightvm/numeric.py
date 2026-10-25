@@ -13,7 +13,7 @@ SCALE = 65536
 RELEASE = '1.2.0'
 MATH_RELEASE = '1.3.0'
 I, F, B, Q = 1, 2, 4, 7
-from .numeric_metadata import OPERATIONS, NATIVE_OPERATIONS, BASE_WORK, MAP_WORK_BUDGET
+from .numeric_metadata import OPERATIONS, NATIVE_OPERATIONS, BASE_WORK, MAP_WORK_BUDGET, NOISE_OPERATIONS
 SIGNATURES = {name:tuple(row['signature']) for name,row in OPERATIONS.items() if row['id']>=40}
 MATH_SIGNATURES = {name:sig for name,sig in SIGNATURES.items() if OPERATIONS[name]['id']>=62}
 OPCODES = {name:OPERATIONS[name]['id'] for name in SIGNATURES}
@@ -22,6 +22,8 @@ WORK = BASE_WORK | {row['id']:row['work'] for row in OPERATIONS.values()}
 
 def instruction_work(op, binding=None):
     if binding in NATIVE_OPERATIONS: return OPERATIONS[NATIVE_OPERATIONS[binding]]['work']
+    for row in NOISE_OPERATIONS.values():
+        if binding == row['binding']: return row['work']
     return WORK.get(op, 1)
 
 

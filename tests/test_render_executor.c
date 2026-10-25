@@ -37,30 +37,30 @@ static uint32_t exercise(unsigned workers){
     for(unsigned k=0;k<2;k++)for(unsigned i=0;i<257;i++)CHECK(n[k].values[i]==i*i+17);
 
     PixelBuffer target={.count=131};
-    VmInstance vms[3];uint32_t hash=0;
-    for(unsigned i=0;i<3;i++){
+    VmInstance vms[4];uint32_t hash=0;
+    for(unsigned i=0;i<4;i++){
         vm_init(&vms[i],&target,NULL,NULL);
-        vms[i].memory=i==1?pixel_map_lbc:counter_lbc;
-        vms[i].expected=i==1?sizeof(pixel_map_lbc):sizeof(counter_lbc);
+        vms[i].memory=i>=2?noise_map_lbc:i==1?pixel_map_lbc:counter_lbc;
+        vms[i].expected=i>=2?sizeof(noise_map_lbc):i==1?sizeof(pixel_map_lbc):sizeof(counter_lbc);
         CHECK(!vm_load(&vms[i]));vms[i].ready=true;
         vms[i].portable->deterministic_random=true;vms[i].portable->default_seed=123;
         CHECK(!control_prepare(&vms[i]));
     }
     for(unsigned frame=0;frame<20;frame++){
-        bool done[3]={false};
-        for(unsigned i=0;i<3;i++)CHECK(!animation_begin(&vms[i],17000));
+        bool done[4]={false};
+        for(unsigned i=0;i<4;i++)CHECK(!animation_begin(&vms[i],17000));
         unsigned rounds=0;
-        while(!done[0]||!done[1]||!done[2]){
+        while(!done[0]||!done[1]||!done[2]||!done[3]){
             CHECK(++rounds<1000);
-            AnimationSlice slices[3];RenderJob jobs[3];unsigned count=0,indices[3];
-            for(unsigned i=0;i<3;i++)if(!done[i]){
+            AnimationSlice slices[4];RenderJob jobs[4];unsigned count=0,indices[4];
+            for(unsigned i=0;i<4;i++)if(!done[i]){
                 indices[count]=i;slices[count]=(AnimationSlice){&vms[i],7,0};
                 jobs[count]=(RenderJob){animation_execute,&slices[count],0};count++;
             }
             render_execute(jobs,count);
             for(unsigned i=0;i<count;i++)CHECK(!animation_commit(&slices[i],jobs[i].elapsed_us,&done[indices[i]]));
         }
-        for(unsigned i=0;i<3;i++){
+        for(unsigned i=0;i<4;i++){
             CHECK(vms[i].portable->render_count==frame+2);
             CHECK(vms[i].control.program_us==(frame+1)*17000);
             CHECK(!vms[i].control.faulted);
@@ -68,7 +68,7 @@ static uint32_t exercise(unsigned workers){
             hash=hash*31+crc32_bytes(vms[i].portable->values,vms[i].portable->register_bytes);
         }
     }
-    for(unsigned i=0;i<3;i++)vm_destroy(&vms[i]);
+    for(unsigned i=0;i<4;i++)vm_destroy(&vms[i]);
     CHECK(vm_heap_used()==0);render_executor_shutdown();return hash;
 }
 int main(void){

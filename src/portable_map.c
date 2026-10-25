@@ -4,19 +4,36 @@
 #include "render_executor.h"
 #include "platform.h"
 #include "vm_allocator.h"
+#include "noise.h"
 #include <string.h>
 #include <limits.h>
 #include <math.h>
 
-enum { MAP_LOAD=33, MAP_STORE=34, MAP_LENGTH=35, MAP_NATIVE=38, MAP_SIN=100, MAP_RED, MAP_GREEN, MAP_BLUE, MAP_WHEEL, MAP_FEQ, MAP_EQ, MAP_LITERAL };
+enum { MAP_LOAD=33, MAP_STORE=34, MAP_LENGTH=35, MAP_NATIVE=38, MAP_SIN=100, MAP_RED, MAP_GREEN, MAP_BLUE, MAP_WHEEL, MAP_FEQ, MAP_EQ, MAP_LITERAL, MAP_NOISE=112 };
 typedef union { uint32_t u; int32_t i; float f; } Value;
-typedef struct { uint8_t op,a,b,c; uint32_t d; } Instruction;
+/* Noise needs up to seven source registers. Six fit in b,c,d; the last byte
+ * keeps every prepared instruction at 12 bytes, charged to the admitted heap. */
+typedef struct { uint8_t op,a,b,c; uint32_t d; uint8_t extra; } Instruction;
+static unsigned noise_binding(unsigned op){return op>=MAP_NOISE&&op<MAP_NOISE+4?LVM_PERLIN2+op-MAP_NOISE:0;}
+static unsigned noise_reads(Instruction i,unsigned out[7]){
+    out[0]=i.b;out[1]=i.c;
+    for(unsigned k=0;k<4;k++)out[k+2]=(i.d>>(k*8))&255u;
+    out[6]=i.extra;return lvm_noise_signature(noise_binding(i.op)).argc;
+}
 
 static bool decode(Portable *p,unsigned pc,Instruction *ins) {
     uint8_t q[8];if(!pbc_read_instruction(p,pc,q))return false;
-    *ins=(Instruction){q[0],q[1],q[2],q[3],lbc_u32(q+4)};
+    *ins=(Instruction){.op=q[0],.a=q[1],.b=q[2],.c=q[3],.d=lbc_u32(q+4)};
     if(ins->op==MAP_NATIVE){
         PbcCall call=pbc_call(p,ins->d);
+        LvmNoiseSignature noise=lvm_noise_signature(call.binding);
+        if(noise.argc){
+            if(!p->noise_allowed||call.argc!=noise.argc)return false;
+            ins->op=(uint8_t)(MAP_NOISE+call.binding-LVM_PERLIN2);
+            ins->b=call.args[0];ins->c=call.args[1];ins->d=0;ins->extra=call.args[6];
+            for(unsigned k=0;k<4;k++)ins->d|=(uint32_t)call.args[k+2]<<(8*k);
+            return !p->io_fault;
+        }
         if(call.binding<7||call.binding>11||call.argc!=1)return false;
         ins->op=(uint8_t)(MAP_SIN+call.binding-7);ins->b=call.args[0];ins->c=0;ins->d=0;
     }
@@ -45,7 +62,8 @@ static bool numeric_array(unsigned kind){
 }
 static bool scalar(unsigned type){return (type>=T_INT&&type<=T_BOOL)||type==T_FIXED;}
 /* Normal instruction validation independently checks every exact signature. */
-static int reads(Instruction i,unsigned out[3]) {
+static int reads(Instruction i,unsigned out[7]) {
+    if(noise_binding(i.op))return (int)noise_reads(i,out);
     out[0]=i.b;out[1]=i.c;out[2]=i.d;
     switch(i.op){
     case MOV:case ITOF:case FTOI:case MAP_SIN:case MAP_RED:case MAP_GREEN:case MAP_BLUE:case MAP_WHEEL:return 1;
@@ -61,6 +79,7 @@ static int reads(Instruction i,unsigned out[3]) {
     }
 }
 static unsigned cost(unsigned op){
+    if(noise_binding(op))return lvm_noise_signature(noise_binding(op)).work;
     return lbc_instruction_work(op==MAP_SIN?FSIN:op);
 }
 static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound,MapInfo *info){
@@ -69,7 +88,7 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
     bool extended=length>32;
     for(unsigned n=0;n<length;n++){
         Instruction i;if(!decode(p,first+n,&i))return false;
-        unsigned operands[3];int count=reads(i,operands);if(count<0)return false;
+        unsigned operands[7];int count=reads(i,operands);if(count<0)return false;
         for(int k=0;k<count;k++)if(operands[k]>=p->nregs||!scalar(pbc_type(p,operands[k])))return false;
         if(i.op==JMP||i.op==JZ){
             if(i.d<=first+n||i.d>=end)return false; /* No path may skip the final store. */
@@ -90,7 +109,7 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
         }
         LbcNumericMetadata metadata=lbc_numeric_metadata(i.op);
         if(metadata.signature.result&&(!metadata.kernel||metadata.effects))return false;
-        if(lbc_numeric_signature(i.op).result)extended=true;
+        if(lbc_numeric_signature(i.op).result||noise_binding(i.op))extended=true;
         for(int k=0;k<count;k++)if(pbc_type(p,operands[k])==T_FIXED)extended=true;
         if(i.op!=JMP&&i.op!=JZ&&i.op!=MAP_STORE&&pbc_type(p,i.a)==T_FIXED)extended=true;
     }
@@ -102,7 +121,7 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
     bool dependent[128]={0};dependent[index]=true;reached[0]=true;add(&before[0],index);
     for(unsigned n=0;n<length;n++){
         if(!reached[n])return false;
-        Instruction i;unsigned operands[3];if(!decode(p,first+n,&i))return false;
+        Instruction i;unsigned operands[7];if(!decode(p,first+n,&i))return false;
         int count=reads(i,operands);bool varies=false;
         for(int k=0;k<count;k++){
             unsigned r=operands[k];varies|=dependent[r];
@@ -170,6 +189,11 @@ int pbc_map_prepare(Portable *p,unsigned *pc,unsigned *index){
     *pc=plan->end;*index=0;return 0;
 }
 static bool evaluate(Instruction i,Value *v,const Portable *p) {
+    if(noise_binding(i.op)){
+        unsigned regs[7],count=noise_reads(i,regs);uint32_t args[7]={0};
+        for(unsigned k=0;k<count;k++)args[k]=v[regs[k]].u;
+        return lvm_noise_eval(noise_binding(i.op),args,&v[i.a].u);
+    }
     Value x=v[i.b],y=v[i.c];
     switch(i.op){
     case MOV:v[i.a]=x;break;

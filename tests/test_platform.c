@@ -380,6 +380,7 @@ static void indicator_effect_contract(void) {
     session_destroy(&session);app_destroy(&app);
 }
 int main(int argc,char **argv) {
+    if(argc==3&&!strcmp(argv[1],"--noise-inputs"))return noise_snapshot_driver(argv[2]);
     if(argc==2&&!strcmp(argv[1],"--numeric-metadata"))return numeric_metadata_driver();
     if((argc==2||argc==3)&&!strcmp(argv[1],"--numeric-driver"))return numeric_driver(argc==3?argv[2]:"nearest");
     if(argc>=3&&argc<=7&&(!strcmp(argv[1],"--numeric-package")||!strcmp(argv[1],"--numeric-frames"))){

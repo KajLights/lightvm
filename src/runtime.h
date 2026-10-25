@@ -23,4 +23,5 @@ bool runtime_epoch_can_collect(void);
 RuntimeEpochStats runtime_epoch_stats(void);
 unsigned platform_main_stack_peak(void);
 unsigned platform_cpu_hz(void);
+const char *platform_reset_reason(void);
 #endif

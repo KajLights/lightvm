@@ -45,6 +45,9 @@ if(LIGHTVM_PLATFORM STREQUAL "host")
     include(CTest)
     if(BUILD_TESTING)
         find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        add_executable(test_esp32_usb_connection tests/test_esp32_usb_connection.c)
+        target_compile_options(test_esp32_usb_connection PRIVATE -Wall -Wextra -Werror)
+        add_test(NAME esp32_usb_connection COMMAND test_esp32_usb_connection)
         add_executable(test_board_status tests/test_board_status.c src/board_status.c)
         target_link_libraries(test_board_status PRIVATE lightvm_config)
         target_include_directories(test_board_status PRIVATE shared/device-core/include)
@@ -79,7 +82,7 @@ if(LIGHTVM_PLATFORM STREQUAL "host")
         add_test(NAME numeric_runtime_contract COMMAND "${CMAKE_COMMAND}" -E env
             "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
             "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_numeric_runtime.py")
-        foreach(suite bulk_numeric native_math semantic_floors easing numeric_work independent_emitter numeric_matrix)
+        foreach(suite noise bulk_numeric native_math semantic_floors easing numeric_work independent_emitter numeric_matrix)
             add_test(NAME ${suite}_contract COMMAND "${CMAKE_COMMAND}" -E env
                 "LIGHTVM_NUMERIC_RUNTIME=$<TARGET_FILE:test_platform>"
                 "${Python3_EXECUTABLE}" -B "${CMAKE_SOURCE_DIR}/tests/test_${suite}.py")

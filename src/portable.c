@@ -5,6 +5,7 @@
 #include "draw.h"
 #include "portable_draw.h"
 #include "portable_map.h"
+#include "noise.h"
 #include <math.h>
 #include <limits.h>
 #include <string.h>
@@ -58,6 +59,15 @@ static const NativeSignature natives[]={
     {T_COLOR,1,{T_INT},WRITE_OUTPUT},
     {T_BOOL,1,{T_INT},WRITE_OUTPUT},
 };
+static bool native_binding_valid(unsigned binding){
+    return (binding>=3&&binding<=17)||(binding>=27&&binding<sizeof(natives)/sizeof(*natives))||lvm_noise_signature(binding).argc;
+}
+static NativeSignature native_signature(unsigned binding){
+    if(binding<sizeof(natives)/sizeof(*natives))return natives[binding];
+    LvmNoiseSignature noise=lvm_noise_signature(binding);
+    NativeSignature signature={.result=T_FLOAT,.argc=noise.argc};
+    memcpy(signature.args,noise.args,sizeof(noise.args));return signature;
+}
 unsigned pbc_type(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]&15:0;}
 unsigned pbc_role(const Portable *p,unsigned r){return r<p->nregs?p->descriptors[r]>>4:UINT_MAX;}
 uint32_t pbc_initial(const Portable *p,unsigned r){
@@ -121,7 +131,7 @@ bool pbc_render_reusable(Portable *p){
             count=call.argc;for(unsigned n=0;n<count;n++)reads[n]=call.args[n];
             writes=a!=255;
             if(id>=55&&id<=58){} /* Captured live input; checked before reuse. */
-            else if(id>=7&&id<=16){} /* Pure arithmetic/assertions. */
+            else if((id>=7&&id<=16)||lvm_noise_signature(id).argc){} /* Pure arithmetic/assertions. */
             else if(id==32||id==33){
                 unsigned resource=pbc_initial(p,call.args[0]);
                 if(resource>=p->nresources)return false;
@@ -185,11 +195,12 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
     }
     if(op==P_NATIVE){
         if(b||c||d>=p->ncalls)return false;
-        PbcCall site_value=pbc_call(p,d);const PbcCall *site=&site_value;if((site->binding<3||(site->binding>=18&&site->binding<=26))||site->binding>=sizeof(natives)/sizeof(*natives))return false;
-        const NativeSignature *sig=&natives[site->binding];
+        PbcCall site_value=pbc_call(p,d);const PbcCall *site=&site_value;if(!native_binding_valid(site->binding))return false;
+        NativeSignature signature=native_signature(site->binding);const NativeSignature *sig=&signature;
         if(site->argc!=sig->argc||(sig->rights&~fn->rights))return false;
         for(unsigned n=0;n<8;n++)if(n<site->argc?pbc_type(p,site->args[n])!=sig->args[n]:site->args[n]!=0)return false;
-        if(site->binding>=55){if(!inputs_call_valid(p,site->binding,site->args[0]))return false;}
+        if(site->binding>=LVM_PERLIN2){if(!p->noise_allowed)return false;}
+        else if(site->binding>=55){if(!inputs_call_valid(p,site->binding,site->args[0]))return false;}
         else if(site->binding>=27){if(!pbc_drawing_valid(p,site,fn->rights))return false;}
 
         return sig->result ? can_write(p,a,fn->rights)&&at==sig->result : a==255;
@@ -349,12 +360,13 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         error="invalid input read site";
         if(loader->index<p->ncalls){unsigned n=loader->index++;
         PbcCall item=pbc_call(p,n);const PbcCall *call=&item;
-        if((call->binding<3||(call->binding>=18&&call->binding<=26))||call->binding>=sizeof(natives)/sizeof(*natives)){error="invalid native binding";goto fail;}
+        if(!native_binding_valid(call->binding)){error="invalid native binding";goto fail;}
         if(lbc_native_numeric_metadata(call->binding).release_minor==3&&!p->kernels_allowed){error="native math requires release " LBC_KERNEL_RELEASE;goto fail;}
-        const NativeSignature *sig=&natives[call->binding];
+        if(lvm_noise_signature(call->binding).argc&&!p->noise_allowed){error="noise requires release " LVM_NOISE_RELEASE;goto fail;}
+        NativeSignature signature=native_signature(call->binding);const NativeSignature *sig=&signature;
         if(call->argc!=sig->argc)goto fail;
         for(unsigned k=0;k<8;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
-        if(call->binding>=55&&!inputs_call_valid(p,call->binding,call->args[0]))goto fail;
+        if(call->binding>=55&&call->binding<=58&&!inputs_call_valid(p,call->binding,call->args[0]))goto fail;
 
             return 0;
         }
@@ -656,6 +668,10 @@ static bool random_range(Portable *p,int64_t start,int64_t stop,int64_t step,Pbc
  * Bodies below implement library versions, not compiler-specific AST behaviour. */
 static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
     PbcValue a[8]={{0}};for(unsigned k=0;k<site->argc;k++)a[k]=register_value(p,site->args[k]);
+    if(lvm_noise_signature(site->binding).argc){
+        uint32_t args[7]={0};for(unsigned k=0;k<site->argc;k++)args[k]=a[k].u;
+        return lvm_noise_eval(site->binding,args,&result->u);
+    }
     if(site->binding>=55){if(a[0].u>=p->ninputs)return false;*result=p->inputs[a[0].u].snapshot;return true;}
     if(site->binding>=18){uint64_t started=platform_time_us();bool ok=pbc_drawing_call(p,site,a,result);p->native_draw_us+=platform_time_us()-started;return ok;}
     switch(site->binding){

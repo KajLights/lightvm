@@ -5,6 +5,18 @@ import struct
 from bytecode_fixtures import program
 prefix='from lightvm import profile,init,render,setting,rgb\nprofile("animation")\n'
 fixtures={
+ 'noise_map_lbc':program('''from lightvm import profile,render,perlin2,perlin3,simplex2,simplex3,hsv
+profile("animation")
+@render
+def draw(ctx,runtime,pixels):
+ for i in range(pixels.count):
+  x=i/17.0
+  a=perlin2(x,0.25,3,17,29)
+  b=perlin3(x,0.5,runtime.time,-7,13,19,31)
+  c=simplex2(x,runtime.time,11)
+  d=simplex3(x,0.75,runtime.time,2147483647)
+  pixels[i]=hsv(0.6+(a+b)*0.1,1.0,0.5+(c+d)*0.25)
+'''),
  'semantic_math_lbc':program(prefix+"""import math
 @init
 def setup(ctx,runtime):

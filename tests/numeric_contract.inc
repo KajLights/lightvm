@@ -138,6 +138,31 @@ static int numeric_package_driver(const char *path,unsigned count,unsigned tick,
     printf("]");if(stats)printf(",\"work\":%u,\"dispatches\":%llu",p->used-(LIGHTVM_INVOCATION_LIMIT-budget),(unsigned long long)p->dispatch_count);
     puts("}");pbc_destroy(p);CHECK(vm_heap_used()==0);return 0;
 }
+static int noise_snapshot_driver(const char *path){
+    uint8_t bytes[32769],pixels[129*4]={0},baseline[129*4];
+    FILE *file=fopen(path,"rb");CHECK(file);
+    size_t size=fread(bytes,1,sizeof(bytes),file);CHECK(!ferror(file));fclose(file);
+    PortableBytes source={bytes,size};Portable *p=NULL;
+    CHECK(!pbc_open(&p,portable_read,&source,size));
+    LbcBuffer output={.data=pixels,.count=129,.generation=1};
+    CHECK(!pbc_prepare(p,&output));CHECK(p->ninputs==2);
+    PbcValue args[3]={{.i=129},{.f=1.25f},{.f=0.25f}};
+    CHECK(pbc_invoke(p,0,args,3));portable_finish(p,1);
+    unsigned before=allocations;deny_allocation=true;clock_step=1000;
+    for(unsigned frame=0;frame<3;frame++){
+        inputs_capture(p,0,false);CHECK(pbc_invoke(p,1,args,3));
+        int status=pbc_resume(p,1);CHECK(status==0);
+        if(frame==1){
+            /* Updating drivers during a yielded invocation must not mutate its
+             * immutable snapshot. The next invocation selects the new field. */
+            p->inputs[0].driver.value.f=1.75f;p->inputs[1].driver.value.i=7;
+        }
+        do{status=pbc_resume(p,1);}while(!status);CHECK(status==1);
+        if(frame==0)memcpy(baseline,pixels,sizeof(pixels));
+        else CHECK((memcmp(baseline,pixels,sizeof(pixels))==0)==(frame==1));
+    }
+    deny_allocation=false;CHECK(allocations==before);pbc_destroy(p);CHECK(!vm_heap_used());return 0;
+}
 static void numeric_contract(void){
     clock_now=clock_step=0;CHECK(vm_heap_used()==0);
     /* Every allocation failure and every incremental loader/preparer return

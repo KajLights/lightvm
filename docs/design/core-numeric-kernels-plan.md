@@ -32,6 +32,15 @@ the existing sibling checkout. The separate
 [Pico performance plan](pico-performance-plan.md) retains ownership of its
 scheduler, preparation and physical-validation work.
 
+## Noise follow-up — 24 October 2026
+
+The separately scoped smooth-noise work below is now implemented as the
+[1.4.0 core noise contract](../noise.md): seeded 2D/3D Perlin and simplex,
+explicit repeat periods for Perlin, pure C evaluation, verified native calls and
+prepared kernels. Live INPUT snapshots and latched field-selection counts compose
+with it through normal arguments. This does not implement the proposed general
+trigger/event scheduler or change the earlier Stars evaluation requirements.
+
 ## Objective and scope
 
 Extend the typed core so ordinary animation code can use predictable fixed-point

@@ -50,7 +50,8 @@ def draw(ctx, runtime, pixels):
 
 The compiler normalizes `requires("1.2")` to `1.2.0`. One optional top-level
 `requires(...)` declaration is accepted. Omitting it selects the source's feature
-floor: `1.3.0` for extended pixel kernels, native f32 math, f32 min/max or sine,
+floor: `1.4.0` for native Perlin/simplex noise, `1.3.0` for extended pixel kernels,
+native f32 math, f32 min/max or sine,
 `1.2.0` for scalar fixed values/arrays or i32 bitwise/shift operations, `1.1.0`
 for an `Input(..., control=...)` declaration, otherwise `1.0.0`. The highest
 applicable floor wins, including numeric source operations folded to constants.
@@ -74,7 +75,8 @@ The loader also checks a package's claimed floor against its numeric encodings.
 A fixed register/resource, fixed declaration expression or new numeric instruction
 cannot claim a floor below 1.2.0, even on firmware that implements it. This check
 also applies to generic typed callbacks. Extended kernels and instructions 62..71
-require 1.3.0. Existing sine binding 7, FMIN/FMAX and f32 declaration min/max
+require 1.3.0. Native noise bindings 59..62 require 1.4.0 in every callback
+and call record. Existing sine binding 7, FMIN/FMAX and f32 declaration min/max
 also require 1.3.0 for their current semantic contract. Application
 release 1.3.0 keeps the current container layout; it introduces no storage migration.
 

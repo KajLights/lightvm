@@ -199,7 +199,9 @@ assert that every corpus call preserves an `errno` sentinel, including faults.
 Clamp, interpolation, periodic wrapping and polynomial easing remain SDK
 equations. Sine, circular and exponential easing are also ordinary guest helpers,
 with their contract [specified below](#normalized-easing-helpers). Fixed
-transcendental approximations, noise and indexed sampling remain separate scope.
+transcendental approximations and indexed sampling remain separate scope.
+[Seeded Perlin/simplex noise](noise.md) is now a separate implemented core
+contract, requiring release 1.4.0.
 Fixed programs explicitly convert to f32 for transcendental work. Do not
 accumulate a long-lived elapsed clock in Q16.16.
 

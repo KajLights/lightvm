@@ -218,3 +218,15 @@ then added their identities to the existing SDK manifest union. The guarded
 project set now includes the two board-status implementations. The Pico,
 Pico W and Pico 2 W software RAM/stack gates pass; no physical sensor or stack
 watermark validation is implied by those software gates.
+
+### ESP32 campaign integration — 24 October
+
+The shared `input_list(name)` filter adds a bounded 33-byte local name buffer and
+direct string checks; `describe.reset_reason` calls a direct weak platform hook
+(returning null on Pico). The runtime hook is a leaf. These changes add no
+callbacks, recursive dispatch, IRQs or worker activity, and do not alter the
+runtime checkpoint guards. The two project fingerprints were refreshed after
+that source review; stack reservations, callback contracts and margins stay
+unchanged. Use a fresh build directory after the device-core source move: stale
+`.ci` files from deleted root sources otherwise remain in the audit inventory.
+Current cross-build results are recorded in the ESP32 campaign report.

@@ -34,6 +34,9 @@ class SweepTests(unittest.TestCase):
             'eye_count': 1, 'eye_width': 1, 'rainbow_eyes': False, 'eased': False,
             **settings}}], output='lights')
         self.client.require_ok(self.client.command(STOP, output='lights'))
+        # Activation may render on the wall clock before STOP arrives. Start
+        # each explicit FRAME schedule from the same initialized zero time.
+        self.client.reset_program(output='lights', layer='eyes')
 
     def frame(self, ms=0):
         self.client.require_ok(self.client.command(FRAME, struct.pack('<I', ms), output='lights'))

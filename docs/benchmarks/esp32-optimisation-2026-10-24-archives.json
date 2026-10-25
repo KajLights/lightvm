@@ -1,0 +1,14 @@
+[
+  {
+    "archive": "esp32-optimisation-2026-10-24.tar.gz",
+    "bytes": 47475661,
+    "sha256": "b7559a282676c4ea9a15a7d88dff89d73321d68e9cdabcb6fcaf476d2e1851b7",
+    "verified_members": 655
+  },
+  {
+    "archive": "esp32-optimisation-screens-2026-10-24.tar.gz",
+    "bytes": 78684944,
+    "sha256": "4e54d2a62ba3b513778b5db46e6d133bd918c1b63e20c70ab09035f4b72f68b6",
+    "verified_members": 91
+  }
+]

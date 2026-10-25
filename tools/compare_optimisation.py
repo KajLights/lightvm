@@ -20,6 +20,7 @@ def finite(value):
 
 def identity(document):
     context = {key: document[key] for key in CONTEXT}
+    context['temperature_monitor'] = document.get('temperature_monitor')
     context['packages'] = {name: row['bytecode_sha256'] for name, row in document['packages'].items()}
     context['cases'] = sorted(document['selected_cases'])
     return context

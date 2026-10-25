@@ -22,6 +22,11 @@ describe('JavaScript to the shared LightVM backend', () => {
   for (const name of readdirSync(root + '/examples/javascript').filter(name => name.endsWith('.js'))) {
     it('compiles example ' + name, () => { compile(lowerJavaScript(readFileSync(root + '/examples/javascript/' + name, 'utf8'))); });
   }
+  it('compiles core noise with explicit seeds and repeat periods', () => {
+    for (const call of ['perlin2(0.25, 0.5)', 'perlin2(0.25, 0.5, -7, 17, 31)', 'perlin3(0.25, 0.5, 0.75, 7, 3, 5, 9)', 'simplex2(0.25, 0.5, 9)', 'simplex3(0.25, 0.5, 0.75)']) {
+      expect(compile(lowerJavaScript(render(`pixels.fill(hsv(0.5, 1, (${call} + 1) / 2));`))).manifest.requires).toBe('1.4.0');
+    }
+  });
   it('supports lexical locals, helpers, for/while, nested choices and updates', () => {
     compile(lowerJavaScript(`
 const twice = x => x * 2;
@@ -79,6 +84,17 @@ describe('independent blocks frontend', () => {
     const compiled = compile(result); expect(compiled.manifest.profile).toBe(kind === 'wipe' ? 'transition' : 'animation');
     expect(result.javascript).toContain('export function render');
     expect(parseBlocks(source).blocks?.blocks).toHaveLength(1);
+  });
+  it('lowers both noise blocks through the same core in Python and JavaScript', () => {
+    const number = (x: number) => ({ block: { type: 'lm_number', fields: { VALUE: x } } });
+    for (const name of ['perlin2', 'perlin3', 'simplex2', 'simplex3']) {
+      const noise = { block: { type: name.endsWith('2') ? 'lm_noise2' : 'lm_noise3', fields: { FUNCTION: name }, inputs: { X: number(0.25), Y: number(0.5), Z: number(0.75), SEED: number(9) } } };
+      if (name.endsWith('2')) delete (noise.block.inputs as Record<string, unknown>).Z;
+      const doc = { blocks: { blocks: [{ type: 'lm_program', fields: { PROFILE: 'animation' }, inputs: { RENDER: { block: { type: 'lm_set', fields: { SCOPE: 'local', NAME: 'n' }, inputs: { VALUE: noise } } } } }] } };
+      const lowered = lowerBlocks(JSON.stringify(doc));
+      expect(compile(lowered).manifest.requires).toBe('1.4.0');
+      expect(compile(lowerJavaScript(lowered.javascript)).manifest.requires).toBe('1.4.0');
+    }
   });
   it('reports the block responsible for missing sockets', () => {
     const doc = parseBlocks(blockExample('pulse')); const block = doc.blocks!.blocks![0].inputs!.RENDER.block!;

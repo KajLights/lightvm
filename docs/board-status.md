@@ -80,9 +80,18 @@ existing binding timeout and `default`/`hold` policy determine fallback. A senso
 recovering resumes publication. Temperature circuits are disabled between reads.
 No samples are written to flash.
 
+`input_list` accepts an optional exact `name` filter, for example
+`{"op":"input_list","name":"board.temperature_c"}`. A missing source returns
+`[]`; non-string, empty and overlong filters are rejected. This avoids serializing
+every sensor and its metadata when a monitor needs only one measurement.
+
 `input_list` exposes `origin: "board"`, a human-readable `label`, `unit`,
 `suggested_min` and `suggested_max`, alongside the standard value/validity/age.
 `describe.board_status_supported` identifies firmware with this interface.
+`describe.reset_reason` also reports the last ESP32 reset cause (for example
+`usb`, `panic`, `task_watchdog` or `brownout`); unsupported platforms return
+`null`. This is diagnostic evidence, not a proof of the physical cause.
+
 The `board.` namespace is reserved even for unsupported/future measurements;
 `input_claim` rejects it. Built-ins occupy separate bounded storage, preserving
 all 16 externally published source slots. Their publisher generation is zero;

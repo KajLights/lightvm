@@ -512,6 +512,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"boot_id\":"); quoted(&w,a->boot_id);
     literal(&w,",\"build_compiler\":");quoted(&w,__VERSION__);
     literal(&w,",\"cpu_clock_hz\":");unsigned cpu=platform_cpu_hz();if(cpu)number(&w,cpu);else literal(&w,"null");
+    literal(&w,",\"reset_reason\":");const char *reset=platform_reset_reason();if(reset)quoted(&w,reset);else literal(&w,"null");
     literal(&w,",\"wifi_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"wifi_ap_supported\":"); literal(&w,LIGHTVM_WIFI?"true":"false");
     literal(&w,",\"recovery_supported\":"); literal(&w,LIGHTVM_POWER_RECOVERY?"true":"false");
@@ -1690,14 +1691,19 @@ static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
            !json_u32(j,json_get(j,0,"generation"),&generation)||!json_u32(j,json_get(j,0,"sequence"),&sequence))error="invalid input publication or previous boot";
         else error=input_registry_publish(&a->inputs,j,json_get(j,0,"values"),generation,sequence);
     }else if(!strcmp(op,"input_list")){
-        static const char *const fields[]={"op",NULL};
-        if(!json_fields(j,0,fields))error="invalid input list fields";
+        static const char *const fields[]={"op","name",NULL};
+        char filter[sizeof(((InputSignal *)0)->name)]="";
+        int name=json_get(j,0,"name");
+        if(!json_fields(j,0,fields)||(name>=0&&(!json_string(j,name,filter,sizeof(filter))||!filter[0])))error="invalid input list fields";
         else{
             Writer w={.app=a,.id=id};literal(&w,"[");
             static const char *const types[]={"","int","float","rgb8","bool"};
+            unsigned emitted=0;
             for(unsigned n=0;n<a->inputs.native_count+a->inputs.count;n++){
                 bool native=n<a->inputs.native_count;
-                InputSignal *source=native?&a->inputs.native[n]:&a->inputs.signals[n-a->inputs.native_count];char value[48];if(n)literal(&w,",");
+                InputSignal *source=native?&a->inputs.native[n]:&a->inputs.signals[n-a->inputs.native_count];
+                if(name>=0&&strcmp(filter,source->name))continue;
+                char value[48];if(emitted++)literal(&w,",");
                 literal(&w,"{\"name\":");quoted(&w,source->name);literal(&w,",\"type\":");quoted(&w,types[source->type]);
                 literal(&w,",\"origin\":");quoted(&w,native?"board":"publisher");
                 if(native){literal(&w,",\"label\":");quoted(&w,source->label);literal(&w,",\"unit\":");quoted(&w,source->unit);

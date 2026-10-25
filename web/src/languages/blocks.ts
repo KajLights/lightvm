@@ -32,6 +32,8 @@ export const BLOCK_DEFINITIONS = [
   { type: 'lm_motion', message0: '%1 %2', args0: [dropdown('FUNCTION', [['repeat 0 → 1', 'repeat'], ['bounce 0 ↔ 1', 'pingpong'], ['smooth step', 'smoothstep'], ['clamp 0…1', 'clamp01'], ['sine', 'sin'], ['ease in', 'quadratic_in'], ['ease out', 'quadratic_out'], ['ease in & out', 'quadratic_in_out'], ['cubic in', 'cubic_in'], ['cubic out', 'cubic_out'], ['cubic in out', 'cubic_in_out'], ['sine in', 'sine_in'], ['sine out', 'sine_out'], ['sine in out', 'sine_in_out'], ['circular in', 'circular_in'], ['circular out', 'circular_out'], ['circular in out', 'circular_in_out'], ['exponential in', 'exponential_in'], ['exponential out', 'exponential_out'], ['exponential in out', 'exponential_in_out']]), value('VALUE')], ...output, colour: 230 },
   { type: 'lm_lerp', message0: 'between %1 and %2 at %3', args0: [value('A'), value('B'), value('T')], ...output, colour: 230, inputsInline: true },
   { type: 'lm_native_math', message0: '%1 of %2', args0: [dropdown('FUNCTION', [['absolute value', 'fabs'], ['round down', 'floor'], ['round up', 'ceil'], ['truncate', 'trunc'], ['sine', 'sin'], ['cosine', 'cos'], ['square root', 'sqrt'], ['natural log', 'log'], ['exponential', 'exp']]), value('VALUE')], ...output, colour: 230 },
+  { type: 'lm_noise2', message0: '%1 noise x %2 y %3 seed %4', args0: [dropdown('FUNCTION', [['Perlin', 'perlin2'], ['Simplex', 'simplex2']]), value('X'), value('Y'), value('SEED')], ...output, colour: 230, tooltip: 'Smooth signed noise in -1 to 1. Same coordinates and integer seed give the same value.' },
+  { type: 'lm_noise3', message0: '%1 noise x %2 y %3 z %4 seed %5', args0: [dropdown('FUNCTION', [['Perlin', 'perlin3'], ['Simplex', 'simplex3']]), value('X'), value('Y'), value('Z'), value('SEED')], ...output, colour: 230 },
   { type: 'lm_power', message0: '%1 raised to %2', args0: [value('BASE'), value('EXPONENT')], ...output, colour: 230, inputsInline: true },
   { type: 'lm_random', message0: 'random (0–1)', ...output, colour: 230 },
   { type: 'lm_get', message0: '%1 %2', args0: [dropdown('SCOPE', [['variable', 'local'], ['remembered', 'state']]), field('NAME')], ...output, colour: 330 },
@@ -159,6 +161,10 @@ export function lowerBlocks(source: string): LoweredSource & { javascript: strin
       case 'lm_motion': { const a = v('VALUE'), name = f(b, 'FUNCTION'), jsName = name.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()); return [`${name === 'sin' ? 'math.sin' : name}(${a[0]})`, `${name === 'sin' ? 'Math.sin' : jsName}(${a[1]})`]; }
       case 'lm_lerp': { const a = ['A', 'B', 'T'].map(v); return [`lerp(${a.map(p => p[0]).join(', ')})`, `lerp(${a.map(p => p[1]).join(', ')})`]; }
       case 'lm_native_math': { const a = v('VALUE'), name = f(b, 'FUNCTION'); return [`${['floor', 'ceil', 'trunc'].includes(name) ? name : 'math.' + name}(${a[0]})`, `Math.${name === 'fabs' ? 'abs' : name}(${a[1]})`]; }
+      case 'lm_noise2': case 'lm_noise3': {
+        const coords = (b.type === 'lm_noise2' ? ['X', 'Y'] : ['X', 'Y', 'Z']).map(v), seed = v('SEED'), name = f(b, 'FUNCTION');
+        return [`${name}(${coords.map(p => p[0]).join(', ')}, int(${seed[0]}))`, `${name}(${coords.map(p => p[1]).join(', ')}, int(${seed[1]}))`];
+      }
       case 'lm_power': { const a = v('BASE'), b = v('EXPONENT'); return [`math.pow(${a[0]}, ${b[0]})`, `Math.pow(${a[1]}, ${b[1]})`]; }
       case 'lm_random': return ['random.random()', 'Math.random()'];
       case 'lm_get': { const name = f(b, 'NAME'), state = f(b, 'SCOPE') === 'state'; return [state ? `state.${name}` : `v_${name}`, state ? `state.${name}` : name]; }

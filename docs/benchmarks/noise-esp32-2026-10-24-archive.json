@@ -1,0 +1,427 @@
+{
+  "archive": "noise-esp32-2026-10-24.tar.gz",
+  "sha256": "c59decdb1a2fff65b782ce5df7e70ac76a83dc48f13f70ccd323fce289e67da3",
+  "bytes": 17644828,
+  "members": {
+    "run/c6-noise-screen.json": {
+      "sha256": "d7aca64b86146bf8a459cc6f53ee886b10a98ab8b9dee50c4322e14825df6a6d",
+      "bytes": 2604117
+    },
+    "run/c3-build.log": {
+      "sha256": "d9e38e601f4232b6cc490bce74101054388d2b6395c71acb1d1b6407dc6955a6",
+      "bytes": 112570
+    },
+    "run/c3-postflight-reset.log": {
+      "sha256": "f4032f9f7f79867b091f1f4aa8aed293bff4f57fe13bb47520c43892933164c4",
+      "bytes": 299
+    },
+    "run/c3-noise-screen.json": {
+      "sha256": "1e880c3644c63b0e00eca05de612d9969d9a388d5159b408432558502bd809da",
+      "bytes": 2605474
+    },
+    "run/c6-postflight-reset.log": {
+      "sha256": "71554392e8581a5958b4163f0b8ade33da58562825d018974cbe7bb6131962b9",
+      "bytes": 399
+    },
+    "run/s3-noise-screen-verify.log": {
+      "sha256": "0343fc0dad33475d6d22eee7ea36c8a66d3a3e7e1419808279b40bcd66a83b1c",
+      "bytes": 936
+    },
+    "run/c3-postflight.json": {
+      "sha256": "28cd27c050edf66aee7717e6095053db6ab913eece7523d7d0177710a62a9607",
+      "bytes": 4188
+    },
+    "run/s3-postflight-temperature.jsonl": {
+      "sha256": "3a6963ddcbd9cdad45104721c512bef39687149cc8d59fedb81b92d6679c2285",
+      "bytes": 377
+    },
+    "run/images.json": {
+      "sha256": "0d85603c7c7ccb2077fa8771472b03492308249565a5dac772c58aa4d5f672f2",
+      "bytes": 3941
+    },
+    "run/s3-postflight.json": {
+      "sha256": "21efa0f9737bf291ae6a2cecf16ab285cf42a5e03c516634ee2ae7f214eeb97e",
+      "bytes": 4186
+    },
+    "run/c3-noise-screen-execution.json": {
+      "sha256": "ef31269191c2c0b242592857e5cd910f8c883768486ded39557f040e6e2afd53",
+      "bytes": 1320
+    },
+    "run/c3-noise-screen-verify.log": {
+      "sha256": "bbe0a514d4cc4caf3dc555b81f14449210a709d9cb54c574f5c5f029133fb1c6",
+      "bytes": 937
+    },
+    "run/s3-noise-screen.log": {
+      "sha256": "552e87b12d3a0773315661522a5525613bd9492c5069204d841192e4359627db",
+      "bytes": 1796
+    },
+    "run/summarize.py": {
+      "sha256": "96813a70d2cebaf17c63852e92a4749a32ac43076a945b7cdd1e5c87f51764e3",
+      "bytes": 2752
+    },
+    "run/c6-noise-screen-execution.json": {
+      "sha256": "d2e3ce95c3cf5a8bea8516c78a5ecb3275ade651504ee5f1900d13bc6f9b6f42",
+      "bytes": 1320
+    },
+    "run/s3-noise-screen-flash.log": {
+      "sha256": "a5a5b08555ac4afc7e31e780102dd0d5a545410167c15538fd67f3d8698c0211",
+      "bytes": 2491
+    },
+    "run/c6-noise-screen-temperature.jsonl": {
+      "sha256": "40079b85977914698878260b7e1c56018aa208fe6353182b1e2a9edd337a0816",
+      "bytes": 45432
+    },
+    "run/c6-noise-screen-flash.log": {
+      "sha256": "497d21b69b724a999a9fc5b321cb2bef9752e8eeba7fa7382a7247363de62a35",
+      "bytes": 2690
+    },
+    "run/c3-postflight-temperature.jsonl": {
+      "sha256": "8df917a28ed5916c6786a506b20836cf50897ec4fdf14070c6f12d7305b681ae",
+      "bytes": 377
+    },
+    "run/merged-host-build.log": {
+      "sha256": "0129a3a568dce1d4372b8016f3422d872e867b6782b52e6435cb3a3e0932b43d",
+      "bytes": 1831
+    },
+    "run/c6-postflight.json": {
+      "sha256": "c7cb6f7dea827c1afa1cc8ba87f97e2f65431cfaba4ec0d3072516b51682fbb0",
+      "bytes": 4193
+    },
+    "run/image-size-comparison.json": {
+      "sha256": "cb6a77b3f9b1e246c7abb20fb0cf6fe1e6315ff0d55d3d68626f8034c00d611b",
+      "bytes": 300
+    },
+    "run/c3-noise-screen-temperature.jsonl": {
+      "sha256": "dbfab36b64101a16520e5379a4de01654bba6e3c9eb11a9d56f813836d76d0ba",
+      "bytes": 65076
+    },
+    "run/c6-noise-screen.log": {
+      "sha256": "552e87b12d3a0773315661522a5525613bd9492c5069204d841192e4359627db",
+      "bytes": 1796
+    },
+    "run/s3-postflight-reset.log": {
+      "sha256": "6211be2c3c8056f98c798034c221d73b42aa7c8beb580a3c2a6428d90a952a51",
+      "bytes": 299
+    },
+    "run/s3-noise-screen.json": {
+      "sha256": "c56bc6754793bf8fcd16c067f73e6470b19327957c2a8cd7d9f15f1ffac64177",
+      "bytes": 2606032
+    },
+    "run/context.json": {
+      "sha256": "fe643b64046bd119f93efffd63369a98ddc5d5006a45be311e5728fbb5e87ce7",
+      "bytes": 16530
+    },
+    "run/s3-noise-screen-execution.json": {
+      "sha256": "2809384f1191f6bd17124c28d95d3f0bf08c6ae86edf6d6f340377ffc26fa8c9",
+      "bytes": 1314
+    },
+    "run/host-smoke.json": {
+      "sha256": "e7300f281cd5a8c0e05b85ac4094ac02d10284af470f8ffca801fe3c27b1a698",
+      "bytes": 1263418
+    },
+    "run/c6-build.log": {
+      "sha256": "47c525e8075f3345dee4131a1f25cb313534e996d28f25af3461bef0cf3fb3b9",
+      "bytes": 117633
+    },
+    "run/c6-postflight-temperature.jsonl": {
+      "sha256": "357832d22ff02871b4731e4302f94d1260763d8f30395bc7a442bec2924efea9",
+      "bytes": 377
+    },
+    "run/c3-noise-screen-flash.log": {
+      "sha256": "e16f0e773801fdb32469e651a1cc33e2e35eafe9036dc0f7ed71e07d213c929f",
+      "bytes": 2523
+    },
+    "run/merged-host-replay.json": {
+      "sha256": "a487393916d362400c116221a7313e368150d0c593db376bf38da8ac9f4490f0",
+      "bytes": 391168
+    },
+    "run/s3-build.log": {
+      "sha256": "33fc28afb412154be916397b7114eb2616283f01199bf7b440136b132ef7b7de",
+      "bytes": 116953
+    },
+    "run/merged-host-tests.log": {
+      "sha256": "e3939d32f77fdc9af4b66c53291661f5ee9539b57d8a569fd95f8009d0975918",
+      "bytes": 143
+    },
+    "run/c3-noise-screen.log": {
+      "sha256": "552e87b12d3a0773315661522a5525613bd9492c5069204d841192e4359627db",
+      "bytes": 1796
+    },
+    "run/s3-noise-screen-temperature.jsonl": {
+      "sha256": "37a71a5c610e722bad61ce22273a93ed7d702a42f0668d389730558635e2d7fc",
+      "bytes": 49947
+    },
+    "run/c6-noise-screen-verify.log": {
+      "sha256": "361612864f19b52b74b0107e04febb78ec9dbfa41596a984b8a502c089dd4cd0",
+      "bytes": 1037
+    },
+    "packages/perlin2.py": {
+      "sha256": "c7e5f128d9f1aaf22eb8562a04db87ee9859e421d5e1d0b285fc7e1a3a4dd474",
+      "bytes": 625
+    },
+    "packages/perlin3.py": {
+      "sha256": "50a32f059ec503f5a828879ed80992448e8f5b308e321cdc41be2c95c930fc7c",
+      "bytes": 632
+    },
+    "packages/perlin2-bulk.lbc": {
+      "sha256": "f43cca72d44421e826ceb989b04aa49b8e7e1a931791d0d27d74c50ba86d1378",
+      "bytes": 1072
+    },
+    "packages/perlin3-bulk.lbc": {
+      "sha256": "317fbc02648e070d4e6fddfcaa5ce39c00f70e4ed3e12abc860080e981ca82c0",
+      "bytes": 1080
+    },
+    "packages/perlin2-scalar.lbc": {
+      "sha256": "78f847e0782bcaddc726f58262b1272b7d602379b316c8910598050b21450dbb",
+      "bytes": 1096
+    },
+    "packages/simplex3-scalar.lbc": {
+      "sha256": "3d2f8a802845cb9fc50253d85076c8351e33188dc7d93ae082aee0064c216fc7",
+      "bytes": 1096
+    },
+    "packages/reference.json": {
+      "sha256": "ddb38724749a981d21fb6b23109be56a310775efa987ed7f80f4b4d17b5d93f1",
+      "bytes": 18255
+    },
+    "packages/manifest.json": {
+      "sha256": "6f9af7c9614d01c68d158bd82b4e5157963fc23519043e26e84d681c8dd30a89",
+      "bytes": 2375
+    },
+    "packages/simplex2.py": {
+      "sha256": "ea62ffb08af60341a55089462bf7f9d807fc5b0dfb8e9694771df7175c4f3318",
+      "bytes": 627
+    },
+    "packages/simplex2-bulk.lbc": {
+      "sha256": "4a1cb979afe492d770877ac3b00128063d4a7e21504d9beb991dfd8592d8a5f4",
+      "bytes": 1064
+    },
+    "packages/simplex3-bulk.lbc": {
+      "sha256": "cb895eb6c0b7fb9e95df4b667a8973e585fbedbdd102d238d73e9867751cfe1e",
+      "bytes": 1072
+    },
+    "packages/perlin3-scalar.lbc": {
+      "sha256": "043b18898e50b9b6ff325a6bb7e8270f749f456271998746f33d5e27d079c6af",
+      "bytes": 1104
+    },
+    "packages/simplex3.py": {
+      "sha256": "5f83feda80da506c0f1a7687376407895456602819a8b724b588f8ff5f056415",
+      "bytes": 634
+    },
+    "packages/simplex2-scalar.lbc": {
+      "sha256": "1a4c82d796505d1a4e5ee7e8b11ed0ee18f40ce5fb7541b44219aebf66c4c14a",
+      "bytes": 1088
+    },
+    "images/c3/lightvm.bin": {
+      "sha256": "f3c24984f8aed5c1e54fc7ed92ec25ef000feb3caae531d5a924950de40991ed",
+      "bytes": 1142208
+    },
+    "images/c3/lightvm.elf": {
+      "sha256": "24fbe5b6b34246cb060f5f01c20c19b4536bf21715531b0192622bbd854b2376",
+      "bytes": 13104980
+    },
+    "images/c3/lightvm.map": {
+      "sha256": "3b86b6e316a428be7a5269fd9a51fa7a8944b08b948c756fdd16adba416956de",
+      "bytes": 7241000
+    },
+    "images/c3/sdkconfig": {
+      "sha256": "765e4575a6ade6387573b5bf1c1a4be46d75869bcf3bbff77768c1f9bc62bad0",
+      "bytes": 53679
+    },
+    "images/c3/CMakeCache.txt": {
+      "sha256": "1c35302cfaa9b368378e8348277868424990a27dc979f85bdfd638e5d700deb1",
+      "bytes": 29955
+    },
+    "images/c3/flasher_args.json": {
+      "sha256": "d2f39eeff4b16d383759298034a7b68c909df62c258450b8818b3fb4bd93c0ce",
+      "bytes": 905
+    },
+    "images/c3/bootloader/bootloader.bin": {
+      "sha256": "d02b3210081ff05c7b34723abec013b91651dac05f47a79dadb35e1edb5f4e12",
+      "bytes": 13072
+    },
+    "images/c3/partition_table/partition-table.bin": {
+      "sha256": "fb83052bf96b7a672a629338e8bc3324428ac20a9737dea97a977bcceedf860f",
+      "bytes": 3072
+    },
+    "images/c3/lightvm-partitions.csv": {
+      "sha256": "28cf4c48e7b383832dc44baee70c957fe65df84f844e006e12d3e5f0f7a243d5",
+      "bytes": 227
+    },
+    "images/c6/lightvm.bin": {
+      "sha256": "cd22eb7fbff0ff33309782f1d481f5ec18461c34fdc26e182b2217aadc468d28",
+      "bytes": 1183744
+    },
+    "images/c6/lightvm.elf": {
+      "sha256": "3088387a2d9f340307eaf86cd7030276f68ec27ab771f5eed6603669f7db996e",
+      "bytes": 13065492
+    },
+    "images/c6/lightvm.map": {
+      "sha256": "49c7cca5bdb6143990af76adbd143fd7d1bdc939be1aeecb6d8b7e4c0b490471",
+      "bytes": 7692815
+    },
+    "images/c6/sdkconfig": {
+      "sha256": "4c2602e2319b8bb96b1dfc6e8eb56abc2351a48393c5a3ca2fc163aa46a2278e",
+      "bytes": 58271
+    },
+    "images/c6/CMakeCache.txt": {
+      "sha256": "e3118f27ca36e880c9118a786a302f0c6157aedd690f2826acc63189f99d7d42",
+      "bytes": 29958
+    },
+    "images/c6/flasher_args.json": {
+      "sha256": "4753a3d4f8e009ddf7bd033ed4f457309c47513715afc595f690dc040f3af8fc",
+      "bytes": 905
+    },
+    "images/c6/bootloader/bootloader.bin": {
+      "sha256": "f694ca696f1c9eeb83616e27ae71226e7deddf6fc6763becdc3062d48bfe8d9e",
+      "bytes": 14496
+    },
+    "images/c6/partition_table/partition-table.bin": {
+      "sha256": "fb83052bf96b7a672a629338e8bc3324428ac20a9737dea97a977bcceedf860f",
+      "bytes": 3072
+    },
+    "images/c6/lightvm-partitions.csv": {
+      "sha256": "28cf4c48e7b383832dc44baee70c957fe65df84f844e006e12d3e5f0f7a243d5",
+      "bytes": 227
+    },
+    "images/s3/lightvm.bin": {
+      "sha256": "ecb19269c44bba2e20d5cdee92c6c24e9bfd136de6920c839d07a22c94d1e374",
+      "bytes": 1039104
+    },
+    "images/s3/lightvm.elf": {
+      "sha256": "8d3a19483a1b2b95b60b137e7f4fd7d596a9ac41b2f8af7d965f5f8ffb13aa2c",
+      "bytes": 11987748
+    },
+    "images/s3/lightvm.map": {
+      "sha256": "d702d720e6bbb8eb1ff0251d8a39428c7d8bb97e0c2dad565875ad03d17f1335",
+      "bytes": 8958696
+    },
+    "images/s3/sdkconfig": {
+      "sha256": "6b034d2e8c62cc78076478cbed5a25ea6d37d604bf591616fa38b7df85553702",
+      "bytes": 59900
+    },
+    "images/s3/CMakeCache.txt": {
+      "sha256": "1b9ac1b4c3965c47c9e1e7708b641d09b3bcd28689420884942da5a92572dd72",
+      "bytes": 30088
+    },
+    "images/s3/flasher_args.json": {
+      "sha256": "dc2cc57cc12adf9950a6a9d2f4932001dba7c4a973268a90ab1d4f4a22d85465",
+      "bytes": 905
+    },
+    "images/s3/bootloader/bootloader.bin": {
+      "sha256": "69320fa5aafe9c947e9de120d33546187b548ed70d57ed77b7c1e8c386e5d436",
+      "bytes": 13776
+    },
+    "images/s3/partition_table/partition-table.bin": {
+      "sha256": "fb83052bf96b7a672a629338e8bc3324428ac20a9737dea97a977bcceedf860f",
+      "bytes": 3072
+    },
+    "images/s3/lightvm-partitions.csv": {
+      "sha256": "28cf4c48e7b383832dc44baee70c957fe65df84f844e006e12d3e5f0f7a243d5",
+      "bytes": 227
+    },
+    "LICENSE": {
+      "sha256": "bd58add35c925d67228eb0822c0fdd09b79d1cc457e0db11d54ed18442c42ccc",
+      "bytes": 1072
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "sha256": "c13adc36404558e7980ed04965d6e8448e3c1507730b0daa1c7962ffba1fa59e",
+      "bytes": 10609
+    },
+    "licenses/dhcp-server.txt": {
+      "sha256": "d476da5a68f3a1a9d95a6d8f8e81f37d521a9d73c79d41b4bf817d1435cf58fb",
+      "bytes": 1246
+    },
+    "licenses/networking-additional-notices.txt": {
+      "sha256": "4788e7325ad57e00cc3924dfda162de22b685f070665bb655bd6bfc919795cb6",
+      "bytes": 144739
+    },
+    "licenses/esp-idf-additional-notices.txt": {
+      "sha256": "3cde96d87a0e1f2e5d50b1efcd7e8e8b8cda0e6b92d7a485485853a70c36b9fb",
+      "bytes": 69566
+    },
+    "licenses/newlib-esp-14.2.0_20251107.txt": {
+      "sha256": "422aa40293093fb54fc66e692a0d68fd0b24ed5602e5d1d33ad05ba3909057e9",
+      "bytes": 63318
+    },
+    "licenses/esp-idf-c3-additional-notices.txt": {
+      "sha256": "df7d53c74890b2e9d5e74a49a4e3cd2494dfc593ba6f965edc46fbc6ec1e11a0",
+      "bytes": 6587
+    },
+    "licenses/tlsf-esp-idf-5.5.3.txt": {
+      "sha256": "3f807ba2da18aee37b8138f356c2a4fd5e8d9997b33ca6208157cafe1062fb94",
+      "bytes": 2065
+    },
+    "licenses/cyw43-driver-raspberry-pi.txt": {
+      "sha256": "67aca4f10d9edf489871f64cd8f0dcd6c5df3e4ce75bd39e1914fc54f99e40b3",
+      "bytes": 1789
+    },
+    "licenses/tinyusb.txt": {
+      "sha256": "b171720e8a442e7a3957d83c62cd3299dbb29da3db534cc626f9dded0de2ca44",
+      "bytes": 1089
+    },
+    "licenses/newlib-4.3.0.txt": {
+      "sha256": "422aa40293093fb54fc66e692a0d68fd0b24ed5602e5d1d33ad05ba3909057e9",
+      "bytes": 63318
+    },
+    "licenses/lwip-esp-idf-5.5.3.txt": {
+      "sha256": "ef4aac92e05e87cd1cdc140870ed52206ba03d4a7fe46c1e11d7ffa6c87d252b",
+      "bytes": 1425
+    },
+    "licenses/http-parser-esp-idf.txt": {
+      "sha256": "3aced2d086d3f59cafb6589770c30c1e45a5bdf50c1d4375060b81a615db604c",
+      "bytes": 1298
+    },
+    "licenses/pyserial-3.5.txt": {
+      "sha256": "f91cb9813de6a5b142b8f7f2dede630b5134160aedaeaf55f4d6a7e2593ca3f3",
+      "bytes": 1885
+    },
+    "licenses/pico-sdk-2.3.1.txt": {
+      "sha256": "483f865953435b66c443dee7558debe3cc3cf8fcbb6a112fd9fc6a795d53f1f6",
+      "bytes": 1489
+    },
+    "licenses/picoflash.txt": {
+      "sha256": "9da0da8be4d5dda7c33e8292964fba4407e52f15bc934be6b5f6954392104e2e",
+      "bytes": 1091
+    },
+    "licenses/gcc-gpl-3.0.txt": {
+      "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
+      "bytes": 35147
+    },
+    "licenses/pico-examples.txt": {
+      "sha256": "483f865953435b66c443dee7558debe3cc3cf8fcbb6a112fd9fc6a795d53f1f6",
+      "bytes": 1489
+    },
+    "licenses/pico-sdk-additional-notices.txt": {
+      "sha256": "cd670b5ce7b2d95b796ef497fc87b8b56f38959514b7f3da6c37c210c4afa9f6",
+      "bytes": 166071
+    },
+    "licenses/esp-idf-5.5.3.txt": {
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    "licenses/mbedtls-esp-idf-5.5.3.txt": {
+      "sha256": "9b405ef4c89342f5eae1dd828882f931747f71001cfba7d114801039b52ad09b",
+      "bytes": 29852
+    },
+    "licenses/gcc-runtime-exception.txt": {
+      "sha256": "9d6b43ce4d8de0c878bf16b54d8e7a10d9bd42b75178153e3af6a815bdc90f74",
+      "bytes": 3324
+    },
+    "licenses/lwip-pico-sdk-2.3.1.txt": {
+      "sha256": "ef4aac92e05e87cd1cdc140870ed52206ba03d4a7fe46c1e11d7ffa6c87d252b",
+      "bytes": 1425
+    },
+    "licenses/esp32-wifi-libraries.txt": {
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    "run/lightvm-noise-hardware-run.py": {
+      "sha256": "8d39aadf3f7cc9f63a7bc9993029abdb005f76360f2266ca357d8af94473f327",
+      "bytes": 3607
+    },
+    "run/lightvm-noise-postflight.py": {
+      "sha256": "bb2fee158f906a242643f7e496e9bc151075142e13dcd2cf4533a9c19cfbf3d0",
+      "bytes": 2274
+    }
+  }
+}

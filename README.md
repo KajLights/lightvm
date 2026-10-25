@@ -177,6 +177,20 @@ idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c3" -p PORT flash
 Use a separate directory and `xiao_esp32s3` or `xiao_esp32c6` for those boards.
 The normal partition tables and flash store are retained.
 
+`LIGHTVM_ESP32_PROFILE=AUTO` selects the matching **c3**, **c6** or **s3**
+execution profile: strict `-O3` for the shared core, instruction RAM for hot
+drawing kernels, memory-mapped flash reads, one render worker and 2 ms
+slice/epoch targets. This is also one actual worker on the dual-core S3.
+Explicit resource options override these defaults. CPU/flash clocks, numeric
+precision, bytecode cache size and heap limits retain their ordinary values.
+Use `-DLIGHTVM_ESP32_PROFILE=standard` for a comparison build, or an explicit
+`c3`, `c6` or `s3` profile to require that chip. A mismatched profile is an error.
+See the [ESP32 campaign](docs/design/esp32-optimisation-2026-10-24.md) for
+measurement conditions, thermal monitoring and open service-latency gates;
+the 2 ms targets are scheduling budgets, not hard real-time deadlines.
+The [earlier C3 comparison](docs/design/c3-performance-2026-10-24.md) remains
+historical evidence with its original firmware and observer.
+
 Board temperature, supported supply-voltage readings and other
 [board-status measurements](docs/board-status.md) are available as native animation
 and transition input sources.

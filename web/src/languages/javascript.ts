@@ -14,7 +14,7 @@ const aliases: Record<string, string> = {
   sineIn: 'sine_in', sineOut: 'sine_out', sineInOut: 'sine_in_out', circularIn: 'circular_in', circularOut: 'circular_out', circularInOut: 'circular_in_out', exponentialIn: 'exponential_in', exponentialOut: 'exponential_out', exponentialInOut: 'exponential_in_out',
   copyFrom: 'copy_from',
 };
-const calls = new Set('setting Input Ramp rgb hsv hash01 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out sine_in sine_out sine_in_out circular_in circular_out circular_in_out exponential_in exponential_out exponential_in_out crossfade wipe fixed fixed_bits fixed_from_bits fixed_sqrt FixedArray floor ceil trunc'.split(' '));
+const calls = new Set('setting Input Ramp rgb hsv hash01 perlin2 perlin3 simplex2 simplex3 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out sine_in sine_out sine_in_out circular_in circular_out circular_in_out exponential_in exponential_out exponential_in_out crossfade wipe fixed fixed_bits fixed_from_bits fixed_sqrt FixedArray floor ceil trunc'.split(' '));
 const keywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
 const methods = new Set('input fill clear draw copy copy_from transform point colorwheel gradient palette mix copy_composition has_channel set_channel set_alpha multiply_alpha spawn render remove'.split(' '));
 // Equal-sign operands avoid losing a tiny f32 remainder when correcting a
@@ -364,12 +364,12 @@ class JavaScriptFrontend {
     if (!member && !calls.has(name) && this.binding(n.callee.name)?.kind !== 'function') this.fail(n, `Unknown function “${n.callee.name}”.`);
     if (n.type === 'NewExpression' && !['PixelArray', 'FixedArray', 'Sprite', 'SpriteBatch', 'Transform', 'ColorTransform', 'Input', 'Ramp'].includes(name)) this.fail(n, 'new is only supported for LightVM resources and typed arrays.');
     const options = args.at(-1)?.type === 'ObjectExpression' ? this.properties(args.pop()) : [];
-    const intPositions: Record<string, number[]> = { PixelArray: [0], FixedArray: [0], Sprite: [0], SpriteBatch: [1], rgb: [0, 1, 2], hash01: [0, 1], pico_colorwheel: [0] };
+    const intPositions: Record<string, number[]> = { PixelArray: [0], FixedArray: [0], Sprite: [0], SpriteBatch: [1], rgb: [0, 1, 2], hash01: [0, 1], perlin2: [2, 3, 4], perlin3: [3, 4, 5, 6], simplex2: [2], simplex3: [3], pico_colorwheel: [0] };
     const integerSetting = name === 'setting' && (args[0]?.callee?.name === 'int' ||
       args[0]?.type === 'MemberExpression' && ['pixelCount', 'count'].includes(args[0].property?.name));
     const positional = args.map((a, i) => {
       const result = this.expr(a, (intPositions[name]?.includes(i) ?? false) || integerSetting);
-      return name === 'hash01' ? `int(${result})` : result;
+      return name === 'hash01' || ['perlin2', 'perlin3', 'simplex2', 'simplex3'].includes(name) && intPositions[name].includes(i) ? `int(${result})` : result;
     });
     for (const p of options) {
       const key = { min: 'minimum', max: 'maximum' }[this.key(p)] ?? this.key(p);

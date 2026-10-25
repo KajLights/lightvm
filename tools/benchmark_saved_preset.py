@@ -26,6 +26,7 @@ def sample(client, output, seconds, *, diagnostics=False, poll_hz=20):
             time.sleep(min(.1,max(0,deadline-time.monotonic())))
             continue
         time.sleep(max(0,next_poll-time.monotonic()))
+        if getattr(client, 'board_monitor', None): client.board_monitor.check()
         tick=time.monotonic();status=client.status_fields(output=output);latencies.append((time.monotonic()-tick)*1000)
         if status.get('animation_error')!='-':raise RuntimeError(status)
         heaps.append({key:int(status[key]) for key in ('heap','heap_peak','heap_limit') if key in status})

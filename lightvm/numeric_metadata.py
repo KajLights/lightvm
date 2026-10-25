@@ -39,3 +39,4 @@ OPERATIONS = {
 NATIVE_OPERATIONS = {7: 'FSIN'}
 BASE_WORK = {6: 8, 7: 8, 11: 8, 12: 8, 21: 4, 33: 2}
 MAP_WORK_BUDGET = 1024
+NOISE_OPERATIONS = {'perlin2': {'binding': 59, 'signature': [2, 2, 2, 1, 1, 1], 'work': 128}, 'perlin3': {'binding': 60, 'signature': [2, 2, 2, 2, 1, 1, 1, 1], 'work': 192}, 'simplex2': {'binding': 61, 'signature': [2, 2, 2, 1], 'work': 128}, 'simplex3': {'binding': 62, 'signature': [2, 2, 2, 2, 1], 'work': 192}}
