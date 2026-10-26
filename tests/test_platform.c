@@ -271,6 +271,7 @@ static void network_transactions(void) {
 #include "portable_contract.inc"
 #include "numeric_contract.inc"
 #include "inputs_contract.inc"
+#include "audio_receiver_contract.inc"
 #include "composition_contract.inc"
 #include "transition_contract.inc"
 #include "light_controls_contract.inc"
@@ -665,6 +666,7 @@ int main(int argc,char **argv) {
     portable_contract();
     numeric_contract();
     inputs_contract();
+    audio_receiver_contract();
     composition_contract();
     transition_contract();
     light_controls_contract();

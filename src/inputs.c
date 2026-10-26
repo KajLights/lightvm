@@ -316,6 +316,48 @@ void inputs_describe(Portable *p,void (*write)(void *,const char *),void *contex
     write(context,"}");
 }
 void input_registry_destroy(InputRegistry *registry){demo_free(registry->signals);memset(registry,0,sizeof(*registry));}
+void input_registry_release(InputRegistry *r,uint32_t generation){
+    if(!generation)return;
+    for(unsigned n=0;n<r->count;n++)if(r->signals[n].publisher==generation){r->signals[n].publisher=0;r->signals[n].valid=false;}
+}
+const char *input_registry_claim_typed(InputRegistry *r,const char *const *names,const unsigned *types_in,unsigned size,uint32_t *generation){
+    if(!size||size>INPUT_SOURCE_LIMIT||r->generation==UINT32_MAX)return "invalid native source claim";
+    InputSignal *candidate=demo_calloc(INPUT_SOURCE_LIMIT,sizeof(*candidate));
+    if(!candidate)return "sources exceed peak memory budget";
+    if(r->count)memcpy(candidate,r->signals,r->count*sizeof(*candidate));
+    unsigned count=r->count;uint32_t next=r->generation+1;const char *error="invalid native source declaration";
+    for(unsigned i=0;i<size;i++){
+        const char *name=names[i];unsigned index;
+        if(!object_name_valid(name)||types_in[i]<T_INT||types_in[i]>T_BOOL||!strncmp(name,"board.",6)||!strncmp(name,"light.",6))goto done;
+        for(index=0;index<count;index++)if(!strcmp(candidate[index].name,name))break;
+        if(index==count){if(count==INPUT_SOURCE_LIMIT){error="source limit exceeded";goto done;}count++;}
+        else if(candidate[index].publisher==next)goto done;
+        else {uint32_t previous=candidate[index].publisher;for(unsigned n=0;n<count;n++)if(candidate[n].publisher==previous){candidate[n].publisher=0;candidate[n].valid=false;}}
+        memset(&candidate[index],0,sizeof(candidate[index]));strcpy(candidate[index].name,name);candidate[index].type=types_in[i];candidate[index].publisher=next;
+    }
+    demo_free(r->signals);r->signals=candidate;r->count=count;r->generation=next;*generation=next;return NULL;
+done:
+    demo_free(candidate);return error;
+}
+const char *input_registry_publish_typed(InputRegistry *r,uint32_t generation,uint32_t sequence,const char *const *names,const InputValue *values,unsigned size,uint64_t received){
+    if(!generation||!sequence||!received||!size||size>INPUT_SOURCE_LIMIT)return "invalid native publication";
+    uint32_t expected=0,mask=0;InputValue staged[INPUT_SOURCE_LIMIT];
+    for(unsigned n=0;n<r->count;n++)if(r->signals[n].publisher==generation)expected|=1u<<n;
+    if(!expected)return "stale publisher generation";
+    for(unsigned i=0;i<size;i++){
+        InputSignal *s=signal(r,names[i]);
+        if(!s||s->publisher!=generation||sequence<=s->sequence)return "stale native source ownership or sequence";
+        unsigned n=(unsigned)(s-r->signals);
+        if((mask&(1u<<n))||(s->type==T_FLOAT&&!isfinite(values[i].f))||
+           (s->type==T_BOOL&&values[i].u>1)||(s->type==T_COLOR&&values[i].u>0xffffff))return "invalid native source value";
+        mask|=1u<<n;staged[n]=values[i];
+    }
+    if(mask!=expected)return "publish the complete native source group";
+    for(unsigned n=0;n<r->count;n++)if(mask&(1u<<n)){
+        InputSignal *s=&r->signals[n];s->value=staged[n];s->sequence=sequence;s->received=received;s->valid=true;
+    }
+    return NULL;
+}
 const char *input_registry_claim(InputRegistry *registry,const Json *j,int declarations,uint32_t *generation){
     if(declarations<0||j->tokens[declarations].type!=JSON_ARRAY||!j->tokens[declarations].children||j->tokens[declarations].children>(int)INPUT_SOURCE_LIMIT)return "signals must be a bounded nonempty array";
     if(registry->generation==UINT32_MAX)return "publisher generation exhausted";

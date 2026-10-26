@@ -1,0 +1,32 @@
+{
+  "schema": "lightvm.composition",
+  "layers": [
+    {
+      "id": "features",
+      "program": "audio_features",
+      "inputs": {
+        "level": {
+          "source": "audio.level"
+        },
+        "bass": {
+          "source": "audio.bass"
+        },
+        "mid": {
+          "source": "audio.mid"
+        },
+        "treble": {
+          "source": "audio.treble"
+        },
+        "centroid": {
+          "source": "audio.centroid"
+        },
+        "onset": {
+          "source": "audio.onset"
+        },
+        "onsets": {
+          "source": "audio.onsets"
+        }
+      }
+    }
+  ]
+}

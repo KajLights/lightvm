@@ -1,0 +1,14 @@
+{
+  "schema": "lightvm.composition",
+  "layers": [
+    {
+      "id": "pulse",
+      "program": "audio_pulse",
+      "inputs": {
+        "level": {"source": "audio.level"},
+        "bass": {"source": "audio.bass"},
+        "onsets": {"source": "audio.onsets"}
+      }
+    }
+  ]
+}

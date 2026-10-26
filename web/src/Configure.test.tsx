@@ -31,6 +31,21 @@ function readyStore() {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('configuration drafts', () => {
+  it('preserves a configured audio receiver while editing strip settings', async () => {
+    const store = readyStore(), config = hardware(5);
+    config.audio = { sensor_id: '00001cdbd45cce94', group: '239.255.42.99', port: 49152 };
+    store.dispatch(controllerActions.configuration({ config, revision: 2, savedRevision: 1 }));
+    const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
+    render(<Provider store={store}><Configure /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
+    fireEvent.change(screen.getByLabelText('Brightness limit (0–255)'), { target: { value: '48' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
+    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({
+      audio: config.audio,
+      outputs: [expect.objectContaining({ config: expect.objectContaining({ brightness_limit: 48 }) })],
+    }), expect.anything(), { save: true }));
+  });
+
   it('adds the Pico keypad as generic input and indicator output and preserves the binding through edits', async () => {
     const store = readyStore();
     store.dispatch(controllerActions.description({ ...description, mqtt_supported: true, pins: ['GPIO2', 'GP4', 'GP5', 'GP17', 'GP18', 'GP19'] }));

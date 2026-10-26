@@ -63,7 +63,8 @@ snapshot objects. They can be provisioned without configuring any light output.
 ## JSON configuration v1
 
 See [the Pico example](../examples/config/pico-startup.json). Root fields are
-required `schema` and `outputs`, and optional `inputs`. The outputs array may be empty. Output IDs and
+required `schema` and `outputs`, and optional `inputs` and
+[`audio`](audio-multicast.md). The outputs array may be empty. Output IDs and
 physical pins must be unique. Root-level `targets` and `startup` are rejected,
 including empty or null forms. Previously saved configurations using those fields
 report a boot error and start with empty active configuration; replace them through

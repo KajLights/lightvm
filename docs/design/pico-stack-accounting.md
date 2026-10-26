@@ -1,5 +1,36 @@
 # Pico stack-path accounting
 
+## Audio receiver audit — 26 October
+
+The 200-pixel Pico W receiver build adds `audio_received` to `udp_input`'s target
+set and enables `igmp_tmr` when either HTTP discovery or audio multicast is built.
+The callback copies at most 692 bytes, validates/stages at most eight packets per
+poll, frees each pbuf and neither publishes inputs nor invokes guest code.
+Publication runs at the start of `app_tick`. The reviewed project fingerprints
+now include `audio_receiver.c`, `inputs.c` and `outputs.c` for these paths.
+
+Building the full WebSocket profile also exposed two missing audit contracts for
+existing `websocket_tick`/`websocket_closed` callbacks. Pico registers host busy
+and disconnect handlers and no WebSocket flush hook; those targets and the shared
+WebSocket source identity are now recorded. WebSocket runtime code is unchanged.
+After reviewing these registrations and the existing recursion guards, the
+guarded project digests were updated while preserving the audited SDK file set.
+
+The resulting main/worker bounds are 12,152/5,104 bytes, leaving 4,232/3,088 bytes
+within the unchanged 16/8 KiB stacks. RAM reservations leave 21,628 bytes with
+`LIGHTVM_PIXEL_CAPACITY=200`. Short functional checks observed a main peak of
+5,852 bytes during configuration, uploads and reception; this is not a new stress
+qualification. See [the receiver guide](../audio-multicast.md).
+
+The later sixteen-band input extension retains these same linked path bounds
+and RAM reservations. The decoded frame and receiver each add 64 bytes of bounded
+spectrum storage; the publisher registry expands from 16 to 32 slots under the
+same uint32 publication mask and VM heap ceiling. The two associated headers are
+now fingerprinted as well. No callback targets, recursion guards, renderer or
+stack reservations changed; all 30 host CTests and the Pico gate pass again.
+
+## Original accounting record
+
 22 October 2026. The configured Pico W, Pico 2 W and no-network Pico Release profiles pass a
 closed **software** accounting gate. This is conditional on the explicit external
 ROM allowances below. It is not certification of every physical ROM revision or
@@ -31,7 +62,7 @@ Both the normal post-link build and `pico_stack_audit` reject:
 - Missing roots, missing frames, unresolved indirect calls, unbounded frames or
   unaccounted recursive edges.
 - A changed audited SDK dependency or project recursion guard, checked against
-  `tools/pico-stack-contracts.json` (537 SDK files and ten project sources).
+  `tools/pico-stack-contracts.json` (the audited SDK and guarded project sources).
 - A main path plus interrupt allowance that leaves less than 2 KiB, or a worker
   path that leaves less than 1 KiB, within the actual linked stack reservations.
   With the standard 16 KiB / 8 KiB reservations, these are 14 KiB / 7 KiB limits;

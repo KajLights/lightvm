@@ -1,25 +1,38 @@
 # ESP32-S3 audio analyser and multicast inputs
 
-Status: Proposed
+Status: Pico receiver and Python examples implemented on 26 October 2026;
+broader subscription and event-consumption design remains proposed.
 
-Date: 19 October 2026
+See the [current implementation guide](../audio-multicast.md). The first slice
+uses 23 fixed `audio.*` names: six scalar features, a deduplicated onset
+counter and sixteen spectrum values. Configurable prefixes, ESP32 reception, per-animation event queues and
+pause/resume trigger expiry below are future work. The counter is not a complete
+event-binding API. A temporary sender-side unicast experiment uses the same Pico
+UDP receiver and input bindings.
+
+Date: 19 October 2026. Timing revised: 26 October 2026.
 
 Build a standalone ESP32-S3 audio analyser that publishes six audio features over
 UDP multicast. LightVM controllers subscribe to the stream and expose its values
 through the existing live-input registry. Each animation chooses its own mapping
 from sound to movement, colour, brightness or transition progress.
 
-Receivers track the sender's elapsed clock using incoming packets and maintain a
-100 ms jitter buffer. This smooths variations in arrival time and tracks gradual
-clock drift. The estimated offset includes the receiver's normal network delay:
-different receivers can retain different baseline offsets. Precise clock
-synchronization, two-way timing exchanges and compensation for that baseline
-delay are outside the first implementation.
+Receivers apply the newest measurement at the next engine service point, with
+**zero deliberate playback delay**. Keep one pending metric snapshot, coalescing
+bursts before rendering. The earlier 100 ms jitter-buffer proposal is superseded.
+It was never implemented in the native device code.
+
+The kaj-fi Sense now analyses at 46.875 Hz and publishes every fifth hop:
+**9.375 snapshots/s** (106.67 ms apart). Network-only tests on the installation AP
+found approximately 204.8 ms multicast delivery batches. Lowering the publication
+rate reduces traffic, but does not remove that network delay. Scheduling another
+100 ms of receiver playback would add latency without recovering the missed live
+response. Reconsider scheduled playback only for a measured synchronization need.
 
 The existing [browser audio demo](../audio-source.md) and
 [live-input core](../inputs.md) provide the feature semantics and consumer model.
-Microcontroller capture, multicast publication, clock tracking and buffered
-reception are new native components proposed here.
+The separate kaj-fi firmware implements capture, analysis and multicast sending;
+this document proposes the native LightVM subscription and publication path.
 
 ## Architecture
 
@@ -27,7 +40,7 @@ reception are new native components proposed here.
 flowchart LR
     M[Digital microphone or line input ADC] --> A[ESP32-S3 capture and analysis]
     A --> U[UDP multicast feature frames]
-    U --> R1[LightVM clock tracker and jitter buffer]
+    U --> R1[LightVM latest-snapshot receiver]
     U --> R2[Another LightVM receiver]
     R1 --> S[Six named input sources]
     S --> B[Per animation input bindings]
@@ -38,7 +51,8 @@ The analyser runs independently of a browser and of the light controllers. It
 transmits derived features; raw audio stays on the analyser. Controllers can join
 an existing stream without the analyser maintaining a subscriber list. Each
 receiver initially selects one configured sensor, consuming six of the current
-sixteen controller-wide source slots. One subscription can feed many animation
+32 controller-wide source slots (the current implementation also uses sixteen
+slots for spectrum and one for the onset counter). One subscription can feed many animation
 instances and transition progress.
 
 ## Hardware and capture
@@ -76,7 +90,7 @@ Proposed analysis parameters:
 | Capture rate | 48,000 samples/s |
 | Analysis window | 2,048 mono samples, about 42.67 ms |
 | Hop size | 1,024 samples, about 21.33 ms |
-| Feature publication | One frame per hop, nominally 46.875 frames/s |
+| Feature publication | Latest snapshot every five hops, nominally 9.375 frames/s |
 | Buffer allocation | Fixed DMA, window, FFT and network buffers at startup |
 
 The 48 kHz rate preserves the current upper analysis bound of 12 kHz. Validate
@@ -116,7 +130,10 @@ matching FFT size alone does not reproduce Web Audio's numerical response.
 Continue sending complete frames during silence. Silence is valid zero-valued
 state; a missing stream is a separate condition. `onset` remains scalar state,
 with no guarantee that every pulse triggers an action after packet loss or a
-slow render. Reliable events and BPM/beat-phase tracking are later extensions.
+slow render. kaj-fi also sends identified onset occurrences, retained independently
+of scalar downsampling and repeated in up to three packets within 350 ms. Event
+bindings must deduplicate these occurrences; neither UDP delivery nor musical
+beat detection is guaranteed. BPM/beat-phase tracking remains a later extension.
 
 ## Multicast transport and frame format
 
@@ -134,170 +151,95 @@ and stale playback, but do not authenticate packets. Multicast delivery depends
 on the access point and network configuration; validate it on the installation's
 actual Wi-Fi. See [wireless multicast considerations](https://www.rfc-editor.org/rfc/rfc9119.html).
 
-Use one fixed 72-byte datagram per frame. The proposed first wire format is:
+Use the current [kaj-fi LVAF v4 contract](../../../kaj-fi/docs/protocol.md), updating
+sender and receiver together. The earlier fixed 72-byte v1 draft is superseded.
+Each datagram contains an 84-byte header, six scalar values, 0–64 eight-byte
+spectrum records and 0–4 twenty-four-byte event records. With the default 16 bands
+and no events, it is 212 bytes: about 1,988 payload bytes/s at 9.375 Hz, excluding
+UDP/IP and Wi-Fi overhead. Maximum datagram size is 692 bytes.
 
-| Offset | Bytes | Field |
-| --- | --- | --- |
-| 0 | 4 | Magic ASCII `LVAF` |
-| 4 | 1 | Format version, initially 1 |
-| 5 | 1 | Feature count, exactly 6 |
-| 6 | 2 | Reserved, zero |
-| 8 | 8 | Stable nonzero `sensor_id` |
-| 16 | 8 | Nonzero `session_id`, newly randomized whenever the analyser stream restarts |
-| 24 | 8 | `sequence`, increasing from 1 within the session |
-| 32 | 8 | `audio_time_us`, end of the captured analysis window |
-| 40 | 8 | `send_time_us`, sampled immediately before submitting this datagram to UDP |
-| 48 | 24 | Six IEEE 754 binary32 values in the order listed above |
+Decode fields explicitly in network byte order; never cast a C structure onto a
+packet. Validate length, version, flags, sensor/session identity, timestamps,
+finite bounded values, band layout and event ordering/expiry before staging any
+part of the packet. Sequence counts scheduled publications, not analysis hops.
+The transmitted 1,024-sample hop describes analysis resolution; adjacent published
+snapshots normally span five hops.
 
-Encode integers and float bit patterns in network byte order. Decode fields
-explicitly rather than transmitting or casting a C structure. Reject the entire
-datagram on a length, version, reserved-field, identity, timestamp or feature
-validation failure. Neither counters nor timestamps wrap within a session.
+Audio timestamps identify the end of the analysed window, and event timestamps
+the detection window. `send_time_us` uses the same sender monotonic clock. Events
+must be at most 350 ms old at send time. This is a sender retention ceiling,
+not a receiver delay or proof of network freshness. Receivers select a stable
+sensor and deduplicate occurrences by sensor, session and event ID.
 
-Both timestamps use the same sender monotonic clock in microseconds, without an
-epoch or time of day. Derive audio timestamps from captured sample positions
-anchored to that clock, independently of when the processing task wakes up.
-Require `audio_time_us <= send_time_us`; sequence, audio time and send time must
-advance together in stream order. The separate send timestamp lets the receiver
-estimate arrival timing without treating varying analysis duration as network
-delay. Wi-Fi and driver queuing after submission remain part of transport delay.
+## Immediate receiver timing
 
-At the nominal frame rate, 72-byte datagrams carry 3,375 payload bytes/s, excluding
-UDP/IP and Wi-Fi overhead. There are no acknowledgements or retransmissions.
+There is no timestamp-scheduled playback cursor, startup clock-acquisition wait,
+or frame-depth jitter buffer in the first receiver. Clock synchronization is
+unnecessary for applying the newest state immediately. One-way timestamps cannot
+separate clock offset from transport delay, so diagnostics must not claim a
+measured absolute packet age or exact alignment between controllers.
 
-## One way clock tracking
+At each bounded engine service point before an input snapshot:
 
-Each receiver records local monotonic receipt time `r` as close to network ingress
-as the platform permits. Let `u` be the packet's `send_time_us`. Its observation is:
+1. Inspect the bounded ingress batch, validate packets and apply sensor/session
+   rules. Keep the highest advancing sequence as the pending metric snapshot.
+2. Inspect distinct events from every accepted packet before discarding its older
+   metrics. Coalescing scalar state must not erase an onset between publications.
+3. Publish the newest six-value vector atomically, then release the pending slot.
+   Do not replay the older scalar frames in the burst on later render ticks.
+4. Hold the last published vector until another arrives or its source timeout
+   applies. Do not extrapolate energy or invent onset events. Source attack/release
+   envelopes already provide smoothing; add no receiver interpolation initially.
 
-```text
-observed_offset = r - u
-               = clock_offset + transport_delay
-```
+A single pending metric slot bounds application backlog; this does not require a
+single-datagram socket buffer. The network path still needs bounded ingress space
+to inspect the events in a received burst. Bound packet work per service call and
+report ingress overflow. Avoid a FIFO of scalar updates that would turn a burst
+into several frames of added latency.
 
-Maintain a slowly changing estimate `b` of that observation. Translate a sender
-timestamp `s` into local time with `s + b`. This aligns the receiver with its own
-typical arrival timeline. It cannot separate clock offset from transport delay
-or establish exact alignment between receivers with different paths. This is
-the [shared-clock limitation](https://www.rfc-editor.org/rfc/rfc7273.html#section-1)
-of synchronization from relative stream timing.
+For example, two measurements with sender audio times 1,000 ms and 1,107 ms may
+arrive together after an AP release. At the next service point use the 1,107 ms
+snapshot, while preserving a distinct onset carried only in the older packet.
+If the engine renders at 50 Hz, its next opportunity is nominally within 20 ms;
+that render wait is separate from network, DSP and physical LED output delays.
 
-A small initial algorithm is sufficient:
-
-1. Acquire observations for 250 ms, requiring at least four valid frames with
-   increasing sequence and timestamps. Initialize `b` from their median, so a
-   single unusually delayed first packet does not establish the baseline.
-2. During playback, use only valid, newly advancing packets that arrive before
-   their existing deadline as clock observations. Reordered, duplicate and late
-   frames never move the estimate.
-3. Apply an elapsed-time exponential average with an initial 10 s time constant.
-   Clamp observation residuals to +/-20 ms and limit changes in `b` to 1 ms per
-   second of local elapsed time. These are prototype tuning values, intended to
-   follow gradual drift without chasing individual Wi-Fi delays.
-4. Reacquire after a session change, network reconnect, one second without a
-   usable advancing frame, or a sustained timing discontinuity. Flush queued
-   frames before reacquisition; never correct a large error by jumping playback
-   through old frames.
-
-Use timestamp differences against a local reference origin and signed offset
-arithmetic. Do not subtract unsigned absolute clocks directly, and do not adjust
-the controller's system clock, animation time or timer drivers. The estimate is
-private to this subscription. Track drift through the changing offset initially;
-a separate clock-rate estimator is unnecessary for the first prototype.
-
-A persistent increase in network delay can eventually move the baseline, just
-as clock drift can. A stream already delayed when acquisition begins can also
-establish a delayed baseline. Absolute packet age and path delay cannot be proven
-from these one-way observations. The receiver detects lateness relative to its
-established timeline, rather than claiming a measured one-way network latency.
-
-## The 100 ms jitter buffer
-
-For a frame with audio timestamp `s`, its estimated local deadline is:
-
-```text
-deadline = s + b + 100,000 microseconds
-```
-
-The 100 ms delay is measured against the estimated audio timeline. Analysis and
-excess network delay consume that budget. It is not a fresh 100 ms wait after
-each arrival. Normal network delay remains included in `b`; perceived response
-also depends on the analysis window, feature smoothing and LED frame timing.
-
-For example, suppose two receivers normally see network delays of 10 ms and
-30 ms, and the illustration expresses local time on an otherwise shared clock.
-Their estimated offsets include those respective delays. With a negligible
-analysis delay for this example:
-
-| Frame audio time | Receiver | Arrival | Scheduled playback | Action |
-| --- | --- | --- | --- | --- |
-| 1,000 ms | A, normal path | 1,010 ms | 1,110 ms | Wait 100 ms |
-| 1,000 ms | A, extra jitter | 1,060 ms | 1,110 ms | Wait 50 ms |
-| 1,000 ms | B, normal path | 1,030 ms | 1,130 ms | Wait 100 ms |
-| 1,000 ms | A, too late | 1,120 ms | 1,110 ms | Discard |
-
-Jitter no longer directly moves playback, while B remains 20 ms behind A. An
-isolated late arrival cannot extend its own deadline by updating the clock first.
-
-Reserve a sorted queue of 32 frames per subscription. At the proposed rate this
-holds about 0.68 s, sufficient for the initial acquisition window and normal
-100 ms playback buffer. Account for receipt timestamps and tracking state as
-well as the 2,304 bytes of wire payload storage. The queue is a hard bound, not
-permission to increase the playback delay under load.
-
-After acquisition, advance a sender-time playback cursor from local monotonic
-time using `now - b - 100,000`, clamped so it never moves backwards. At each bounded
-engine service point, publish the newest queued frame at or before that cursor
-and remove all older due frames. Coalescing avoids replaying a backlog when the
-engine is delayed. Publish all six values atomically.
-
-Apply these queue rules:
-
-- Discard duplicates and frames at or behind the current playback cursor.
-- Accept a reordered frame if it is still ahead of the cursor, is consistent
-  with its sequence/timestamp neighbours, and fits the queue. Receive order is
-  not playback order.
-- Reject frames implausibly far ahead of the established timeline. If the queue
-  fills, reject new ingress and increment an overflow counter; do not allocate
-  or silently add latency. A sustained fault triggers reacquisition.
-- Hold the most recently published feature vector across missing frames. Do not
-  extrapolate energy or invent onset pulses. Start with no receiver interpolation
-  or additional smoothing; source envelopes already provide smoothing.
-
-Service publications before the next input snapshot when due, while preserving
-the existing rule that an invocation's inputs stay fixed across yields. The
-buffer schedules source availability; independent animation and LED refresh
-cadences can still add skew. Coordinating physical LED presentation is a
-separate possible extension, not a guarantee of this proposal.
+Lower packet rate trades temporal detail for less traffic. Events detected just
+after a scheduled publication wait up to roughly one publication interval for
+their first packet; their capture timestamps still have 21.33 ms resolution.
+An AP batch can contain roughly two new measurements at this rate. The receiver
+cannot undo the AP's delay; its job is to avoid adding a second playback queue.
 
 ## Stream lifecycle and freshness
 
 Latch one active session for the configured sensor. A different session cannot
-replace it while that session remains live. Following a timeout, acquire a new
-session from several consistent advancing packets rather than switching on a
-single datagram. On adoption, flush the queue, reset the clock tracker and begin
-the startup acquisition again. Keep a bounded cache of recently retired sessions
-to prevent delayed packets from immediately switching playback back; specify its
-retention and capacity in the implementation. This is bounded replay rejection,
-not protection against arbitrarily old traffic or deliberate replay.
+replace it while that session remains live. After the one-second stream timeout,
+adopt a valid advancing new session and clear pending metrics/event state. Keep a
+bounded retired-session history to reject delayed traffic from recently retired
+streams. Sensor/session IDs prevent accidental mixing, not deliberate replay.
 
-On receiver restart or network reconnect, begin acquisition with an empty queue.
-On source loss, already queued frames may drain at their deadlines. Then retain
-the last valid publication until the consumer's configured source timeout causes
-its existing default or hold policy to apply. Use 1,000 ms as the default binding
-timeout. Acquisition does not publish synthetic silence.
+On receiver restart or network reconnect, clear pending data and accept the first
+valid selected-sensor snapshot without a 250 ms clock-acquisition phase. On source
+loss, retain the last valid publication until the consumer's configured timeout
+causes its existing default or hold policy to apply. The default binding timeout
+remains 1,000 ms; missing data is distinct from valid zero-valued silence.
 
-Record freshness from the original local receipt of each accepted frame, not from
-its delayed publication time. Repeated engine ticks, clock corrections, duplicate
-packets, invalid packets and discarded late frames must not refresh a source.
-Expose receipt age and playback age separately so the 100 ms buffer is visible
-in diagnostics. During acquisition or an absent stream, valid zero and missing
-data remain distinguishable.
+Record freshness from the original local receipt of each accepted advancing
+frame. Engine ticks, duplicate packets, rejected frames and local publication
+must not extend it. Expose receipt age and the delay from ingress to publication
+separately. This makes additional receiver backlog visible without pretending
+to measure unsynchronized one-way network latency.
+
+Events need their own bounded history, expiry and per-animation consumption.
+Sender TTL alone cannot detect a packet delayed in transit. Define and test the
+receiver's lateness policy before enabling event bindings, using sender timestamp
+progress and local receipt/queue age, and document the remaining one-way timing
+uncertainty. Duplicates must not refresh an occurrence's lifetime. Paused
+animations discard pending triggers; resuming must not replay old flashes.
 
 ## Integration with LightVM
 
-Implement a platform-independent decoder, clock tracker and queue, exercised on
-the host. Native network ports supply group membership, bounded ingress, receipt
+Implement a platform-independent decoder and latest-snapshot staging path,
+exercised on the host. Native network ports supply group membership, bounded ingress, receipt
 timestamps and reconnect notifications. ESP32 and Pico receive paths must stage
 data for the engine owner; network callbacks must not mutate the registry or run
 guest code. Bound packets processed per service call so traffic cannot starve
@@ -348,11 +290,11 @@ An Eye binding can use the existing mapping format, for example:
 }
 ```
 
-Persist subscription configuration and input recipes, not queued samples, clock
-estimates, sequence state or local publisher tokens. Configuration includes the
-enabled adapter, multicast address/port, sensor ID and source prefix. Keep the
-100 ms delay fixed for the first implementation; any later configurable delay
-must be explicit across the installation. Reject a configuration that exceeds
+Persist subscription configuration and input recipes, not pending samples, event
+histories, sequence state or local publisher tokens. Configuration includes the
+enabled adapter, multicast address/port, sensor ID and source prefix. Use zero
+deliberate playback delay for the first implementation; any later buffering must
+be an explicit, measured choice across the installation. Reject a configuration that exceeds
 source, socket or memory limits before replacing the active subscription.
 
 ## Resource and diagnostic requirements
@@ -365,49 +307,46 @@ normal LightVM rendering; FFT kernel benchmarks alone do not establish the full
 system budget.
 
 The analyser reports capture overruns, analysis duration, dropped work, send
-failures and its current session. Each receiver reports acquisition state,
-sensor/session, latest received and played sequence, queue occupancy, estimated
-offset, offset residuals, late/duplicate/reordered/invalid/overflow counts, receipt
-age and publication age. Label offset and jitter as estimates; do not display
-them as measured absolute network latency or guaranteed inter-controller skew.
+failures and its current session. Each receiver reports subscription state,
+sensor/session, latest received and published sequence, pending/ingress occupancy,
+coalesced/duplicate/reordered/invalid/overflow counts, receipt age and local
+ingress-to-publication delay. Do not present these as measured absolute network
+latency or guaranteed inter-controller skew.
 
 ## Delivery and validation
 
-1. Implement shared host-side codec and receiver logic with a synthetic sender
-   and deterministic sender/receiver clocks. Document packet fixtures.
-2. Implement ESP32-S3 capture and feature extraction. Validate 48 kHz operation,
-   FFT scaling, silence, tones and transients before enabling multicast.
-3. Integrate the native receiver with the registry and existing Eye bindings.
+1. Implement host-side v4 codec and receiver staging with deterministic fixtures.
+   Reuse the kaj-fi packet contract and synthetic signal fixtures.
+2. Integrate the native receiver with the registry and existing Eye bindings.
    Verify atomic snapshots, receipt-based expiry and ownership handling.
-4. Run one physical analyser and at least two receivers. Compare immediate
-   publication against buffered publication under normal Wi-Fi and injected
-   jitter, then record timing and resource measurements.
+3. Measure the analyser and receiver together under normal LightVM rendering.
+   Confirm the newest packet in an AP batch reaches the next engine snapshot
+   without an intentional 100 ms hold or a FIFO backlog.
+4. Implement identified event bindings separately, including expiry, independent
+   consumption and pause/resume behavior. Scalar onset is not a reliable trigger.
 
 Acceptance checks must cover:
 
-- Exact packet encoding, truncation, malformed fields, nonfinite values and
-  wrong sensor identity; invalid batches publish nothing.
-- Arbitrary initial clock offsets and simulated gradual drift, including
-  +/-250 ppm trials. Check stable playback and bounded estimator response.
-- Jitter bursts, loss, duplicates, useful reordering, late frames and engine
-  stalls. Playback never moves backwards or drains a visible backlog.
-- Two paths with different constant delays. Their baseline difference remains;
-  adding the buffer reduces arrival-driven variation rather than hiding it in
-  an incorrect synchronization claim.
-- Startup with an outlier, sender restart, receiver restart, Wi-Fi reconnect,
-  retired-session traffic, prolonged outage and clock discontinuities.
-- Queue limits, ingress flooding, source-slot exhaustion, registry ownership
-  replacement and local publication sequence renewal.
-- Synthetic audio fixtures for band separation, RMS, centroid, normalization,
-  smoothing, onset warmup and silence; measured capture/processing headroom.
-- A shared GPIO or photodiode observation of physical LED response, separating
-  network jitter from animation cadence and output transmission time.
+- Exact packet encoding, malformed fields, nonfinite values, wrong sensor identity,
+  unsupported versions and within-session layout changes.
+- Source publication at 9.375 Hz while analysis and detection remain at 46.875 Hz;
+  short onsets at every position between publications survive downsampling.
+- Burst arrival, loss, duplicates, reordering and engine stalls. Metrics never
+  move backwards or drain an old backlog; useful distinct events survive coalescing.
+- No arrival-to-publication timer beyond the next bounded engine service point.
+  No clock-acquisition delay on subscription startup.
+- Sender/receiver restart, reconnect, retired sessions and source timeout.
+- Ingress limits, flooding, source-slot exhaustion, ownership replacement and
+  local publication sequence renewal.
+- Synthetic fixtures for RMS, band separation, centroid, envelopes, warmup and
+  event expiry/repetition; measured DSP headroom on the actual Sense.
+- Physical LED response with a shared GPIO or photodiode observation, separating
+  network batching from rendering and output transmission delays.
 
-Record late-frame rate and physical timing distributions with and without the
-100 ms buffer. Choose a numerical jitter/skew target from those measurements;
-the first proposal makes no submillisecond or exact simultaneity guarantee.
+The first receiver makes no exact simultaneity guarantee. A future synchronized
+playback mode would need an explicit clock model, delay budget and measurements;
+reducing the number of frames in a jitter queue alone does not define its delay.
 
-This remains an experimental format. If protocol or configuration changes during
-implementation, update the analyser and receivers together and reprovision the
-test devices where necessary. Do not add compatibility paths for superseded
-experiments.
+This remains experimental. Update analyser and receivers together when the
+protocol changes and reprovision test devices when necessary. Do not add
+compatibility paths for superseded experiments.

@@ -261,6 +261,9 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),in
         # Native sources do not consume the publisher quota.
         self.client.claim_inputs({f'external.{n}':'float' for n in range(8)})
         self.client.claim_inputs({f'external.{n}':'float' for n in range(8,16)})
+        self.client.claim_inputs({f'external.{n}':'float' for n in range(16,24)})
+        last = self.client.claim_inputs({f'external.{n}':'float' for n in range(24,32)})
+        self.client.publish_inputs(last, 1, {f'external.{n}':0.5 for n in range(24,32)})
         self.load()
         self.client.set_inputs({'level':{'source':'board.uptime_s','map':{
             'input_min':0,'input_max':0.000001,'output_min':0,'output_max':1}}})
@@ -269,7 +272,7 @@ def draw(ctx,runtime,pixels): pixels.fill(rgb(int(runtime.input(LEVEL)*100.0),in
         self.assertFalse(state['fallback'])
         self.assertEqual(state['value'],1)
         self.client.manage('input_list')
-        self.assertEqual(len(json.loads(self.client.data_reply)),len(sources)+16)
+        self.assertEqual(len(json.loads(self.client.data_reply)),len(sources)+32)
 
     def test_input_list_exact_source_filter(self):
         self.client.claim_inputs({'external.test':'float'})

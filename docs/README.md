@@ -34,6 +34,7 @@ animation. The guides below describe the current implementation.
 - [Boot sequence and power recovery](boot-sequence.md)
 - [Browser workspace](web-editor.md)
 - [Generic live music source](audio-source.md)
+- [Native kaj-fi audio inputs and Python visualizations](audio-multicast.md)
 
 Runnable [animation examples](../examples/animations/) and
 [configuration examples](../examples/config/) live together in `examples/`.

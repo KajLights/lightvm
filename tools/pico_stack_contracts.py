@@ -10,6 +10,8 @@ def enabled_target(name, features):
     Do not infer absence from a missing symbol: that must still fail the gate.
     """
     if features is None:return True
+    if name in ('audio_received','platforms/pico/network_port.c:audio_received') and not features.get('LIGHTVM_AUDIO_MULTICAST',False):return False
+    if name=='igmp_tmr':return features['LIGHTVM_HTTP'] or features.get('LIGHTVM_AUDIO_MULTICAST',False)
     # Match LWIP_TCP/DNS/IGMP in lwipopts.h and the guarded timer/UDP registrations.
     if name in ('tcp_tmr','tcpip_tcp_timer') and not (features['LIGHTVM_HTTP'] or features['LIGHTVM_MQTT']):return False
     if (name.startswith(('src/home_assistant.c:', 'src/ha_keys.c:', 'platforms/pico/mqtt_port.c:')) or
@@ -57,6 +59,9 @@ CALLBACKS = {
     'http_tick': ('platforms/pico/network_port.c:output','platforms/pico/network_port.c:close_client',
                   'src/device_host.c:busy','src/device_host.c:dispatch','src/device_host.c:disconnect','src/device_host.c:delivered'),
     'http_disconnect_sessions': ('src/device_host.c:disconnect',),
+    # Pico registers no websocket flush hook; these call only host busy/disconnect.
+    'websocket_tick': ('src/device_host.c:busy','src/device_host.c:disconnect'),
+    'websocket_closed': ('src/device_host.c:busy','src/device_host.c:disconnect'),
     'http_setup': ('src/device_host.c:save',),
     'shared/device-core/src/http.c:expire': ('src/device_host.c:disconnect',),
     'shared/device-core/src/http.c:command': ('src/device_host.c:dispatch',),
@@ -132,7 +137,7 @@ SDK_CALLBACKS = {
     'tcp_input': ('platforms/pico/network_port.c:receive','platforms/pico/network_port.c:accept_client','platforms/pico/mqtt_port.c:received','platforms/pico/mqtt_port.c:connected','platforms/pico/network_port.c:failed','platforms/pico/mqtt_port.c:error_stream','tcp_recv_null'),
     'tcp_process_refused_data': ('platforms/pico/network_port.c:receive','platforms/pico/mqtt_port.c:received','tcp_recv_null'),
     'tcp_abandon': ('failed','error_stream'), 'tcp_slowtmr': ('failed','error_stream'),
-    'udp_input': ('discovery_received','dhcp_recv','dns_recv','platforms/pico/dhcp_port.c:received'),
+    'udp_input': ('discovery_received','audio_received','dhcp_recv','dns_recv','platforms/pico/dhcp_port.c:received'),
     'dns_call_found': ('resolved',), 'dns_recv': ('resolved',),
     'sys_check_timeouts': ('lwip_cyclic_timer','tcpip_tcp_timer'),
     'lwip_cyclic_timer': ('tcp_tmr','ip_reass_tmr','etharp_tmr','dhcp_coarse_tmr','dhcp_fine_tmr','dns_tmr','igmp_tmr','acd_tmr'),

@@ -11,6 +11,7 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <inttypes.h>
 
 typedef struct { App *app; uint16_t id; uint8_t bytes[FRAME_LIMIT]; size_t used; } Writer;
 static void flush(Writer *w) {
@@ -197,6 +198,7 @@ static void destroy_output(AppOutput **slot){
 }
 static void empty_config(App *a) {
     digital_inputs_destroy(&a->digital_inputs);
+    if(a->hardware.audio)input_registry_release(&a->inputs,a->hardware.audio->generation);
     hardware_destroy(&a->hardware);
     for(unsigned i=0;i<a->output_count;i++)destroy_output(&a->outputs[i]);
     platform_free(a->outputs);a->outputs=NULL;a->output_count=0;a->upload_output=&a->fallback;
@@ -215,6 +217,10 @@ static bool same_output(const HardwareOutput *a,const HardwareOutput *b){
 static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t size){
     AppOutput **next=platform_calloc(config->count,sizeof(*next));
     if(config->count&&!next){hardware_destroy(config);return false;}
+    if(config->audio&&audio_receiver_claim(config->audio,&a->inputs)){
+        platform_free(next);hardware_destroy(config);return false;
+    }
+    if(a->hardware.audio)input_registry_release(&a->inputs,a->hardware.audio->generation);
     a->hardware_changing=true;
     digital_inputs_apply(&a->digital_inputs,config->inputs,config->input_count);
     /* Output identity, not array position, owns its running instance. */
@@ -449,6 +455,7 @@ void app_tick(App *a) {
     uint64_t now=platform_time_us();
     runtime_foreground(now);
     board_status_tick(&a->board_status,&a->network,now);
+    audio_receiver_publish(a->hardware.audio,&a->inputs,now);
     digital_inputs_tick(&a->digital_inputs,now);
 #if LIGHTVM_BOOT_SEQUENCE
     boot_sequence_tick(&a->boot_sequence,now);
@@ -610,7 +617,9 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"ab_transitions\":true,\"transition_sources\":true,\"transition_programs\":true,\"custom_transitions\":true,\"transition_effects\":[");
     for(unsigned n=0;n<TRANSITION_PROGRAM;n++){if(n)literal(&w,",");quoted(&w,transition_effect_name((TransitionEffect)n));}literal(&w,"]");
     literal(&w,",\"transient_settings\":true,\"preset_transitions\":true,\"presets\":true,\"typed_storage\":true");
-    literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":16,\"board_status_supported\":true");
+    literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":");number(&w,INPUT_SOURCE_LIMIT);
+    literal(&w,",\"board_status_supported\":true");
+    literal(&w,",\"audio_multicast_supported\":");literal(&w,LIGHTVM_AUDIO_MULTICAST?"true":"false");
     literal(&w,",\"composition_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     StoreInfo storage=store_info(&a->store);
@@ -1724,6 +1733,27 @@ static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
 static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
+    if(!strcmp(op,"audio_status")){
+        static const char *const fields[]={"op",NULL};
+        if(!json_fields(j,0,fields)){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","unexpected audio status fields");return;}
+        platform_free(j);AudioReceiver *r=a->hardware.audio;Writer w={.app=a,.id=id};
+        literal(&w,"{\"supported\":");literal(&w,LIGHTVM_AUDIO_MULTICAST?"true":"false");
+        literal(&w,",\"configured\":");literal(&w,r?"true":"false");
+        if(r){
+            char b[128];snprintf(b,sizeof(b),",\"sensor_id\":\"%016" PRIx64 "\",\"session_id\":\"%016" PRIx64 "\"",r->config.sensor,r->session);literal(&w,b);
+            literal(&w,",\"listening\":");literal(&w,r->listening?"true":"false");
+            literal(&w,",\"conflict\":");literal(&w,r->conflict?"true":"false");
+            literal(&w,",\"online\":");literal(&w,r->received&&platform_time_us()-r->received<AUDIO_TIMEOUT_US?"true":"false");
+            literal(&w,",\"sequence\":");wide(&w,r->sequence);
+            literal(&w,",\"age_ms\":");if(r->received)wide(&w,(platform_time_us()-r->received)/1000);else literal(&w,"null");
+#define AUDIO_COUNT(name) literal(&w,",\"" #name "\":");number(&w,r->name)
+            AUDIO_COUNT(packets);AUDIO_COUNT(published);AUDIO_COUNT(invalid);AUDIO_COUNT(ignored);
+            AUDIO_COUNT(reordered);AUDIO_COUNT(gaps);AUDIO_COUNT(coalesced);AUDIO_COUNT(onsets);
+            AUDIO_COUNT(duplicates);AUDIO_COUNT(expired);AUDIO_COUNT(overflow);AUDIO_COUNT(max_service_us);
+#undef AUDIO_COUNT
+        }
+        literal(&w,"}");flush(&w);reply(a,id,STATUS_OK,0,"audio receiver status");return;
+    }
     if(preparation_manage(a,id,j,op)){platform_free(j);return;}
     AppOutput *d=request_output(a,j);
     if(!d){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_output","invalid request, unknown output or invalid A/B slot");return;}

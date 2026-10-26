@@ -17,6 +17,8 @@ static PicoMqtt mqtt_stream;
 #if LIGHTVM_WEBSOCKET
 #include "device/websocket.h"
 #endif
+#endif
+#if LIGHTVM_HTTP || LIGHTVM_AUDIO_MULTICAST
 #include "lwip/udp.h"
 #include "lwip/igmp.h"
 #endif
@@ -25,6 +27,51 @@ static bool initialized;
 static NetworkMode mode;
 static PicoDhcp dhcp;
 static struct netif *active_netif(void) { return &cyw43_state.netif[mode==NET_MODE_AP?CYW43_ITF_AP:CYW43_ITF_STA]; }
+#if LIGHTVM_AUDIO_MULTICAST
+static struct udp_pcb *audio_pcb;
+static ip4_addr_t audio_group,audio_address;
+static uint32_t audio_revision;
+static uint64_t audio_retry;
+static unsigned audio_budget;
+static void audio_received(void *ctx,struct udp_pcb *pcb,struct pbuf *p,const ip_addr_t *address,u16_t port){
+    (void)ctx;(void)pcb;(void)address;(void)port;
+    AudioReceiver *r=engine->hardware.audio;
+    if(p&&r){
+        if(!audio_budget)r->overflow++;
+        else {
+            --audio_budget;
+            if(p->tot_len>AUDIO_PACKET_LIMIT)r->invalid++;
+            else {
+                uint8_t packet[AUDIO_PACKET_LIMIT];
+                if(pbuf_copy_partial(p,packet,p->tot_len,0)==p->tot_len)
+                    audio_receiver_receive(r,packet,p->tot_len,platform_time_us());
+                else r->invalid++;
+            }
+        }
+    }
+    if(p)pbuf_free(p);
+}
+static void stop_audio(void){
+    if(audio_pcb){igmp_leavegroup_netif(active_netif(),&audio_group);udp_remove(audio_pcb);audio_pcb=NULL;}
+    audio_receiver_disconnect(engine->hardware.audio);
+}
+static void poll_audio(void){
+    AudioReceiver *r=engine->hardware.audio;
+    bool enabled=network_online(&engine->network)&&!engine->network_settings.pending&&r&&!r->conflict;
+    if(audio_pcb&&(!enabled||audio_revision!=engine->revision||!ip4_addr_cmp(&audio_address,netif_ip4_addr(active_netif()))))stop_audio();
+    uint64_t now=platform_time_us();
+    if(!enabled||audio_pcb||now<audio_retry)return;
+    audio_retry=now+1000000u;
+    audio_pcb=udp_new_ip_type(IPADDR_TYPE_V4);
+    if(!audio_pcb)return;
+    const uint8_t *g=r->config.group;IP4_ADDR(&audio_group,g[0],g[1],g[2],g[3]);
+    if(udp_bind(audio_pcb,IP_ANY_TYPE,r->config.port)!=ERR_OK){udp_remove(audio_pcb);audio_pcb=NULL;return;}
+    udp_bind_netif(audio_pcb,active_netif());
+    if(igmp_joingroup_netif(active_netif(),&audio_group)!=ERR_OK){udp_remove(audio_pcb);audio_pcb=NULL;return;}
+    udp_recv(audio_pcb,audio_received,NULL);
+    audio_address=*netif_ip4_addr(active_netif());audio_revision=engine->revision;r->listening=true;
+}
+#endif
 static bool observed[NETWORK_LIMIT];
 static char hostname[sizeof("lightvm-ffffff")];
 #if LIGHTVM_HTTP
@@ -43,6 +90,9 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
     uint32_t country=!strcmp(c->country,"XX")?CYW43_COUNTRY_WORLDWIDE:CYW43_COUNTRY(c->country[0],c->country[1],0);
     if (initialized) {
+#if LIGHTVM_AUDIO_MULTICAST
+        stop_audio();
+#endif
 #if LIGHTVM_MQTT
         ha_close(&ha);
 #endif
@@ -91,6 +141,9 @@ static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capa
 }
 static void disconnect(void *ctx) {
     (void)ctx; if (!initialized) return;
+#if LIGHTVM_AUDIO_MULTICAST
+    stop_audio();
+#endif
 #if LIGHTVM_MQTT
     ha_close(&ha);
 #endif
@@ -265,6 +318,9 @@ void pico_network_init(App *app) {
     NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 }
 void pico_network_poll(void) {
+#if LIGHTVM_AUDIO_MULTICAST
+    if(initialized){poll_audio();audio_budget=8;}
+#endif
     if (initialized) cyw43_arch_poll();
 #if LIGHTVM_HTTP
     static NetworkState previous=NET_DISABLED; static uint16_t port;

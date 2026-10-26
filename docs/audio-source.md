@@ -1,5 +1,8 @@
 # Music as an animation source
 
+This guide covers browser microphone capture. For the standalone Sense analyser
+and Pico receiver, see [native audio inputs and Python examples](audio-multicast.md).
+
 Open **Audio Playground**, or visit `/#/audio`. **Start listening** works without
 a controller: grant microphone access and watch the six signal meters. Choose a
 microphone, line-in interface or OS loopback device. Device names appear after

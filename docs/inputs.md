@@ -196,7 +196,7 @@ the replacement invocation's validated declarations and recipe.
 
 ## Management
 
-`describe` reports `live_inputs`, `input_limit=8` and `input_source_limit=16`.
+`describe` reports `live_inputs`, `input_limit=8` and `input_source_limit=32`.
 `program_state` adds `inputs_revision`, input snapshots and bindings, and
 `program_crc32`. Values describe the most recently captured invocation; a paused
 program's snapshot can therefore differ from its newly selected constant binding.
@@ -233,7 +233,7 @@ as one atomic batch, using a positive strictly increasing uint32 sequence:
 Partial, malformed, duplicate, older-generation and previous-boot publications
 are rejected. Reclaiming any name revokes its previous publisher group. Claim a
 new generation before exhausting the sequence. `input_list` reports names, types,
-values, validity, generations, sequences and local receipt ages. Up to 16 source
+values, validity, generations, sequences and local receipt ages. Up to 32 source
 names are retained until reboot. Sources may be bound before their first claim.
 One source can feed several animation instances and transition progress.
 

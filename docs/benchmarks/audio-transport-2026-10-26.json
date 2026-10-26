@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-26",
+  "source_rate_hz": 9.375,
+  "receiver": "Pico W, 200 pixels",
+  "visualization": "audio_pulse",
+  "master_brightness": 0.25,
+  "method": "12-second USB audio_status samples; approximate arrival gaps from query midpoint minus local receipt age. Not synchronized end-to-end latency.",
+  "user_feedback": "Clearly more responsive with unicast",
+  "multicast": {
+    "elapsed": 12.029390499999863,
+    "sequence_advance": 111,
+    "deltas": {
+      "packets": 223,
+      "published": 64,
+      "gaps": 0,
+      "coalesced": 47,
+      "reordered": 112,
+      "invalid": 0,
+      "overflow": 0,
+      "onsets": 0,
+      "duplicates": 0
+    },
+    "observed_batches": 64,
+    "arrival_gap_ms": {
+      "median": 204.4229794992134,
+      "p95": 208.23891699546948,
+      "max": 236.3549164874712
+    },
+    "receipt_age_ms": {
+      "median": 98,
+      "p95": 192
+    },
+    "status_query_ms_p95": 4.710249995696358
+  },
+  "unicast": {
+    "elapsed": 12.031505874998402,
+    "sequence_advance": 113,
+    "deltas": {
+      "packets": 113,
+      "published": 112,
+      "gaps": 0,
+      "coalesced": 1,
+      "reordered": 0,
+      "invalid": 0,
+      "overflow": 0,
+      "onsets": 0,
+      "duplicates": 0
+    },
+    "observed_batches": 113,
+    "arrival_gap_ms": {
+      "median": 105.55966649553739,
+      "p95": 130.41381249786355,
+      "max": 225.64010349742603
+    },
+    "receipt_age_ms": {
+      "median": 54,
+      "p95": 107
+    },
+    "status_query_ms_p95": 4.66999999480322
+  },
+  "sha256": {
+    "pico_receiver_uf2": "6efbdfcb5eab6e3a8c16d6ccf40cb37f63d0989f6393076331ac1d72b8110a39",
+    "audio_pulse_bytecode": "08a5f0eaafe3b2fdfbe524c1f36a13fa21f6bfa3c2a385c997cbd088cf3d6eee",
+    "sense_unicast_application": "390a7b1b0ac2e10d0bfe045afc7d77278c38ea70d15a68b7b2b55cbf3ce3611d"
+  }
+}

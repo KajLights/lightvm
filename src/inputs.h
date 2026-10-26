@@ -5,7 +5,8 @@
 #include <stdint.h>
 
 #define INPUT_LIMIT 8u
-#define INPUT_SOURCE_LIMIT 16u
+#define INPUT_SOURCE_LIMIT 32u
+_Static_assert(INPUT_SOURCE_LIMIT<=32u,"source publication mask is uint32");
 typedef union { uint32_t u; int32_t i; float f; } InputValue;
 typedef struct { uint32_t color; float brightness; } LightControls;
 typedef enum { INPUT_CONSTANT, INPUT_RAMP, INPUT_SOURCE, INPUT_CONTROL } InputKind;
@@ -64,5 +65,10 @@ void inputs_describe(struct Portable *,void (*write)(void *,const char *),void *
 void input_registry_destroy(InputRegistry *);
 const char *input_registry_claim(InputRegistry *,const Json *,int,uint32_t *);
 const char *input_registry_publish(InputRegistry *,const Json *,int,uint32_t,uint32_t);
+/* Typed native adapter entry points. Claims have the same ownership semantics
+ * as JSON publishers; publication is atomic and retains ingress freshness. */
+const char *input_registry_claim_typed(InputRegistry *,const char *const *,const unsigned *,unsigned,uint32_t *);
+const char *input_registry_publish_typed(InputRegistry *,uint32_t,uint32_t,const char *const *,const InputValue *,unsigned,uint64_t);
+void input_registry_release(InputRegistry *,uint32_t);
 double input_ramp(double,double,double,double,double,unsigned);
 #endif
