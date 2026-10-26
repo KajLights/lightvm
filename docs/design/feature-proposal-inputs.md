@@ -430,7 +430,13 @@ an entire live A/B session remains a separate startup feature.
    details out of animation source.
 4. **Events and richer streams.** Add ordered button/beat/message delivery and
    trigger actions with explicit overflow, pause and retry semantics. Add
-   high-rate sample processing only with separate resource budgets.
+   high-rate sample processing only with separate resource budgets. Use the
+   [triggered lightning proposal](feature-proposal-control-api.md#triggered-lightning-effect-proposal)
+   as the concrete event workload: a synthetic trigger, then an admitted gesture
+   source, starts a bounded procedural flash burst over a running background.
+   Prove duplicate handling, restart/pause policy, generation isolation and
+   capture-to-display latency. Audio-onset conversion needs explicit conditioning
+   and cannot turn sampled scalar pulses into guaranteed event delivery.
 
 The first useful demonstration should have two independently animated A/B compositions,
 one potentiometer or synthetic source driving their transition, and three named

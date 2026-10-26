@@ -1,8 +1,11 @@
 # Future control and input model
 
-Status: Proposed. The implemented contract is [animation](../animation-profile.md)
-with frozen initialization settings and [current management](../control-api.md).
-Live INPUT, general events, jobs and controller capabilities below are future work.
+Status: Proposed for general guest events, triggers, jobs and controller
+capabilities. The implemented contract includes
+[animation](../animation-profile.md), frozen initialization settings,
+[scalar live inputs](../inputs.md) and [current management](../control-api.md).
+Keypad events already exist for the MQTT/HA adapter; general guest event delivery
+below remains future work.
 
 The [external input research and design](feature-proposal-inputs.md) develops
 the scalar INPUT path for transition progress and live animation/sprite controls,
@@ -23,10 +26,11 @@ bounded data. A stale generation must never address a replacement instance.
 
 ## INPUT snapshots and events
 
-A future INPUT contract should deliver stable typed values for one callback.
+Scalar INPUT already delivers stable typed values for one render invocation.
 Frozen settings remain initialization data. Changes to INPUT must not mutate
-settings or restart a program. Define sampling, capture timestamps, validity,
-units, delivery boundaries and pause behavior before exposing an API.
+settings or restart a program. Extend this model with explicit event capture
+timestamps, validity, units, delivery boundaries and pause behavior before
+exposing a guest event API.
 
 The [A/B and Transition proposal](feature-proposal-ab-transitions.md) uses one
 settable progress percentage. A timed routine or an external source can update
@@ -55,6 +59,90 @@ timer, subscription or event queue may imply unbounded allocation. Unloading an
 owner cancels its tasks, registrations and owned jobs. Correlation IDs alone do
 not deduplicate retried actions; non-idempotent requests need retry identities.
 
+## Triggered lightning effect proposal
+
+**Status: proposed example and acceptance workload; no guest trigger API or
+lightning implementation is delivered.** A named trigger starts a short lightning
+burst over the current background. Several irregular flashes with quick attacks,
+short gaps and a fading tail give each burst its shape. The layer is transparent
+when idle and between flashes, and returns to transparency on completion without
+restarting the background or retaining a painted frame.
+
+This is ordinary animation code using generic event delivery, timing, sampling,
+envelopes and drawing. Do not introduce a native lightning operation, a special
+lightning scheduler or a source-language-specific callback contract. The source
+API spelling is to be designed with the event extension, not presented here as
+an available declaration or decorator.
+
+### Trigger and lifecycle contract
+
+- Begin with a synthetic management/editor trigger, then bind the same event to
+  an admitted button/gesture source. Animation code names the event; controller
+  configuration selects the hardware or transport. Existing keypad publication
+  to HA does not by itself supply guest delivery.
+- An audio-onset binding is a later producer with explicit threshold, hysteresis,
+  rearming and refractory rules. Current `music.onset` is sampled scalar state;
+  it cannot guarantee recovery of a pulse lost between samples or packets. Do
+  not describe thresholding it as reliable beat/event delivery.
+- Each event carries a validated target generation, stable occurrence/retry
+  identity and capture time. A bounded ingress queue and bounded deduplication
+  window are admitted before activation. Acknowledgements distinguish admission,
+  expiry/rejection and any promised completion; retries within the documented
+  window must not create additional bursts. Specify exhaustion and expiry rather
+  than promising unbounded duplicate history or replay across reboot.
+- Propose one active burst with **restart on a new accepted event** for the first
+  example. A duplicate does not restart it. Other generic trigger policies may
+  be implemented separately, but concurrent bursts and pending queues always
+  require explicit capacities. Proposed queue overflow drops the newest event
+  with a diagnostic; it must not silently merge distinct occurrences.
+- Dispatch through the engine owner at a render boundary. Record a burst start
+  in pausable program time; monotonic capture/deadline time governs ingress
+  expiry. Proposed pause policy freezes an active burst, rejects new triggers
+  while paused and discards pending triggers on entering pause. Resume must not
+  replay a backlog. Unload/replacement cancels pending and active work, and stale
+  generations cannot flash a replacement scene.
+
+### Procedural burst with bounded state
+
+Keep only one burst seed/identity, start time and active flag, plus admitted
+settings and bounded execution scratch. Derive flash count, incremental
+`start_delta`, duration, intensity and optional spatial extent from the seed and
+flash index, using the generic indexed sampling proposed for
+[Stars](core-numeric-kernels-plan.md#stars-optimisation-proposal-procedural-reconstruction).
+Reconstruct at most the configured maximum flash count for the current burst;
+clamp or reject generated timing outside its maximum total duration. There is
+no per-flash array, replay of previous bursts or render-time allocation.
+
+Unlike autonomous Stars, an external trigger cannot be reconstructed from wall
+time alone: the active event record and bounded ingress/deduplication state are
+real memory costs. Because each burst has a bounded flash count and duration,
+replaying its short generated sequence is bounded without time-window history.
+Define endpoint ownership, finite numeric ranges and time precision explicitly.
+
+Start with configurable colour, local intensity and burst timing, using existing
+artwork/drawing and mathematical envelopes. Whole-strip flashes provide the
+first fixture; spatial variation can reuse generic sampling if useful. Smooth
+noise may modulate a flash's envelope or footprint, but is optional and does not
+determine whether an external trigger occurred. Output power, master brightness
+and the configured hardware brightness limit continue to apply normally.
+
+### Delivery and acceptance
+
+Make lightning the concrete demonstration for the input plan's
+[event-delivery stage](feature-proposal-inputs.md#suggested-delivery). Before
+guest events land, rendering/math fixtures may inject a fixed burst seed and
+start time directly; that validates the effect only, not trigger delivery.
+
+Verify one accepted occurrence starts one burst; duplicate/reordered/retried
+messages, expiry, queue overflow, sustained audio levels, pause/resume and stale
+generations follow the declared rules. Compare the same seeded burst at the same
+program timestamps with different frame cadences, skipped frames and chunk
+boundaries. Render the current phase after a stall rather than replaying missed
+flashes; a completed burst is transparent. Measure latency from event capture to
+the first displayed contribution separately from queue admission and computation,
+alongside memory, largest execution slice and management responsiveness. Keep
+all queues, active state and scratch bounded under a trigger flood.
+
 ## Publication and ownership
 
 Current animations publish completed premultiplied RGBA contributions; the
@@ -80,8 +168,8 @@ retain notices for code actually distributed. See [notices](../../THIRD_PARTY_NO
 
 ## Delivery criteria
 
-Implement INPUT separately after the current-only cleanup. Specify one contract,
-generate/check producer-consumer metadata, reject superseded contracts and test
+Extend the implemented scalar INPUT path with guest events separately. Specify
+one contract, generate/check producer-consumer metadata, reject superseded contracts and test
 queue overflow, pause clocks, cancellation, stale generations, ownership,
 fault publication and no allocation during execution. Continue to support
 independent [A/B transition planning](feature-proposal-ab-transitions.md),
