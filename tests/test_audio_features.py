@@ -84,8 +84,8 @@ class AudioFeatureExampleTests(unittest.TestCase):
     def test_sixteen_spectrum_sections_and_shared_flash(self):
         layers = json.loads((ROOT / "examples/compositions/audio-spectrum.json").read_text())["layers"]
         groups = []
-        for start in range(0, 16, 4):
-            names = [f"audio.band{i:02d}" for i in range(start, start + 4)]
+        for start in (0, 6, 12):
+            names = [f"audio.band{i:02d}" for i in range(start, min(start + 6, 16))]
             groups.append((self.client.claim_inputs({name: "float" for name in names}), names))
         self.client.save_program("audio_spectrum", sample("audio_spectrum"))
         self.client.configure_composition(layers)

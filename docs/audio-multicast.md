@@ -87,14 +87,15 @@ while paused. Independent trigger consumption and pause expiry remain future wor
 - [`audio_spectrum.py`](../examples/animations/audio_spectrum.py) is the current
   16-band test: fixed rainbow sections run from red low frequencies at the wired
   end to violet high frequencies, with brightness proportional to each band's
-  energy. A new onset flashes the entire strip white for 180 ms. All four
+  energy. A new onset flashes the entire strip white for 180 ms. All three
   instances follow the same `audio.level` reference, with 180 ms gain reduction
   and 3 s gain recovery. In the logarithmic input domain, subtracting this shared
   reference compensates for volume without equalizing away the spectrum shape.
   `headroom=0.32` and `span=0.40` set the display range. Reference has a 0.28 floor,
   holds through quiet gaps, and a level gate fades out background below 0.20.
-  The [composition](../examples/compositions/audio-spectrum.json) uses four
-  instances of the same bytecode, each binding four bands, level and onset count.
+  The [composition](../examples/compositions/audio-spectrum.json) uses three
+  instances of the same bytecode, each binding up to six bands, level and onset
+  count (at most eight INPUTs). The final instance uses four bands.
   Disjoint sections combine normally; ordinary scalar inputs and the existing
   renderer handle everything. Sixteen native range fills draw the complete strip.
 - [`audio_features.py`](../examples/animations/audio_features.py) divides the strip
@@ -141,6 +142,11 @@ finally:
 Adapt the port/output to the device. A transient `client.upload(...)` starts paused;
 call `client.resume_program(...)` for live playback. To restore the current preset
 and master brightness after reboot, save output startup mode `restore_last`.
+
+To expose the saved preset in Home Assistant's effect selector, also add
+`"audio_spectrum"` to the output's `home_assistant.presets` list and save the
+configuration. Saving a preset to the library alone does not add it to this
+explicit list. Preserve the other preset names and the existing default.
 
 ## Diagnostics and validation
 
@@ -202,3 +208,28 @@ preserves the physical lower floor and adds 12 dB of headroom before transmitted
 levels saturate. Python supplies visual sensitivity instead. No level controller
 can recover information already clipped at the microphone. The 25% master
 brightness, unicast path and saved `audio_spectrum` preset remain active.
+
+## Selectable preset follow-up
+
+A recall check exposed a peak-memory problem in the initial four-layer example:
+selecting Rainbow and then returning to Spectrum failed while the old scene
+remained resident. The current example groups six, six and four bands into three
+Python instances. It keeps the same 16 sections, common level reference and white
+onset flashes without changing firmware, interpreter limits or heap reservations.
+All 24 example/input tests pass with this layout.
+
+The updated bytecode and `audio_spectrum` preset were saved on the Pico over
+Wi-Fi. Two complete Rainbow → Spectrum selection cycles succeeded; all three
+layers rendered without faults. The readback showed 36,846 bytes in use with the
+prior Rainbow scene retained and a 64,098-byte peak under the 65,536-byte ceiling.
+The saved Home Assistant selector now contains `rainbow`, `stars` and
+`audio_spectrum`. Restore-last startup and 25% master brightness are retained.
+Local evidence is in ignored `build/audio-receiver/three-layer-spectrum-*`.
+
+The larger existing Stars scene can still exceed peak loader memory when
+returning directly to Spectrum with the preceding Spectrum scene retained.
+Select Rainbow first, then Spectrum; that intermediate recall releases the
+larger retained scene. This is an existing scene-overlap/admission constraint,
+not an onset or transport failure. No firmware or heap limit was changed for
+this example. See `build/audio-receiver/spectrum-stars-via-rainbow.json` for the
+verified sequence.

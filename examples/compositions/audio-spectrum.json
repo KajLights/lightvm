@@ -20,32 +20,11 @@
         "band3": {
           "source": "audio.band03"
         },
-        "onsets": {
-          "source": "audio.onsets"
-        },
-        "level": {
-          "source": "audio.level"
-        }
-      }
-    },
-    {
-      "id": "bands04",
-      "program": "audio_spectrum",
-      "settings": {
-        "first_band": 4
-      },
-      "inputs": {
-        "band0": {
+        "band4": {
           "source": "audio.band04"
         },
-        "band1": {
+        "band5": {
           "source": "audio.band05"
-        },
-        "band2": {
-          "source": "audio.band06"
-        },
-        "band3": {
-          "source": "audio.band07"
         },
         "onsets": {
           "source": "audio.onsets"
@@ -56,22 +35,28 @@
       }
     },
     {
-      "id": "bands08",
+      "id": "bands06",
       "program": "audio_spectrum",
       "settings": {
-        "first_band": 8
+        "first_band": 6
       },
       "inputs": {
         "band0": {
-          "source": "audio.band08"
+          "source": "audio.band06"
         },
         "band1": {
-          "source": "audio.band09"
+          "source": "audio.band07"
         },
         "band2": {
-          "source": "audio.band10"
+          "source": "audio.band08"
         },
         "band3": {
+          "source": "audio.band09"
+        },
+        "band4": {
+          "source": "audio.band10"
+        },
+        "band5": {
           "source": "audio.band11"
         },
         "onsets": {

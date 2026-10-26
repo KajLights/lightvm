@@ -1,6 +1,6 @@
 """Sixteen fixed rainbow sections, with brightness driven by spectral energy.
 
-Use examples/compositions/audio-spectrum.json: four instances each bind four
+Use examples/compositions/audio-spectrum.json: three instances each bind up to six
 adjacent bands, keeping ordinary scalar INPUTs and the existing renderer.
 Low frequencies start red at the wired end; high frequencies end violet.
 One shared loudness reference levels all bands together, preserving their
@@ -14,6 +14,8 @@ BAND0 = Input("band0", default=0.0, minimum=0.0, maximum=1.0)
 BAND1 = Input("band1", default=0.0, minimum=0.0, maximum=1.0)
 BAND2 = Input("band2", default=0.0, minimum=0.0, maximum=1.0)
 BAND3 = Input("band3", default=0.0, minimum=0.0, maximum=1.0)
+BAND4 = Input("band4", default=0.0, minimum=0.0, maximum=1.0)
+BAND5 = Input("band5", default=0.0, minimum=0.0, maximum=1.0)
 ONSETS = Input("onsets", default=0, minimum=0, maximum=2147483647)
 LEVEL = Input("level", default=0.0, minimum=0.0, maximum=1.0)
 
@@ -35,6 +37,8 @@ def draw(ctx, runtime, pixels):
     band1 = runtime.input(BAND1)
     band2 = runtime.input(BAND2)
     band3 = runtime.input(BAND3)
+    band4 = runtime.input(BAND4)
+    band5 = runtime.input(BAND5)
     onsets = runtime.input(ONSETS)
     level = runtime.input(LEVEL)
     if level > 0.15:
@@ -55,8 +59,10 @@ def draw(ctx, runtime, pixels):
     if ctx.flash_time >= 0.0:
         flash = max(0.0, 1.0 - (runtime.time - ctx.flash_time) / 0.18)
 
-    for local_band in range(4):
+    for local_band in range(6):
         band = ctx.first_band + local_band
+        if band >= 16:
+            break
         value = band0
         if local_band == 1:
             value = band1
@@ -64,6 +70,10 @@ def draw(ctx, runtime, pixels):
             value = band2
         elif local_band == 3:
             value = band3
+        elif local_band == 4:
+            value = band4
+        elif local_band == 5:
+            value = band5
         brightness = gate * min(1.0, max(0.0, (value - ctx.reference + ctx.headroom) / ctx.span))
         color = hsv(band * 0.78 / 15.0, 1.0 - flash, max(brightness, flash))
         # Fill each section once, including the alternating 12/13-pixel widths.
