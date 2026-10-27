@@ -46,7 +46,8 @@ bool transition_run(Transition *, double target, double duration_ms);
 bool transition_run_interval(Transition *, double target, double duration_ms, double interval_ms);
 bool transition_assign(Transition *, const char *source);
 bool transition_source(Transition *, const char *source, uint32_t assignment, double);
-const char *transition_bind(Transition *,InputRegistry *,const Json *,int);
+/* Takes ownership of a validated, allocated progress binding. */
+void transition_bind_port(Transition *,InputRegistry *,InputPort *);
 void transition_hold(Transition *);
 void transition_tick(Transition *, unsigned budget);
 void transition_play(Transition *, bool);

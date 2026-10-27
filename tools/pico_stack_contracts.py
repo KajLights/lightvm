@@ -84,6 +84,7 @@ for name in ('bytes','flush','describe','empty_config','config_apply','compositi
              'quoted','read_object','real_number','transition_state','wide','binding_text'):
     CALLBACKS['src/app.c:'+name]=SEND+PIXELS
 CALLBACKS['app_preparation_commit']=PIXELS
+CALLBACKS['src/app.c:commit_prepared_scene']=PIXELS
 for name in ('record_reply','record_flush','record_text','record_number','record_string'):
     CALLBACKS['src/preparation.c:'+name]=SEND
 for name in ('composition_destroy','composition_frame','composition_offscreen','transition_destroy','transition_frame',

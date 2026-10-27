@@ -467,15 +467,15 @@ static void sync_audio_sources(App *a){
     for(unsigned i=0;i<a->output_count;i++)sync_output_audio_sources(a->outputs[i]);
 }
 typedef struct {
-    bool manual,power,play;
-    Composition *resume;
-    VmInstance *resume_vm;
+    bool manual,power,play,presenter,replace_transition;
+    Composition *resume,*exclude;
+    VmInstance *resume_vm,*exclude_vm;
 } SourceDemandChange;
 static const char *plan_composition_sources(AudioSourcePlan *plan,Composition *c,bool active,SourceDemandChange change){
-    if(!c||!active||(!c->playing&&c!=change.resume))return NULL;
+    if(!c||c==change.exclude||!active||(!c->playing&&c!=change.resume))return NULL;
     for(unsigned n=0;n<c->layer_count;n++){
         VmInstance *vm=&c->layers[n].vm;
-        if(vm->portable&&(vm->playing||vm==change.resume_vm)){
+        if(vm!=change.exclude_vm&&vm->portable&&(vm->playing||vm==change.resume_vm)){
             const char *error=audio_source_plan_add(plan,vm->portable->source_scope);if(error)return error;
         }
     }
@@ -490,10 +490,10 @@ static const char *reserve_output_sources(AppOutput *d,SourceDemandChange change
         bool completed=d->recall_owned&&!change.manual&&t->driver==TRANSITION_MANUAL&&t->progress==100;
         error=plan_composition_sources(plan,t->compositions[0],playing&&!completed,change);
         if(!error)error=plan_composition_sources(plan,t->compositions[1],playing&&(!completed||power),change);
-        for(unsigned n=0;!error&&n<2;n++)if(t->programs[n]&&playing&&!completed)
+        for(unsigned n=0;!error&&n<2;n++)if(!change.replace_transition&&t->programs[n]&& &t->programs[n]->vm!=change.exclude_vm&&playing&&!completed)
             error=audio_source_plan_add(plan,t->programs[n]->vm.portable->source_scope);
-    }else if(d->composition)error=plan_composition_sources(plan,d->composition,power,change);
-    else if(d->vm.portable&&power&&(d->vm.playing||&d->vm==change.resume_vm))error=audio_source_plan_add(plan,d->vm.portable->source_scope);
+    }else if(d->composition)error=plan_composition_sources(plan,d->composition,power||change.presenter,change);
+    else if(&d->vm!=change.exclude_vm&&d->vm.portable&&(power||change.presenter)&&(d->vm.playing||&d->vm==change.resume_vm))error=audio_source_plan_add(plan,d->vm.portable->source_scope);
     if(!error)error=audio_source_plan_acquire(plan);
     return error;
 }
@@ -799,6 +799,7 @@ static void attach_presenter(App *a,AppOutput *d,Transition *t,Composition *wrap
     vm_output_cancel(&d->vm);
     if(d->composition){if(d->composition->prepared)composition_publish(d->composition);composition_offscreen(d->composition,&t->target);}
     else if(wrapper){
+        wrapper->sources=d->vm.portable->source_scope;input_scope_retain(wrapper->sources);
         CompositionLayer *layer=&wrapper->layers[0];strcpy(layer->id,"main");strcpy(layer->program,d->active_program);layer->crc=d->active_crc;
         layer->vm=d->vm;layer->vm.output=NULL;layer->vm.target=&layer->target;strcpy(layer->vm.layer,"main");
         vm_heap_uncharge(layer->vm.control.output_charge);layer->vm.control.output_charge=0;vm_rebind(&layer->vm);
@@ -809,21 +810,13 @@ static void attach_presenter(App *a,AppOutput *d,Transition *t,Composition *wrap
     }
     d->vm.output=NULL;t->assignment=a->transition_sequence;t->compositions[0]=d->composition;d->transition=t;d->active_program[0]=0;d->active_crc=0;
 }
-static const char *ensure_transition(App *a,AppOutput *d){
-    Transition *t=NULL;Composition *wrapper=NULL;
-    const char *error=prepare_presenter(d,&t,&wrapper);
-    if(!error&&t)attach_presenter(a,d,t,wrapper);
-    return error;
-}
-
-static const char *apply_composition_slot(App *a,AppOutput *d,Composition *candidate,unsigned slot){
-    if(!slot&&!d->transition){apply_composition(d,candidate);return 0;}
-    const char *error=ensure_transition(a,d);if(error)return error;
+static void apply_composition_slot(AppOutput *d,Composition *candidate,unsigned slot){
+    if(!slot&&!d->transition){apply_composition(d,candidate);return;}
     Transition *t=d->transition;transition_invalidate(t);
     composition_install_prepared(candidate,&t->target);
     for(unsigned n=0;n<candidate->layer_count;n++)strcpy(candidate->layers[n].vm.slot,slot?"B":"A");
     Composition *old=t->compositions[slot];t->compositions[slot]=candidate;if(!slot)d->composition=candidate;
-    composition_destroy(old);transition_invalidate(t);candidate->revision=++d->composition_revision;d->recall_owned=false;d->power_on=true;return 0;
+    composition_destroy(old);transition_invalidate(t);candidate->revision=++d->composition_revision;d->recall_owned=false;d->power_on=true;
 }
 static void activate_composition_slot(App *a,AppOutput *d,uint16_t id,const Json *j,unsigned slot){
     static const char *const fields[]={"op","name","output","slot","action","settings","inputs","sources",NULL};
@@ -935,11 +928,36 @@ static const char *begin_recall(App *a,AppOutput *d,Composition *candidate,Trans
     ++d->composition_revision;return NULL;
 }
 const char *app_preparation_admit(App *a,AppOutput *d,PreparedScene *s){
-    if(d->composition_revision!=s->request.revision)return "scene changed during preparation";
-    if(s->request.kind==PREPARE_RECALL){
-        if(d->composition_revision==UINT32_MAX||a->transition_sequence==UINT32_MAX)return "recall revision or assignment counter exhausted";
-        if(!s->presenter)return prepare_presenter(d,&s->presenter,&s->wrapper);
+    PreparationRequest *r=&s->request;AudioSourcePlan *plan=&s->retained_sources;
+    if(d->composition_revision!=r->revision)return "scene changed during preparation";
+    if(r->kind==PREPARE_RECALL&&(d->composition_revision==UINT32_MAX||a->transition_sequence==UINT32_MAX))return "recall revision or assignment counter exhausted";
+    bool replace_slot=r->kind==PREPARE_SLOT||r->kind==PREPARE_COMPOSITION||r->kind==PREPARE_PRESET;
+    const char *error=NULL;
+    if(r->kind==PREPARE_RECALL||r->kind==PREPARE_TRANSITION||(replace_slot&&r->slot)){
+        error=prepare_presenter(d,&s->presenter,&s->wrapper);if(error)return error;
     }
+    if(r->kind==PREPARE_RECALL){
+        /* A cut needs only the candidate. A fade retains the old destination;
+           manual A/B playback may advance before persistence completes. */
+        if(s->transition_spec.duration_ms>0&&(d->recall_owned||app_output_power(d))){
+            if(d->transition){
+                if(!d->recall_owned)error=plan_composition_sources(plan,d->transition->compositions[0],true,(SourceDemandChange){0});
+                if(!error)error=plan_composition_sources(plan,d->transition->compositions[1],true,(SourceDemandChange){0});
+            }else if(d->composition)error=plan_composition_sources(plan,d->composition,true,(SourceDemandChange){0});
+            else if(d->vm.portable&&d->vm.playing)error=audio_source_plan_add(plan,d->vm.portable->source_scope);
+        }
+        if(!error)error=audio_source_plan_acquire(plan);
+    }else if(r->kind==PREPARE_LAYER||(r->kind==PREPARE_RESET&&r->layer[0])){
+        CompositionLayer *layer=composition_layer(output_composition(d,r->slot),r->layer);
+        if(!layer||layer->vm.generation!=r->generation)return "layer changed during preparation";
+        error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.exclude_vm=&layer->vm},plan);
+    }else if(r->kind==PREPARE_TRANSITION)error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.presenter=true,.replace_transition=true},plan);
+    else if(replace_slot&&(r->slot||d->transition))error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.power=true,.exclude=output_composition(d,r->slot)},plan);
+    if(error)return error;
+    /* Commit canonical provider policies while the scopes are still alive.
+       Only provider references survive across persistence ticks; no borrowed
+       scope/config pointer is read after this admission phase. */
+    audio_source_plan_commit(plan);plan->count=0;
     return NULL;
 }
 int app_preparation_persist(App *a,AppOutput *d,PreparedScene *s,StoreWrite *write,unsigned *index,uint8_t *scratch,const char **error){
@@ -957,7 +975,7 @@ int app_preparation_persist(App *a,AppOutput *d,PreparedScene *s,StoreWrite *wri
     if(!store_write_begin(&a->store,write,type,name,data,(uint32_t)size)){*error="scene storage unavailable, busy or full";return -1;}
     return 0;
 }
-const char *app_preparation_commit(App *a,AppOutput *d,PreparedScene *s){
+static const char *commit_prepared_scene(App *a,AppOutput *d,PreparedScene *s){
     PreparationRequest *r=&s->request;
     if(d->composition_revision!=r->revision)return "scene changed during preparation";
     if(r->kind==PREPARE_PRESET_SAVE){
@@ -972,8 +990,8 @@ const char *app_preparation_commit(App *a,AppOutput *d,PreparedScene *s){
     }
     if(s->transition){inputs_attach(s->transition->vm.portable,&a->inputs,&d->pixels.light);s->transition->vm.send=vm_send;s->transition->vm.transport=a;}
     if(s->paint){inputs_attach(s->paint->vm.portable,&a->inputs,&d->pixels.light);s->paint->vm.send=vm_send;s->paint->vm.transport=a;}
+    if(s->presenter&&r->kind!=PREPARE_RECALL){attach_presenter(a,d,s->presenter,s->wrapper);s->presenter=NULL;s->wrapper=NULL;}
     if(r->kind==PREPARE_TRANSITION){
-        const char *error=ensure_transition(a,d);if(error)return error;
         Transition *t=d->transition;transition_invalidate(t);
         for(unsigned n=0;n<2;n++)transition_program_destroy(t->programs[n]);
         t->programs[0]=s->transition;t->programs[1]=s->paint;s->transition=s->paint=NULL;
@@ -1008,8 +1026,13 @@ const char *app_preparation_commit(App *a,AppOutput *d,PreparedScene *s){
         strcpy(d->active_program,r->name);d->active_crc=r->name[0]?r->entry.crc:0;
         return NULL;
     }
-    const char *error=apply_composition_slot(a,d,s->composition,r->slot);
-    if(!error)s->composition=NULL;
+    apply_composition_slot(d,s->composition,r->slot);s->composition=NULL;
+    return NULL;
+}
+const char *app_preparation_commit(App *a,AppOutput *d,PreparedScene *s){
+    const char *error=commit_prepared_scene(a,d,s);
+    if(!error)sync_output_audio_sources(d);
+    audio_source_plan_release(&s->retained_sources);
     return error;
 }
 static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
@@ -1019,16 +1042,21 @@ static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,cons
     if(!strcmp(op,"transition_get")){Writer w={.app=a,.id=id};transition_state(&w,d);flush(&w);reply(a,id,STATUS_OK,0,"A/B transition state");return true;}
     const char *error=NULL;double value=0,duration=0,interval=0;char source[OBJECT_NAME_LIMIT+1]="";uint32_t assignment=0,seed=0;
     bool swap=!strcmp(op,"transition_swap"),select=!strcmp(op,"transition_select"),set=!strcmp(op,"transition_set"),run=!strcmp(op,"transition_run"),assign=!strcmp(op,"transition_assign"),update=!strcmp(op,"transition_update"),hold=!strcmp(op,"transition_hold"),bind=!strcmp(op,"transition_bind");
-    TransitionEffect effect=TRANSITION_CROSSFADE;TransitionProgram *programs[2]={0};
+    TransitionEffect effect=TRANSITION_CROSSFADE;InputPort *input=NULL;
     if(!swap&&!select&&!set&&!run&&!assign&&!update&&!hold&&!bind)error="unknown transition operation";
     if(bind){
         uint32_t expected;int binding=json_get(j,0,"binding");
         if(!json_u32(j,json_get(j,0,"expected_assignment"),&expected)||expected!=(d->transition?d->transition->assignment:0))error="stale driver assignment";
         else{
-            InputPort port={.type=T_FLOAT,.bounds=3,.maximum={.f=1},.light=&d->pixels.light};
-            if(d->transition)transition_update(d->transition,platform_time_us());
-            port.initial.f=port.snapshot.f=port.driver.value.f=d->transition?(float)(d->transition->progress/100):0;
-            error=input_port_bind(&a->inputs,&port,j,binding,platform_time_us());
+            input=demo_calloc(1,sizeof(*input));
+            if(!input)error="transition input exceeds peak memory budget";
+            else{
+                strcpy(input->name,"progress");input->type=T_FLOAT;input->bounds=3;input->maximum.f=1;input->light=&d->pixels.light;
+                if(d->transition)transition_update(d->transition,platform_time_us());
+                input->initial.f=input->snapshot.f=input->driver.value.f=d->transition?(float)(d->transition->progress/100):0;
+                error=input_port_bind(&a->inputs,input,j,binding,platform_time_us());
+                if(!error&&input->driver.kind==INPUT_SOURCE&&json_get(j,binding,"fallback")<0)input->driver.hold=true;
+            }
         }
     }
     if(set||run){if(!json_f64(j,json_get(j,0,set?"progress":"target"),&value)||!transition_percentage(value))error="progress must be a finite number in 0..100";}
@@ -1060,22 +1088,26 @@ static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,cons
         if(!error){PreparationRequest pending={.kind=PREPARE_TRANSITION,.effect=effect,.seed=seed};(void)submit_scene(a,d,id,pending,j->text,j->size);return true;}
     }
     if(!error&&(swap||set||run||assign||hold||bind)&&a->transition_sequence==UINT32_MAX)error="driver assignment counter exhausted";
-    if(!error)preparation_cancel_output(a,d->hardware.id);
-    if(!error)error=ensure_transition(a,d);
-    if(!error){Transition *t=d->transition;
+    AudioSourcePlan plan={0};Transition *presenter=NULL;Composition *wrapper=NULL;
+    if(!error)error=prepare_presenter(d,&presenter,&wrapper);
+    if(!error)error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.presenter=true,.power=set||run||assign||bind},&plan);
+    if(!error){
+        audio_source_plan_commit(&plan);preparation_cancel_output(a,d->hardware.id);
+        if(presenter){attach_presenter(a,d,presenter,wrapper);presenter=NULL;wrapper=NULL;}
+        Transition *t=d->transition;
         if(swap||set||run||assign||hold||bind)t->assignment=a->transition_sequence;
         d->recall_owned=false;
         if(set||run||assign||update||bind)d->power_on=true;
         if(swap){transition_invalidate(t);swap_compositions(d);(void)transition_set(t,t->progress);++d->composition_revision;}
-        else if(select){transition_invalidate(t);for(unsigned n=0;n<2;n++){transition_program_destroy(t->programs[n]);t->programs[n]=programs[n];programs[n]=NULL;}t->effect=effect;t->seed=seed;++d->composition_revision;}
         else if(set&&!transition_set(t,value))error="driver assignment counter exhausted";
         else if(run&&!transition_run_interval(t,value,duration,interval))error="driver assignment counter exhausted";
         else if(assign&&!transition_assign(t,source))error="driver assignment counter exhausted";
         else if(hold)transition_hold(t);
-        else if(bind)error=transition_bind(t,&a->inputs,j,json_get(j,0,"binding"));
+        else if(bind){transition_bind_port(t,&a->inputs,input);input=NULL;}
         if(!error&&(swap||set||run||assign||hold||bind))a->transition_sequence=t->assignment;
+        finish_output_sources(d,&plan);
     }
-    for(unsigned n=0;n<2;n++)transition_program_destroy(programs[n]);
+    audio_source_plan_release(&plan);demo_free(input);composition_destroy(wrapper);transition_destroy(presenter);
     if(error)error_reply(a,id,STATUS_CONFIG,"invalid_transition",error);
     else{Writer w={.app=a,.id=id};transition_state(&w,d);flush(&w);reply(a,id,STATUS_OK,0,"transition updated");}
     return true;
@@ -1298,18 +1330,23 @@ static bool composition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,con
         return true;
     }
     if(!strcmp(op,"composition_clear")){
+        AudioSourcePlan plan={0};const char *error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.exclude=s},&plan);
+        if(error){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",error);return true;}
+        audio_source_plan_commit(&plan);
         if(d->transition){transition_invalidate(d->transition);d->transition->compositions[slot]=NULL;if(!slot)d->composition=NULL;composition_destroy(s);}
         else if(!slot){clear_output_composition(d);d->vm.output=&d->pixels;pixels_clear(&d->pixels);pixels_show(&d->pixels);d->power_on=false;}
+        d->recall_owned=false;finish_output_sources(d,&plan);
         ++d->composition_revision;reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"composition removed");return true;
     }
     if(!strcmp(op,"composition_pause")||!strcmp(op,"composition_resume")){
         if(!s){error_reply(a,id,STATUS_CONFIG,"unknown_slot","composition is not configured");return true;}
         bool resume=!strcmp(op,"composition_resume");AudioSourcePlan plan={0};
-        const char *error=resume?reserve_output_sources(d,(SourceDemandChange){.manual=true,.power=true,.resume=s},&plan):NULL;
+        const char *error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.power=resume,.resume=resume?s:NULL,.exclude=resume?NULL:s},&plan);
         if(error){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",error);return true;}
         audio_source_plan_commit(&plan);
         composition_play(s,resume);s->revision=++d->composition_revision;
-        if(resume){d->power_on=true;d->recall_owned=false;}
+        if(resume)d->power_on=true;
+        d->recall_owned=false;
         finish_output_sources(d,&plan);
         reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"composition playback updated");return true;
     }
@@ -1317,20 +1354,19 @@ static bool composition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,con
     if(!s||!json_string(j,json_get(j,0,"layer"),layer_id,sizeof(layer_id))){error_reply(a,id,STATUS_CONFIG,"unknown_layer","composition layer is required");return true;}
     CompositionLayer *layer=composition_layer(s,layer_id);
     if(!layer){error_reply(a,id,STATUS_CONFIG,"unknown_layer","composition layer is not configured");return true;}
-    if(!strcmp(op,"composition_layer_blend")){
-        uint8_t blend;
-        if(!layer_blend(j,json_get(j,0,"blend"),&blend)){error_reply(a,id,STATUS_CONFIG,"invalid_blend","layer blend must be over, add, screen or multiply");return true;}
-        transition_invalidate(d->transition);composition_invalidate(s);layer->blend=blend;composition_modified(s);s->revision=++d->composition_revision;
-        reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"layer blend updated");return true;
-    }
-    if(!strcmp(op,"composition_layer_opacity")){
-        uint32_t opacity;if(!json_u32(j,json_get(j,0,"opacity"),&opacity)||opacity>255){error_reply(a,id,STATUS_CONFIG,"invalid_opacity","layer opacity must be 0..255");return true;}
-        transition_invalidate(d->transition);composition_invalidate(s);layer->opacity=(uint8_t)opacity;composition_modified(s);s->revision=++d->composition_revision;
-        reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"layer opacity updated");return true;
-    }
-    if(!strcmp(op,"composition_layer_remove")){
-        transition_invalidate(d->transition);composition_remove_layer(s,(unsigned)(layer-s->layers));composition_modified(s);s->revision=++d->composition_revision;
-        reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"layer removed");return true;
+    bool blend=!strcmp(op,"composition_layer_blend"),opacity=!strcmp(op,"composition_layer_opacity"),remove=!strcmp(op,"composition_layer_remove");
+    if(blend||opacity||remove){
+        uint8_t mode=0;uint32_t amount=0;
+        if(blend&&!layer_blend(j,json_get(j,0,"blend"),&mode)){error_reply(a,id,STATUS_CONFIG,"invalid_blend","layer blend must be over, add, screen or multiply");return true;}
+        if(opacity&&(!json_u32(j,json_get(j,0,"opacity"),&amount)||amount>255)){error_reply(a,id,STATUS_CONFIG,"invalid_opacity","layer opacity must be 0..255");return true;}
+        AudioSourcePlan plan={0};const char *error=reserve_output_sources(d,(SourceDemandChange){.manual=true,.exclude_vm=remove?&layer->vm:NULL},&plan);
+        if(error){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",error);return true;}
+        audio_source_plan_commit(&plan);transition_invalidate(d->transition);composition_invalidate(s);
+        if(remove)composition_remove_layer(s,(unsigned)(layer-s->layers));
+        else if(blend)layer->blend=mode;
+        else layer->opacity=(uint8_t)amount;
+        composition_modified(s);s->revision=++d->composition_revision;d->recall_owned=false;finish_output_sources(d,&plan);
+        reply(a,id,STATUS_OK,(int32_t)d->composition_revision,remove?"layer removed":blend?"layer blend updated":"layer opacity updated");return true;
     }
     if(!strcmp(op,"composition_layer_activate")){
         uint32_t generation;char name[OBJECT_NAME_LIMIT+1];
@@ -1898,7 +1934,8 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         platform_free(j);
         if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid composition slot command");return;}
         AudioSourcePlan plan={0};
-        const char *admission=command==CMD_PLAY?reserve_output_sources(d,(SourceDemandChange){.manual=true,.resume=s},&plan):NULL;
+        bool lifecycle=command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET;
+        const char *admission=lifecycle?reserve_output_sources(d,(SourceDemandChange){.manual=true,.resume=command==CMD_PLAY?s:NULL,.exclude=command==CMD_PLAY?NULL:s},&plan):NULL;
         if(admission){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",admission);return;}
         audio_source_plan_commit(&plan);
         if(command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
@@ -1924,14 +1961,18 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     bool read_only=!strcmp(op,"program_state")||!strcmp(op,"program_snapshot"),input_update=!strcmp(op,"program_inputs");
     if(read_only||!strcmp(op,"program_reset")||!strcmp(op,"program_pause")||!strcmp(op,"program_resume")||!strcmp(op,"program_inputs")){
         AudioSourcePlan plan={0};
-        if(!strcmp(op,"program_resume")){
+        bool resume=!strcmp(op,"program_resume"),pause=!strcmp(op,"program_pause");
+        if(resume||pause||input_update){
             static const char *const fields[]={"op","slot","output","layer","expected_generation",NULL};uint32_t expected;
-            /* Invalid requests retain the control API's existing diagnostics. */
-            if(vm->ready&&vm->control.enabled&&vm->control.initialized&&!vm->control.faulted&&json_fields(j,0,fields)&&
-               json_u32(j,json_get(j,0,"expected_generation"),&expected)&&expected==vm->generation){
-                const char *error=reserve_output_sources(d,(SourceDemandChange){.manual=!vm->playing,.power=!s&&!transition_target,.resume_vm=vm},&plan);
+            static const char *const input_fields[]={"op","slot","output","layer","target","expected_generation","expected_inputs_revision","inputs",NULL};
+            uint32_t revision;
+            bool valid_inputs=!input_update||(vm->portable&&json_get(j,0,"inputs")>=0&&json_u32(j,json_get(j,0,"expected_inputs_revision"),&revision)&&revision==vm->portable->input_revision);
+            /* Field and generation errors retain the control API's diagnostics. */
+            if(vm->ready&&vm->control.enabled&&(!resume||(vm->control.initialized&&!vm->control.faulted))&&json_fields(j,0,input_update?input_fields:fields)&&
+               valid_inputs&&json_u32(j,json_get(j,0,"expected_generation"),&expected)&&expected==vm->generation){
+                const char *error=reserve_output_sources(d,(SourceDemandChange){.manual=input_update||(resume?!vm->playing:vm->playing),.power=resume&&!s&&!transition_target,.resume_vm=resume?vm:NULL,.exclude_vm=pause?vm:NULL},&plan);
                 if(error){platform_free(j);error_reply(a,id,STATUS_CONFIG,"sources_unavailable",error);return;}
-                audio_source_plan_commit(&plan);
+                if(resume)audio_source_plan_commit(&plan);
             }
         }
         if(!read_only&&!input_update){transition_invalidate(d->transition);composition_invalidate(s);}
@@ -1940,7 +1981,7 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         platform_free(j);
         if(!read_only&&a->last_code==STATUS_OK)preparation_cancel_output(a,d->hardware.id);
         if(a->last_code==STATUS_OK&&!s&&!transition_target&&(!strcmp(op,"program_resume")||!strcmp(op,"program_reset")))d->power_on=true;
-        if(generation!=vm->generation||was_playing!=vm->playing||(vm->portable&&input_revision!=vm->portable->input_revision)){if(!transition_target)composition_modified(s);d->recall_owned=false;}
+        if(generation!=vm->generation||was_playing!=vm->playing||(vm->portable&&input_revision!=vm->portable->input_revision)){audio_source_plan_commit(&plan);if(!transition_target)composition_modified(s);d->recall_owned=false;}
         finish_output_sources(d,&plan);
         if(vm->generation>d->layer_generation)d->layer_generation=vm->generation;
         if(input_update){if(d->transition)d->transition->dirty=true;}
@@ -1956,7 +1997,8 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         platform_free(j);
         if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid layer command");return;}
         AudioSourcePlan plan={0};
-        const char *admission=command==CMD_PLAY?reserve_output_sources(d,(SourceDemandChange){.manual=!vm->playing,.resume_vm=vm},&plan):NULL;
+        bool lifecycle=command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET;
+        const char *admission=lifecycle?reserve_output_sources(d,(SourceDemandChange){.manual=command==CMD_RESET||(command==CMD_PLAY?!vm->playing:vm->playing),.resume_vm=command==CMD_PLAY?vm:NULL,.exclude_vm=command==CMD_PLAY?NULL:vm},&plan):NULL;
         if(admission){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",admission);return;}
         audio_source_plan_commit(&plan);
         if(command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);

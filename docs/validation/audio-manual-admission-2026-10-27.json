@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-27",
+  "result": "passed",
+  "scope": "Transactional manual edits and retained-scene preparation, source ownership, power and startup restoration",
+  "source_sha256": {
+    "src/app.c": "ca97098df4ba13e962ba4b6cc8d6f259bb8e656b94f4cd5a04465e2043b701cc",
+    "src/preparation.c": "ecd101c71f57c193ce0e80dccb0402584e8fc550e96b620f54161934f24f2d18",
+    "src/preparation.h": "82549b8ee66832f2765532b141e70b06f12fdc1cfb09c12d5c602118c7713066",
+    "src/transition.c": "9f28f6e878f44dc8ce6f79291f50f15e0e67adbb1a4f5abffce32121bc8d9a9c",
+    "src/transition.h": "04b877cb026c5cafa65cc64e3fee52a85d2b9fb03d7e79a9784abff0d6ea386b",
+    "tools/client.py": "d6fe7bd23fb2f63ad5782df5a3e1825592a2d21a78f3fd065914009471cefea7",
+    "tests/test_audio_gateway.py": "2ff1cabd0ae2383df6e7254d9024d791c479e75496d05559856b985cf8b5f5cf",
+    "tests/preparation_contract.inc": "b4105693915679c1fa5e985fd5c8a4812ff1594049a02230842fa38fc1bd526c"
+  },
+  "validation": {
+    "focused_audio_lifecycle_composition_inputs_transitions_recalls": {
+      "passed": 76
+    },
+    "audio_gateway_included_in_focused": {
+      "passed": 15
+    },
+    "ctest": {
+      "passed": 33
+    },
+    "full_python_before_final_presenter_flag_and_revision_validation_refinement": {
+      "run": 414,
+      "skipped": 3,
+      "result": "passed"
+    },
+    "contracts": [
+      "Manual transition commands and fader binding preserve driver, recall, revision and providers when capacity is exhausted.",
+      "Pause/remove/blend/opacity/input edits and slot/layer STOP/RESET reserve retained scenes before mutation.",
+      "Transition selection, layer reset/replacement and slot/preset activation reserve retained scopes before committing.",
+      "Removing the hidden source scene excludes its demand from admission.",
+      "Direct-to-composition promotion and subsequent reset preserve declarations.",
+      "Standalone transition programs own scoped input providers and release them on replacement.",
+      "Power off releases demand; power on and restore_last reboot restore declarations and only active references.",
+      "Superseded queued resets release retained source scopes and return to the original heap usage."
+    ]
+  },
+  "pico": {
+    "software_gate_passed": true,
+    "ram": {
+      "sram_bytes": 270336,
+      "vm_heap_automatic": true,
+      "vm_heap_capacity": 64400,
+      "static_bytes": 134512,
+      "vm_heap_ceiling": 64400,
+      "native_stack": 24576,
+      "pixel_driver_max": 30464,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 0,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "main": {
+      "foreground_bytes": 10064,
+      "with_interrupts_bytes": 12000,
+      "reservation_bytes": 16384,
+      "remaining_bytes": 4384,
+      "required_margin_bytes": 2048
+    },
+    "worker": {
+      "foreground_bytes": 3168,
+      "with_interrupts_bytes": 5104,
+      "reservation_bytes": 8192,
+      "remaining_bytes": 3088,
+      "required_margin_bytes": 1024
+    },
+    "hardware_validated": false,
+    "guarded_sdk_files": 543,
+    "guarded_project_files": 38,
+    "uf2_sha256": "d93232acf9dfc507a5a6ebb2b1a1003cb363375024d6a123e716dcbcae2bc54f"
+  },
+  "remaining": [
+    "physical optimized-S3 FFT parity",
+    "remaining multi-rate/threshold and transport conformance cases",
+    "short Sense/Pico subscription checks and configuration restore"
+  ]
+}

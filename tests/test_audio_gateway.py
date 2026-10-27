@@ -8,7 +8,7 @@ import time
 import unittest
 
 from bytecode_fixtures import ROOT, program
-from client import Client, ProcessTransport, ProtocolError, FRAME, PLAY, STOP
+from client import Client, ProcessTransport, ProtocolError, FRAME, PLAY, STOP, RESET
 from test_configuration import config
 
 SOURCE = '''from lightvm import profile,render,Input,rgb
@@ -258,6 +258,148 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(len(self.providers()), 3)
         self.client.release_audio(claims.pop())
         self.client.pause_composition(slot='A', paused=False)
+        self.assertEqual(len(self.providers()), 4)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 3)
+
+    def test_manual_layer_edits_admit_retained_scene_before_mutating(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.save_preset('first', layers, sources={
+            'audio': {'type': 'gateway', 'name': 'first1'}, 'second': {'type': 'gateway', 'name': 'first2'}})
+        self.client.save_preset('second', layers, sources={'audio': {'type': 'gateway', 'name': 'second'}})
+        self.client.recall_preset('first')
+        self.client.recall_preset('second')
+        claims = [self.claim('held' + str(n)) for n in range(3)]
+        before = self.client.transition()
+        state = self.client.program_state(slot='B', layer='main')
+        edits = [('composition_clear', {}), ('composition_pause', {}),
+                 ('composition_layer_remove', {'layer': 'main'}),
+                 ('composition_layer_blend', {'layer': 'main', 'blend': 'add'}),
+                 ('composition_layer_opacity', {'layer': 'main', 'opacity': 100}),
+                 ('program_pause', {'layer': 'main', 'expected_generation': state['generation']}),
+                 ('program_inputs', {'layer': 'main', 'expected_generation': state['generation'],
+                                     'expected_inputs_revision': state['inputs_revision'], 'inputs': {'level': {'value': 0.5}}})]
+        edits += [('output_command', {'command': command, **target})
+                  for command in (STOP, RESET) for target in ({}, {'layer': 'main'})]
+        for op, fields in edits:
+            with self.subTest(op=op, fields=fields):
+                if op.startswith('composition_'):
+                    fields = {**fields, 'expected_revision': before['revision']}
+                with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+                    self.client.manage(op, slot='B', **fields)
+                after = self.client.transition()
+                for field in ('progress', 'revision', 'recall', 'driver'):
+                    self.assertEqual(after[field], before[field])
+                for field in ('revision', 'active', 'preset', 'playing', 'sources'):
+                    self.assertEqual(after['B'][field], before['B'][field])
+                current = self.client.program_state(slot='B', layer='main')
+                for field in ('generation', 'paused', 'inputs_revision', 'inputs'):
+                    self.assertEqual(current[field], state[field])
+                self.assertEqual(len(self.providers()), 4)
+                self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+        # Excluding the hidden scene must not attempt to acquire its sources.
+        self.client.manage('composition_clear', slot='A', expected_revision=before['revision'])
+        self.assertIsNone(self.client.transition()['recall'])
+        self.assertEqual(len(self.providers()), 4)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+
+    def test_direct_promotion_preserves_scope_for_layer_reset(self):
+        self.client.activate('reactive', inputs=BINDINGS, sources=SOURCES)
+        self.client.set_progress(0)
+        self.assertEqual(self.client.composition()['sources'], SOURCES)
+        self.assertEqual(self.client.reset_program(layer='main')['sources'], SOURCES)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+
+    def test_standalone_transition_owns_and_releases_its_source_scope(self):
+        code = program(SOURCE.replace('profile("animation")', 'profile("transition")'))
+        self.client.save_program('reactive_transition', code)
+        self.client.select_transition('reactive_transition', inputs=BINDINGS, sources=SOURCES)
+        self.client.set_progress(50)
+        self.assertEqual(self.client.program_state(target='transition')['sources'], SOURCES)
+        claim = self.claim()
+        self.client.publish_audio(claim, 1, record(1))
+        self.assertEqual(self.frame(), bytes([75, 50, 0]))
+        self.client.select_transition_effect('crossfade')
+        self.assertEqual(self.providers()[0]['references'], 0)
+        self.client.release_audio(claim)
+        self.assertEqual(self.providers(), [])
+
+    def test_preparation_admits_retained_sources_before_replacing_any_scene(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.save_preset('first', layers, sources={
+            'audio': {'type': 'gateway', 'name': 'first1'}, 'second': {'type': 'gateway', 'name': 'first2'}})
+        sources = {'audio': {'type': 'gateway', 'name': 'second'}}
+        self.client.save_preset('second', layers, sources=sources)
+        self.client.save_preset('third', layers, sources=sources)
+        self.client.recall_preset('first')
+        self.client.recall_preset('second')
+        claims = [self.claim('held' + str(n)) for n in range(2)]
+        before = self.client.transition()
+        state = self.client.program_state(slot='B', layer='main')
+        actions = [lambda: self.client.select_transition_effect('wipe'),
+                   lambda: self.client.reset_program(slot='B', layer='main'),
+                   lambda: self.client.activate('reactive', slot='B', inputs=BINDINGS, sources=sources),
+                   lambda: self.client.activate_preset('third', slot='B'),
+                   lambda: self.client.manage('composition_layer_activate', slot='B', layer='main', name='reactive',
+                                              expected_revision=before['revision'], expected_generation=state['generation'])]
+        for action in actions:
+            with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+                action()
+            after = self.client.transition()
+            for field in ('revision', 'progress', 'recall', 'driver', 'effect'):
+                self.assertEqual(after[field], before[field])
+            self.assertEqual(self.client.program_state(slot='B', layer='main')['generation'], state['generation'])
+            self.assertEqual(len(self.providers()), 3)
+            self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+        self.client.release_audio(claims.pop())
+        self.client.select_transition_effect('wipe')
+        self.assertIsNone(self.client.transition()['recall'])
+        self.assertEqual(len(self.providers()), 4)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 3)
+
+    def test_scope_survives_power_cycle_and_reboot_without_retained_hidden_demand(self):
+        hardware = config(5)
+        hardware['outputs'][0]['startup'] = {'mode': 'restore_last'}
+        self.client.configure(hardware, save=True)
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.save_preset('desk', layers, sources=SOURCES)
+        self.client.recall_preset('desk')
+        self.client.set_power(False)
+        self.assertEqual(self.providers(), [])
+        self.client.set_power(True)
+        self.assertEqual(self.client.composition(slot='B')['sources'], SOURCES)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+        self.client.close()
+        self.client = Client(ProcessTransport(self.receiver, Path(self.temp.name) / 'store.bin'))
+        self.client.wait_preparation()
+        self.assertEqual(self.client.composition(slot='B')['sources'], SOURCES)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+
+    def test_manual_drivers_preserve_recall_when_retained_sources_do_not_fit(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.save_preset('first', layers, sources={
+            'audio': {'type': 'gateway', 'name': 'first1'}, 'second': {'type': 'gateway', 'name': 'first2'}})
+        self.client.save_preset('second', layers, sources={'audio': {'type': 'gateway', 'name': 'second'}})
+        self.client.recall_preset('first')
+        self.client.recall_preset('second')
+        claims = [self.claim('held' + str(n)) for n in range(2)]
+        before = self.client.transition()
+        actions = [lambda: self.client.set_progress(50), lambda: self.client.run_transition(0, 1000),
+                   lambda: self.client.assign_transition_source('fader'), self.client.hold_transition,
+                   lambda: self.client.manage('transition_swap', expected_revision=before['revision']),
+                   lambda: self.client.manage('transition_bind', expected_assignment=before['driver']['assignment'], binding={'value': 0.5})]
+        for action in actions:
+            with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+                action()
+            after = self.client.transition()
+            for field in ('progress', 'revision', 'recall', 'driver'):
+                self.assertEqual(after[field], before[field])
+            self.assertEqual(len(self.providers()), 3)
+            self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+        self.client.release_audio(claims.pop())
+        self.client.manage('transition_bind', expected_assignment=before['driver']['assignment'], binding={'value': 0.5})
+        after = self.client.transition()
+        self.assertIsNone(after['recall'])
+        self.assertEqual(after['progress'], 50)
         self.assertEqual(len(self.providers()), 4)
         self.assertEqual(sum(provider['references'] for provider in self.providers()), 3)
 

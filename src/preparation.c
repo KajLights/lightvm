@@ -186,7 +186,7 @@ const char *preparation_submit(App *a,AppOutput *d,const PreparationRequest *req
         previous->next=pending->next;if(q->tail==pending)q->tail=previous;q->count--;
         pending->record.stage="superseded";pending->record.code=STATUS_CONFIG;pending->record.terminal=true;pending->record.finished=platform_time_us();
         q->history[q->history_cursor++%PREPARATION_HISTORY]=pending->record;
-        store_unpin(&a->store,pending->pin);demo_free(pending->document);demo_free(pending->reset_inputs);demo_free(pending);
+        store_unpin(&a->store,pending->pin);demo_free(pending->document);demo_free(pending->reset_inputs);input_scope_release(pending->scene.sources);demo_free(pending);
     }
     if(q->head&&!strcmp(q->head->record.output,d->hardware.id)){q->head->cancelled=true;q->head->record.stage="superseded";}
     if(!request->boot)d->startup_pending=false;
@@ -446,6 +446,7 @@ static void finish(App *a,PreparationOperation *o,const char *error,bool cancell
     if(o->scene.direct){control_destroy(o->scene.direct);demo_free(o->scene.direct);o->scene.direct=NULL;}
     composition_destroy(o->scene.wrapper);transition_destroy(o->scene.presenter);
     composition_destroy(o->scene.composition);transition_program_destroy(o->scene.transition);transition_program_destroy(o->scene.paint);
+    audio_source_plan_release(&o->scene.retained_sources);
     if(o->scene.source_demand)input_scope_demand(o->scene.sources,false);
     input_scope_release(o->scene.sources);o->scene.sources=NULL;
     o->record.terminal=true;

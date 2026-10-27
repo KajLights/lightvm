@@ -402,17 +402,19 @@ class Client:
         return bool(self.manage('transition_update', source=source, assignment=assignment, progress=progress,
                                **({'output':output} if output is not None else {})).value)
 
-    def select_transition(self, program, settings=None, seed=0, output=None, inputs=None):
+    def select_transition(self, program, settings=None, seed=0, output=None, inputs=None, sources=None):
         fields = {'program':program, 'seed':seed, 'expected_revision':self.transition(output)['revision']}
         if settings is not None: fields['settings'] = settings
         if inputs is not None: fields['inputs'] = inputs
+        if sources is not None: fields['sources'] = sources
         return self._transition_control('transition_select', output, **fields)
 
-    def select_transition_effect(self, effect='crossfade', seed=0, mask=None, paint=None, output=None):
+    def select_transition_effect(self, effect='crossfade', seed=0, mask=None, paint=None, output=None, sources=None):
         """Compatibility control for the original firmware effect table."""
         fields = {'effect':effect, 'seed':seed, 'expected_revision':self.transition(output)['revision']}
         if mask is not None: fields['mask'] = mask
         if paint is not None: fields['paint'] = paint
+        if sources is not None: fields['sources'] = sources
         return self._transition_control('transition_select', output, **fields)
 
     def pause_composition(self, output=None, slot='A', paused=True):

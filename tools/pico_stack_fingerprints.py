@@ -13,7 +13,7 @@ ROOT=Path(__file__).resolve().parents[1]
 MANIFEST=Path(__file__).with_name('pico-stack-contracts.json')
 PROJECT=(
     'src/board_status.c','platforms/pico/board_status.c',
-    'src/runtime.c','src/app.c','src/preparation.c','src/render_executor.c','src/vm.c',
+    'src/runtime.c','src/app.c','src/preparation.c','src/preparation.h','src/transition.c','src/transition.h','src/render_executor.c','src/vm.c',
     'src/device_host.c','src/store_policy.c',
     'src/mqtt.c','src/mqtt.h','src/home_assistant.c','src/home_assistant.h',
     'src/audio_sources.c','src/audio_sources.h','src/control.c','kaj-audio.rev','cmake/kaj_audio.cmake','src/inputs.c','src/inputs.h','src/outputs.c',

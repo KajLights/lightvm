@@ -40,6 +40,19 @@ unwinds references before any gateway policy is adopted. The reviewed source set
 now includes `vm.c` for direct PLAY admission. The rebuilt image retains all the
 bounds and reservations above (543 guarded SDK files, 35 project files).
 
+Manual driver, layer/input and retained-scene preparation admission uses the same
+four-provider plan. The asynchronous operation owns its provider references across
+persistence ticks; config pointers are consumed during admission, before any scene
+can be destroyed. Cancellation and superseded queued resets release all ownership.
+Presenter and progress-binding allocations precede live mutation. These changes
+add no recursion, IRQ, worker job or transport callback. The extracted
+`commit_prepared_scene` uses the existing pixel-driver callback targets, now listed
+under that function as well. The source manifest includes preparation and transition
+headers and transition implementation (543 SDK files, 38 project files). Stack,
+VM heap and native-headroom reservations remain unchanged; see the current
+[lifecycle validation record](../validation/audio-manual-admission-2026-10-27.json)
+for the linked bounds.
+
 The previous multicast measurements below are historical evidence only; they do
 not qualify the new subscription or gateway implementation.
 
