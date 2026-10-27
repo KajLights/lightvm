@@ -100,6 +100,10 @@ and screenshots in `build/`. Adapter unit tests independently cover calibrated
 
 The [27 October result](validation/audio-browser-2026-10-27.json) contains 599 ready
 hops per profile, native metric error at most `1.1920929e-7`, zero AudioWorklet/WASM
-error and identical events. This does not establish physical S3 optimized-FFT
-parity, acoustic equivalence, threshold-boundary behavior or full UDP/gateway
-delivery equivalence. Those remain separate acceptance work.
+error and identical events. A separate [physical S3 comparison](validation/audio-s3-parity-2026-10-27.json)
+now covers both profiles with 0, 16 and 64 bands: event counts/hops are identical,
+maximum level/band/envelope error is `2.5331974e-7`, and maximum centroid error is
+`1.4901162e-7`. This does not establish acoustic equivalence, threshold-boundary
+behavior or full UDP/gateway delivery equivalence. Those remain separate acceptance
+work. Build/run instructions for the USB-only harness are in
+[the S3 fixture check](../tests/audio_s3_probe/README.md).

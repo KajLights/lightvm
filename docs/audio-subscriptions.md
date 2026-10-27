@@ -14,7 +14,10 @@ Fetch the portable wire/subscriber dependency pinned in `kaj-audio.rev` with
 supports the same UDP and gateway contract for deterministic local checks.
 
 Before replacing an earlier experimental firmware, export configuration, saved
-programs, presets and current selection. Remove root `audio` and each output's
+programs, presets and current selection. Match `LIGHTVM_STORAGE_BYTES` to the
+device's reported `storage_bytes`: the test Pico uses **1,048,576 bytes**, while
+the build default is 524,288. A size mismatch makes the extent store unavailable;
+do not erase it to work around a build configuration error. Remove root `audio` and each output's
 obsolete `home_assistant.presets` list from the exported hardware configuration,
 then reapply/save it over USB. Add `sources` to the audio presets and re-save them
 with the installed program checksums. There is no migration or old protocol
@@ -141,6 +144,20 @@ paused parent does not acquire sources until the parent resumes. Manual driver,
 layer and input edits also reserve any retained scene they reactivate. Preparation
 holds the required provider references through persistence and transfers demand at
 commit; cancellation releases its reservations. Direct-to-composition promotion,
-power off/on and restore-last startup preserve source declarations. Physical
-optimized-S3 FFT parity and short Sense/Pico subscription checks remain outstanding.
-Earlier multicast hardware checks do not validate this protocol.
+power off/on and restore-last startup preserve source declarations.
+
+The [short physical check](validation/audio-hardware-2026-10-27.json) passed on
+27 October: the Sense served Pico and host concurrently, three Pico animation
+layers shared one 984-byte provider, three off/on cycles retained 28,776 charged
+bytes without growth, and both receivers recovered after one Sense restart.
+The 200-pixel scene used 29,776 live / 32,356 peak VM bytes. Observed stack peaks
+were 5,308 main / 740 worker bytes; these short checks are not a stress certificate.
+Five full descriptions took 13.6–16.0 ms over USB and 89.4–117.7 ms over HTTP.
+
+Both firmware targets are installed. The Pico's 12 programs, six presets, Wi-Fi
+and MQTT settings were preserved, and a reboot confirmed restore-last startup
+with the no-flash spectrum selected, power **off**, brightness 40%, and no acquired
+sources. The four audio presets now contain their pinned Sense declaration.
+The [physical S3 comparison](validation/audio-s3-parity-2026-10-27.json) also passed;
+threshold-boundary and complete UDP/gateway delivery conformance remain separate
+acceptance work. Earlier multicast hardware reports do not establish these results.

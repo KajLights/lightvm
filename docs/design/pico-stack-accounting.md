@@ -22,8 +22,9 @@ The fingerprint manifest includes these project paths and the pinned portable
 wire/subscriber core. SDK identities remain guarded; no unknown callback or frame
 is treated as zero. The full Wi-Fi/HTTP/WebSocket/MQTT/audio Pico W configuration
 passes the software gate with 16 KiB foreground and 8 KiB worker reservations,
-16 KiB native headroom and the existing pixel driver reservation. Physical stack
-watermarks and short end-to-end subscription checks are still pending.
+16 KiB native headroom and the existing pixel driver reservation. The short
+physical subscription checks below now record stack watermarks; broader stack
+qualification remains separate from these functional checks.
 
 The preset source editor adds port, expected identity and synthetic-input policy
 to `audio_status`. Review confirmed that serialization reuses the existing
@@ -52,6 +53,16 @@ headers and transition implementation (543 SDK files, 38 project files). Stack,
 VM heap and native-headroom reservations remain unchanged; see the current
 [lifecycle validation record](../validation/audio-manual-admission-2026-10-27.json)
 for the linked bounds.
+
+The 27 October [physical subscription check](../validation/audio-hardware-2026-10-27.json)
+ran the three-layer 200-pixel spectrum with USB/HTTP management, repeated off/on
+and one Sense restart. Main/worker peaks were 5,308/740 bytes, with a 32,356-byte
+VM peak under the unchanged 64,400-byte limit. It completed in 14.74 seconds and
+does not replace broad stress qualification. The installed image uses the Pico's
+existing 1 MiB extent-store reservation; the initial 512 KiB build correctly
+refused to mount that store. A private full-flash backup verified both original
+catalogues and every payload CRC before the layout was corrected. No storage was
+wiped; the final reboot restored selection, power, brightness, library and network.
 
 The previous multicast measurements below are historical evidence only; they do
 not qualify the new subscription or gateway implementation.

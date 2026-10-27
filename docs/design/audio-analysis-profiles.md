@@ -2,8 +2,9 @@
 
 Status: design requirement, 27 October 2026. The shared core and browser adapter
 are implemented; [browser validation](../audio-analysis-browser.md) records the
-verified subset. Physical S3 parity and full subscription lifecycle acceptance
-remain pending. This document complements the
+verified subset. Physical optimized-S3 parity now passes for the committed corpus
+in both profiles and 0/16/64-band layouts. Threshold-boundary and complete
+UDP/gateway delivery equivalence remain pending. This document complements the
 [subscription design](feature-proposal-audio-subscriptions.md).
 
 The webservice/browser analyser must be updated to run the **same default
@@ -170,5 +171,6 @@ WASM and the S3 FFT adapter with identical hop boundaries and settings. Check:
 These are the complete acceptance criteria. The browser now runs the common
 profile 1 implementation and explicit profile 2 level-rise baseline from
 `core/profiles.json`. Passing native/WASM/browser fixture checks does not establish
-physical S3 FFT parity or complete UDP/gateway delivery equivalence; those still
-need their own evidence.
+physical S3 FFT parity or complete UDP/gateway delivery equivalence. The former
+now has [separate physical evidence](../validation/audio-s3-parity-2026-10-27.json);
+the latter and threshold-boundary cases still need their own evidence.

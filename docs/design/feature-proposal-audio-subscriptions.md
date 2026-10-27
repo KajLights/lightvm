@@ -6,7 +6,8 @@ are implemented. Browser/native analysis parity and the Pico software memory/sta
 gates pass. Direct, layer, composition and A/B lifecycle commands, manual edits
 and scene preparation reserve retained-source capacity before changing playback.
 Power off/on and restore-last startup preserve source declarations. Short physical
-Sense/Pico validation remains outstanding. Every installed preset is selectable
+Sense/Pico subscription and restoration checks pass. The complete mixed-transport
+conformance matrix remains in progress. Every installed preset is selectable
 in Home Assistant. Audio visualizations remain Python compiled to platform bytecode.
 
 The extended design also requires the webservice/browser analyser to adopt the
@@ -14,7 +15,8 @@ Sense's current algorithm, supports explicitly selected alternative algorithms
 for browser experiments, and permits publishers on a Mac or Raspberry Pi. These
 requirements are specified in [shared audio analysis](audio-analysis-profiles.md).
 The portable analyser, leased publisher and silent browser AudioWorklet are
-implemented; optimized S3 FFT parity on the physical board remains unverified.
+implemented; optimized S3 FFT parity on the physical board passes the committed
+corpus for both profiles and 0/16/64 bands. Threshold-boundary cases remain pending.
 
 The wire specification is maintained with the publisher in kaj-fi's
 [`docs/subscriptions.md`](https://github.com/KajLights/kaj-fi/blob/main/docs/subscriptions.md).
