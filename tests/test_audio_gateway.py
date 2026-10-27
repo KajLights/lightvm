@@ -8,7 +8,7 @@ import time
 import unittest
 
 from bytecode_fixtures import ROOT, program
-from client import Client, ProcessTransport, ProtocolError, FRAME
+from client import Client, ProcessTransport, ProtocolError, FRAME, PLAY, STOP
 from test_configuration import config
 
 SOURCE = '''from lightvm import profile,render,Input,rgb
@@ -136,6 +136,130 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(self.frame(), bytes([25, 0, 0]))
         self.client.publish_audio(claim, 3, record(3))
         self.assertEqual(self.frame(), bytes([75, 50, 0]))
+
+    def test_direct_resume_rejects_full_pool_before_changing_playback(self):
+        sources = {'audio': {'type': 'gateway', 'name': 'desk'}, 'second': {'type': 'gateway', 'name': 'room'}}
+        self.client.activate('reactive', inputs=BINDINGS, sources=sources)
+        self.client.pause_program()
+        claims = [self.claim('held' + str(n)) for n in range(3)]
+        before = self.client.program_state()
+        self.assertTrue(before['paused'])
+        for resume in (self.client.resume_program, lambda: self.client.require_ok(self.client.command(PLAY))):
+            with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+                resume()
+            after = self.client.program_state()
+            self.assertTrue(after['paused'])
+            self.assertEqual(after['generation'], before['generation'])
+            self.assertEqual(after['inputs'], before['inputs'])
+            self.assertEqual(len(self.providers()), 3)
+            self.assertTrue(all(provider['references'] == 0 for provider in self.providers()))
+        self.client.release_audio(claims.pop())
+        self.client.resume_program()
+        self.assertFalse(self.client.program_state()['paused'])
+        self.assertEqual(len(self.providers()), 4)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 2)
+
+    def test_composition_resume_preserves_revision_on_capacity_failure(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        sources = {'audio': {'type': 'gateway', 'name': 'desk'}, 'second': {'type': 'gateway', 'name': 'room'}}
+        self.client.configure_composition(layers, sources=sources)
+        self.client.pause_composition()
+        claims = [self.claim('held' + str(n)) for n in range(3)]
+        before = self.client.composition()
+        with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+            self.client.pause_composition(paused=False)
+        after = self.client.composition()
+        self.assertFalse(after['playing'])
+        self.assertEqual(after['revision'], before['revision'])
+        self.assertEqual(len(self.providers()), 3)
+        self.client.release_audio(claims.pop())
+        self.client.pause_composition(paused=False)
+        self.assertTrue(self.client.composition()['playing'])
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 2)
+
+    def test_ab_play_reserves_both_scopes_atomically(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        for slot in ('A', 'B'):
+            sources = {'audio': {'type': 'gateway', 'name': slot + '1'}, 'second': {'type': 'gateway', 'name': slot + '2'}}
+            self.client.configure_composition(layers, slot=slot, sources=sources)
+        self.assertEqual(len(self.providers()), 4)
+        self.client.require_ok(self.client.command(STOP))
+        self.assertEqual(self.providers(), [])
+        claim = self.claim('held')
+        before = self.client.transition()
+        with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+            self.client.require_ok(self.client.command(PLAY))
+        after = self.client.transition()
+        self.assertFalse(after['playing'])
+        self.assertEqual(after['revision'], before['revision'])
+        self.assertEqual(after['progress'], before['progress'])
+        self.assertEqual(len(self.providers()), 1)
+        self.assertEqual(self.providers()[0]['references'], 0)
+        self.client.release_audio(claim)
+        self.client.require_ok(self.client.command(PLAY))
+        self.assertTrue(self.client.transition()['playing'])
+        self.assertEqual(len(self.providers()), 4)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 4)
+
+    def test_layer_resume_admits_only_when_parent_runs(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.configure_composition(layers, sources=SOURCES)
+        self.client.pause_program(layer='main')
+        claims = [self.claim('held' + str(n)) for n in range(4)]
+        for resume in (lambda: self.client.resume_program(layer='main'),
+                       lambda: self.client.manage('output_command', layer='main', command=PLAY)):
+            with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+                resume()
+            self.assertTrue(self.client.program_state(layer='main')['paused'])
+            self.assertEqual(len(self.providers()), 4)
+        self.client.pause_composition()
+        self.client.resume_program(layer='main')  # Parent remains paused; no source demand.
+        self.assertFalse(self.client.program_state(layer='main')['paused'])
+        self.assertFalse(self.client.composition()['playing'])
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 0)
+        self.client.release_audio(claims.pop())
+        self.client.pause_composition(paused=False)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 1)
+
+    def test_slot_b_play_preserves_paused_scene_when_pool_is_full(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.configure_composition(layers)
+        self.client.configure_composition(layers, slot='B', sources={
+            'audio': {'type': 'gateway', 'name': 'desk'}, 'second': {'type': 'gateway', 'name': 'room'}})
+        self.client.pause_composition(slot='B')
+        claims = [self.claim('held' + str(n)) for n in range(3)]
+        before = self.client.composition(slot='B')
+        with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+            self.client.require_ok(self.client.command(PLAY, slot='B'))
+        after = self.client.composition(slot='B')
+        self.assertFalse(after['playing'])
+        self.assertEqual(after['revision'], before['revision'])
+        self.assertEqual(len(self.providers()), 3)
+        self.client.release_audio(claims.pop())
+        self.client.require_ok(self.client.command(PLAY, slot='B'))
+        self.assertTrue(self.client.composition(slot='B')['playing'])
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 2)
+
+    def test_composition_resume_reserves_hidden_retained_scene(self):
+        layers = [{'id': 'main', 'program': 'reactive', 'crc32': __import__('zlib').crc32(self.code), 'inputs': BINDINGS}]
+        self.client.save_preset('first', layers, sources={
+            'audio': {'type': 'gateway', 'name': 'first1'}, 'second': {'type': 'gateway', 'name': 'first2'}})
+        self.client.save_preset('second', layers, sources={'audio': {'type': 'gateway', 'name': 'second'}})
+        self.client.recall_preset('first')
+        self.client.recall_preset('second')
+        self.assertEqual(len(self.providers()), 1)
+        claims = [self.claim('held' + str(n)) for n in range(2)]
+        before = self.client.transition()
+        with self.assertRaisesRegex(ProtocolError, 'capacity exhausted'):
+            self.client.pause_composition(slot='A', paused=False)
+        after = self.client.transition()
+        self.assertEqual(after['revision'], before['revision'])
+        self.assertEqual(after['progress'], 100)
+        self.assertEqual(len(self.providers()), 3)
+        self.client.release_audio(claims.pop())
+        self.client.pause_composition(slot='A', paused=False)
+        self.assertEqual(len(self.providers()), 4)
+        self.assertEqual(sum(provider['references'] for provider in self.providers()), 3)
 
 
 if __name__ == '__main__':

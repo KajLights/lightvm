@@ -104,6 +104,58 @@ static void drop(AudioSources *m,AudioProvider *p){
     }
     remove_provider(m,p);
 }
+static const char *const capacity_error="structured audio provider capacity exhausted";
+const char *audio_source_plan_add(AudioSourcePlan *plan,const InputSourceScope *scope){
+    if(!scope)return NULL;
+    plan->manager=scope->manager;
+    for(unsigned n=0;n<scope->count;n++){
+        const AudioSourceConfig *config=&scope->declarations[n].config;bool found=false;
+        for(unsigned i=0;i<plan->count;i++)if(same(plan->configs[i],config)){found=true;break;}
+        if(found)continue;
+        if(plan->count==AUDIO_PROVIDER_LIMIT)return capacity_error;
+        plan->configs[plan->count++]=config;
+    }
+    return NULL;
+}
+void audio_source_plan_release(AudioSourcePlan *plan){
+    while(plan->acquired)drop(plan->manager,plan->providers[--plan->acquired]);
+}
+const char *audio_source_plan_acquire(AudioSourcePlan *plan){
+    AudioSources *m=plan->manager;const char *error=capacity_error;
+    for(;plan->acquired<plan->count;plan->acquired++){
+        const AudioSourceConfig *config=plan->configs[plan->acquired];AudioProvider *p=NULL;unsigned empty=AUDIO_PROVIDER_LIMIT;
+        for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
+            AudioProvider *candidate=m->providers[i];
+            const AudioSourceConfig *effective=candidate?&candidate->config:NULL;
+            /* A reused unobserved gateway retains its old policy until commit. */
+            for(unsigned k=0;candidate&&k<plan->acquired;k++)if(plan->providers[k]==candidate){effective=plan->configs[k];break;}
+            if(effective&&same(effective,config)){p=candidate;break;}
+            if(!candidate)empty=i;
+        }
+        if(!p&&config->type==AUDIO_GATEWAY)for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
+            AudioProvider *candidate=m->providers[i];
+            if(candidate&&candidate->gateway&&!candidate->references&&!strcmp(candidate->config.address,config->address)){p=candidate;break;}
+        }
+        if(!p){
+            if(empty==AUDIO_PROVIDER_LIMIT)goto fail;
+            p=demo_calloc(1,sizeof(*p));if(!p){error="audio provider exceeds memory budget";goto fail;}
+            if(config->type==AUDIO_UDP&&!vm_heap_charge(m->transport.charged_bytes)){demo_free(p);error="audio transport exceeds memory budget";goto fail;}
+            p->config=*config;kf_subscriber_init(&p->receiver,config->pin,config->profile,config->synthetic);
+            if(config->type==AUDIO_GATEWAY)for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
+                AudioProvider *other=m->providers[i];
+                if(other&&other->gateway&&!strcmp(other->config.address,config->address)){p->gateway=other->gateway;break;}
+            }
+            m->providers[empty]=p;
+        }
+        p->references++;plan->providers[plan->acquired]=p;
+    }
+    return NULL;
+fail:
+    audio_source_plan_release(plan);return error;
+}
+void audio_source_plan_commit(AudioSourcePlan *plan){
+    for(unsigned i=0;i<plan->acquired;i++)plan->providers[i]->config=*plan->configs[i];
+}
 const char *input_scope_demand(InputSourceScope *s,bool active){
     if(!s)return NULL;
     if(!active){
@@ -111,39 +163,14 @@ const char *input_scope_demand(InputSourceScope *s,bool active){
         return NULL;
     }
     if(s->demand){s->demand++;return NULL;}
-    AudioSources *m=s->manager;const char *error="structured audio provider capacity exhausted";
-    unsigned acquired=0;
-    for(;acquired<s->count;acquired++){
-        InputSourceDeclaration *d=&s->declarations[acquired];AudioProvider *p=NULL;unsigned empty=AUDIO_PROVIDER_LIMIT;
-        for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
-            if(m->providers[i]&&same(&m->providers[i]->config,&d->config)){p=m->providers[i];break;}
-            if(!m->providers[i])empty=i;
-        }
-        AudioProvider *anchor=NULL;
-        if(!p&&d->config.type==AUDIO_GATEWAY)for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
-            AudioProvider *candidate=m->providers[i];
-            if(candidate&&candidate->gateway&&!candidate->references&&!strcmp(candidate->config.address,d->config.address)){
-                anchor=candidate;p=candidate;break;
-            }
-        }
-        if(!p){
-            if(empty==AUDIO_PROVIDER_LIMIT)goto fail;
-            p=demo_calloc(1,sizeof(*p));if(!p){error="audio provider exceeds memory budget";goto fail;}
-            if(d->config.type==AUDIO_UDP&&!vm_heap_charge(m->transport.charged_bytes)){demo_free(p);error="audio transport exceeds memory budget";goto fail;}
-            p->config=d->config;kf_subscriber_init(&p->receiver,p->config.pin,p->config.profile,p->config.synthetic);
-            if(d->config.type==AUDIO_GATEWAY)for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
-                AudioProvider *other=m->providers[i];
-                if(other&&other->gateway&&!strcmp(other->config.address,d->config.address)){p->gateway=other->gateway;break;}
-            }
-            m->providers[empty]=p;
-        }
-        if(anchor)anchor->config=d->config;
-        p->references++;d->provider=p;
+    AudioSourcePlan plan={0};const char *error=audio_source_plan_add(&plan,s);
+    if(!error)error=audio_source_plan_acquire(&plan);
+    if(error)return error;
+    audio_source_plan_commit(&plan);
+    for(unsigned i=0;i<s->count;i++)for(unsigned n=0;n<plan.count;n++)if(same(&s->declarations[i].config,plan.configs[n])){
+        AudioProvider *p=plan.providers[n];s->declarations[i].provider=p;p->references++;break;
     }
-    s->demand=1;return NULL;
-fail:
-    while(acquired){InputSourceDeclaration *d=&s->declarations[--acquired];drop(m,d->provider);d->provider=NULL;}
-    return error;
+    audio_source_plan_release(&plan);s->demand=1;return NULL;
 }
 void input_scope_retain(InputSourceScope *s){if(s)s->references++;}
 void input_scope_release(InputSourceScope *s){

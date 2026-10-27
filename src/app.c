@@ -453,17 +453,52 @@ static void source_demand(VmInstance *vm,bool active){
 static void composition_demand(Composition *c,bool active){
     if(c)for(unsigned n=0;n<c->layer_count;n++)source_demand(&c->layers[n].vm,active&&c->playing&&c->layers[n].vm.playing);
 }
+static void sync_output_audio_sources(AppOutput *d){
+    Transition *t=d->transition;
+    if(t){
+        bool completed=d->recall_owned&&t->driver==TRANSITION_MANUAL&&t->progress==100;
+        composition_demand(t->compositions[0],t->playing&&!completed);
+        composition_demand(t->compositions[1],t->playing&&(!completed||d->power_on));
+        for(unsigned n=0;n<2;n++)if(t->programs[n])source_demand(&t->programs[n]->vm,t->playing&&!completed);
+    }else if(d->composition)composition_demand(d->composition,d->power_on);
+    else source_demand(&d->vm,d->vm.playing&&d->power_on);
+}
 static void sync_audio_sources(App *a){
-    for(unsigned i=0;i<a->output_count;i++){
-        AppOutput *d=a->outputs[i];Transition *t=d->transition;
-        if(t){
-            bool completed=d->recall_owned&&t->driver==TRANSITION_MANUAL&&t->progress==100;
-            composition_demand(t->compositions[0],t->playing&&!completed);
-            composition_demand(t->compositions[1],t->playing&&(!completed||d->power_on));
-            for(unsigned n=0;n<2;n++)if(t->programs[n])source_demand(&t->programs[n]->vm,t->playing&&!completed);
-        }else if(d->composition)composition_demand(d->composition,d->power_on);
-        else source_demand(&d->vm,d->vm.playing&&d->power_on);
+    for(unsigned i=0;i<a->output_count;i++)sync_output_audio_sources(a->outputs[i]);
+}
+typedef struct {
+    bool manual,power,play;
+    Composition *resume;
+    VmInstance *resume_vm;
+} SourceDemandChange;
+static const char *plan_composition_sources(AudioSourcePlan *plan,Composition *c,bool active,SourceDemandChange change){
+    if(!c||!active||(!c->playing&&c!=change.resume))return NULL;
+    for(unsigned n=0;n<c->layer_count;n++){
+        VmInstance *vm=&c->layers[n].vm;
+        if(vm->portable&&(vm->playing||vm==change.resume_vm)){
+            const char *error=audio_source_plan_add(plan,vm->portable->source_scope);if(error)return error;
+        }
     }
+    return NULL;
+}
+/* Reserve all scopes that the command will make active, including retained
+ * scenes. A failed reservation changes no playback flag or canonical policy. */
+static const char *reserve_output_sources(AppOutput *d,SourceDemandChange change,AudioSourcePlan *plan){
+    Transition *t=d->transition;const char *error=NULL;bool power=d->power_on||change.power;
+    if(t){
+        bool playing=t->playing||change.play;
+        bool completed=d->recall_owned&&!change.manual&&t->driver==TRANSITION_MANUAL&&t->progress==100;
+        error=plan_composition_sources(plan,t->compositions[0],playing&&!completed,change);
+        if(!error)error=plan_composition_sources(plan,t->compositions[1],playing&&(!completed||power),change);
+        for(unsigned n=0;!error&&n<2;n++)if(t->programs[n]&&playing&&!completed)
+            error=audio_source_plan_add(plan,t->programs[n]->vm.portable->source_scope);
+    }else if(d->composition)error=plan_composition_sources(plan,d->composition,power,change);
+    else if(d->vm.portable&&power&&(d->vm.playing||&d->vm==change.resume_vm))error=audio_source_plan_add(plan,d->vm.portable->source_scope);
+    if(!error)error=audio_source_plan_acquire(plan);
+    return error;
+}
+static void finish_output_sources(AppOutput *d,AudioSourcePlan *plan){
+    sync_output_audio_sources(d);audio_source_plan_release(plan);
 }
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
@@ -1269,8 +1304,13 @@ static bool composition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,con
     }
     if(!strcmp(op,"composition_pause")||!strcmp(op,"composition_resume")){
         if(!s){error_reply(a,id,STATUS_CONFIG,"unknown_slot","composition is not configured");return true;}
-        composition_play(s,!strcmp(op,"composition_resume"));s->revision=++d->composition_revision;
-        if(!strcmp(op,"composition_resume"))d->power_on=true;
+        bool resume=!strcmp(op,"composition_resume");AudioSourcePlan plan={0};
+        const char *error=resume?reserve_output_sources(d,(SourceDemandChange){.manual=true,.power=true,.resume=s},&plan):NULL;
+        if(error){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",error);return true;}
+        audio_source_plan_commit(&plan);
+        composition_play(s,resume);s->revision=++d->composition_revision;
+        if(resume){d->power_on=true;d->recall_owned=false;}
+        finish_output_sources(d,&plan);
         reply(a,id,STATUS_OK,(int32_t)d->composition_revision,"composition playback updated");return true;
     }
     char layer_id[OBJECT_NAME_LIMIT+1];
@@ -1309,7 +1349,15 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
         if(command==CMD_FRAME){const char *error=transition_frame(t,delta);if(error){reply(a,id,STATUS_EXECUTION,0,error);return true;}
             output_command_power(d,command);
             for(size_t offset=0;offset<(size_t)d->pixels.count*3;offset+=FRAME_LIMIT){size_t n=(size_t)d->pixels.count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,d->pixels.rgb+offset,n);}reply(a,id,STATUS_OK,(int32_t)d->pixels.count,"transition frame rendered");return true;}
-        if(command==CMD_PLAY||command==CMD_STOP){output_command_power(d,command);d->recall_owned=false;transition_play(t,command==CMD_PLAY);if(command==CMD_STOP){transition_invalidate(t);if(t->pending){d->pixels.type->cancel(d->pixels.driver);t->pending=false;}pixels_clear(&d->pixels);pixels_show(&d->pixels);}reply(a,id,STATUS_OK,0,command==CMD_PLAY?"A/B resumed":"A/B stopped");return true;}
+        if(command==CMD_PLAY||command==CMD_STOP){
+            AudioSourcePlan plan={0};const char *error=command==CMD_PLAY?reserve_output_sources(d,(SourceDemandChange){.manual=true,.power=true,.play=true},&plan):NULL;
+            if(error){reply(a,id,STATUS_CONFIG,0,error);return true;}
+            preparation_cancel_output(a,d->hardware.id);
+            audio_source_plan_commit(&plan);output_command_power(d,command);d->recall_owned=false;transition_play(t,command==CMD_PLAY);
+            finish_output_sources(d,&plan);
+            if(command==CMD_STOP){transition_invalidate(t);if(t->pending){d->pixels.type->cancel(d->pixels.driver);t->pending=false;}pixels_clear(&d->pixels);pixels_show(&d->pixels);}
+            reply(a,id,STATUS_OK,0,command==CMD_PLAY?"A/B resumed":"A/B stopped");return true;
+        }
         if(command==CMD_RESET){output_command_power(d,command);clear_output_composition(d);d->vm.output=&d->pixels;++d->composition_revision;pixels_clear(&d->pixels);pixels_show(&d->pixels);reply(a,id,STATUS_OK,0,"A/B unloaded");return true;}
         if(command==CMD_STATUS){char message[FRAME_LIMIT-8];
         StatusWriter w={message,sizeof(message),0};
@@ -1359,9 +1407,14 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
         for(size_t offset=0;offset<(size_t)s->count*3;offset+=FRAME_LIMIT){size_t n=(size_t)s->count*3-offset;if(n>FRAME_LIMIT)n=FRAME_LIMIT;a->send(a->transport,RESP_PIXELS,id,s->output->rgb+offset,n);}
         reply(a,id,STATUS_OK,(int32_t)s->count,"composition frame rendered");return true;
     }
-    if(command==CMD_PLAY||command==CMD_STOP){output_command_power(d,command);
+    if(command==CMD_PLAY||command==CMD_STOP){
+        AudioSourcePlan plan={0};const char *error=command==CMD_PLAY?reserve_output_sources(d,(SourceDemandChange){.power=true,.resume=s},&plan):NULL;
+        if(error){reply(a,id,STATUS_CONFIG,0,error);return true;}
+        preparation_cancel_output(a,d->hardware.id);
+        audio_source_plan_commit(&plan);output_command_power(d,command);
         if(command==CMD_STOP)composition_invalidate(s);
         composition_play(s,command==CMD_PLAY);
+        finish_output_sources(d,&plan);
         if(command==CMD_STOP){if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}pixels_clear(s->output);pixels_show(s->output);}
         reply(a,id,STATUS_OK,0,command==CMD_PLAY?"composition resumed":"composition stopped");return true;
     }
@@ -1457,7 +1510,7 @@ static void manage(App *a,uint16_t id,Arguments args) {
         if(!d){error_reply(a,id,STATUS_CONFIG,"unknown_output","output is not configured");return;}
         if(args.command!=CMD_STATUS&&args.command!=CMD_PLAY&&args.command!=CMD_STOP&&args.command!=CMD_FRAME&&args.command!=CMD_RESET){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","unsupported output command");return;}
         if(args.delta_ms>1000){error_reply(a,id,STATUS_PROTOCOL,"invalid_delta","FRAME requires 0..1000 milliseconds");return;}
-        if(args.command==CMD_PLAY||args.command==CMD_STOP||args.command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
+        if(args.command==CMD_STOP||args.command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
         if(composition_output_command(a,d,(uint8_t)args.command,id,args.delta_ms))return;
         if(args.command==CMD_RESET){
             d->active_program[0]=0;d->active_crc=0;
@@ -1465,7 +1518,7 @@ static void manage(App *a,uint16_t id,Arguments args) {
         }
         uint8_t delta[4];write_u32(delta,args.delta_ms);
         vm_command(&d->vm,(uint8_t)args.command,id,args.command==CMD_FRAME?delta:NULL,args.command==CMD_FRAME?4:0);
-        if(a->last_code==STATUS_OK)output_command_power(d,(uint8_t)args.command);
+        if(a->last_code==STATUS_OK){if(args.command==CMD_PLAY)preparation_cancel_output(a,d->hardware.id);output_command_power(d,(uint8_t)args.command);}
         return;
     }
     if (!strcmp(args.op,"session_close")) { app_disconnect(a,a->source); reply(a,id,STATUS_OK,0,"session closed; playback retained"); return; }
@@ -1643,7 +1696,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
     }
     if(type==CMD_RESET&&!size){preparation_cancel_output(a,app_output(a,NULL)->hardware.id);a->upload_output->vm.uploading=false;a->uploading=false;a->staged=false;app_output(a,NULL)->active_program[0]=0;app_output(a,NULL)->active_crc=0;a->upload_owner=0;store_upload_cancel(&a->upload);}
     AppOutput *d=app_output(a,NULL);
-    if(type==CMD_PLAY||type==CMD_STOP||type==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
+    if(type==CMD_STOP||type==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
     if(d->hardware.indicators&&type!=CMD_STATUS){reply(a,id,STATUS_CONFIG,0,"indicator output is controlled through indicator_set");return;}
     if(d->composition||d->transition){
         if((type==CMD_FRAME&&size!=4)||(type!=CMD_FRAME&&size)){reply(a,id,STATUS_PROTOCOL,0,"invalid composition command payload");return;}
@@ -1651,7 +1704,7 @@ static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p
         if(composition_output_command(a,d,type,id,type==CMD_FRAME?read_u32(p):0))return;
     }
     vm_command(&d->vm,type,id,p,size);
-    if(a->last_code==STATUS_OK)output_command_power(d,type);
+    if(a->last_code==STATUS_OK){if(type==CMD_PLAY)preparation_cancel_output(a,d->hardware.id);output_command_power(d,type);}
 
 }
 size_t app_indicator_json(const AppOutput *d,unsigned pixel,char *buffer,size_t capacity) {
@@ -1844,6 +1897,10 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         bool valid=json_fields(j,0,fields)&&json_u32(j,json_get(j,0,"command"),&command)&&(dt<0||json_u32(j,dt,&delta))&&delta<=1000;
         platform_free(j);
         if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid composition slot command");return;}
+        AudioSourcePlan plan={0};
+        const char *admission=command==CMD_PLAY?reserve_output_sources(d,(SourceDemandChange){.manual=true,.resume=s},&plan):NULL;
+        if(admission){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",admission);return;}
+        audio_source_plan_commit(&plan);
         if(command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
         const char *error=NULL;
         if(command==CMD_PLAY||command==CMD_STOP){composition_play(s,command==CMD_PLAY);if(command==CMD_STOP){composition_invalidate(s);memset(s->front,0,(size_t)s->count*3);for(unsigned n=0;n<s->layer_count;n++)s->layers[n].front_stamp=(ContributionStamp){0};s->frames++;}}
@@ -1851,6 +1908,7 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         else if(command==CMD_RESET){d->transition->compositions[1]=NULL;composition_destroy(s);++d->composition_revision;}
         else if(command!=CMD_STATUS)error="unsupported composition slot command";
         if(!error&&command!=CMD_STATUS&&command!=CMD_FRAME)d->recall_owned=false;
+        finish_output_sources(d,&plan);
         transition_invalidate(d->transition);reply(a,id,error?STATUS_EXECUTION:STATUS_OK,0,error?error:"composition slot command complete");return;
     }
     if(!strcmp(op,"program_reset")){
@@ -1865,6 +1923,17 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     }
     bool read_only=!strcmp(op,"program_state")||!strcmp(op,"program_snapshot"),input_update=!strcmp(op,"program_inputs");
     if(read_only||!strcmp(op,"program_reset")||!strcmp(op,"program_pause")||!strcmp(op,"program_resume")||!strcmp(op,"program_inputs")){
+        AudioSourcePlan plan={0};
+        if(!strcmp(op,"program_resume")){
+            static const char *const fields[]={"op","slot","output","layer","expected_generation",NULL};uint32_t expected;
+            /* Invalid requests retain the control API's existing diagnostics. */
+            if(vm->ready&&vm->control.enabled&&vm->control.initialized&&!vm->control.faulted&&json_fields(j,0,fields)&&
+               json_u32(j,json_get(j,0,"expected_generation"),&expected)&&expected==vm->generation){
+                const char *error=reserve_output_sources(d,(SourceDemandChange){.manual=!vm->playing,.power=!s&&!transition_target,.resume_vm=vm},&plan);
+                if(error){platform_free(j);error_reply(a,id,STATUS_CONFIG,"sources_unavailable",error);return;}
+                audio_source_plan_commit(&plan);
+            }
+        }
         if(!read_only&&!input_update){transition_invalidate(d->transition);composition_invalidate(s);}
         uint32_t generation=vm->generation,input_revision=vm->portable?vm->portable->input_revision:0;bool was_playing=vm->playing;
         (void)control_manage(vm,id,j,op);
@@ -1872,6 +1941,7 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         if(!read_only&&a->last_code==STATUS_OK)preparation_cancel_output(a,d->hardware.id);
         if(a->last_code==STATUS_OK&&!s&&!transition_target&&(!strcmp(op,"program_resume")||!strcmp(op,"program_reset")))d->power_on=true;
         if(generation!=vm->generation||was_playing!=vm->playing||(vm->portable&&input_revision!=vm->portable->input_revision)){if(!transition_target)composition_modified(s);d->recall_owned=false;}
+        finish_output_sources(d,&plan);
         if(vm->generation>d->layer_generation)d->layer_generation=vm->generation;
         if(input_update){if(d->transition)d->transition->dirty=true;}
         else if(!read_only){transition_invalidate(d->transition);composition_invalidate(s);}
@@ -1885,11 +1955,16 @@ static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
         valid=valid&&delta<=1000&&(command==CMD_STATUS||command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET||command==CMD_FRAME);
         platform_free(j);
         if(!valid){error_reply(a,id,STATUS_PROTOCOL,"invalid_command","invalid layer command");return;}
+        AudioSourcePlan plan={0};
+        const char *admission=command==CMD_PLAY?reserve_output_sources(d,(SourceDemandChange){.manual=!vm->playing,.resume_vm=vm},&plan):NULL;
+        if(admission){error_reply(a,id,STATUS_CONFIG,"sources_unavailable",admission);return;}
+        audio_source_plan_commit(&plan);
         if(command==CMD_PLAY||command==CMD_STOP||command==CMD_RESET)preparation_cancel_output(a,d->hardware.id);
         if(command!=CMD_STATUS){transition_invalidate(d->transition);composition_invalidate(s);}
         uint32_t generation=vm->generation;bool was_playing=vm->playing;
         uint8_t bytes[4];write_u32(bytes,delta);vm_command(vm,(uint8_t)command,id,command==CMD_FRAME?bytes:NULL,command==CMD_FRAME?4:0);
         if(generation!=vm->generation||was_playing!=vm->playing){composition_modified(s);d->recall_owned=false;}
+        finish_output_sources(d,&plan);
         if(command==CMD_STOP&&vm->control.contribution_valid){
             memset(vm->control.committed,0,control_frame_bytes(vm));vm->control.contribution_frame++;
             /* Keep the cleared frame readable, but it is no longer a guest

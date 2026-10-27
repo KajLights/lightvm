@@ -134,6 +134,9 @@ and explicit identity pinning takes effect on activation. Run
 The current Pico W build passes its unchanged RAM/stack gates: 134,512 static
 bytes, a 64,400-byte automatic VM heap, 16/8 KiB main/worker stacks and 16 KiB
 native headroom. Main/worker bounds are 12,184/5,104 bytes. These are software
-bounds, not physical watermarks. Transactional resume/manual-transition admission,
-physical optimized-S3 FFT parity and short Sense/Pico subscription checks remain
+bounds, not physical watermarks. PLAY/resume now reserves the required scopes
+before changing direct, layer, composition or A/B playback; capacity rejection
+preserves playback, revisions and provider references. Resuming a layer within a
+paused parent does not acquire sources until the parent resumes. Manual-transition
+and retained-scene activation admission, physical optimized-S3 FFT parity and short Sense/Pico subscription checks remain
 outstanding. Earlier multicast hardware checks do not validate this protocol.

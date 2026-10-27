@@ -3,7 +3,8 @@
 Status: implementation in progress, 27 October 2026. Scoped UDP/gateway providers,
 lease/session validation, stored source declarations and the browser source editor
 are implemented. Browser/native analysis parity and the Pico software memory/stack
-gates pass. Transactional resume/manual-transition admission and short physical
+gates pass. Direct, layer, composition and A/B PLAY/resume reserve source capacity
+before changing playback. Manual-transition/retained-scene admission and short physical
 Sense/Pico validation remain outstanding. Every installed preset is selectable
 in Home Assistant. Audio visualizations remain Python compiled to platform bytecode.
 

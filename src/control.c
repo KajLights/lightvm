@@ -237,6 +237,8 @@ bool control_manage(VmInstance *a,uint16_t id,const Json *j,const char *op) {
     }
     if (resume) {
         if (!c->initialized || c->faulted) { result(a,id,STATUS_EXECUTION,"initialize with PLAY/FRAME; reactivate a faulted program"); return true; }
+        const char *error=a->output?inputs_demand(a->portable,true):NULL;
+        if(error){result(a,id,STATUS_CONFIG,error);return true;}
         a->playing=true; a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
         /* STOP may have cleared the physical output while retaining these
            pixels. A reusable contribution must be presented again on resume. */

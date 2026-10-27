@@ -57,6 +57,18 @@ typedef struct InputSourceScope {
     unsigned references,demand,count;
     InputSourceDeclaration declarations[];
 } InputSourceScope;
+/* A foreground command can reserve the union of several retained scene scopes
+ * before changing playback. Config pointers stay valid until commit/release. */
+typedef struct {
+    AudioSources *manager;
+    const AudioSourceConfig *configs[AUDIO_PROVIDER_LIMIT];
+    AudioProvider *providers[AUDIO_PROVIDER_LIMIT];
+    unsigned count,acquired;
+} AudioSourcePlan;
+const char *audio_source_plan_add(AudioSourcePlan *,const InputSourceScope *);
+const char *audio_source_plan_acquire(AudioSourcePlan *);
+void audio_source_plan_commit(AudioSourcePlan *);
+void audio_source_plan_release(AudioSourcePlan *);
 
 const char *input_scope_parse(AudioSources *,const Json *,int,InputSourceScope **);
 void input_scope_retain(InputSourceScope *);

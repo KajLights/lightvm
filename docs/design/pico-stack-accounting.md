@@ -32,6 +32,14 @@ recursion. Only `audio_sources.c` changed in the guarded fingerprints. The rebui
 Pico W image retains the 12,184/5,104-byte main/worker bounds, 134,512 static bytes,
 64,400-byte automatic VM heap and unchanged stack/headroom reservations.
 
+Playback admission now uses a bounded four-provider reservation plan with borrowed
+configuration pointers. It allocates no extra persistent state and changes no
+transport callback target, recursion guard or interrupt path. Scope and playback
+admission call the existing provider allocation/removal paths; failed acquisition
+unwinds references before any gateway policy is adopted. The reviewed source set
+now includes `vm.c` for direct PLAY admission. The rebuilt image retains all the
+bounds and reservations above (543 guarded SDK files, 35 project files).
+
 The previous multicast measurements below are historical evidence only; they do
 not qualify the new subscription or gateway implementation.
 

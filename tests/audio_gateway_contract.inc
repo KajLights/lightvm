@@ -98,4 +98,20 @@ static void audio_gateway_contract(void){
     const char *request="{\"op\":\"audio_claim\",\"name\":\"full\",\"source_id\":\"0000000000000001\",\"session\":\"0000000000000002\",\"analysis_profile\":1}";
     CHECK(json_parse(&j,request,strlen(request)));CHECK(audio_gateway_claim(&m,&j,55,clock_now,&claim));
     CHECK(provider_count(&m)==4&&vm_heap_used()==charged);input_scope_release(s);CHECK(!vm_heap_used());
+    /* Failed admission must preserve an unobserved claim's canonical policy. */
+    claim=gateway_claim_fixture(&m,66,"desk",1,false);
+    AudioProvider *anchor=NULL;for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++)if(m.providers[i])anchor=m.providers[i];
+    CHECK(anchor);AudioSourceConfig original=anchor->config;
+    s=scope_fixture(&m,"{\"a\":{\"type\":\"lvaf\",\"address\":\"10.1.1.1\"},\"b\":{\"type\":\"lvaf\",\"address\":\"10.1.1.2\"},\"c\":{\"type\":\"lvaf\",\"address\":\"10.1.1.3\"}}");
+    CHECK(!input_scope_demand(s,true));
+    other=scope_fixture(&m,"{\"x\":{\"type\":\"gateway\",\"name\":\"desk\",\"analysis_profile\":2},\"y\":{\"type\":\"gateway\",\"name\":\"desk\",\"analysis_profile\":2},\"z\":{\"type\":\"lvaf\",\"address\":\"10.1.1.4\"}}");
+    charged=vm_heap_used();CHECK(input_scope_demand(other,true));
+    CHECK(!other->demand&&!anchor->references&&!memcmp(&anchor->config,&original,sizeof(original))&&vm_heap_used()==charged&&provider_count(&m)==4);
+    input_scope_release(s);
+    AudioSourcePlan plan={0};CHECK(!audio_source_plan_add(&plan,other)&&!audio_source_plan_acquire(&plan));
+    CHECK(!memcmp(&anchor->config,&original,sizeof(original)));audio_source_plan_release(&plan);
+    CHECK(!memcmp(&anchor->config,&original,sizeof(original))&&!anchor->references&&provider_count(&m)==1);
+    CHECK(!input_scope_demand(other,true));
+    CHECK(other->declarations[0].provider==anchor&&other->declarations[1].provider==anchor&&anchor->config.profile==2&&anchor->references==2);
+    input_scope_release(other);CHECK(!audio_gateway_release(&m,66,claim.generation)&&!vm_heap_used());
 }
