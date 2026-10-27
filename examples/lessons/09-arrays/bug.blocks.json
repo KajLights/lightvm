@@ -1,0 +1,98 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_pixel",
+                    "fields": {},
+                    "inputs": {
+                      "INDEX": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "09-arrays-bug-4"
+                        }
+                      },
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_hsv",
+                          "fields": {},
+                          "inputs": {
+                            "H": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0.08
+                                },
+                                "inputs": {},
+                                "id": "09-arrays-bug-6"
+                              }
+                            },
+                            "S": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 1
+                                },
+                                "inputs": {},
+                                "id": "09-arrays-bug-7"
+                              }
+                            },
+                            "V": {
+                              "block": {
+                                "type": "lm_array_get",
+                                "fields": {
+                                  "NAME": "brightness"
+                                },
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "09-arrays-bug-9"
+                                    }
+                                  }
+                                },
+                                "id": "09-arrays-bug-8"
+                              }
+                            }
+                          },
+                          "id": "09-arrays-bug-5"
+                        }
+                      }
+                    },
+                    "id": "09-arrays-bug-3"
+                  }
+                }
+              },
+              "id": "09-arrays-bug-2"
+            }
+          }
+        },
+        "id": "09-arrays-bug-1"
+      }
+    ]
+  }
+}

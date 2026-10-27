@@ -9,6 +9,7 @@
 #include <math.h>
 #include <limits.h>
 #include <string.h>
+#include <stdio.h>
 
 /* Opcodes 0..32 retain their numeric assignments, but v4 functions return to
  * their native caller; profile scheduling never lives in the interpreter. */
@@ -637,7 +638,7 @@ bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned
         register_write(p,r,(PbcValue){.u=pbc_initial(p,r)});
     }
     for(unsigned n=0;n<count;n++)register_write(p,fn->arg_start+n,arguments[n]);
-    p->function=function;p->pc=fn->first;p->used=0;p->bulk=0;p->status=0;return true;
+    p->function=function;p->pc=fn->first;p->used=0;p->bulk=0;p->status=0;p->fault_pc=UINT32_MAX;p->fault_code=0;return true;
 }
 /* PCG32 state belongs to the portable instance. Rejection consumes one VM
  * dispatch, so standard integer sampling can yield without reporting failure. */
@@ -709,11 +710,47 @@ static bool native_call(Portable *p,const PbcCall *site,PbcValue *result){
     default:return false;
     }
 }
+const char *pbc_fault_reason(Portable *p){
+    if(p->fault_code==PBC_FAULT_BUDGET)return "This frame did too much work. Check that each loop reaches its end.";
+    if(p->fault_code==PBC_FAULT_RESOURCE)return "This drawing surface is no longer available. Restart the program.";
+    uint8_t q[8];if(p->fault_pc>=p->ncode||!instruction(p,p->fault_pc,q))return "The program could not read its next instruction.";
+    switch(q[0]){
+    case P_LOAD:case P_STORE:return "The position is outside this array or strip. Count from 0 to length minus 1.";
+    case P_FILL:return "The fill range must run from 0 up to the length, with start no greater than stop.";
+    case P_COPY:return "Copy needs two writable arrays with matching lengths and value types.";
+    case IDIV:case IMOD:case FDIV:case FMOD:case QDIV:case QMOD:return "Cannot divide by zero, or the division result is too large.";
+    case RGB:return "Red, green and blue must each be whole numbers from 0 to 255.";
+    case HSV:return "Saturation and brightness must each be between 0 and 1.";
+    case FTOI:case FTOQ:case ITOQ:return "This number is too large for the requested number type.";
+    case P_NATIVE:{PbcCall call=pbc_call(p,lbc_u32(q+4));
+        if(call.binding==14)return "A required condition was false. Check the values used in this condition.";
+        if(call.binding==4||call.binding==17)return "The random range is empty, reversed, or has a zero step.";
+        return "This function cannot use these values. Check its range, size and drawing position.";}
+    default:return "This calculation has no finite result. Check the numbers used here.";
+    }
+}
+const char *pbc_fault_message(Portable *p,char *buffer,size_t size){
+    uint8_t q[8];
+    if(p->fault_code==PBC_FAULT_OPERATION&&p->fault_pc<p->ncode&&instruction(p,p->fault_pc,q)&&
+       (q[0]==P_LOAD||q[0]==P_STORE)){
+        unsigned ref=q[q[0]==P_LOAD?2:1],at=q[q[0]==P_LOAD?3:2];
+        unsigned resource=pbc_value(p,ref).u;
+        if(resource<p->nresources){
+            int32_t index=pbc_value(p,at).i;unsigned count=p->resources[resource].count;
+            if(index<0||(unsigned)index>=count){
+                if(count)snprintf(buffer,size,"Position %ld is outside 0 to %u. This strip or array has %u places.",(long)index,count-1,count);
+                else snprintf(buffer,size,"Position %ld cannot be read or painted: this array is empty.",(long)index);
+                return buffer;
+            }
+        }
+    }
+    return pbc_fault_reason(p);
+}
 int pbc_resume(Portable *p,unsigned quota){
     if(p->status)return p->status==1?1:-1;
     p->slice_count++;
-    for(unsigned n=0;n<p->nresources;n++)if(p->resources[n].generation!=p->generation){p->status=UINT32_MAX;return -1;}
-    if(p->output&&(p->output->sealed||p->output->generation!=p->generation)){p->status=UINT32_MAX;return -1;}
+    for(unsigned n=0;n<p->nresources;n++)if(p->resources[n].generation!=p->generation){p->fault_code=PBC_FAULT_RESOURCE;goto fault;}
+    if(p->output&&(p->output->sealed||p->output->generation!=p->generation)){p->fault_code=PBC_FAULT_RESOURCE;goto fault;}
 
     uint64_t slice_started=platform_time_us();
     unsigned dispatched=0;
@@ -721,6 +758,7 @@ int pbc_resume(Portable *p,unsigned quota){
         bool checked=dispatched&&(p->bulk||!((dispatched+1u)&15u));
         if(checked&&platform_time_us()-slice_started>=LIGHTVM_RENDER_SLICE_US)return 0;
         dispatched++;
+        p->fault_pc=p->pc;p->fault_code=PBC_FAULT_OPERATION;
         uint8_t q[8];if(!instruction(p,p->pc,q))goto fault;
         unsigned op=q[0],a=q[1],b=q[2],c=q[3];uint32_t d=lbc_u32(q+4);
         /* Completing a chunk clears bulk. Check before the next expensive
@@ -730,7 +768,7 @@ int pbc_resume(Portable *p,unsigned quota){
             /* Native operands come from the call record. Decode it once and
              * avoid reading the instruction's unrelated register slots. */
             PbcCall site=pbc_call(p,d);unsigned work=lbc_native_instruction_work(site.binding);
-            if(work>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+            if(work>LIGHTVM_INVOCATION_LIMIT-p->used){p->fault_code=PBC_FAULT_BUDGET;goto fault;}
             p->pc++;p->used+=work;p->dispatch_count++;
             if(p->io_fault)goto fault;
             PbcValue result={0};p->native_pending=false;
@@ -740,7 +778,7 @@ int pbc_resume(Portable *p,unsigned quota){
             continue;
         }
         unsigned work=lbc_instruction_work(op);
-        if(work>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+        if(work>LIGHTVM_INVOCATION_LIMIT-p->used){p->fault_code=PBC_FAULT_BUDGET;goto fault;}
         p->pc++;p->used+=work;p->dispatch_count++;
         PbcValue r[4]={register_value(p,a),register_value(p,b),register_value(p,c),register_value(p,d)};
         if(p->io_fault)goto fault;
@@ -771,7 +809,7 @@ int pbc_resume(Portable *p,unsigned quota){
             PbcResource *resource=&p->resources[r[0].u];
             if(r[2].u>r[3].u||r[3].u>resource->count)goto fault;
             uint32_t start=r[2].u+p->bulk,end=start+32;if(end>r[3].u)end=r[3].u;
-            if(end-start>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+            if(end-start>LIGHTVM_INVOCATION_LIMIT-p->used){p->fault_code=PBC_FAULT_BUDGET;goto fault;}
             p->used+=end-start;
             for(unsigned k=start;k<end;k++)if(!store_value(resource,k,r[1]))goto fault;
             if(end<r[3].u){p->bulk=end-r[2].u;p->pc--;}else p->bulk=0;break;
@@ -781,7 +819,7 @@ int pbc_resume(Portable *p,unsigned quota){
             if(dst->count!=src->count||dst->sealed)goto fault;
             if(dst==src)break;
             unsigned end=p->bulk+32;if(end>dst->count)end=dst->count;
-            if(3u*(end-p->bulk)>LIGHTVM_INVOCATION_LIMIT-p->used)goto fault;
+            if(3u*(end-p->bulk)>LIGHTVM_INVOCATION_LIMIT-p->used){p->fault_code=PBC_FAULT_BUDGET;goto fault;}
             p->used+=3u*(end-p->bulk);
             for(unsigned k=p->bulk;k<end;k++){PbcValue v;if(!load_value(p,src,k,&v)||!store_value(dst,k,v))goto fault;}
             if(end<dst->count){p->bulk=end;p->pc--;}else p->bulk=0;break;

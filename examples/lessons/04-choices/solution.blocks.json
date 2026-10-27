@@ -1,0 +1,328 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_if",
+                    "fields": {},
+                    "inputs": {
+                      "TEST": {
+                        "block": {
+                          "type": "lm_compare",
+                          "fields": {
+                            "OP": ">="
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-solution-5"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "count"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-7"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0.75
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-8"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-solution-6"
+                              }
+                            }
+                          },
+                          "id": "04-choices-solution-4"
+                        }
+                      },
+                      "THEN": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-solution-10"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-12"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-13"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-14"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-solution-11"
+                              }
+                            }
+                          },
+                          "id": "04-choices-solution-9"
+                        }
+                      },
+                      "ELSE": {
+                        "block": {
+                          "type": "lm_if",
+                          "fields": {},
+                          "inputs": {
+                            "TEST": {
+                              "block": {
+                                "type": "lm_compare",
+                                "fields": {
+                                  "OP": "<"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-17"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "/"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_runtime",
+                                            "fields": {
+                                              "PROPERTY": "count"
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-19"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 2
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-20"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-solution-18"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-solution-16"
+                              }
+                            },
+                            "THEN": {
+                              "block": {
+                                "type": "lm_pixel",
+                                "fields": {},
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-22"
+                                    }
+                                  },
+                                  "COLOR": {
+                                    "block": {
+                                      "type": "lm_rgb",
+                                      "fields": {},
+                                      "inputs": {
+                                        "R": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 40
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-24"
+                                          }
+                                        },
+                                        "G": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 8
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-25"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-26"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-solution-23"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-solution-21"
+                              }
+                            },
+                            "ELSE": {
+                              "block": {
+                                "type": "lm_pixel",
+                                "fields": {},
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-solution-28"
+                                    }
+                                  },
+                                  "COLOR": {
+                                    "block": {
+                                      "type": "lm_rgb",
+                                      "fields": {},
+                                      "inputs": {
+                                        "R": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-30"
+                                          }
+                                        },
+                                        "G": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 4
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-31"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 40
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-solution-32"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-solution-29"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-solution-27"
+                              }
+                            }
+                          },
+                          "id": "04-choices-solution-15"
+                        }
+                      }
+                    },
+                    "id": "04-choices-solution-3"
+                  }
+                }
+              },
+              "id": "04-choices-solution-2"
+            }
+          }
+        },
+        "id": "04-choices-solution-1"
+      }
+    ]
+  }
+}

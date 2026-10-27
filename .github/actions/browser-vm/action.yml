@@ -1,0 +1,18 @@
+name: Build browser VM
+description: Install the pinned Emscripten SDK and build the local teaching preview
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v4
+      with:
+        path: build/deps/emsdk
+        key: emsdk-4.0.7-${{ runner.os }}-${{ runner.arch }}
+    - shell: bash
+      run: |
+        if [[ ! -f build/deps/emsdk/emsdk ]]; then
+          git clone --depth 1 --branch 4.0.7 https://github.com/emscripten-core/emsdk.git build/deps/emsdk
+        fi
+        build/deps/emsdk/emsdk install 4.0.7
+        build/deps/emsdk/emsdk activate 4.0.7
+        echo "EMCC=$GITHUB_WORKSPACE/build/deps/emsdk/upstream/emscripten/emcc" >> "$GITHUB_ENV"
+        EMCC="$PWD/build/deps/emsdk/upstream/emscripten/emcc" npm run build:preview

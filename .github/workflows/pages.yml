@@ -78,6 +78,7 @@ jobs:
           python-version: '3.12'
       - name: Install workspace dependencies
         run: npm ci
+      - uses: ./.github/actions/browser-vm
       - uses: actions/download-artifact@v4
         with:
           name: web-firmware

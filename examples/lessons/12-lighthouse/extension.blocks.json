@@ -1,0 +1,513 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_procedure",
+        "fields": {
+          "NAME": "draw_beam",
+          "PARAM": "front"
+        },
+        "inputs": {
+          "DO": {
+            "block": {
+              "type": "lm_repeat",
+              "fields": {
+                "NAME": "behind"
+              },
+              "inputs": {
+                "COUNT": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 3
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-extension-3"
+                  }
+                },
+                "DO": {
+                  "block": {
+                    "type": "lm_set",
+                    "fields": {
+                      "NAME": "position",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "-"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_convert",
+                                "fields": {
+                                  "FUNCTION": "int"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "front",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-extension-7"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-extension-6"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "behind",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-extension-8"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-extension-5"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "type": "lm_if",
+                        "fields": {},
+                        "inputs": {
+                          "TEST": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "=="
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "behind",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "12-lighthouse-extension-11"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "12-lighthouse-extension-12"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-extension-10"
+                            }
+                          },
+                          "THEN": {
+                            "block": {
+                              "type": "lm_set",
+                              "fields": {
+                                "NAME": "colour",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_rgb",
+                                    "fields": {},
+                                    "inputs": {
+                                      "R": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 40
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-extension-15"
+                                        }
+                                      },
+                                      "G": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 20
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-extension-16"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 0
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-extension-17"
+                                        }
+                                      }
+                                    },
+                                    "id": "12-lighthouse-extension-14"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-extension-13"
+                            }
+                          },
+                          "ELSE": {
+                            "block": {
+                              "type": "lm_set",
+                              "fields": {
+                                "NAME": "colour",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_rgb",
+                                    "fields": {},
+                                    "inputs": {
+                                      "R": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 10
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-extension-20"
+                                        }
+                                      },
+                                      "G": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 2
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-extension-21"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 0
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-extension-22"
+                                        }
+                                      }
+                                    },
+                                    "id": "12-lighthouse-extension-19"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-extension-18"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "lm_pixel",
+                            "fields": {},
+                            "inputs": {
+                              "INDEX": {
+                                "block": {
+                                  "type": "lm_wrap",
+                                  "fields": {},
+                                  "inputs": {
+                                    "INDEX": {
+                                      "block": {
+                                        "type": "lm_get",
+                                        "fields": {
+                                          "NAME": "position",
+                                          "SCOPE": "local"
+                                        },
+                                        "inputs": {},
+                                        "id": "12-lighthouse-extension-25"
+                                      }
+                                    },
+                                    "COUNT": {
+                                      "block": {
+                                        "type": "lm_runtime",
+                                        "fields": {
+                                          "PROPERTY": "count"
+                                        },
+                                        "inputs": {},
+                                        "id": "12-lighthouse-extension-26"
+                                      }
+                                    }
+                                  },
+                                  "id": "12-lighthouse-extension-24"
+                                }
+                              },
+                              "COLOR": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "colour",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "12-lighthouse-extension-27"
+                                }
+                              }
+                            },
+                            "id": "12-lighthouse-extension-23"
+                          }
+                        },
+                        "id": "12-lighthouse-extension-9"
+                      }
+                    },
+                    "id": "12-lighthouse-extension-4"
+                  }
+                }
+              },
+              "id": "12-lighthouse-extension-2"
+            }
+          }
+        },
+        "id": "12-lighthouse-extension-1"
+      },
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-extension-30"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-extension-32"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-extension-31"
+                }
+              },
+              "id": "12-lighthouse-extension-29"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "%"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "+"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "state"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-extension-36"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "delta"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-extension-38"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "speed",
+                                        "SCOPE": "state"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-extension-39"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-extension-37"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-extension-35"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_runtime",
+                          "fields": {
+                            "PROPERTY": "count"
+                          },
+                          "inputs": {},
+                          "id": "12-lighthouse-extension-40"
+                        }
+                      }
+                    },
+                    "id": "12-lighthouse-extension-34"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_call_procedure",
+                  "fields": {
+                    "NAME": "draw_beam"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_get",
+                        "fields": {
+                          "NAME": "position",
+                          "SCOPE": "state"
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-extension-42"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_call_procedure",
+                      "fields": {
+                        "NAME": "draw_beam"
+                      },
+                      "inputs": {
+                        "VALUE": {
+                          "block": {
+                            "type": "lm_math",
+                            "fields": {
+                              "OP": "+"
+                            },
+                            "inputs": {
+                              "A": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "position",
+                                    "SCOPE": "state"
+                                  },
+                                  "inputs": {},
+                                  "id": "12-lighthouse-extension-45"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_math",
+                                  "fields": {
+                                    "OP": "/"
+                                  },
+                                  "inputs": {
+                                    "A": {
+                                      "block": {
+                                        "type": "lm_runtime",
+                                        "fields": {
+                                          "PROPERTY": "count"
+                                        },
+                                        "inputs": {},
+                                        "id": "12-lighthouse-extension-47"
+                                      }
+                                    },
+                                    "B": {
+                                      "block": {
+                                        "type": "lm_number",
+                                        "fields": {
+                                          "VALUE": 2
+                                        },
+                                        "inputs": {},
+                                        "id": "12-lighthouse-extension-48"
+                                      }
+                                    }
+                                  },
+                                  "id": "12-lighthouse-extension-46"
+                                }
+                              }
+                            },
+                            "id": "12-lighthouse-extension-44"
+                          }
+                        }
+                      },
+                      "id": "12-lighthouse-extension-43"
+                    }
+                  },
+                  "id": "12-lighthouse-extension-41"
+                }
+              },
+              "id": "12-lighthouse-extension-33"
+            }
+          }
+        },
+        "id": "12-lighthouse-extension-28"
+      }
+    ]
+  }
+}

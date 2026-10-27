@@ -5,6 +5,9 @@ animation. The guides below describe the current implementation.
 
 ## Guides and reference
 
+- [Learn with lights](teaching.md): twelve beginner lessons, local preview and clear syntax.
+- [Teaching implementation and acceptance](design/teaching-implementation.md)
+- [Beginner observation session](teaching-pilot.md)
 - [Controllers and development workflow](architecture.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Live inputs, timed drivers and wiring](inputs.md)
@@ -44,6 +47,10 @@ Runnable [animation examples](../examples/animations/) and
 
 The [design directory](design/) describes future requirements on top of the
 current contract. Superseded implementations are available through Git history.
+
+- [Beginner teaching, language and bytecode review](design/teaching-language-review-2026-10-27.md):
+  proposed twelve-lesson course, syntax across Python/JavaScript/Blocks, measured
+  usability gaps and compiler/VM priorities for short strips and rings.
 
 - [Core numeric types, bulk kernels and native math](design/core-numeric-kernels-plan.md)
 - [Numeric foundation contract and standalone verification](numeric-types.md)

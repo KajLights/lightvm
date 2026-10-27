@@ -11,6 +11,10 @@ controller. Drafts survive tab changes within the session.
 Editor handles animations and transitions in Python, JavaScript and Blocks. Choose a canonical example
 or **Import file** (`.py`, `.js`, `.blocks.json` or `.lightvm.json`), edit the source, then:
 
+For a device-free start, choose a lesson and use **Try it here → Start preview**.
+The [teaching guide](teaching.md) describes the local strip/ring preview, stepping,
+saved settings and input values, and the small beginner Blocks toolbox.
+
 1. **Preview on device** runs the current compilation on the selected physical
    output. Animation preview replaces playback there. For transitions, first cue
    A and B in Mixer; preview stages `_preview_transition` on the device and runs a
@@ -135,9 +139,9 @@ loopback. Use the server's --port option to choose another port. npm run dev sta
 the Vite development server on loopback for frontend work. The Python server runs
 the Vite build before serving build/web; it has no compilation or controller backend.
 
-The first visit to Editor loads the pinned Pyodide assets, and the
-CodeMirror editor uses a pinned CDN asset. Internet access is initially needed;
-offline operation is not guaranteed. Source is checked 220 ms after an edit. Only
+The first visit to Editor loads pinned Pyodide and CodeMirror assets from the
+same server as the app. Serve the complete local build to work without internet.
+Source is checked 220 ms after an edit. Only
 the current successful compilation can be uploaded or downloaded. Errors link
 back to the affected line. The canonical examples and compiler
 sources are packaged with the static build. Source is parsed and never run by the
@@ -188,7 +192,7 @@ Select **Host an access point** in **Wi-Fi & HTTP** to
 save AP settings; station and AP drafts are retained when switching modes.
 Passwords remain only in the form and are cleared after attempted saves.
 The controller serves the full API, while editor/compiler assets remain separate;
-load Editor while online before relying on compilation without internet.
+serve the complete local editor build when compiling without internet.
 During power-cycle recovery, the panel shows saved network settings while the
 open recovery AP stays active. **Save network for next boot** preserves the
 current connection; restart after the detector has cleared its counter to apply
@@ -197,6 +201,11 @@ See [AP setup and networking](networking.md#initial-setup-and-standalone-ap-mode
 and [power-cycle recovery](boot-sequence.md#recovery-access-point).
 
 ## Build and publish
+
+Install Node 22.13+, Python 3.12+ and Emscripten 4.0.7, then run `npm ci`.
+Set `EMCC` to its `emcc` executable if it is not on PATH. The prebuild compiles
+the real C VM for local previews. Pinned Pyodide and CodeMirror assets ship in
+the output so lessons do not depend on a CDN. See [local setup](teaching.md#building-an-editor-that-works-without-internet).
 
     npm run build
     python3 tools/build_editor.py --output /tmp/lightvm-web

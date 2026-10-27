@@ -56,10 +56,16 @@ export interface ProgramState {
   render_count?: number; settings_values?: Record<string, number | boolean>;
   inputs_revision?: number; inputs?: Record<string, InputState>;
   program_crc32?: number;
+  fault_pc?: number; fault_op?: number; fault_code?: number; fault_message?: string;
 }
 export interface NearbyController { kind: string; capabilities: number; version: string; controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { blockId?: string; message: string; line: number; column: number; end_line?: number; end_column?: number }
-export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[]; advisories?: Diagnostic[] }
+export interface DebugMap {
+  schema: 'lightvm.debug'; crc32: number; filename: string; stepping: boolean;
+  instructions: { line: number; column: number; blockId?: string }[];
+  checkpoints: { pc: number; line: number; column: number; blockId?: string; variables: Record<string, number> }[];
+}
+export interface Compilation { id: number; source: string; bytecode: Uint8Array; manifest: Manifest; diagnostics: Diagnostic[]; advisories?: Diagnostic[]; debug?: DebugMap }
 export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', outputs: [] };
 export const DEFAULT_SOURCE = DEFAULT_EXAMPLE.source;
 

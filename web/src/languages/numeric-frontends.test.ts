@@ -91,7 +91,7 @@ describe('explicit numeric frontend contracts', () => {
       expect(run([source], { target: { version: '1.1.0' } })[0].diagnostics.length).toBeGreaterThan(0);
     }
   });
-  it('lowers only safe explicitly integer loops to the shared range/map path', () => {
+  it('lowers bounded number and integer loops without changing their numeric meaning', () => {
     const body = 'p[i]=rgb(int(i)&int(31),0,0);';
     const range = lowerJavaScript(`export function render(s,r,p){for(let i=int(0);i<p.count;i++){${body}}}`);
     expect(range.python).toContain(' in range(');
@@ -99,10 +99,19 @@ describe('explicit numeric frontend contracts', () => {
     expect(result.manifest.requires).toBe('1.3.0');
     expect(result.advisories.some((a: any) => a.message.includes('uses a native map'))).toBe(true);
     expect(result.advisories.some((a: any) => a.message.includes('Kernel plan estimate'))).toBe(true);
-    for (const loop of ['for(let i=0;i<p.count;i++)', 'for(let i=int(0);i<s.count;i++)', 'for(let i=int(0);i<2147483647;i++)']) {
+    for (const loop of ['for(let i=0;i<p.count;i++)', 'for(let i=int(0);i<p.count;i++)']) {
+      const lowered = lowerJavaScript(`export function render(s,r,p){${loop}{${body}}}`);
+      expect(lowered.python).toContain(' in range(');
+      expect(valid([lowered])[0].advisories.some((a: any) => a.message.includes('uses a native map'))).toBe(true);
+    }
+    const alias = lowerJavaScript(`export function render(s,r,p){const count=p.count;for(let i=0;i<count;i++){p[i]=rgb(i,0,0);}}`);
+    expect(alias.python).toContain(' in range(');
+    expect(valid([alias])[0].advisories.some((a: any) => a.message.includes('uses a native map'))).toBe(true);
+    for (const loop of ['for(let i=int(0);i<s.count;i++)', 'for(let i=int(0);i<2147483647;i++)', 'for(let i=0;i<int(2147483647);i++)']) {
       expect(lowerJavaScript(`export function render(s,r,p){${loop}{${body}}}`).python).not.toContain(' in range(');
     }
     expect(lowerJavaScript(`export function render(s,r,p){for(let i=int(0);i<p.count;i++){i++;${body}}}`).python).not.toContain(' in range(');
+    expect(lowerJavaScript(`export function render(s,r,p){const count=int(2147483647);for(let i=0;i<count;i++){${body}}}`).python).not.toContain(' in range(');
   });
 });
 

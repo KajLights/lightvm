@@ -1,0 +1,159 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "used",
+                "TYPE": "i"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "10-search-extension-3"
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_integer",
+                    "fields": {
+                      "VALUE": 1
+                    },
+                    "inputs": {},
+                    "id": "10-search-extension-4"
+                  }
+                }
+              },
+              "id": "10-search-extension-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "slot",
+                "SCOPE": "local"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_integer",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "10-search-extension-6"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_if",
+                  "fields": {},
+                  "inputs": {
+                    "TEST": {
+                      "block": {
+                        "type": "lm_compare",
+                        "fields": {
+                          "OP": "=="
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "slot",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {},
+                              "id": "10-search-extension-9"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_runtime",
+                              "fields": {
+                                "PROPERTY": "count"
+                              },
+                              "inputs": {},
+                              "id": "10-search-extension-10"
+                            }
+                          }
+                        },
+                        "id": "10-search-extension-8"
+                      }
+                    },
+                    "THEN": {
+                      "block": {
+                        "type": "lm_fill",
+                        "fields": {},
+                        "inputs": {
+                          "COLOR": {
+                            "block": {
+                              "type": "lm_rgb",
+                              "fields": {},
+                              "inputs": {
+                                "R": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 20
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-extension-13"
+                                  }
+                                },
+                                "G": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 20
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-extension-14"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 20
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-extension-15"
+                                  }
+                                }
+                              },
+                              "id": "10-search-extension-12"
+                            }
+                          }
+                        },
+                        "id": "10-search-extension-11"
+                      }
+                    }
+                  },
+                  "id": "10-search-extension-7"
+                }
+              },
+              "id": "10-search-extension-5"
+            }
+          }
+        },
+        "id": "10-search-extension-1"
+      }
+    ]
+  }
+}

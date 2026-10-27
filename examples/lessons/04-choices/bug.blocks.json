@@ -1,0 +1,207 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_if",
+                    "fields": {},
+                    "inputs": {
+                      "TEST": {
+                        "block": {
+                          "type": "lm_compare",
+                          "fields": {
+                            "OP": ">="
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-bug-5"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "/"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "count"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-7"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 2
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-8"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-bug-6"
+                              }
+                            }
+                          },
+                          "id": "04-choices-bug-4"
+                        }
+                      },
+                      "THEN": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-bug-10"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-12"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 8
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-13"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-14"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-bug-11"
+                              }
+                            }
+                          },
+                          "id": "04-choices-bug-9"
+                        }
+                      },
+                      "ELSE": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-bug-16"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-18"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 4
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-19"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-bug-20"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-bug-17"
+                              }
+                            }
+                          },
+                          "id": "04-choices-bug-15"
+                        }
+                      }
+                    },
+                    "id": "04-choices-bug-3"
+                  }
+                }
+              },
+              "id": "04-choices-bug-2"
+            }
+          }
+        },
+        "id": "04-choices-bug-1"
+      }
+    ]
+  }
+}

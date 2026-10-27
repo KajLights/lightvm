@@ -1,0 +1,339 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_setting",
+              "fields": {
+                "NAME": "warning"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0.8
+                    },
+                    "inputs": {},
+                    "id": "08-controls-extension-3"
+                  }
+                },
+                "MIN": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "08-controls-extension-4"
+                  }
+                },
+                "MAX": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 1
+                    },
+                    "inputs": {},
+                    "id": "08-controls-extension-5"
+                  }
+                }
+              },
+              "id": "08-controls-extension-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_if",
+              "fields": {},
+              "inputs": {
+                "TEST": {
+                  "block": {
+                    "type": "lm_compare",
+                    "fields": {
+                      "OP": ">="
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_input",
+                          "fields": {
+                            "NAME": "progress",
+                            "DEFAULT": 0.5
+                          },
+                          "inputs": {},
+                          "id": "08-controls-extension-8"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "warning",
+                            "SCOPE": "state"
+                          },
+                          "inputs": {},
+                          "id": "08-controls-extension-9"
+                        }
+                      }
+                    },
+                    "id": "08-controls-extension-7"
+                  }
+                },
+                "THEN": {
+                  "block": {
+                    "type": "lm_fill",
+                    "fields": {},
+                    "inputs": {
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_rgb",
+                          "fields": {},
+                          "inputs": {
+                            "R": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 40
+                                },
+                                "inputs": {},
+                                "id": "08-controls-extension-12"
+                              }
+                            },
+                            "G": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "08-controls-extension-13"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "08-controls-extension-14"
+                              }
+                            }
+                          },
+                          "id": "08-controls-extension-11"
+                        }
+                      }
+                    },
+                    "id": "08-controls-extension-10"
+                  }
+                },
+                "ELSE": {
+                  "block": {
+                    "type": "lm_each",
+                    "fields": {
+                      "NAME": "position"
+                    },
+                    "inputs": {
+                      "DO": {
+                        "block": {
+                          "type": "lm_if",
+                          "fields": {},
+                          "inputs": {
+                            "TEST": {
+                              "block": {
+                                "type": "lm_compare",
+                                "fields": {
+                                  "OP": "<"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-extension-18"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "*"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_input",
+                                            "fields": {
+                                              "NAME": "progress",
+                                              "DEFAULT": 0.5
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-20"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_runtime",
+                                            "fields": {
+                                              "PROPERTY": "count"
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-21"
+                                          }
+                                        }
+                                      },
+                                      "id": "08-controls-extension-19"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-extension-17"
+                              }
+                            },
+                            "THEN": {
+                              "block": {
+                                "type": "lm_pixel",
+                                "fields": {},
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-extension-23"
+                                    }
+                                  },
+                                  "COLOR": {
+                                    "block": {
+                                      "type": "lm_rgb",
+                                      "fields": {},
+                                      "inputs": {
+                                        "R": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 40
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-25"
+                                          }
+                                        },
+                                        "G": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 8
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-26"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-27"
+                                          }
+                                        }
+                                      },
+                                      "id": "08-controls-extension-24"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-extension-22"
+                              }
+                            },
+                            "ELSE": {
+                              "block": {
+                                "type": "lm_pixel",
+                                "fields": {},
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-extension-29"
+                                    }
+                                  },
+                                  "COLOR": {
+                                    "block": {
+                                      "type": "lm_rgb",
+                                      "fields": {},
+                                      "inputs": {
+                                        "R": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-31"
+                                          }
+                                        },
+                                        "G": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 4
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-32"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 40
+                                            },
+                                            "inputs": {},
+                                            "id": "08-controls-extension-33"
+                                          }
+                                        }
+                                      },
+                                      "id": "08-controls-extension-30"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-extension-28"
+                              }
+                            }
+                          },
+                          "id": "08-controls-extension-16"
+                        }
+                      }
+                    },
+                    "id": "08-controls-extension-15"
+                  }
+                }
+              },
+              "id": "08-controls-extension-6"
+            }
+          }
+        },
+        "id": "08-controls-extension-1"
+      }
+    ]
+  }
+}

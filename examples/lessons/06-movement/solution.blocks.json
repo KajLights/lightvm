@@ -1,0 +1,217 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "06-movement-solution-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "06-movement-solution-5"
+                      }
+                    }
+                  },
+                  "id": "06-movement-solution-4"
+                }
+              },
+              "id": "06-movement-solution-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "%"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "+"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "state"
+                                },
+                                "inputs": {},
+                                "id": "06-movement-solution-9"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "delta"
+                                      },
+                                      "inputs": {},
+                                      "id": "06-movement-solution-11"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "speed",
+                                        "SCOPE": "state"
+                                      },
+                                      "inputs": {},
+                                      "id": "06-movement-solution-12"
+                                    }
+                                  }
+                                },
+                                "id": "06-movement-solution-10"
+                              }
+                            }
+                          },
+                          "id": "06-movement-solution-8"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_runtime",
+                          "fields": {
+                            "PROPERTY": "count"
+                          },
+                          "inputs": {},
+                          "id": "06-movement-solution-13"
+                        }
+                      }
+                    },
+                    "id": "06-movement-solution-7"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_convert",
+                        "fields": {
+                          "FUNCTION": "int"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "position",
+                                "SCOPE": "state"
+                              },
+                              "inputs": {},
+                              "id": "06-movement-solution-16"
+                            }
+                          }
+                        },
+                        "id": "06-movement-solution-15"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 40
+                              },
+                              "inputs": {},
+                              "id": "06-movement-solution-18"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 8
+                              },
+                              "inputs": {},
+                              "id": "06-movement-solution-19"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {},
+                              "id": "06-movement-solution-20"
+                            }
+                          }
+                        },
+                        "id": "06-movement-solution-17"
+                      }
+                    }
+                  },
+                  "id": "06-movement-solution-14"
+                }
+              },
+              "id": "06-movement-solution-6"
+            }
+          }
+        },
+        "id": "06-movement-solution-1"
+      }
+    ]
+  }
+}

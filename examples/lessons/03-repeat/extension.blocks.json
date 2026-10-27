@@ -1,0 +1,261 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_if",
+                    "fields": {},
+                    "inputs": {
+                      "TEST": {
+                        "block": {
+                          "type": "lm_compare",
+                          "fields": {
+                            "OP": "=="
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "%"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-6"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 2
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-7"
+                                    }
+                                  }
+                                },
+                                "id": "03-repeat-extension-5"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "03-repeat-extension-8"
+                              }
+                            }
+                          },
+                          "id": "03-repeat-extension-4"
+                        }
+                      },
+                      "THEN": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "03-repeat-extension-10"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-12"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 4
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-13"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-14"
+                                    }
+                                  }
+                                },
+                                "id": "03-repeat-extension-11"
+                              }
+                            }
+                          },
+                          "id": "03-repeat-extension-9"
+                        }
+                      },
+                      "ELSE": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "03-repeat-extension-16"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_convert",
+                                      "fields": {
+                                        "FUNCTION": "int"
+                                      },
+                                      "inputs": {
+                                        "VALUE": {
+                                          "block": {
+                                            "type": "lm_math",
+                                            "fields": {
+                                              "OP": "*"
+                                            },
+                                            "inputs": {
+                                              "A": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 60
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "03-repeat-extension-20"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_math",
+                                                  "fields": {
+                                                    "OP": "/"
+                                                  },
+                                                  "inputs": {
+                                                    "A": {
+                                                      "block": {
+                                                        "type": "lm_get",
+                                                        "fields": {
+                                                          "NAME": "position",
+                                                          "SCOPE": "local"
+                                                        },
+                                                        "inputs": {},
+                                                        "id": "03-repeat-extension-22"
+                                                      }
+                                                    },
+                                                    "B": {
+                                                      "block": {
+                                                        "type": "lm_runtime",
+                                                        "fields": {
+                                                          "PROPERTY": "count"
+                                                        },
+                                                        "inputs": {},
+                                                        "id": "03-repeat-extension-23"
+                                                      }
+                                                    }
+                                                  },
+                                                  "id": "03-repeat-extension-21"
+                                                }
+                                              }
+                                            },
+                                            "id": "03-repeat-extension-19"
+                                          }
+                                        }
+                                      },
+                                      "id": "03-repeat-extension-18"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-24"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "03-repeat-extension-25"
+                                    }
+                                  }
+                                },
+                                "id": "03-repeat-extension-17"
+                              }
+                            }
+                          },
+                          "id": "03-repeat-extension-15"
+                        }
+                      }
+                    },
+                    "id": "03-repeat-extension-3"
+                  }
+                }
+              },
+              "id": "03-repeat-extension-2"
+            }
+          }
+        },
+        "id": "03-repeat-extension-1"
+      }
+    ]
+  }
+}

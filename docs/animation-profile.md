@@ -40,7 +40,7 @@ There are no implicit `time`, `delta`, `count`, `index` or `pixels` globals.
 in init, before using them. Their types and array bindings stay fixed. Render may
 change ordinary context fields and array elements. Mutable module-level state and `global`
 are unsupported; readonly PixelArray artwork, Sprite definitions and static Input
-declarations may be declared at module scope.
+declarations and immutable scalar/colour constants may be declared at module scope.
 
 Explicit [Q16.16 values and FixedArray resources](numeric-types.md) are available
 with application feature floor 1.2.0. Convert with `fixed(...)`, `int(...)` or
@@ -148,10 +148,13 @@ The [motion and easing libraries](motion.md) compile bundled scalar functions
 into ordinary bytecode. They support explicit imports, named arguments and their
 documented defaults. Plain `assert condition` faults the invocation when false.
 
-User helpers are positional, nonrecursive, statically inlined and must return a value
-on every path. Scalar arguments are copied; ctx/runtime/pixels arguments retain
-access to the caller objects. The subset supports scalar arithmetic, comparisons,
-conditionals, `range(bound)` and `while` loops, break/continue, int/float and two-argument
+User helpers accept positional arguments, named arguments and constant defaults.
+They are nonrecursive and statically inlined. A value function returns the same
+type on every reachable path; a drawing procedure may finish without a value
+or use a bare `return`. Scalar arguments are copied; ctx/runtime/pixels arguments retain
+access to the caller objects. The subset supports scalar arithmetic, chained comparisons,
+conditionals, `range(stop)`, `range(start, stop[, step])`, iteration over managed
+number arrays, `while`, break/continue, int/float and two-argument
 min/max. Numbers use signed wrapping i32, binary32 floats, explicit Q16.16, bool
 and packed RGB8. `fixed` and `FixedArray` provide the explicit fractional type;
 mixed arithmetic requires a conversion.

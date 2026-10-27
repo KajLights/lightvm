@@ -1,0 +1,130 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "06-movement-starter-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "06-movement-starter-5"
+                      }
+                    }
+                  },
+                  "id": "06-movement-starter-4"
+                }
+              },
+              "id": "06-movement-starter-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_pixel",
+              "fields": {},
+              "inputs": {
+                "INDEX": {
+                  "block": {
+                    "type": "lm_convert",
+                    "fields": {
+                      "FUNCTION": "int"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "state"
+                          },
+                          "inputs": {},
+                          "id": "06-movement-starter-8"
+                        }
+                      }
+                    },
+                    "id": "06-movement-starter-7"
+                  }
+                },
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 40
+                          },
+                          "inputs": {},
+                          "id": "06-movement-starter-10"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 8
+                          },
+                          "inputs": {},
+                          "id": "06-movement-starter-11"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "06-movement-starter-12"
+                        }
+                      }
+                    },
+                    "id": "06-movement-starter-9"
+                  }
+                }
+              },
+              "id": "06-movement-starter-6"
+            }
+          }
+        },
+        "id": "06-movement-starter-1"
+      }
+    ]
+  }
+}

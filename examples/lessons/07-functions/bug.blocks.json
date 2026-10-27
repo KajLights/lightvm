@@ -1,0 +1,315 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_function",
+        "fields": {
+          "NAME": "band_colour",
+          "PARAM": "position, split"
+        },
+        "inputs": {
+          "DO": {
+            "block": {
+              "type": "lm_if",
+              "fields": {},
+              "inputs": {
+                "TEST": {
+                  "block": {
+                    "type": "lm_compare",
+                    "fields": {
+                      "OP": "<"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "07-functions-bug-4"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "split",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "07-functions-bug-5"
+                        }
+                      }
+                    },
+                    "id": "07-functions-bug-3"
+                  }
+                },
+                "THEN": {
+                  "block": {
+                    "type": "lm_set",
+                    "fields": {
+                      "NAME": "colour",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_rgb",
+                          "fields": {},
+                          "inputs": {
+                            "R": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 40
+                                },
+                                "inputs": {},
+                                "id": "07-functions-bug-8"
+                              }
+                            },
+                            "G": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 8
+                                },
+                                "inputs": {},
+                                "id": "07-functions-bug-9"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "07-functions-bug-10"
+                              }
+                            }
+                          },
+                          "id": "07-functions-bug-7"
+                        }
+                      }
+                    },
+                    "id": "07-functions-bug-6"
+                  }
+                }
+              },
+              "id": "07-functions-bug-2"
+            }
+          },
+          "VALUE": {
+            "block": {
+              "type": "lm_get",
+              "fields": {
+                "NAME": "colour",
+                "SCOPE": "local"
+              },
+              "inputs": {},
+              "id": "07-functions-bug-11"
+            }
+          }
+        },
+        "id": "07-functions-bug-1"
+      },
+      {
+        "type": "lm_procedure",
+        "fields": {
+          "NAME": "draw_marker",
+          "PARAM": "position, colour"
+        },
+        "inputs": {
+          "DO": {
+            "block": {
+              "type": "lm_pixel",
+              "fields": {},
+              "inputs": {
+                "INDEX": {
+                  "block": {
+                    "type": "lm_get",
+                    "fields": {
+                      "NAME": "position",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {},
+                    "id": "07-functions-bug-14"
+                  }
+                },
+                "COLOR": {
+                  "block": {
+                    "type": "lm_get",
+                    "fields": {
+                      "NAME": "colour",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {},
+                    "id": "07-functions-bug-15"
+                  }
+                }
+              },
+              "id": "07-functions-bug-13"
+            }
+          }
+        },
+        "id": "07-functions-bug-12"
+      },
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_pixel",
+                    "fields": {},
+                    "inputs": {
+                      "INDEX": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "07-functions-bug-19"
+                        }
+                      },
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_call",
+                          "fields": {
+                            "NAME": "band_colour"
+                          },
+                          "inputs": {
+                            "VALUE": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "07-functions-bug-21"
+                              }
+                            },
+                            "SECOND": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "/"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "count"
+                                      },
+                                      "inputs": {},
+                                      "id": "07-functions-bug-23"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 2
+                                      },
+                                      "inputs": {},
+                                      "id": "07-functions-bug-24"
+                                    }
+                                  }
+                                },
+                                "id": "07-functions-bug-22"
+                              }
+                            }
+                          },
+                          "id": "07-functions-bug-20"
+                        }
+                      }
+                    },
+                    "id": "07-functions-bug-18"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_call_procedure",
+                  "fields": {
+                    "NAME": "draw_marker"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0
+                        },
+                        "inputs": {},
+                        "id": "07-functions-bug-26"
+                      }
+                    },
+                    "SECOND": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 30
+                              },
+                              "inputs": {},
+                              "id": "07-functions-bug-28"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 30
+                              },
+                              "inputs": {},
+                              "id": "07-functions-bug-29"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 30
+                              },
+                              "inputs": {},
+                              "id": "07-functions-bug-30"
+                            }
+                          }
+                        },
+                        "id": "07-functions-bug-27"
+                      }
+                    }
+                  },
+                  "id": "07-functions-bug-25"
+                }
+              },
+              "id": "07-functions-bug-17"
+            }
+          }
+        },
+        "id": "07-functions-bug-16"
+      }
+    ]
+  }
+}

@@ -64,6 +64,7 @@ def draw(ctx,runtime,pixels):
                                       'source_sha256':hashlib.sha256(source.encode()).hexdigest(),'windows':[]}
             client.configure_composition([{'id':'fg','program':name.replace('/','_')}],output='benchmark')
             client.require_ok(client.command(STOP,output='benchmark'))
+            client.reset_program(output='benchmark',layer='fg')
             frames=[]
             for delta in (0,17,333,1000):
                 client.require_ok(client.command(FRAME,struct.pack('<I',delta),output='benchmark'))

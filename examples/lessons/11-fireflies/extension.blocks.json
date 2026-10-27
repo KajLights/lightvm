@@ -1,0 +1,339 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_image",
+              "fields": {
+                "NAME": "trail"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "11-fireflies-extension-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_random_seed",
+                  "fields": {},
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_integer",
+                        "fields": {
+                          "VALUE": 7
+                        },
+                        "inputs": {},
+                        "id": "11-fireflies-extension-5"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_set",
+                      "fields": {
+                        "NAME": "next_light",
+                        "SCOPE": "state"
+                      },
+                      "inputs": {
+                        "VALUE": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 0
+                            },
+                            "inputs": {},
+                            "id": "11-fireflies-extension-7"
+                          }
+                        }
+                      },
+                      "id": "11-fireflies-extension-6"
+                    }
+                  },
+                  "id": "11-fireflies-extension-4"
+                }
+              },
+              "id": "11-fireflies-extension-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_image_fade",
+              "fields": {
+                "NAME": "trail"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_native_math",
+                    "fields": {
+                      "FUNCTION": "exp"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "*"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": -2
+                                },
+                                "inputs": {},
+                                "id": "11-fireflies-extension-11"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_runtime",
+                                "fields": {
+                                  "PROPERTY": "delta"
+                                },
+                                "inputs": {},
+                                "id": "11-fireflies-extension-12"
+                              }
+                            }
+                          },
+                          "id": "11-fireflies-extension-10"
+                        }
+                      }
+                    },
+                    "id": "11-fireflies-extension-9"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_if",
+                  "fields": {},
+                  "inputs": {
+                    "TEST": {
+                      "block": {
+                        "type": "lm_compare",
+                        "fields": {
+                          "OP": ">="
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_runtime",
+                              "fields": {
+                                "PROPERTY": "time"
+                              },
+                              "inputs": {},
+                              "id": "11-fireflies-extension-15"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "next_light",
+                                "SCOPE": "state"
+                              },
+                              "inputs": {},
+                              "id": "11-fireflies-extension-16"
+                            }
+                          }
+                        },
+                        "id": "11-fireflies-extension-14"
+                      }
+                    },
+                    "THEN": {
+                      "block": {
+                        "type": "lm_image_point",
+                        "fields": {
+                          "NAME": "trail",
+                          "WRAP": "True"
+                        },
+                        "inputs": {
+                          "INDEX": {
+                            "block": {
+                              "type": "lm_convert",
+                              "fields": {
+                                "FUNCTION": "int"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_math",
+                                    "fields": {
+                                      "OP": "*"
+                                    },
+                                    "inputs": {
+                                      "A": {
+                                        "block": {
+                                          "type": "lm_runtime",
+                                          "fields": {
+                                            "PROPERTY": "time"
+                                          },
+                                          "inputs": {},
+                                          "id": "11-fireflies-extension-20"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 12
+                                          },
+                                          "inputs": {},
+                                          "id": "11-fireflies-extension-21"
+                                        }
+                                      }
+                                    },
+                                    "id": "11-fireflies-extension-19"
+                                  }
+                                }
+                              },
+                              "id": "11-fireflies-extension-18"
+                            }
+                          },
+                          "COLOR": {
+                            "block": {
+                              "type": "lm_rgb",
+                              "fields": {},
+                              "inputs": {
+                                "R": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 40
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-extension-23"
+                                  }
+                                },
+                                "G": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 8
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-extension-24"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-extension-25"
+                                  }
+                                }
+                              },
+                              "id": "11-fireflies-extension-22"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "lm_set",
+                            "fields": {
+                              "NAME": "next_light",
+                              "SCOPE": "state"
+                            },
+                            "inputs": {
+                              "VALUE": {
+                                "block": {
+                                  "type": "lm_math",
+                                  "fields": {
+                                    "OP": "+"
+                                  },
+                                  "inputs": {
+                                    "A": {
+                                      "block": {
+                                        "type": "lm_runtime",
+                                        "fields": {
+                                          "PROPERTY": "time"
+                                        },
+                                        "inputs": {},
+                                        "id": "11-fireflies-extension-28"
+                                      }
+                                    },
+                                    "B": {
+                                      "block": {
+                                        "type": "lm_number",
+                                        "fields": {
+                                          "VALUE": 0.2
+                                        },
+                                        "inputs": {},
+                                        "id": "11-fireflies-extension-29"
+                                      }
+                                    }
+                                  },
+                                  "id": "11-fireflies-extension-27"
+                                }
+                              }
+                            },
+                            "id": "11-fireflies-extension-26"
+                          }
+                        },
+                        "id": "11-fireflies-extension-17"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_image_draw",
+                      "fields": {
+                        "NAME": "trail"
+                      },
+                      "inputs": {
+                        "POSITION": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 0
+                            },
+                            "inputs": {},
+                            "id": "11-fireflies-extension-31"
+                          }
+                        },
+                        "SCALE": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 1
+                            },
+                            "inputs": {},
+                            "id": "11-fireflies-extension-32"
+                          }
+                        }
+                      },
+                      "id": "11-fireflies-extension-30"
+                    }
+                  },
+                  "id": "11-fireflies-extension-13"
+                }
+              },
+              "id": "11-fireflies-extension-8"
+            }
+          }
+        },
+        "id": "11-fireflies-extension-1"
+      }
+    ]
+  }
+}

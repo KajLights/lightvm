@@ -1,0 +1,6735 @@
+{
+  "date": "2026-10-27",
+  "scope": "Software implementation; hardware campaign and beginner observation not performed",
+  "host": "macOS-27.0.1-arm64-arm-64bit",
+  "sources": 144,
+  "source_sha256": {
+    "examples/lessons/01-first-lights/bug.blocks.json": "5061f117735d74589d19d53a83c5742ec40655e9ffcbfbd83ed782ccd6ee882a",
+    "examples/lessons/01-first-lights/bug.js": "fa0aeca2297aed3d544cd305248d2725ea9044c27a0b28ca377f71cd3518e47b",
+    "examples/lessons/01-first-lights/bug.py": "a450b86f48f9828195bf3209843eb253675ce038ac12c09a97ac4e8b9b709eeb",
+    "examples/lessons/01-first-lights/extension.blocks.json": "2dbe94d09ae6c8195e6a43d8ac06d3798228e78c9866eb7c1a396cd3f968cd8a",
+    "examples/lessons/01-first-lights/extension.js": "8af0be4daaf6b139add8d90349c9d76d785d10ae1d822590a281104289c4029f",
+    "examples/lessons/01-first-lights/extension.py": "b7f281d231e6f7ec9ed2a0081b9d1e0499a8fd4886f34a68f074200c79e88bc7",
+    "examples/lessons/01-first-lights/solution.blocks.json": "1b538d4b3a26fa9f9dd1cb8083fb7fb361c8dff7297231053595aad506e77b4a",
+    "examples/lessons/01-first-lights/solution.js": "c00e47d9813804be326dc1b0d68b0d9a45b6dcb6c59c8000a25234d8cca3be8c",
+    "examples/lessons/01-first-lights/solution.py": "5d5a67234bb12bab42206e228a0c703747c28719245a016d10e2d500a6e81361",
+    "examples/lessons/01-first-lights/starter.blocks.json": "eb4ab4cbc356ecc8ad81e7e48a5270e2a7c85a59cb68342fbd20a3ca565d3fb0",
+    "examples/lessons/01-first-lights/starter.js": "0081a84e54eab01b7dc55a869b3cbb7170c3cec3e4a83f6d2d6617fe43e94c38",
+    "examples/lessons/01-first-lights/starter.py": "bb38a9aaa7df2c7a4c93863dd2e680f8bfeaa1e0391b9f8d89404b7d5269933f",
+    "examples/lessons/02-names/bug.blocks.json": "81bf10fe5b8cc1b523aef848787c6af9229cb3d5ba3690b024c4f4fc2bb97701",
+    "examples/lessons/02-names/bug.js": "dfefadb58b19694fb8b7050c3e92e6ef01cd165e98746f071461cee53a964696",
+    "examples/lessons/02-names/bug.py": "76a763d5bf275edfbcdfb87f7f56848e32c5917fc8c18e3637d885f0c5b7a229",
+    "examples/lessons/02-names/extension.blocks.json": "52b890799ed797111a50b7a25a9a26a126ff4516837d504b9be19e359ed2c891",
+    "examples/lessons/02-names/extension.js": "b363749ac5fddad0aad64c014b5ec7ce43df9408bc0b4fe7d6f6f1ce00519acf",
+    "examples/lessons/02-names/extension.py": "05082fdb4a6d0e2e5ade019d4443c2e0bcc4718ca14995b8b31096556850a40f",
+    "examples/lessons/02-names/solution.blocks.json": "621e8c103303d3084c293ea9cd404ddccc9cf846f653191d76d38783dc867577",
+    "examples/lessons/02-names/solution.js": "3dae940d5537585cfe8e7c1ea3415f395a7dc4bf18d3662ab384be7a4b535f86",
+    "examples/lessons/02-names/solution.py": "50dca37eb39a4e08fc83784ca8a71f39b805a2773d22b467322bcd7e66632e03",
+    "examples/lessons/02-names/starter.blocks.json": "9493b09fb0351fe1f7e9121114d9921648196258612c3bc054d4d5e934112626",
+    "examples/lessons/02-names/starter.js": "94264e2bee974f0c4b1ce3110e539b2707f604a2fcdd3b40905fbb4c99c4ea65",
+    "examples/lessons/02-names/starter.py": "c1c714fde830f85a3718d7b176b50b4077ab6f4b39ab5f67912db08039c7c27b",
+    "examples/lessons/03-repeat/bug.blocks.json": "0d97f92b271da724dccd7cf8c75bde7a339fd7b55fe4b4d6a396d214fd7b0f35",
+    "examples/lessons/03-repeat/bug.js": "f169b7cdb1ecce7b6027dec98896a9dfdf9d2a3f945c080d788cc6a1c0ec037c",
+    "examples/lessons/03-repeat/bug.py": "226e5c328a311b6bdd6ce0e870addbc66dff8525710905a63dc5133194243fc2",
+    "examples/lessons/03-repeat/extension.blocks.json": "667668e49eab258d7280be3f3c64199b740988a5eddd553c453cc7b2b7c33f10",
+    "examples/lessons/03-repeat/extension.js": "1e9da26ee261a99abb24ad1c2e52e432a0267cfe8f36263d3c7d084e3947581c",
+    "examples/lessons/03-repeat/extension.py": "267e272c5ed127975eb9c94a77d6d09ba5592141c31013a701b027524fac2725",
+    "examples/lessons/03-repeat/solution.blocks.json": "cf9d89d59d79d7887c13e87b911d60f548efb082419d5378792b71c348d604c3",
+    "examples/lessons/03-repeat/solution.js": "47925a113abe30aeedca15263c99acd6eabccb53b3df9990d41a0e12f8bc5f50",
+    "examples/lessons/03-repeat/solution.py": "d548dcd630e1f5ec9d052bab385bffd233fabe3ff2eb2bd37668488535cd8b6c",
+    "examples/lessons/03-repeat/starter.blocks.json": "2fe66c5d84694acba8a645ef90f496699716e159762ad9a05db706640c122de6",
+    "examples/lessons/03-repeat/starter.js": "a66d7ee59f82a5182c00b9a61a98accf88b8c505bd4c20316c4aa33b5df91650",
+    "examples/lessons/03-repeat/starter.py": "82ce75c42a76191ea712122e4030d055df63cde8afe7384f014d00615cb846ae",
+    "examples/lessons/04-choices/bug.blocks.json": "3f4ec62f1db9b2d5f6b96828fd84fbe2b93a7c3d598c568bba1fa039fac8ff48",
+    "examples/lessons/04-choices/bug.js": "a0cef6e9e363187bb0dd35ad46060746a27fc2784275a4f2e9b8edd03c04e88e",
+    "examples/lessons/04-choices/bug.py": "74a840cc2c106d73d612d26665a9ca87c4a7dfe6d8cc8f8d9b388c2c130a4da1",
+    "examples/lessons/04-choices/extension.blocks.json": "73851551a9ece1d7a855a9501f938dd26db68bea40438cd9846570a1b8a040f0",
+    "examples/lessons/04-choices/extension.js": "2c33188e066cf3756799f5c3d361d2048ead615c845250d39725a1010c76d3c5",
+    "examples/lessons/04-choices/extension.py": "b9c609c848ff4f1888853d19b2874a90fdc7a4679d01bbf4270d8e6eaf2609dc",
+    "examples/lessons/04-choices/solution.blocks.json": "5dd0e2d474f5aca0070b9b4a51f1a0ae686a850965ddf1fb5fe3f1251fd1d9e2",
+    "examples/lessons/04-choices/solution.js": "c33f040d36e2f11bf4e281367f2ea9c78aa23061d3c27d9e165f9fa06aafdae4",
+    "examples/lessons/04-choices/solution.py": "6b19066ef69c59cbc6cfbf287381a72ed20316bac1025a30c32f5743ed7cd379",
+    "examples/lessons/04-choices/starter.blocks.json": "d9a781375fad8fc088ab792e93724a07ffb70ab8a6a8d9d686888aaaab692190",
+    "examples/lessons/04-choices/starter.js": "59412dc96ccd2a4f5f7c00b42653ea0e227b8fa2bdf66515cea29679c4dc74a8",
+    "examples/lessons/04-choices/starter.py": "6a70668e546468adbffccdca02bdd384e96107a5857276c63d2e1c6d11929cda",
+    "examples/lessons/05-time/bug.blocks.json": "da49dddb62ff2be1cf25cf8567cab49dbe5e6f8b8217a8ea10523405f9cfe603",
+    "examples/lessons/05-time/bug.js": "48f8ed2ff4e022d35712de01fd646bc34af6fe4de57122ff400d15b67d165335",
+    "examples/lessons/05-time/bug.py": "fd36aacc284e0afb959e32521b4499f4d60600886563f10c14aee1d23fd839f6",
+    "examples/lessons/05-time/extension.blocks.json": "c10a4949afae002ee10d2994ca2f3663c600f91df29405e765c708d26e0fa500",
+    "examples/lessons/05-time/extension.js": "0f7d9df08dd873cdc7969288be6e1a6dca5fe60eb04abec3b6a97be8ad672c78",
+    "examples/lessons/05-time/extension.py": "4fdde93dea9386f520653e6701e8ab96cfb1f24d1dddfe7fa4ddaf5ac62068d2",
+    "examples/lessons/05-time/solution.blocks.json": "2b1348fd38d0f95af13ea7fa477ab0a637bca4095e53689146769cafa06fe4f1",
+    "examples/lessons/05-time/solution.js": "2dd85bc07cce000610f40b5ccb066c9646f595c3978e2b7ab4842c8f9a3a611e",
+    "examples/lessons/05-time/solution.py": "39dd4502288d7e0c4a4d8228e0aba515d3eaf7deffff90e7249beb06bd250053",
+    "examples/lessons/05-time/starter.blocks.json": "4fa9157fb99b6ad99a922b9ed695a208e6e6ddf7fc29458b341c0479e1f31d7b",
+    "examples/lessons/05-time/starter.js": "22666b11b320625985ed538752d226c71d306b262cde5b95438496b97397a67a",
+    "examples/lessons/05-time/starter.py": "a934de0310f57933b495f3ad38695ee757778a3e7528bfdb8cd8410d020c6683",
+    "examples/lessons/06-movement/bug.blocks.json": "0c4beeaad178f3693cda8fc21ab0179da65cac6855794711b235fa89dc433472",
+    "examples/lessons/06-movement/bug.js": "5baef7ae6265d550448a1b508bf83fb0b7c228615ce70a0f1e5d7a540e3acd12",
+    "examples/lessons/06-movement/bug.py": "7737608df430f27767f14b74f09fcfcd8bc624be0ba4a353e8918cbb9cb616b7",
+    "examples/lessons/06-movement/extension.blocks.json": "42765e12f3dbb30934ef1936c88b6aa1750203d0d624afeb52641d945c99b85d",
+    "examples/lessons/06-movement/extension.js": "d655e6da52de87f66d6dbb0474405c86ebc63fca37f743bad8d715a4b5307bbf",
+    "examples/lessons/06-movement/extension.py": "d50e32003c3960ec80010003e10d08b8b6269ef366215808b040dd2cf1fcd0c5",
+    "examples/lessons/06-movement/solution.blocks.json": "126b824d55b3de00b6f428455c207405a66af701804a844cd18b577bdeaac4a8",
+    "examples/lessons/06-movement/solution.js": "00e7217ccf997625959615d8d6c9a884d2d8d04108b4545fc8d8e0bc410f0c89",
+    "examples/lessons/06-movement/solution.py": "6662525a7a26b31d5b56fe4a1b1de45fd31dde9b25ace883e4903482d985c33f",
+    "examples/lessons/06-movement/starter.blocks.json": "9af551c8e9a3c8ea43452658886fb3a16855cbca0c8a2fd3e264e7fba0f0e3e2",
+    "examples/lessons/06-movement/starter.js": "30da700c1484bcc49145bf3733a645488c8b4bb9f74d6da5aadd0d97601461bf",
+    "examples/lessons/06-movement/starter.py": "b93c90a2a3b0c461fc6f5adb6b84eb774fbeb4926d89cff41258f71d6a040d5e",
+    "examples/lessons/07-functions/bug.blocks.json": "775f647c3373b99bdf8516e09cd1a55089a6840c2d670f7e510e02b33b1e3619",
+    "examples/lessons/07-functions/bug.js": "1da62032b953f9f0bde47103ede3620cd62466f6c2e114a749069046fd360bbd",
+    "examples/lessons/07-functions/bug.py": "a06455b001af2cac5af9c80a2beaae800e0795373df2dc43b93e540514fe6289",
+    "examples/lessons/07-functions/extension.blocks.json": "c40296f66e774011983b4acbfe9e6915a9db2c9149cb2169b2722d70f8f93640",
+    "examples/lessons/07-functions/extension.js": "3725f5cef8e1a6be732f86a7c28ed3b9302973b83555cb97072154912a0d4913",
+    "examples/lessons/07-functions/extension.py": "268f105c8d7a6412618586f04fcd4bd33b1b94118c291e18838d30adf2988647",
+    "examples/lessons/07-functions/solution.blocks.json": "950e1a604ebf3ede03bcf523b92abcf09b7887c33d2e8324f9757a41499c54c8",
+    "examples/lessons/07-functions/solution.js": "a2058cb48ac5dc42673f8e014f2ad6818e643a6607e6d845e56fe4b89212376f",
+    "examples/lessons/07-functions/solution.py": "934f3f90dbf928d20eba010eff768b90e85d6f8d73c20bead7c80b93aefff68a",
+    "examples/lessons/07-functions/starter.blocks.json": "1c59e7a18fedc40c1149ef1a849e5f5dd1f1da8b0c9d947c158162f16b74a80b",
+    "examples/lessons/07-functions/starter.js": "298384fc271e091000e33b25a5d1c6a9e210a6a455c727b5c478f9ad3b592dca",
+    "examples/lessons/07-functions/starter.py": "cb970fd08d7561bc12d61abe2f610d7a3fc13e288a3a3f14fe26e6d3412cd13a",
+    "examples/lessons/08-controls/bug.blocks.json": "b7bc5bd9102b73d131a215f128afca3bdb15f0e7557ba574a468782084c8a1aa",
+    "examples/lessons/08-controls/bug.js": "3cce4198015b6a4ef352082141a953151ac644ed59bc4a32e54164c7653ad983",
+    "examples/lessons/08-controls/bug.py": "c61935af1c680b0e3c50f668e6e6d5c0282f23e5233d0ccb9fdfc22237b6c807",
+    "examples/lessons/08-controls/extension.blocks.json": "1477ed6eb08c405aff4f698a09e3995eb5a67446288aa14d2b594cdb8a6cb90e",
+    "examples/lessons/08-controls/extension.js": "563d4013e12f1db144a000a6e40f1928f2b46929998e6953bc871629f8038efb",
+    "examples/lessons/08-controls/extension.py": "a3b12e9e7dcd6e3d83c65268f603f2fe7bd95eae65c1cfbc6d91313868ea25ff",
+    "examples/lessons/08-controls/solution.blocks.json": "86bac2af03918e1345a89b1e83e681f8f50cbb04b59227b7a5d4325acef1b442",
+    "examples/lessons/08-controls/solution.js": "adad04a9e9b3365703b72a0724670ebe7adf40c38a8563365910020f8033678c",
+    "examples/lessons/08-controls/solution.py": "8dcab7b390d49c1591a7a77dd453ceb8d2c6b3974d7054526302bee206b020b7",
+    "examples/lessons/08-controls/starter.blocks.json": "a8ca5ddc2735c5f06d5ca4c2bf16d604e1b5093178a14b63d707d514e8596a6d",
+    "examples/lessons/08-controls/starter.js": "4d61b5df42358137f27534d6d1fca928eef914a237095b64bc3881f8f2a46e24",
+    "examples/lessons/08-controls/starter.py": "ab99db80d1e3060dc548538b778949162ddf6bcab74bf1365aab97c37a580846",
+    "examples/lessons/09-arrays/bug.blocks.json": "cf60b1bf8d0fcc1760ee8d09de6d283e530a1f241b64d5cc0043e0f0a59dcb05",
+    "examples/lessons/09-arrays/bug.js": "aba38515d31053bafca4bd9c9f0b76c0abd62222872d8a1e7627bd4c6fc6674c",
+    "examples/lessons/09-arrays/bug.py": "3f254d107d5adf34ca9d46bfc6e95973a4a044e87af4f77e5db6853eac3967ec",
+    "examples/lessons/09-arrays/extension.blocks.json": "bef06e7712f2c7db5b5fb076baa41eceb42588d43f26146c1f20a8828027c9c3",
+    "examples/lessons/09-arrays/extension.js": "262b83c677fd97f446f58706333a989067bca123848e53ac47dfb37ed4932e3f",
+    "examples/lessons/09-arrays/extension.py": "29fcaa67db9db40aa2e35842048fe9f64bdfe06ddb14e7654647de1aca59d796",
+    "examples/lessons/09-arrays/solution.blocks.json": "f9ccc275c143a447e69131d12b20533e99f4ee9ffb5bbd91e66c957af7e1329c",
+    "examples/lessons/09-arrays/solution.js": "aed198436ed635efb42bbaddfeef633c3b5a75853d8e9e292cf5a2a6cfd3e972",
+    "examples/lessons/09-arrays/solution.py": "7b7df78c211a0d29bca5e6edf19263ac9f9f60886568166ffed8199d574bffe7",
+    "examples/lessons/09-arrays/starter.blocks.json": "7b19ecb1a881118574e7ea5b5009ac851d63b0d654ebe1e0dc0d962efcd395c5",
+    "examples/lessons/09-arrays/starter.js": "90ca6606210a57d8029838e0eb757023839019978cb3fedfec1b9b963935ff04",
+    "examples/lessons/09-arrays/starter.py": "c6d97e265994743043786ef16417e5e1aeb9a12e43291c17109e6512a0c09298",
+    "examples/lessons/10-search/bug.blocks.json": "75eec835b946fcb0977ed74b4bfefa2a58566fe207aa3c1687d51b00351294e4",
+    "examples/lessons/10-search/bug.js": "abd27e4ecf10754584a463736667de590f0dae220eb24ba40ba4237189ad7bec",
+    "examples/lessons/10-search/bug.py": "e56d415b3b2be708fd034457c16da9a9d5d2bb23518f9caa7ebfd0aa47a67485",
+    "examples/lessons/10-search/extension.blocks.json": "23f659d561cd8fc79a98de84e9dc533641168bfe0590f99b0c48de24844957a4",
+    "examples/lessons/10-search/extension.js": "beec703937eee0eb000ecc59f13d28c0f3d7d343ede32ffabfbdda72ca42f325",
+    "examples/lessons/10-search/extension.py": "4643b15572806bb9dede3f0a3ed0039ab561c96fe256434112fd881994471a8e",
+    "examples/lessons/10-search/solution.blocks.json": "b4845881f6aabd3740d0d8080b81dc9c7f75200292fdc15f0c3c7a6c7cbc38dc",
+    "examples/lessons/10-search/solution.js": "d52d0ce9baa656fc52bfd425a70f3359b68822b1996c3e3bfc85a0d9e8d76646",
+    "examples/lessons/10-search/solution.py": "07e9a9266fbafcf80d39a8ed7c215d7ebee1d7518e49e3c559ced3d231b8a757",
+    "examples/lessons/10-search/starter.blocks.json": "cb86dd78af722af487f1221ffbd944aedee9b064f94d116854ef4208f142d01e",
+    "examples/lessons/10-search/starter.js": "03f0878b9b707baf02762e88300ea560f915328d52715c5b7ecd870baf024959",
+    "examples/lessons/10-search/starter.py": "5dff4729a5db5c10d93365c1af7fd09705f871d207ee5c2fb0c49359140cbdd7",
+    "examples/lessons/11-fireflies/bug.blocks.json": "cb9dd5269ab0a5ec29ac864c49b1188830f9b0d6c5655a32e8f90bd603167f7e",
+    "examples/lessons/11-fireflies/bug.js": "890f36db54640c40db994a5fa0b7f5f82d840f21066198809775a692182b1817",
+    "examples/lessons/11-fireflies/bug.py": "a0d468fe0fcbf7da3bc0da7cb730567ea722678dc2e29e819efd5451ee7e42de",
+    "examples/lessons/11-fireflies/extension.blocks.json": "61f8c479c6cf25c7a8239b9b670221cf1e7f00d634d0a3ddaba43fd558bd4a2f",
+    "examples/lessons/11-fireflies/extension.js": "f2514e7395afc86420e6c0a3ff9a619f852f7313dd2714e7ca2269f22a261415",
+    "examples/lessons/11-fireflies/extension.py": "192c20dc86edd0590313476343db9afb000a07ddf26cd236e67e2a7b82e5c08a",
+    "examples/lessons/11-fireflies/solution.blocks.json": "5918e718b14254e008526512dda1dafe9684ca365ea6a496bd73bb177f9e0449",
+    "examples/lessons/11-fireflies/solution.js": "605377c7d8f9d6164ef3b5e6c3e0136edffbbec55785f379933b5ef90cf4eb89",
+    "examples/lessons/11-fireflies/solution.py": "80cd033cb601e304aa97839d3292451ace619a5f6184de77140e62fe544c1a67",
+    "examples/lessons/11-fireflies/starter.blocks.json": "1ee7cf47789947ad717cd253ef65bf9ab940d045c3666a4bba185d2dd9565c17",
+    "examples/lessons/11-fireflies/starter.js": "1e5c10a80fbeafd0201fae13d385e113073ad3e0c96800cc7e055e5ea9edaba8",
+    "examples/lessons/11-fireflies/starter.py": "badb64f3832ba96e8f1bf5e57bfee122a40ddf389941e065005cbd4b2c9135ca",
+    "examples/lessons/12-lighthouse/bug.blocks.json": "c14a668b4dfb8e8b9896cd3175560a4da7a72629116571a02c149360b3574d2b",
+    "examples/lessons/12-lighthouse/bug.js": "c4813e07224f739988e9f553b595f57cf1bc81b76da33f5873e13a92eb763592",
+    "examples/lessons/12-lighthouse/bug.py": "44fc7253f1bb03269450a4d10a21a916eb87db0bd4438f57bc45f3e7e03aca02",
+    "examples/lessons/12-lighthouse/extension.blocks.json": "f479f98f303de486551ae378a0c82e21700626a800af3bf7e6fa29c584398887",
+    "examples/lessons/12-lighthouse/extension.js": "6bd63b37e96bcd76bb53eabb0a8bdadd90b63d6c717a5c1d37da6b5873573056",
+    "examples/lessons/12-lighthouse/extension.py": "9039851546f4e481e06bc7a7e93918017a3fc12bfe1b1ad35b87911f0108c763",
+    "examples/lessons/12-lighthouse/solution.blocks.json": "02c6fd6c7af94b1bbc84f222052ccbb25ed5adfb4a42a03d160fef703f13b320",
+    "examples/lessons/12-lighthouse/solution.js": "e03d156e51f4bfae15e1209f261db200ce7f15a30fdd5325574b7bfb1fae4ad2",
+    "examples/lessons/12-lighthouse/solution.py": "f8f5280e2a8232600afb37ceb880f6fd386b137b7a43056e36166bf5c431f06d",
+    "examples/lessons/12-lighthouse/starter.blocks.json": "a710c928da5882ee3e10941f3ed493cd00957a55cb73955fe243d285fc85cb55",
+    "examples/lessons/12-lighthouse/starter.js": "321e8a6a9d8a6f87b7be32043f14065afee3c5baf6f5d6844daeeee1695ee96d",
+    "examples/lessons/12-lighthouse/starter.py": "a34b06cc25014a4c595aae6c3df7c08fd319ee7e9359922e6e4471c5f2263a70",
+    "examples/lessons/catalogue.json": "8f936a50ad22778608f421ff9296fdb3b8bfd4e6dccce8d0953c5abe31f34120"
+  },
+  "counts": [
+    1,
+    2,
+    12,
+    16,
+    24,
+    25,
+    31,
+    32,
+    33,
+    50,
+    63,
+    64,
+    65,
+    100
+  ],
+  "native_attempts": 3780,
+  "native_failures": [],
+  "browser_vm": {
+    "runs": 3078,
+    "frames": 34338,
+    "faults": 36,
+    "leaks": 0,
+    "counts": [
+      1,
+      2,
+      12,
+      16,
+      24,
+      25,
+      31,
+      32,
+      33,
+      50,
+      63,
+      64,
+      65,
+      100
+    ],
+    "deltas": [
+      0,
+      0.016,
+      0.033,
+      0.25,
+      1,
+      0.7
+    ],
+    "long_clock_seconds": 1000000.25,
+    "failures": []
+  },
+  "programs": {
+    "examples/lessons/01-first-lights/starter.py/ordered": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/starter.py/optimized": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/starter.js/ordered": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/starter.js/optimized": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/starter.blocks.json/ordered": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/starter.blocks.json/optimized": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/solution.py/ordered": {
+      "bytes": 521,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/solution.py/optimized": {
+      "bytes": 521,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/solution.js/ordered": {
+      "bytes": 561,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/solution.js/optimized": {
+      "bytes": 561,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/solution.blocks.json/ordered": {
+      "bytes": 561,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/solution.blocks.json/optimized": {
+      "bytes": 561,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/extension.py/ordered": {
+      "bytes": 513,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/extension.py/optimized": {
+      "bytes": 513,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/extension.js/ordered": {
+      "bytes": 513,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/extension.js/optimized": {
+      "bytes": 513,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/extension.blocks.json/ordered": {
+      "bytes": 513,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/extension.blocks.json/optimized": {
+      "bytes": 513,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/01-first-lights/bug.py/ordered": {
+      "bytes": 497,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/01-first-lights/bug.py/optimized": {
+      "bytes": 497,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/01-first-lights/bug.js/ordered": {
+      "bytes": 545,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/01-first-lights/bug.js/optimized": {
+      "bytes": 545,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/01-first-lights/bug.blocks.json/ordered": {
+      "bytes": 521,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/01-first-lights/bug.blocks.json/optimized": {
+      "bytes": 521,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/02-names/starter.py/ordered": {
+      "bytes": 497,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/starter.py/optimized": {
+      "bytes": 497,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/starter.js/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/starter.js/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/starter.blocks.json/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/starter.blocks.json/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/solution.py/ordered": {
+      "bytes": 497,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/solution.py/optimized": {
+      "bytes": 497,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/solution.js/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/solution.js/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/solution.blocks.json/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/solution.blocks.json/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/extension.py/ordered": {
+      "bytes": 569,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/extension.py/optimized": {
+      "bytes": 569,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/extension.js/ordered": {
+      "bytes": 601,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/extension.js/optimized": {
+      "bytes": 601,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/extension.blocks.json/ordered": {
+      "bytes": 601,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/extension.blocks.json/optimized": {
+      "bytes": 601,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/02-names/bug.py/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Keep \"colour\" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init."
+      ],
+      "results": {}
+    },
+    "examples/lessons/02-names/bug.py/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Keep \"colour\" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init."
+      ],
+      "results": {}
+    },
+    "examples/lessons/02-names/bug.js/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Keep \"_js_v6\" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init."
+      ],
+      "results": {}
+    },
+    "examples/lessons/02-names/bug.js/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Keep \"_js_v6\" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init."
+      ],
+      "results": {}
+    },
+    "examples/lessons/02-names/bug.blocks.json/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Keep \"v_colour\" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init."
+      ],
+      "results": {}
+    },
+    "examples/lessons/02-names/bug.blocks.json/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Keep \"v_colour\" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init."
+      ],
+      "results": {}
+    },
+    "examples/lessons/03-repeat/starter.py/ordered": {
+      "bytes": 553,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/starter.py/optimized": {
+      "bytes": 537,
+      "plan_bytes": 80,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/starter.js/ordered": {
+      "bytes": 553,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/starter.js/optimized": {
+      "bytes": 537,
+      "plan_bytes": 80,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/starter.blocks.json/ordered": {
+      "bytes": 553,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/starter.blocks.json/optimized": {
+      "bytes": 537,
+      "plan_bytes": 80,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/solution.py/ordered": {
+      "bytes": 609,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/solution.py/optimized": {
+      "bytes": 593,
+      "plan_bytes": 140,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/solution.js/ordered": {
+      "bytes": 609,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/solution.js/optimized": {
+      "bytes": 593,
+      "plan_bytes": 140,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/solution.blocks.json/ordered": {
+      "bytes": 609,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/solution.blocks.json/optimized": {
+      "bytes": 593,
+      "plan_bytes": 140,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/extension.py/ordered": {
+      "bytes": 697,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/extension.py/optimized": {
+      "bytes": 697,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/extension.js/ordered": {
+      "bytes": 777,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/extension.js/optimized": {
+      "bytes": 777,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/extension.blocks.json/ordered": {
+      "bytes": 697,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/extension.blocks.json/optimized": {
+      "bytes": 697,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/03-repeat/bug.py/ordered": {
+      "bytes": 641,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/03-repeat/bug.py/optimized": {
+      "bytes": 625,
+      "plan_bytes": 140,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/03-repeat/bug.js/ordered": {
+      "bytes": 641,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/03-repeat/bug.js/optimized": {
+      "bytes": 625,
+      "plan_bytes": 140,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/03-repeat/bug.blocks.json/ordered": {
+      "bytes": 641,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/03-repeat/bug.blocks.json/optimized": {
+      "bytes": 625,
+      "plan_bytes": 140,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/04-choices/starter.py/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/starter.py/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/starter.js/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/starter.js/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/starter.blocks.json/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/starter.blocks.json/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/solution.py/ordered": {
+      "bytes": 737,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/solution.py/optimized": {
+      "bytes": 737,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/solution.js/ordered": {
+      "bytes": 737,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/solution.js/optimized": {
+      "bytes": 737,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/solution.blocks.json/ordered": {
+      "bytes": 737,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/solution.blocks.json/optimized": {
+      "bytes": 737,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/extension.py/ordered": {
+      "bytes": 817,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/extension.py/optimized": {
+      "bytes": 817,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/extension.js/ordered": {
+      "bytes": 833,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/extension.js/optimized": {
+      "bytes": 833,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/extension.blocks.json/ordered": {
+      "bytes": 817,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/extension.blocks.json/optimized": {
+      "bytes": 817,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/bug.py/ordered": {
+      "bytes": 665,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/bug.py/optimized": {
+      "bytes": 665,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/bug.js/ordered": {
+      "bytes": 665,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/bug.js/optimized": {
+      "bytes": 665,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/bug.blocks.json/ordered": {
+      "bytes": 665,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/04-choices/bug.blocks.json/optimized": {
+      "bytes": 665,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/starter.py/ordered": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/starter.py/optimized": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/starter.js/ordered": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/starter.js/optimized": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/starter.blocks.json/ordered": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/starter.blocks.json/optimized": {
+      "bytes": 457,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/solution.py/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/solution.py/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/solution.js/ordered": {
+      "bytes": 609,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/solution.js/optimized": {
+      "bytes": 609,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/solution.blocks.json/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/solution.blocks.json/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/extension.py/ordered": {
+      "bytes": 585,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/extension.py/optimized": {
+      "bytes": 585,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/extension.js/ordered": {
+      "bytes": 585,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/extension.js/optimized": {
+      "bytes": 585,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/extension.blocks.json/ordered": {
+      "bytes": 585,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/extension.blocks.json/optimized": {
+      "bytes": 585,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/05-time/bug.py/ordered": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/05-time/bug.py/optimized": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/05-time/bug.js/ordered": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/05-time/bug.js/optimized": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/05-time/bug.blocks.json/ordered": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/05-time/bug.blocks.json/optimized": {
+      "bytes": 481,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": -1,
+        "16": -1,
+        "24": -1,
+        "25": -1,
+        "31": -1,
+        "32": -1,
+        "33": -1,
+        "50": -1,
+        "63": -1,
+        "64": -1,
+        "65": -1,
+        "100": -1
+      }
+    },
+    "examples/lessons/06-movement/starter.py/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/starter.py/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/starter.js/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/starter.js/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/starter.blocks.json/ordered": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/starter.blocks.json/optimized": {
+      "bytes": 537,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/solution.py/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/solution.py/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/solution.js/ordered": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/solution.js/optimized": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/solution.blocks.json/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/solution.blocks.json/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/extension.py/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/extension.py/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/extension.js/ordered": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/extension.js/optimized": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/extension.blocks.json/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/extension.blocks.json/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/bug.py/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/bug.py/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/bug.js/ordered": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/bug.js/optimized": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/bug.blocks.json/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/06-movement/bug.blocks.json/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/starter.py/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/starter.py/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/starter.js/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/starter.js/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/starter.blocks.json/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/starter.blocks.json/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/solution.py/ordered": {
+      "bytes": 761,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/solution.py/optimized": {
+      "bytes": 745,
+      "plan_bytes": 248,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/solution.js/ordered": {
+      "bytes": 753,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/solution.js/optimized": {
+      "bytes": 737,
+      "plan_bytes": 248,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/solution.blocks.json/ordered": {
+      "bytes": 761,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/solution.blocks.json/optimized": {
+      "bytes": 745,
+      "plan_bytes": 248,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/extension.py/ordered": {
+      "bytes": 825,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/extension.py/optimized": {
+      "bytes": 809,
+      "plan_bytes": 248,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/extension.js/ordered": {
+      "bytes": 817,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/extension.js/optimized": {
+      "bytes": 801,
+      "plan_bytes": 248,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/extension.blocks.json/ordered": {
+      "bytes": 825,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/extension.blocks.json/optimized": {
+      "bytes": 809,
+      "plan_bytes": 248,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/07-functions/bug.py/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Give \"colour\" a value before using it. If it is set inside a loop or condition, set a starting value first."
+      ],
+      "results": {}
+    },
+    "examples/lessons/07-functions/bug.py/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Give \"colour\" a value before using it. If it is set inside a loop or condition, set a starting value first."
+      ],
+      "results": {}
+    },
+    "examples/lessons/07-functions/bug.js/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Give \"_js_v7\" a value before using it. If it is set inside a loop or condition, set a starting value first."
+      ],
+      "results": {}
+    },
+    "examples/lessons/07-functions/bug.js/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Give \"_js_v7\" a value before using it. If it is set inside a loop or condition, set a starting value first."
+      ],
+      "results": {}
+    },
+    "examples/lessons/07-functions/bug.blocks.json/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Give \"v_colour\" a value before using it. If it is set inside a loop or condition, set a starting value first."
+      ],
+      "results": {}
+    },
+    "examples/lessons/07-functions/bug.blocks.json/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "Give \"v_colour\" a value before using it. If it is set inside a loop or condition, set a starting value first."
+      ],
+      "results": {}
+    },
+    "examples/lessons/08-controls/starter.py/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/starter.py/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/starter.js/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/starter.js/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/starter.blocks.json/ordered": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/starter.blocks.json/optimized": {
+      "bytes": 649,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/solution.py/ordered": {
+      "bytes": 725,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/solution.py/optimized": {
+      "bytes": 725,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/solution.js/ordered": {
+      "bytes": 733,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/solution.js/optimized": {
+      "bytes": 733,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/solution.blocks.json/ordered": {
+      "bytes": 725,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/solution.blocks.json/optimized": {
+      "bytes": 725,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/extension.py/ordered": {
+      "bytes": 963,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/extension.py/optimized": {
+      "bytes": 963,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/extension.js/ordered": {
+      "bytes": 971,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/extension.js/optimized": {
+      "bytes": 971,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/extension.blocks.json/ordered": {
+      "bytes": 963,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/extension.blocks.json/optimized": {
+      "bytes": 963,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/bug.py/ordered": {
+      "bytes": 605,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/bug.py/optimized": {
+      "bytes": 605,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/bug.js/ordered": {
+      "bytes": 605,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/bug.js/optimized": {
+      "bytes": 605,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/bug.blocks.json/ordered": {
+      "bytes": 605,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/08-controls/bug.blocks.json/optimized": {
+      "bytes": 605,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/starter.py/ordered": {
+      "bytes": 641,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/starter.py/optimized": {
+      "bytes": 625,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/starter.js/ordered": {
+      "bytes": 641,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/starter.js/optimized": {
+      "bytes": 625,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/starter.blocks.json/ordered": {
+      "bytes": 641,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/starter.blocks.json/optimized": {
+      "bytes": 625,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/solution.py/ordered": {
+      "bytes": 657,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/solution.py/optimized": {
+      "bytes": 641,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/solution.js/ordered": {
+      "bytes": 657,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/solution.js/optimized": {
+      "bytes": 641,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/solution.blocks.json/ordered": {
+      "bytes": 657,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/solution.blocks.json/optimized": {
+      "bytes": 641,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/extension.py/ordered": {
+      "bytes": 769,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/extension.py/optimized": {
+      "bytes": 761,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/extension.js/ordered": {
+      "bytes": 769,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/extension.js/optimized": {
+      "bytes": 761,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/extension.blocks.json/ordered": {
+      "bytes": 769,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/extension.blocks.json/optimized": {
+      "bytes": 761,
+      "plan_bytes": 92,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/09-arrays/bug.py/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "managed array or pixels argument required"
+      ],
+      "results": {}
+    },
+    "examples/lessons/09-arrays/bug.py/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "managed array or pixels argument required"
+      ],
+      "results": {}
+    },
+    "examples/lessons/09-arrays/bug.js/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "managed array or pixels argument required"
+      ],
+      "results": {}
+    },
+    "examples/lessons/09-arrays/bug.js/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "managed array or pixels argument required"
+      ],
+      "results": {}
+    },
+    "examples/lessons/09-arrays/bug.blocks.json/ordered": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "managed array or pixels argument required"
+      ],
+      "results": {}
+    },
+    "examples/lessons/09-arrays/bug.blocks.json/optimized": {
+      "bytes": null,
+      "plan_bytes": null,
+      "diagnostics": [
+        "managed array or pixels argument required"
+      ],
+      "results": {}
+    },
+    "examples/lessons/10-search/starter.py/ordered": {
+      "bytes": 673,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/starter.py/optimized": {
+      "bytes": 673,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/starter.js/ordered": {
+      "bytes": 673,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/starter.js/optimized": {
+      "bytes": 673,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/starter.blocks.json/ordered": {
+      "bytes": 673,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/starter.blocks.json/optimized": {
+      "bytes": 673,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/solution.py/ordered": {
+      "bytes": 793,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/solution.py/optimized": {
+      "bytes": 793,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/solution.js/ordered": {
+      "bytes": 841,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/solution.js/optimized": {
+      "bytes": 841,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/solution.blocks.json/ordered": {
+      "bytes": 793,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/solution.blocks.json/optimized": {
+      "bytes": 793,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/extension.py/ordered": {
+      "bytes": 545,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/extension.py/optimized": {
+      "bytes": 545,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/extension.js/ordered": {
+      "bytes": 577,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/extension.js/optimized": {
+      "bytes": 577,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/extension.blocks.json/ordered": {
+      "bytes": 545,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/extension.blocks.json/optimized": {
+      "bytes": 545,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/bug.py/ordered": {
+      "bytes": 785,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/bug.py/optimized": {
+      "bytes": 785,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/bug.js/ordered": {
+      "bytes": 833,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/bug.js/optimized": {
+      "bytes": 833,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/bug.blocks.json/ordered": {
+      "bytes": 785,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/10-search/bug.blocks.json/optimized": {
+      "bytes": 785,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/starter.py/ordered": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/starter.py/optimized": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/starter.js/ordered": {
+      "bytes": 993,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/starter.js/optimized": {
+      "bytes": 993,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/starter.blocks.json/ordered": {
+      "bytes": 977,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/starter.blocks.json/optimized": {
+      "bytes": 977,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/solution.py/ordered": {
+      "bytes": 969,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/solution.py/optimized": {
+      "bytes": 969,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/solution.js/ordered": {
+      "bytes": 1001,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/solution.js/optimized": {
+      "bytes": 1001,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/solution.blocks.json/ordered": {
+      "bytes": 985,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/solution.blocks.json/optimized": {
+      "bytes": 985,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/extension.py/ordered": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/extension.py/optimized": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/extension.js/ordered": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/extension.js/optimized": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/extension.blocks.json/ordered": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/extension.blocks.json/optimized": {
+      "bytes": 961,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/bug.py/ordered": {
+      "bytes": 969,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/bug.py/optimized": {
+      "bytes": 969,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/bug.js/ordered": {
+      "bytes": 1001,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/bug.js/optimized": {
+      "bytes": 1001,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/bug.blocks.json/ordered": {
+      "bytes": 985,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/11-fireflies/bug.blocks.json/optimized": {
+      "bytes": 985,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/starter.py/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/starter.py/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/starter.js/ordered": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/starter.js/optimized": {
+      "bytes": 681,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/starter.blocks.json/ordered": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/starter.blocks.json/optimized": {
+      "bytes": 593,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/solution.py/ordered": {
+      "bytes": 865,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/solution.py/optimized": {
+      "bytes": 865,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/solution.js/ordered": {
+      "bytes": 945,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/solution.js/optimized": {
+      "bytes": 945,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/solution.blocks.json/ordered": {
+      "bytes": 873,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/solution.blocks.json/optimized": {
+      "bytes": 873,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/extension.py/ordered": {
+      "bytes": 1137,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/extension.py/optimized": {
+      "bytes": 1137,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/extension.js/ordered": {
+      "bytes": 1217,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/extension.js/optimized": {
+      "bytes": 1217,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/extension.blocks.json/ordered": {
+      "bytes": 1153,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/extension.blocks.json/optimized": {
+      "bytes": 1153,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": 1,
+        "2": 1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/bug.py/ordered": {
+      "bytes": 793,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/bug.py/optimized": {
+      "bytes": 793,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/bug.js/ordered": {
+      "bytes": 873,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/bug.js/optimized": {
+      "bytes": 873,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/bug.blocks.json/ordered": {
+      "bytes": 801,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    },
+    "examples/lessons/12-lighthouse/bug.blocks.json/optimized": {
+      "bytes": 801,
+      "plan_bytes": 0,
+      "diagnostics": [],
+      "results": {
+        "1": -1,
+        "2": -1,
+        "12": 1,
+        "16": 1,
+        "24": 1,
+        "25": 1,
+        "31": 1,
+        "32": 1,
+        "33": 1,
+        "50": 1,
+        "63": 1,
+        "64": 1,
+        "65": 1,
+        "100": 1
+      }
+    }
+  },
+  "host_performance": [
+    {
+      "timestamp_utc": "2026-10-27T09:52:33.804321+00:00",
+      "process": "build/teaching-host/lightvm",
+      "executable_sha256": "aa2056c5c046223e2794e1d1d75acf77c113834fc4703b09057de1559394e858",
+      "pixels": 25,
+      "frames_per_window": 100,
+      "rounds": 3,
+      "timing": "engine render_total_us deltas / render_count deltas; host CPU, not hardware fps",
+      "variants": {
+        "rainbow/kernel": {
+          "bytecode_bytes": 1305,
+          "schema": "lightvm.program",
+          "source_sha256": "928f11ed4408f8288638a1c6352f84d680223878df41ed490fc9d60e02e0b740",
+          "windows": [
+            {
+              "render_us_per_frame": 3.19,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 0.76,
+              "heap_bytes": 7586
+            },
+            {
+              "render_us_per_frame": 3.07,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 0.59,
+              "heap_bytes": 7586
+            },
+            {
+              "render_us_per_frame": 2.86,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 0.68,
+              "heap_bytes": 7586
+            }
+          ],
+          "render_us_per_frame": 3.07,
+          "dispatches_per_frame": 16.0,
+          "native_us_per_frame": 0.68,
+          "heap_bytes": 7586
+        },
+        "rainbow/scalar": {
+          "bytecode_bytes": 1425,
+          "schema": "lightvm.program",
+          "source_sha256": "ca4adb133172782267a92217aa859f9e7e22d10f07a191accc63ec0447bce703",
+          "windows": [
+            {
+              "render_us_per_frame": 21.1,
+              "dispatches_per_frame": 294.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7614
+            },
+            {
+              "render_us_per_frame": 21.53,
+              "dispatches_per_frame": 294.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7614
+            },
+            {
+              "render_us_per_frame": 20.29,
+              "dispatches_per_frame": 294.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7614
+            }
+          ],
+          "render_us_per_frame": 21.1,
+          "dispatches_per_frame": 294.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 7614
+        },
+        "rainbow/bulk": {
+          "bytecode_bytes": 1409,
+          "schema": "lightvm.program",
+          "source_sha256": "ca4adb133172782267a92217aa859f9e7e22d10f07a191accc63ec0447bce703",
+          "windows": [
+            {
+              "render_us_per_frame": 11.86,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 8.68,
+              "heap_bytes": 7744
+            },
+            {
+              "render_us_per_frame": 13.95,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 10.49,
+              "heap_bytes": 7744
+            },
+            {
+              "render_us_per_frame": 14.61,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 11.32,
+              "heap_bytes": 7744
+            }
+          ],
+          "render_us_per_frame": 13.95,
+          "dispatches_per_frame": 21.0,
+          "native_us_per_frame": 10.49,
+          "heap_bytes": 7744
+        },
+        "nonlinear/scalar": {
+          "bytecode_bytes": 673,
+          "schema": "lightvm.program",
+          "source_sha256": "8128421953c0d17ffb5476df2d7758e39972d0a677b9318127b2208c06000dc4",
+          "windows": [
+            {
+              "render_us_per_frame": 7.41,
+              "dispatches_per_frame": 382.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7074
+            },
+            {
+              "render_us_per_frame": 7.1,
+              "dispatches_per_frame": 382.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7074
+            },
+            {
+              "render_us_per_frame": 6.85,
+              "dispatches_per_frame": 382.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7074
+            }
+          ],
+          "render_us_per_frame": 7.1,
+          "dispatches_per_frame": 382.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 7074
+        },
+        "nonlinear/bulk": {
+          "bytecode_bytes": 657,
+          "schema": "lightvm.program",
+          "source_sha256": "8128421953c0d17ffb5476df2d7758e39972d0a677b9318127b2208c06000dc4",
+          "windows": [
+            {
+              "render_us_per_frame": 11.73,
+              "dispatches_per_frame": 9.0,
+              "native_us_per_frame": 10.02,
+              "heap_bytes": 7252
+            },
+            {
+              "render_us_per_frame": 11.32,
+              "dispatches_per_frame": 9.0,
+              "native_us_per_frame": 9.8,
+              "heap_bytes": 7252
+            },
+            {
+              "render_us_per_frame": 11.91,
+              "dispatches_per_frame": 9.0,
+              "native_us_per_frame": 10.41,
+              "heap_bytes": 7252
+            }
+          ],
+          "render_us_per_frame": 11.73,
+          "dispatches_per_frame": 9.0,
+          "native_us_per_frame": 10.02,
+          "heap_bytes": 7252
+        },
+        "sprite/scalar": {
+          "bytecode_bytes": 3821,
+          "schema": "lightvm.program",
+          "source_sha256": "0a9ee558642ce7c358116b00589615ee9f3680cb67208971210862aabdf842a4",
+          "windows": [
+            {
+              "render_us_per_frame": 51.64,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 25.47,
+              "heap_bytes": 7630
+            },
+            {
+              "render_us_per_frame": 55.71,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 27.09,
+              "heap_bytes": 7630
+            },
+            {
+              "render_us_per_frame": 52.54,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 25.9,
+              "heap_bytes": 7630
+            }
+          ],
+          "render_us_per_frame": 52.54,
+          "dispatches_per_frame": 251.0,
+          "native_us_per_frame": 25.9,
+          "heap_bytes": 7630
+        },
+        "sprite/bulk": {
+          "bytecode_bytes": 3597,
+          "schema": "lightvm.program",
+          "source_sha256": "0a9ee558642ce7c358116b00589615ee9f3680cb67208971210862aabdf842a4",
+          "windows": [
+            {
+              "render_us_per_frame": 43.06,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 21.67,
+              "heap_bytes": 7738
+            },
+            {
+              "render_us_per_frame": 38.3,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 19.66,
+              "heap_bytes": 7738
+            },
+            {
+              "render_us_per_frame": 41.22,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 21.12,
+              "heap_bytes": 7738
+            }
+          ],
+          "render_us_per_frame": 41.22,
+          "dispatches_per_frame": 80.0,
+          "native_us_per_frame": 21.12,
+          "heap_bytes": 7738
+        }
+      },
+      "pixel_equality": "exact at all four timestamps within each workload family"
+    },
+    {
+      "timestamp_utc": "2026-10-27T09:52:34.293784+00:00",
+      "process": "build/teaching-host/lightvm",
+      "executable_sha256": "aa2056c5c046223e2794e1d1d75acf77c113834fc4703b09057de1559394e858",
+      "pixels": 50,
+      "frames_per_window": 100,
+      "rounds": 3,
+      "timing": "engine render_total_us deltas / render_count deltas; host CPU, not hardware fps",
+      "variants": {
+        "rainbow/kernel": {
+          "bytecode_bytes": 1305,
+          "schema": "lightvm.program",
+          "source_sha256": "928f11ed4408f8288638a1c6352f84d680223878df41ed490fc9d60e02e0b740",
+          "windows": [
+            {
+              "render_us_per_frame": 3.32,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 1.03,
+              "heap_bytes": 8086
+            },
+            {
+              "render_us_per_frame": 3.18,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 1.02,
+              "heap_bytes": 8086
+            },
+            {
+              "render_us_per_frame": 3.33,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 0.89,
+              "heap_bytes": 8086
+            }
+          ],
+          "render_us_per_frame": 3.32,
+          "dispatches_per_frame": 16.0,
+          "native_us_per_frame": 1.02,
+          "heap_bytes": 8086
+        },
+        "rainbow/scalar": {
+          "bytecode_bytes": 1425,
+          "schema": "lightvm.program",
+          "source_sha256": "ca4adb133172782267a92217aa859f9e7e22d10f07a191accc63ec0447bce703",
+          "windows": [
+            {
+              "render_us_per_frame": 42.84,
+              "dispatches_per_frame": 569.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 8114
+            },
+            {
+              "render_us_per_frame": 42.05,
+              "dispatches_per_frame": 569.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 8114
+            },
+            {
+              "render_us_per_frame": 41.51,
+              "dispatches_per_frame": 569.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 8114
+            }
+          ],
+          "render_us_per_frame": 42.05,
+          "dispatches_per_frame": 569.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 8114
+        },
+        "rainbow/bulk": {
+          "bytecode_bytes": 1409,
+          "schema": "lightvm.program",
+          "source_sha256": "ca4adb133172782267a92217aa859f9e7e22d10f07a191accc63ec0447bce703",
+          "windows": [
+            {
+              "render_us_per_frame": 16.12,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 12.15,
+              "heap_bytes": 8244
+            },
+            {
+              "render_us_per_frame": 15.53,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 12.29,
+              "heap_bytes": 8244
+            },
+            {
+              "render_us_per_frame": 12.74,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 9.79,
+              "heap_bytes": 8244
+            }
+          ],
+          "render_us_per_frame": 15.53,
+          "dispatches_per_frame": 21.0,
+          "native_us_per_frame": 12.15,
+          "heap_bytes": 8244
+        },
+        "nonlinear/scalar": {
+          "bytecode_bytes": 673,
+          "schema": "lightvm.program",
+          "source_sha256": "8128421953c0d17ffb5476df2d7758e39972d0a677b9318127b2208c06000dc4",
+          "windows": [
+            {
+              "render_us_per_frame": 14.55,
+              "dispatches_per_frame": 757.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7574
+            },
+            {
+              "render_us_per_frame": 12.39,
+              "dispatches_per_frame": 757.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7574
+            },
+            {
+              "render_us_per_frame": 12.37,
+              "dispatches_per_frame": 757.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 7574
+            }
+          ],
+          "render_us_per_frame": 12.39,
+          "dispatches_per_frame": 757.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 7574
+        },
+        "nonlinear/bulk": {
+          "bytecode_bytes": 657,
+          "schema": "lightvm.program",
+          "source_sha256": "8128421953c0d17ffb5476df2d7758e39972d0a677b9318127b2208c06000dc4",
+          "windows": [
+            {
+              "render_us_per_frame": 14.45,
+              "dispatches_per_frame": 9.0,
+              "native_us_per_frame": 12.92,
+              "heap_bytes": 7752
+            },
+            {
+              "render_us_per_frame": 11.92,
+              "dispatches_per_frame": 9.0,
+              "native_us_per_frame": 10.39,
+              "heap_bytes": 7752
+            },
+            {
+              "render_us_per_frame": 15.34,
+              "dispatches_per_frame": 9.0,
+              "native_us_per_frame": 13.94,
+              "heap_bytes": 7752
+            }
+          ],
+          "render_us_per_frame": 14.45,
+          "dispatches_per_frame": 9.0,
+          "native_us_per_frame": 12.92,
+          "heap_bytes": 7752
+        },
+        "sprite/scalar": {
+          "bytecode_bytes": 3821,
+          "schema": "lightvm.program",
+          "source_sha256": "0a9ee558642ce7c358116b00589615ee9f3680cb67208971210862aabdf842a4",
+          "windows": [
+            {
+              "render_us_per_frame": 55.67,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 27.55,
+              "heap_bytes": 8130
+            },
+            {
+              "render_us_per_frame": 54.64,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 27.02,
+              "heap_bytes": 8130
+            },
+            {
+              "render_us_per_frame": 47.48,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 23.51,
+              "heap_bytes": 8130
+            }
+          ],
+          "render_us_per_frame": 54.64,
+          "dispatches_per_frame": 251.0,
+          "native_us_per_frame": 27.02,
+          "heap_bytes": 8130
+        },
+        "sprite/bulk": {
+          "bytecode_bytes": 3597,
+          "schema": "lightvm.program",
+          "source_sha256": "0a9ee558642ce7c358116b00589615ee9f3680cb67208971210862aabdf842a4",
+          "windows": [
+            {
+              "render_us_per_frame": 41.3,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 21.4,
+              "heap_bytes": 8238
+            },
+            {
+              "render_us_per_frame": 40.67,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 20.92,
+              "heap_bytes": 8238
+            },
+            {
+              "render_us_per_frame": 41.47,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 20.62,
+              "heap_bytes": 8238
+            }
+          ],
+          "render_us_per_frame": 41.3,
+          "dispatches_per_frame": 80.0,
+          "native_us_per_frame": 20.92,
+          "heap_bytes": 8238
+        }
+      },
+      "pixel_equality": "exact at all four timestamps within each workload family"
+    },
+    {
+      "timestamp_utc": "2026-10-27T09:52:34.865236+00:00",
+      "process": "build/teaching-host/lightvm",
+      "executable_sha256": "aa2056c5c046223e2794e1d1d75acf77c113834fc4703b09057de1559394e858",
+      "pixels": 100,
+      "frames_per_window": 100,
+      "rounds": 3,
+      "timing": "engine render_total_us deltas / render_count deltas; host CPU, not hardware fps",
+      "variants": {
+        "rainbow/kernel": {
+          "bytecode_bytes": 1305,
+          "schema": "lightvm.program",
+          "source_sha256": "928f11ed4408f8288638a1c6352f84d680223878df41ed490fc9d60e02e0b740",
+          "windows": [
+            {
+              "render_us_per_frame": 21.19,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 18.02,
+              "heap_bytes": 9086
+            },
+            {
+              "render_us_per_frame": 15.28,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 12.32,
+              "heap_bytes": 9086
+            },
+            {
+              "render_us_per_frame": 14.57,
+              "dispatches_per_frame": 16.0,
+              "native_us_per_frame": 11.79,
+              "heap_bytes": 9086
+            }
+          ],
+          "render_us_per_frame": 15.28,
+          "dispatches_per_frame": 16.0,
+          "native_us_per_frame": 12.32,
+          "heap_bytes": 9086
+        },
+        "rainbow/scalar": {
+          "bytecode_bytes": 1425,
+          "schema": "lightvm.program",
+          "source_sha256": "ca4adb133172782267a92217aa859f9e7e22d10f07a191accc63ec0447bce703",
+          "windows": [
+            {
+              "render_us_per_frame": 85.59,
+              "dispatches_per_frame": 1119.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 9114
+            },
+            {
+              "render_us_per_frame": 84.78,
+              "dispatches_per_frame": 1119.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 9114
+            },
+            {
+              "render_us_per_frame": 95.03,
+              "dispatches_per_frame": 1119.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 9114
+            }
+          ],
+          "render_us_per_frame": 85.59,
+          "dispatches_per_frame": 1119.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 9114
+        },
+        "rainbow/bulk": {
+          "bytecode_bytes": 1409,
+          "schema": "lightvm.program",
+          "source_sha256": "ca4adb133172782267a92217aa859f9e7e22d10f07a191accc63ec0447bce703",
+          "windows": [
+            {
+              "render_us_per_frame": 25.55,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 20.94,
+              "heap_bytes": 9244
+            },
+            {
+              "render_us_per_frame": 23.32,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 19.1,
+              "heap_bytes": 9244
+            },
+            {
+              "render_us_per_frame": 24.41,
+              "dispatches_per_frame": 21.0,
+              "native_us_per_frame": 19.83,
+              "heap_bytes": 9244
+            }
+          ],
+          "render_us_per_frame": 24.41,
+          "dispatches_per_frame": 21.0,
+          "native_us_per_frame": 19.83,
+          "heap_bytes": 9244
+        },
+        "nonlinear/scalar": {
+          "bytecode_bytes": 673,
+          "schema": "lightvm.program",
+          "source_sha256": "8128421953c0d17ffb5476df2d7758e39972d0a677b9318127b2208c06000dc4",
+          "windows": [
+            {
+              "render_us_per_frame": 23.92,
+              "dispatches_per_frame": 1507.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 8574
+            },
+            {
+              "render_us_per_frame": 25.61,
+              "dispatches_per_frame": 1507.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 8574
+            },
+            {
+              "render_us_per_frame": 26.48,
+              "dispatches_per_frame": 1507.0,
+              "native_us_per_frame": 0.0,
+              "heap_bytes": 8574
+            }
+          ],
+          "render_us_per_frame": 25.61,
+          "dispatches_per_frame": 1507.0,
+          "native_us_per_frame": 0.0,
+          "heap_bytes": 8574
+        },
+        "nonlinear/bulk": {
+          "bytecode_bytes": 657,
+          "schema": "lightvm.program",
+          "source_sha256": "8128421953c0d17ffb5476df2d7758e39972d0a677b9318127b2208c06000dc4",
+          "windows": [
+            {
+              "render_us_per_frame": 41.77,
+              "dispatches_per_frame": 10.0,
+              "native_us_per_frame": 39.89,
+              "heap_bytes": 8752
+            },
+            {
+              "render_us_per_frame": 37.65,
+              "dispatches_per_frame": 10.0,
+              "native_us_per_frame": 35.66,
+              "heap_bytes": 8752
+            },
+            {
+              "render_us_per_frame": 40.92,
+              "dispatches_per_frame": 10.0,
+              "native_us_per_frame": 39.01,
+              "heap_bytes": 8752
+            }
+          ],
+          "render_us_per_frame": 40.92,
+          "dispatches_per_frame": 10.0,
+          "native_us_per_frame": 39.01,
+          "heap_bytes": 8752
+        },
+        "sprite/scalar": {
+          "bytecode_bytes": 3821,
+          "schema": "lightvm.program",
+          "source_sha256": "0a9ee558642ce7c358116b00589615ee9f3680cb67208971210862aabdf842a4",
+          "windows": [
+            {
+              "render_us_per_frame": 58.53,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 28.26,
+              "heap_bytes": 9130
+            },
+            {
+              "render_us_per_frame": 59.13,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 28.9,
+              "heap_bytes": 9130
+            },
+            {
+              "render_us_per_frame": 64.15,
+              "dispatches_per_frame": 251.0,
+              "native_us_per_frame": 31.81,
+              "heap_bytes": 9130
+            }
+          ],
+          "render_us_per_frame": 59.13,
+          "dispatches_per_frame": 251.0,
+          "native_us_per_frame": 28.9,
+          "heap_bytes": 9130
+        },
+        "sprite/bulk": {
+          "bytecode_bytes": 3597,
+          "schema": "lightvm.program",
+          "source_sha256": "0a9ee558642ce7c358116b00589615ee9f3680cb67208971210862aabdf842a4",
+          "windows": [
+            {
+              "render_us_per_frame": 44.88,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 21.85,
+              "heap_bytes": 9238
+            },
+            {
+              "render_us_per_frame": 44.97,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 22.49,
+              "heap_bytes": 9238
+            },
+            {
+              "render_us_per_frame": 43.15,
+              "dispatches_per_frame": 80.0,
+              "native_us_per_frame": 23.07,
+              "heap_bytes": 9238
+            }
+          ],
+          "render_us_per_frame": 44.88,
+          "dispatches_per_frame": 80.0,
+          "native_us_per_frame": 22.49,
+          "heap_bytes": 9238
+        }
+      },
+      "pixel_equality": "exact at all four timestamps within each workload family"
+    }
+  ],
+  "firmware_builds": {
+    "pico": {
+      "software_gate_passed": true,
+      "software_accounting_complete": true,
+      "hardware_validated": false,
+      "elf_sha256": "b920f634833164ed70f3dbbb20086b71c7087c2f945512fe081623f39310bd8f",
+      "main": {
+        "foreground_bytes": 9580,
+        "with_interrupts_bytes": 11516,
+        "reservation_bytes": 16384,
+        "remaining_bytes": 4868,
+        "required_margin_bytes": 2048
+      },
+      "worker": {
+        "foreground_bytes": 3172,
+        "with_interrupts_bytes": 5108,
+        "reservation_bytes": 8192,
+        "remaining_bytes": 3084,
+        "required_margin_bytes": 1024
+      }
+    },
+    "pico-w": {
+      "software_gate_passed": true,
+      "software_accounting_complete": true,
+      "hardware_validated": false,
+      "elf_sha256": "ea5f91c6c1d9d222a2fe32ba26131da64bfa15fe5544ab48d0fd2f6e28cef494",
+      "main": {
+        "foreground_bytes": 10216,
+        "with_interrupts_bytes": 12152,
+        "reservation_bytes": 16384,
+        "remaining_bytes": 4232,
+        "required_margin_bytes": 2048
+      },
+      "worker": {
+        "foreground_bytes": 3184,
+        "with_interrupts_bytes": 5120,
+        "reservation_bytes": 8192,
+        "remaining_bytes": 3072,
+        "required_margin_bytes": 1024
+      }
+    }
+  },
+  "validation": {
+    "native_ctest": {
+      "usb": 28,
+      "network": 34,
+      "failures": 0
+    },
+    "python": {
+      "tests": 402,
+      "skips": 7,
+      "failures": 0,
+      "additional_profile_suites": {
+        "mqtt": 20,
+        "keypad": 12,
+        "boot_sequence": 5,
+        "pico_build": 24
+      }
+    },
+    "editor": {
+      "passed": 180,
+      "skipped": 1,
+      "typescript": "passed",
+      "production_build": "passed",
+      "offline_browser": "passed including non-ASCII source columns and saved settings/inputs"
+    },
+    "hardware_campaign": "not run; attached Pico W running an active audio installation",
+    "beginner_observation": "not run; session guide supplied"
+  }
+}

@@ -10,6 +10,7 @@ import { useAppSelector } from './store';
 import type { InputBindings } from './types';
 import { inputsFor, settingsFor, type SettingsValues } from './program';
 import { parseProgramFile, sourceName, type ProgramFile } from './program-file';
+import { PreviewRecipe } from './preview-recipe';
 
 export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode }) {
   const { compiler, controllers } = useRuntime();
@@ -109,7 +110,7 @@ export function DevelopmentWorkflow({ editorPanel }: { editorPanel: ReactNode })
       <button id="open-source" className="secondary" disabled={busy} onClick={() => picker.current?.click()}>Import file</button>
       <input ref={picker} id="source-file" type="file" hidden accept=".py,.js,.json" aria-label="Import source file" onChange={event => void open(event.target.files?.[0])} />
     </div>
-    <div className="workspace editor-workspace">{editorPanel}<aside className="sidebar">
+    <div className="workspace editor-workspace"><PreviewRecipe.Provider value={{ settings, inputs, setInputs }}>{editorPanel}</PreviewRecipe.Provider><aside className="sidebar">
       <section className="card"><h2>Program</h2><label htmlFor="program-name">Program name</label><input id="program-name" value={name} maxLength={32} onChange={event => setName(event.target.value)} />
         <label htmlFor="preview-output">Preview output</label><select id="preview-output" value={output?.id ?? ''} disabled={busy || !connected} onChange={event => void controllers.selectOutput(event.target.value)}>
           {!output && <option value="">Connect and configure an output</option>}{controller.config?.outputs.filter(item => item.mode !== 'indicators').map(item => <option key={item.id} value={item.id}>{item.id} · {item.config.count} pixels</option>)}</select>

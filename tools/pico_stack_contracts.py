@@ -89,6 +89,7 @@ for name in ('src/composition.c:complete_output','src/transition.c:complete','sr
     CALLBACKS[name]=PIXELS
 for name in ('pbc_call','pbc_expression','pbc_function','pbc_image_read','pbc_initial','pbc_invoke','pbc_open_step',
              'pbc_prepare_step','pbc_read_instruction','pbc_render_reusable','pbc_resume','pbc_setting','pbc_spec','pbc_value',
+             'pbc_fault_message','pbc_fault_reason',
              'src/portable.c:evaluate','src/portable.c:instruction','src/portable.c:resource_write','src/portable_draw.c:transform_pixels'):
     CALLBACKS[name]=READ
 for caller, targets in {

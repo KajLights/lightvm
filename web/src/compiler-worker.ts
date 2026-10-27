@@ -2,7 +2,6 @@ import { lowerSource } from './languages/lower';
 import { sourceDiagnostic, type LoweredSource } from './languages/source';
 import { COMPILER_FILES } from './compiler-files.mjs';
 
-const pyodideUrl = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.mjs";
 let initialize: (base: string) => void;
 const initialized = new Promise<string>(resolve => { initialize = resolve; });
 
@@ -10,9 +9,10 @@ let pyodide: any;
 const status = (message: string) => self.postMessage({ type: "status", message });
 const ready = (async () => {
   const baseUrl = await initialized;
+  const pyodideUrl = new URL('./vendor/pyodide/pyodide.mjs', baseUrl).href;
   const { loadPyodide } = await import(/* @vite-ignore */ pyodideUrl);
   status("Loading the shared compiler…");
-  pyodide = await loadPyodide();
+  pyodide = await loadPyodide({ indexURL: new URL('./vendor/pyodide/', baseUrl).href });
   status("Loading the LightVM compiler…");
   pyodide.FS.mkdirTree("/editor/lightvm");
   await Promise.all(COMPILER_FILES.map(async name => {
@@ -28,7 +28,7 @@ from dataclasses import asdict
 sys.path.insert(0, "/editor")
 from lightvm.compiler import compile_source
 
-def editor_compile(source, target_json):
+def editor_compile(source, target_json, debug=False):
     try:
         ast.parse(source, filename="animation.py")
         symtable.symtable(source, "animation.py", "exec")
@@ -38,17 +38,17 @@ def editor_compile(source, target_json):
             "end_line": error.end_lineno or error.lineno or 1,
             "end_column": error.end_offset or error.offset or 1,
             "syntax": True}]})
-    result = compile_source(source, "animation.py", json.loads(target_json))
+    result = compile_source(source, "animation.py", json.loads(target_json), debug=debug)
     diagnostics = [asdict(item) for item in result.diagnostics]
     advisories = [asdict(item) for item in result.advisories]
-    # CPython AST columns count UTF-8 bytes. Convert them to character offsets
-    # before the browser converts those to its UTF-16 editor coordinates.
+    # CPython AST columns count UTF-8 bytes; CodeMirror uses UTF-16 offsets.
     lines = source.splitlines()
-    for item in diagnostics + advisories:
+    debug_locations = (result.debug.get("instructions", []) + result.debug.get("checkpoints", [])) if result.debug else []
+    for item in diagnostics + advisories + debug_locations:
         if 0 < item["line"] <= len(lines):
             text = lines[item["line"] - 1]
-            item["column"] = len(text.encode()[:max(0, item["column"] - 1)].decode(errors="ignore")) + 1
-    return json.dumps({"diagnostics": diagnostics, "advisories": advisories, "manifest": result.manifest,
+            item["column"] = len(text.encode()[:max(0, item["column"] - 1)].decode(errors="ignore").encode("utf-16-le")) // 2 + 1
+    return json.dumps({"diagnostics": diagnostics, "advisories": advisories, "manifest": result.manifest, "debug": result.debug,
         "bytecode": list(result.bytecode)}, allow_nan=False)
 `);
   self.postMessage({ type: "ready" });
@@ -67,20 +67,29 @@ self.onmessage = ({ data }) => {
       await ready;
       let lowered: LoweredSource;
       try { lowered = lowerSource(data.source, data.language ?? 'python'); }
-      catch (error) { self.postMessage({ type: 'compiled', id: data.id, diagnostics: [sourceDiagnostic(error)], bytecode: new Uint8Array(), manifest: {} }); return; }
+      catch (error) { self.postMessage({ type: data.type === 'preview' ? 'preview-compiled' : 'compiled', id: data.id, diagnostics: [sourceDiagnostic(error)], bytecode: new Uint8Array(), manifest: {} }); return; }
       pyodide.globals.set("editor_source", lowered.python);
       pyodide.globals.set("editor_target", JSON.stringify(data.target ?? null));
-      const result = JSON.parse(pyodide.runPython("editor_compile(editor_source, editor_target)"));
+      pyodide.globals.set("editor_debug", Boolean(data.debug));
+      const result = JSON.parse(pyodide.runPython("editor_compile(editor_source, editor_target, editor_debug)"));
+      const readable = (name: string) => lowered.names?.[name] ?? (data.language === 'blocks' ? name.replace(/^(?:v_|fn_)/, '') : name);
       if (data.language !== 'python') for (const key of ['diagnostics', 'advisories']) {
         result[key] = (result[key] ?? []).map((item: any) => ({
           ...item, ...lowered.locations[item.line - 1], filename: data.filename,
-          message: item.message.replaceAll('@init', 'init').replaceAll('@render', 'render'),
+          message: item.message.replaceAll('@init', 'init').replaceAll('@render', 'render').replace(/_js_(?:v|fn)\d+|\bv_[A-Za-z_]\w*/g, readable),
         }));
       }
+      if (result.debug?.instructions) {
+        result.debug.filename = data.filename;
+        if (data.language !== 'python') {
+          result.debug.instructions = result.debug.instructions.map((item: any) => lowered.locations[item.line - 1] ?? item);
+          result.debug.checkpoints = result.debug.checkpoints.map((item: any) => ({ ...item, ...lowered.locations[item.line - 1], variables: Object.fromEntries(Object.entries(item.variables).map(([name, reg]) => [readable(name), reg])) }));
+        }
+      }
       result.bytecode = new Uint8Array(result.bytecode || []);
-      self.postMessage({ type: "compiled", id: data.id, ...result });
+      self.postMessage({ type: data.type === 'preview' ? 'preview-compiled' : 'compiled', id: data.id, ...result });
     } catch (error) {
-      self.postMessage({ type: "failed", id: data.id, message: error instanceof Error ? error.message : String(error) });
+      self.postMessage({ type: data.type === 'preview' ? 'preview-failed' : 'failed', id: data.id, message: error instanceof Error ? error.message : String(error) });
     }
   });
 };

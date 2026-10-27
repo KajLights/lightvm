@@ -30,6 +30,7 @@ typedef struct Portable {
     size_t metadata_bytes,state_bytes,payload_bytes,register_bytes;
     struct PbcMapPlan *maps; size_t map_bytes;
     uint32_t generation,pc,function,used,bulk,status;
+    uint32_t fault_pc,fault_code;
     PbcValue result;
     LbcBuffer *output;
     char setting_names[16][33];
@@ -81,6 +82,10 @@ int pbc_prepare_step(PbcPreparation *,Portable *,LbcBuffer *);
 const char *pbc_prepare(Portable *p,LbcBuffer *output);
 bool pbc_invoke(Portable *p,unsigned function,const PbcValue *arguments,unsigned count);
 int pbc_resume(Portable *p,unsigned quota);
+enum { PBC_FAULT_OPERATION=1, PBC_FAULT_BUDGET, PBC_FAULT_RESOURCE };
+/* Source maps live beside the program in the editor, not in controller RAM. */
+const char *pbc_fault_reason(Portable *);
+const char *pbc_fault_message(Portable *,char *,size_t);
 unsigned pbc_type(const Portable *p,unsigned reg);
 unsigned pbc_role(const Portable *p,unsigned reg);
 uint32_t pbc_initial(const Portable *p,unsigned reg);

@@ -1,0 +1,130 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "brightness",
+                "TYPE": "f"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "09-arrays-starter-3"
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0.08
+                    },
+                    "inputs": {},
+                    "id": "09-arrays-starter-4"
+                  }
+                }
+              },
+              "id": "09-arrays-starter-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_pixel",
+                    "fields": {},
+                    "inputs": {
+                      "INDEX": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "09-arrays-starter-7"
+                        }
+                      },
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_hsv",
+                          "fields": {},
+                          "inputs": {
+                            "H": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0.08
+                                },
+                                "inputs": {},
+                                "id": "09-arrays-starter-9"
+                              }
+                            },
+                            "S": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 1
+                                },
+                                "inputs": {},
+                                "id": "09-arrays-starter-10"
+                              }
+                            },
+                            "V": {
+                              "block": {
+                                "type": "lm_array_get",
+                                "fields": {
+                                  "NAME": "brightness"
+                                },
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "09-arrays-starter-12"
+                                    }
+                                  }
+                                },
+                                "id": "09-arrays-starter-11"
+                              }
+                            }
+                          },
+                          "id": "09-arrays-starter-8"
+                        }
+                      }
+                    },
+                    "id": "09-arrays-starter-6"
+                  }
+                }
+              },
+              "id": "09-arrays-starter-5"
+            }
+          }
+        },
+        "id": "09-arrays-starter-1"
+      }
+    ]
+  }
+}

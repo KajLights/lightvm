@@ -116,6 +116,17 @@ license bundle. Upstream sources: [CYW43 driver](https://github.com/georgeroboti
 
 ## Redistribution
 
+The local browser editor distributes unmodified [Pyodide 314.0.7 source](https://github.com/pyodide/pyodide/tree/314.0.7)
+and its Python runtime under [MPL-2.0](licenses/pyodide-314.0.7.txt) and
+the [CPython 3.14.2 notices](licenses/cpython-3.14.2.txt). Pyodide's source is
+available at that link; the LightVM compiler is separate application code.
+[CodeMirror 5.65.18](https://github.com/codemirror/codemirror5/tree/5.65.18)
+is distributed under its [MIT license](licenses/codemirror-5.65.18.txt).
+The separately compiled LightVM browser VM includes
+[Emscripten runtime](licenses/emscripten-runtime.txt) and
+[musl](licenses/musl-browser.txt) notices. The editor build copies this file and
+the license directory alongside its static assets.
+
 Distribute this file and the `licenses/` directory with firmware or desktop
 executables. CMake copies them and LightVM's LICENSE beside each build's output.
 If distributing dependency sources or Python packages, retain their original

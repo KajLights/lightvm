@@ -1,0 +1,463 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "used",
+                "TYPE": "i"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "10-search-solution-3"
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_integer",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "10-search-solution-4"
+                  }
+                }
+              },
+              "id": "10-search-solution-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "slot",
+                "SCOPE": "local"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_integer",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "10-search-solution-6"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_while",
+                  "fields": {},
+                  "inputs": {
+                    "TEST": {
+                      "block": {
+                        "type": "lm_logic",
+                        "fields": {
+                          "OP": "and"
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "<"
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "slot",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-solution-10"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_runtime",
+                                    "fields": {
+                                      "PROPERTY": "count"
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-solution-11"
+                                  }
+                                }
+                              },
+                              "id": "10-search-solution-9"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "!="
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_array_get",
+                                    "fields": {
+                                      "NAME": "used"
+                                    },
+                                    "inputs": {
+                                      "INDEX": {
+                                        "block": {
+                                          "type": "lm_get",
+                                          "fields": {
+                                            "NAME": "slot",
+                                            "SCOPE": "local"
+                                          },
+                                          "inputs": {},
+                                          "id": "10-search-solution-14"
+                                        }
+                                      }
+                                    },
+                                    "id": "10-search-solution-13"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-solution-15"
+                                  }
+                                }
+                              },
+                              "id": "10-search-solution-12"
+                            }
+                          }
+                        },
+                        "id": "10-search-solution-8"
+                      }
+                    },
+                    "DO": {
+                      "block": {
+                        "type": "lm_set",
+                        "fields": {
+                          "NAME": "slot",
+                          "SCOPE": "local"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_math",
+                              "fields": {
+                                "OP": "+"
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "slot",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-solution-18"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 1
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-solution-19"
+                                  }
+                                }
+                              },
+                              "id": "10-search-solution-17"
+                            }
+                          }
+                        },
+                        "id": "10-search-solution-16"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_if",
+                      "fields": {},
+                      "inputs": {
+                        "TEST": {
+                          "block": {
+                            "type": "lm_compare",
+                            "fields": {
+                              "OP": "<"
+                            },
+                            "inputs": {
+                              "A": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "slot",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-solution-22"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_runtime",
+                                  "fields": {
+                                    "PROPERTY": "count"
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-solution-23"
+                                }
+                              }
+                            },
+                            "id": "10-search-solution-21"
+                          }
+                        },
+                        "THEN": {
+                          "block": {
+                            "type": "lm_array_set",
+                            "fields": {
+                              "NAME": "used"
+                            },
+                            "inputs": {
+                              "INDEX": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "slot",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-solution-25"
+                                }
+                              },
+                              "VALUE": {
+                                "block": {
+                                  "type": "lm_integer",
+                                  "fields": {
+                                    "VALUE": 1
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-solution-26"
+                                }
+                              }
+                            },
+                            "id": "10-search-solution-24"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "type": "lm_each",
+                          "fields": {
+                            "NAME": "position"
+                          },
+                          "inputs": {
+                            "DO": {
+                              "block": {
+                                "type": "lm_if",
+                                "fields": {},
+                                "inputs": {
+                                  "TEST": {
+                                    "block": {
+                                      "type": "lm_compare",
+                                      "fields": {
+                                        "OP": "=="
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_array_get",
+                                            "fields": {
+                                              "NAME": "used"
+                                            },
+                                            "inputs": {
+                                              "INDEX": {
+                                                "block": {
+                                                  "type": "lm_get",
+                                                  "fields": {
+                                                    "NAME": "position",
+                                                    "SCOPE": "local"
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-31"
+                                                }
+                                              }
+                                            },
+                                            "id": "10-search-solution-30"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_integer",
+                                            "fields": {
+                                              "VALUE": 1
+                                            },
+                                            "inputs": {},
+                                            "id": "10-search-solution-32"
+                                          }
+                                        }
+                                      },
+                                      "id": "10-search-solution-29"
+                                    }
+                                  },
+                                  "THEN": {
+                                    "block": {
+                                      "type": "lm_pixel",
+                                      "fields": {},
+                                      "inputs": {
+                                        "INDEX": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "10-search-solution-34"
+                                          }
+                                        },
+                                        "COLOR": {
+                                          "block": {
+                                            "type": "lm_rgb",
+                                            "fields": {},
+                                            "inputs": {
+                                              "R": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 40
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-36"
+                                                }
+                                              },
+                                              "G": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 8
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-37"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 0
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-38"
+                                                }
+                                              }
+                                            },
+                                            "id": "10-search-solution-35"
+                                          }
+                                        }
+                                      },
+                                      "id": "10-search-solution-33"
+                                    }
+                                  },
+                                  "ELSE": {
+                                    "block": {
+                                      "type": "lm_pixel",
+                                      "fields": {},
+                                      "inputs": {
+                                        "INDEX": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "10-search-solution-40"
+                                          }
+                                        },
+                                        "COLOR": {
+                                          "block": {
+                                            "type": "lm_rgb",
+                                            "fields": {},
+                                            "inputs": {
+                                              "R": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 0
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-42"
+                                                }
+                                              },
+                                              "G": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 4
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-43"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 40
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-solution-44"
+                                                }
+                                              }
+                                            },
+                                            "id": "10-search-solution-41"
+                                          }
+                                        }
+                                      },
+                                      "id": "10-search-solution-39"
+                                    }
+                                  }
+                                },
+                                "id": "10-search-solution-28"
+                              }
+                            }
+                          },
+                          "id": "10-search-solution-27"
+                        }
+                      },
+                      "id": "10-search-solution-20"
+                    }
+                  },
+                  "id": "10-search-solution-7"
+                }
+              },
+              "id": "10-search-solution-5"
+            }
+          }
+        },
+        "id": "10-search-solution-1"
+      }
+    ]
+  }
+}

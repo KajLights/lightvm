@@ -1,0 +1,358 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_image",
+              "fields": {
+                "NAME": "trail"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "11-fireflies-solution-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_random_seed",
+                  "fields": {},
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_integer",
+                        "fields": {
+                          "VALUE": 7
+                        },
+                        "inputs": {},
+                        "id": "11-fireflies-solution-5"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_set",
+                      "fields": {
+                        "NAME": "next_light",
+                        "SCOPE": "state"
+                      },
+                      "inputs": {
+                        "VALUE": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 0
+                            },
+                            "inputs": {},
+                            "id": "11-fireflies-solution-7"
+                          }
+                        }
+                      },
+                      "id": "11-fireflies-solution-6"
+                    }
+                  },
+                  "id": "11-fireflies-solution-4"
+                }
+              },
+              "id": "11-fireflies-solution-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_image_fade",
+              "fields": {
+                "NAME": "trail"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_native_math",
+                    "fields": {
+                      "FUNCTION": "exp"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "*"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": -2
+                                },
+                                "inputs": {},
+                                "id": "11-fireflies-solution-11"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_runtime",
+                                "fields": {
+                                  "PROPERTY": "delta"
+                                },
+                                "inputs": {},
+                                "id": "11-fireflies-solution-12"
+                              }
+                            }
+                          },
+                          "id": "11-fireflies-solution-10"
+                        }
+                      }
+                    },
+                    "id": "11-fireflies-solution-9"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_if",
+                  "fields": {},
+                  "inputs": {
+                    "TEST": {
+                      "block": {
+                        "type": "lm_compare",
+                        "fields": {
+                          "OP": ">="
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_runtime",
+                              "fields": {
+                                "PROPERTY": "time"
+                              },
+                              "inputs": {},
+                              "id": "11-fireflies-solution-15"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "next_light",
+                                "SCOPE": "state"
+                              },
+                              "inputs": {},
+                              "id": "11-fireflies-solution-16"
+                            }
+                          }
+                        },
+                        "id": "11-fireflies-solution-14"
+                      }
+                    },
+                    "THEN": {
+                      "block": {
+                        "type": "lm_image_point",
+                        "fields": {
+                          "NAME": "trail",
+                          "WRAP": "True"
+                        },
+                        "inputs": {
+                          "INDEX": {
+                            "block": {
+                              "type": "lm_random_int",
+                              "fields": {},
+                              "inputs": {
+                                "LOW": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-solution-19"
+                                  }
+                                },
+                                "HIGH": {
+                                  "block": {
+                                    "type": "lm_convert",
+                                    "fields": {
+                                      "FUNCTION": "int"
+                                    },
+                                    "inputs": {
+                                      "VALUE": {
+                                        "block": {
+                                          "type": "lm_math",
+                                          "fields": {
+                                            "OP": "-"
+                                          },
+                                          "inputs": {
+                                            "A": {
+                                              "block": {
+                                                "type": "lm_runtime",
+                                                "fields": {
+                                                  "PROPERTY": "count"
+                                                },
+                                                "inputs": {},
+                                                "id": "11-fireflies-solution-22"
+                                              }
+                                            },
+                                            "B": {
+                                              "block": {
+                                                "type": "lm_number",
+                                                "fields": {
+                                                  "VALUE": 1
+                                                },
+                                                "inputs": {},
+                                                "id": "11-fireflies-solution-23"
+                                              }
+                                            }
+                                          },
+                                          "id": "11-fireflies-solution-21"
+                                        }
+                                      }
+                                    },
+                                    "id": "11-fireflies-solution-20"
+                                  }
+                                }
+                              },
+                              "id": "11-fireflies-solution-18"
+                            }
+                          },
+                          "COLOR": {
+                            "block": {
+                              "type": "lm_rgb",
+                              "fields": {},
+                              "inputs": {
+                                "R": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 40
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-solution-25"
+                                  }
+                                },
+                                "G": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 8
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-solution-26"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "11-fireflies-solution-27"
+                                  }
+                                }
+                              },
+                              "id": "11-fireflies-solution-24"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "lm_set",
+                            "fields": {
+                              "NAME": "next_light",
+                              "SCOPE": "state"
+                            },
+                            "inputs": {
+                              "VALUE": {
+                                "block": {
+                                  "type": "lm_math",
+                                  "fields": {
+                                    "OP": "+"
+                                  },
+                                  "inputs": {
+                                    "A": {
+                                      "block": {
+                                        "type": "lm_runtime",
+                                        "fields": {
+                                          "PROPERTY": "time"
+                                        },
+                                        "inputs": {},
+                                        "id": "11-fireflies-solution-30"
+                                      }
+                                    },
+                                    "B": {
+                                      "block": {
+                                        "type": "lm_number",
+                                        "fields": {
+                                          "VALUE": 0.2
+                                        },
+                                        "inputs": {},
+                                        "id": "11-fireflies-solution-31"
+                                      }
+                                    }
+                                  },
+                                  "id": "11-fireflies-solution-29"
+                                }
+                              }
+                            },
+                            "id": "11-fireflies-solution-28"
+                          }
+                        },
+                        "id": "11-fireflies-solution-17"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_image_draw",
+                      "fields": {
+                        "NAME": "trail"
+                      },
+                      "inputs": {
+                        "POSITION": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 0
+                            },
+                            "inputs": {},
+                            "id": "11-fireflies-solution-33"
+                          }
+                        },
+                        "SCALE": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 1
+                            },
+                            "inputs": {},
+                            "id": "11-fireflies-solution-34"
+                          }
+                        }
+                      },
+                      "id": "11-fireflies-solution-32"
+                    }
+                  },
+                  "id": "11-fireflies-solution-13"
+                }
+              },
+              "id": "11-fireflies-solution-8"
+            }
+          }
+        },
+        "id": "11-fireflies-solution-1"
+      }
+    ]
+  }
+}

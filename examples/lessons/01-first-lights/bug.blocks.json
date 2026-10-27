@@ -1,0 +1,180 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_fill",
+              "fields": {},
+              "inputs": {
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-bug-4"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-bug-5"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-bug-6"
+                        }
+                      }
+                    },
+                    "id": "01-first-lights-bug-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0
+                        },
+                        "inputs": {},
+                        "id": "01-first-lights-bug-8"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 40
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-bug-10"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 8
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-bug-11"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-bug-12"
+                            }
+                          }
+                        },
+                        "id": "01-first-lights-bug-9"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_pixel",
+                      "fields": {},
+                      "inputs": {
+                        "INDEX": {
+                          "block": {
+                            "type": "lm_runtime",
+                            "fields": {
+                              "PROPERTY": "count"
+                            },
+                            "inputs": {},
+                            "id": "01-first-lights-bug-14"
+                          }
+                        },
+                        "COLOR": {
+                          "block": {
+                            "type": "lm_rgb",
+                            "fields": {},
+                            "inputs": {
+                              "R": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 0
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-bug-16"
+                                }
+                              },
+                              "G": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 4
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-bug-17"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 40
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-bug-18"
+                                }
+                              }
+                            },
+                            "id": "01-first-lights-bug-15"
+                          }
+                        }
+                      },
+                      "id": "01-first-lights-bug-13"
+                    }
+                  },
+                  "id": "01-first-lights-bug-7"
+                }
+              },
+              "id": "01-first-lights-bug-2"
+            }
+          }
+        },
+        "id": "01-first-lights-bug-1"
+      }
+    ]
+  }
+}

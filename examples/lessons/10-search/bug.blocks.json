@@ -1,0 +1,442 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "used",
+                "TYPE": "i"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "10-search-bug-3"
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_integer",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "10-search-bug-4"
+                  }
+                }
+              },
+              "id": "10-search-bug-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "slot",
+                "SCOPE": "local"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_integer",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "10-search-bug-6"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_while",
+                  "fields": {},
+                  "inputs": {
+                    "TEST": {
+                      "block": {
+                        "type": "lm_logic",
+                        "fields": {
+                          "OP": "and"
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "<"
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "slot",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-bug-10"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_runtime",
+                                    "fields": {
+                                      "PROPERTY": "count"
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-bug-11"
+                                  }
+                                }
+                              },
+                              "id": "10-search-bug-9"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "!="
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_array_get",
+                                    "fields": {
+                                      "NAME": "used"
+                                    },
+                                    "inputs": {
+                                      "INDEX": {
+                                        "block": {
+                                          "type": "lm_get",
+                                          "fields": {
+                                            "NAME": "slot",
+                                            "SCOPE": "local"
+                                          },
+                                          "inputs": {},
+                                          "id": "10-search-bug-14"
+                                        }
+                                      }
+                                    },
+                                    "id": "10-search-bug-13"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "10-search-bug-15"
+                                  }
+                                }
+                              },
+                              "id": "10-search-bug-12"
+                            }
+                          }
+                        },
+                        "id": "10-search-bug-8"
+                      }
+                    },
+                    "DO": {
+                      "block": {
+                        "type": "lm_set",
+                        "fields": {
+                          "NAME": "slot",
+                          "SCOPE": "local"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "slot",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {},
+                              "id": "10-search-bug-17"
+                            }
+                          }
+                        },
+                        "id": "10-search-bug-16"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_if",
+                      "fields": {},
+                      "inputs": {
+                        "TEST": {
+                          "block": {
+                            "type": "lm_compare",
+                            "fields": {
+                              "OP": "<"
+                            },
+                            "inputs": {
+                              "A": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "slot",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-bug-20"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_runtime",
+                                  "fields": {
+                                    "PROPERTY": "count"
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-bug-21"
+                                }
+                              }
+                            },
+                            "id": "10-search-bug-19"
+                          }
+                        },
+                        "THEN": {
+                          "block": {
+                            "type": "lm_array_set",
+                            "fields": {
+                              "NAME": "used"
+                            },
+                            "inputs": {
+                              "INDEX": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "slot",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-bug-23"
+                                }
+                              },
+                              "VALUE": {
+                                "block": {
+                                  "type": "lm_integer",
+                                  "fields": {
+                                    "VALUE": 1
+                                  },
+                                  "inputs": {},
+                                  "id": "10-search-bug-24"
+                                }
+                              }
+                            },
+                            "id": "10-search-bug-22"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "type": "lm_each",
+                          "fields": {
+                            "NAME": "position"
+                          },
+                          "inputs": {
+                            "DO": {
+                              "block": {
+                                "type": "lm_if",
+                                "fields": {},
+                                "inputs": {
+                                  "TEST": {
+                                    "block": {
+                                      "type": "lm_compare",
+                                      "fields": {
+                                        "OP": "=="
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_array_get",
+                                            "fields": {
+                                              "NAME": "used"
+                                            },
+                                            "inputs": {
+                                              "INDEX": {
+                                                "block": {
+                                                  "type": "lm_get",
+                                                  "fields": {
+                                                    "NAME": "position",
+                                                    "SCOPE": "local"
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-29"
+                                                }
+                                              }
+                                            },
+                                            "id": "10-search-bug-28"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_integer",
+                                            "fields": {
+                                              "VALUE": 1
+                                            },
+                                            "inputs": {},
+                                            "id": "10-search-bug-30"
+                                          }
+                                        }
+                                      },
+                                      "id": "10-search-bug-27"
+                                    }
+                                  },
+                                  "THEN": {
+                                    "block": {
+                                      "type": "lm_pixel",
+                                      "fields": {},
+                                      "inputs": {
+                                        "INDEX": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "10-search-bug-32"
+                                          }
+                                        },
+                                        "COLOR": {
+                                          "block": {
+                                            "type": "lm_rgb",
+                                            "fields": {},
+                                            "inputs": {
+                                              "R": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 40
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-34"
+                                                }
+                                              },
+                                              "G": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 8
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-35"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 0
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-36"
+                                                }
+                                              }
+                                            },
+                                            "id": "10-search-bug-33"
+                                          }
+                                        }
+                                      },
+                                      "id": "10-search-bug-31"
+                                    }
+                                  },
+                                  "ELSE": {
+                                    "block": {
+                                      "type": "lm_pixel",
+                                      "fields": {},
+                                      "inputs": {
+                                        "INDEX": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "10-search-bug-38"
+                                          }
+                                        },
+                                        "COLOR": {
+                                          "block": {
+                                            "type": "lm_rgb",
+                                            "fields": {},
+                                            "inputs": {
+                                              "R": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 0
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-40"
+                                                }
+                                              },
+                                              "G": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 4
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-41"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 40
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "10-search-bug-42"
+                                                }
+                                              }
+                                            },
+                                            "id": "10-search-bug-39"
+                                          }
+                                        }
+                                      },
+                                      "id": "10-search-bug-37"
+                                    }
+                                  }
+                                },
+                                "id": "10-search-bug-26"
+                              }
+                            }
+                          },
+                          "id": "10-search-bug-25"
+                        }
+                      },
+                      "id": "10-search-bug-18"
+                    }
+                  },
+                  "id": "10-search-bug-7"
+                }
+              },
+              "id": "10-search-bug-5"
+            }
+          }
+        },
+        "id": "10-search-bug-1"
+      }
+    ]
+  }
+}

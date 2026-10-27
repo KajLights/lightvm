@@ -21,6 +21,8 @@ produce the same position as frequent frames, including across reversals. Sprite
 | Helper | Contract |
 | --- | --- |
 | `repeat(x)` | Modulo one, in `[0, 1)`, including negative input. |
+| `wrap(value, length)` | From zero up to a positive length; negative motion wraps around too. |
+| `wrap_index(index, count)` | Whole-number ring position from zero to `count - 1`; count must be positive. JavaScript spells this `wrapIndex`. |
 | `pingpong(x)` | A triangle wave: 0 at 0, 1 at 1, 0 at 2, repeating in both directions. |
 | `clamp01(x)` | Clamp to `[0, 1]`. |
 | `lerp(first, last, progress)` | `first + (last - first) * progress`; extrapolates outside `[0, 1]`. |

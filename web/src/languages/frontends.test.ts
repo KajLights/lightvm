@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { lowerJavaScript } from './javascript';
-import { blockExample, lowerBlocks, parseBlocks } from './blocks';
+import { blockExample, lowerBlocks, parseBlocks, type Block } from './blocks';
 import type { LoweredSource } from './source';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 function compile(lowered: LoweredSource) {
@@ -18,6 +18,25 @@ print(json.dumps({'diagnostics': [asdict(d) for d in r.diagnostics], 'advisories
   expect(result.diagnostics, lowered.python).toEqual([]); expect(result.bytes).toBeGreaterThan(96); return result;
 }
 const render = (body: string) => `export function render(state, runtime, pixels) { ${body} }`;
+const block = (type: string, fields: Record<string, unknown> = {}, inputs: Record<string, Block> = {}): Block => ({ type, fields, inputs: Object.fromEntries(Object.entries(inputs).map(([key, block]) => [key, { block }])) });
+const numberBlock = (value: number) => block('lm_number', { VALUE: value });
+const variableBlock = (name: string) => block('lm_get', { NAME: name, SCOPE: 'local' });
+const sequence = (...blocks: Block[]) => { blocks.slice(0, -1).forEach((b, i) => b.next = { block: blocks[i + 1] }); return blocks[0]; };
+const colourBlock = (r: Block, g = numberBlock(0), b = numberBlock(0)) => block('lm_rgb', {}, { R: r, G: g, B: b });
+function teachingBlocks(): string {
+  const paint = block('lm_procedure', { NAME: 'paint', PARAM: 'position, colour' }, { DO: block('lm_pixel', {}, { INDEX: variableBlock('position'), COLOR: variableBlock('colour') }) });
+  const add = block('lm_function', { NAME: 'add', PARAM: 'first, second, third' }, { VALUE: block('lm_math', { OP: '+' }, { A: variableBlock('first'), B: block('lm_math', { OP: '+' }, { A: variableBlock('second'), B: variableBlock('third') }) }) });
+  const program = block('lm_program', { PROFILE: 'animation' }, {
+    INIT: sequence(block('lm_random_seed', {}, { VALUE: numberBlock(17) }), block('lm_array', { NAME: 'values', TYPE: 'i' }, { LENGTH: numberBlock(3), FILL: block('lm_integer', { VALUE: 2 }) }), block('lm_setting', { NAME: 'speed' }, { VALUE: numberBlock(1), MIN: numberBlock(0), MAX: numberBlock(5) })),
+    RENDER: sequence(
+      block('lm_set', { NAME: 'total', SCOPE: 'local' }, { VALUE: block('lm_integer', { VALUE: 0 }) }),
+      block('lm_for_array', { NAME: 'brightness', ARRAY: 'values' }, { DO: block('lm_set', { NAME: 'total', SCOPE: 'local' }, { VALUE: block('lm_math', { OP: '+' }, { A: variableBlock('total'), B: variableBlock('brightness') }) }) }),
+      block('lm_for_range', { NAME: 'position' }, { START: numberBlock(4), STOP: numberBlock(-1), STEP: numberBlock(-1), DO: block('lm_call_procedure', { NAME: 'paint' }, { VALUE: variableBlock('position'), SECOND: colourBlock(block('lm_call', { NAME: 'add' }, { VALUE: variableBlock('total'), SECOND: variableBlock('position'), THIRD: block('lm_random_int', {}, { LOW: numberBlock(0), HIGH: numberBlock(0) }) })) }) }),
+      block('lm_pixel', {}, { INDEX: block('lm_wrap', {}, { INDEX: numberBlock(-1), COUNT: block('lm_runtime', { PROPERTY: 'count' }) }), COLOR: colourBlock(numberBlock(20)) }),
+    ),
+  });
+  return JSON.stringify({ blocks: { blocks: [add, paint, program] } });
+}
 describe('JavaScript to the shared LightVM backend', () => {
   for (const name of readdirSync(root + '/examples/javascript').filter(name => name.endsWith('.js'))) {
     it('compiles example ' + name, () => { compile(lowerJavaScript(readFileSync(root + '/examples/javascript/' + name, 'utf8'))); });
@@ -73,12 +92,23 @@ export function render(state, runtime, pixels) {
   it.each([
     'fetch("https://example.com")', 'eval("pixels.clear()")', 'new Date()', 'await Promise.resolve()',
     'let a = 1; a = { value: 2 }', 'const a = 1; a++', 'for (let i = 0; i < 2; i++) {} i++',
-    'pixels.fill(rgb(...[1,2,3]))', 'pixels["fill"](rgb(1,2,3))', 'let x = 2 ** 3',
+    'pixels.fill(rgb(...[1,2,3]))', 'pixels["fill"](rgb(1,2,3))',
   ])('rejects unsupported syntax without executing it: %s', body => {
     expect(() => lowerJavaScript(render(body))).toThrow();
   });
 });
 describe('independent blocks frontend', () => {
+  it('compiles drawing functions, several arguments, array loops, reverse counts and bounded settings', () => {
+    const lowered = lowerBlocks(teachingBlocks());
+    expect(compile(lowered).manifest.settings[0].name).toBe('speed');
+    compile(lowerJavaScript(lowered.javascript));
+    expect(lowered.locations).toHaveLength(lowered.python.trimEnd().split('\n').length);
+  });
+  it('rejects colour values in choices and arithmetic sockets', () => {
+    for (const statement of [block('lm_if', {}, { TEST: colourBlock(numberBlock(2)) }), block('lm_pixel', {}, { INDEX: colourBlock(numberBlock(2)), COLOR: colourBlock(numberBlock(2)) })]) {
+      expect(() => lowerBlocks(JSON.stringify({ blocks: { blocks: [block('lm_program', {}, { RENDER: statement })] } }))).toThrow(/socket needs/);
+    }
+  });
   it.each(['rainbow', 'pulse', 'wipe'] as const)('compiles the %s workspace directly', kind => {
     const source = blockExample(kind), result = lowerBlocks(source);
     const compiled = compile(result); expect(compiled.manifest.profile).toBe(kind === 'wipe' ? 'transition' : 'animation');
@@ -127,6 +157,12 @@ describe.skipIf(!process.env.LIGHTVM_RECEIVER)('native bytecode execution', () =
     })) as number[][];
   }
   const solid = (r: number, g: number, b: number) => Array.from({ length: 5 }, () => [r, g, b]).flat();
+  it('executes the new teaching blocks and their learning view identically', () => {
+    const lowered = lowerBlocks(teachingBlocks());
+    const direct = replay(lowered), javascript = replay(lowerJavaScript(lowered.javascript));
+    expect(direct).toEqual(javascript);
+    expect(direct.at(-1)).toEqual([6, 0, 0, 7, 0, 0, 8, 0, 0, 9, 0, 0, 20, 0, 0]);
+  });
   it('executes nested loops, continue updates, break and lexical shadowing', () => {
     expect(replay(lowerJavaScript(render(`
       let total = 0;
@@ -164,6 +200,30 @@ describe.skipIf(!process.env.LIGHTVM_RECEIVER)('native bytecode execution', () =
   });
   it('short-circuits logical expressions and preserves operand values', () => {
     expect(replay(lowerJavaScript(render('const x = 0; const y = 5; pixels.fill(rgb(x || 12, y && 7, y || (1 / 0)));')))).toEqual([solid(12, 7, 5)]);
+  });
+  it('evaluates effectful logical operands once and supports drawing procedures', () => {
+    const source = lowerJavaScript(`
+      export function init(s,r) { s.calls = 0; }
+      function next(s) { s.calls += 1; return s.calls; }
+      function paint(p, level = 8) { p.fill(rgb(level, 0, 0)); }
+      export function render(s,r,p) {
+        s.calls = 0;
+        const a = next(s) && next(s);
+        const b = next(s) || next(s);
+        paint(p);
+        p[0] = rgb(a, b, s.calls);
+      }`);
+    expect(replay(source)).toEqual([[2, 3, 3, ...Array(4).fill([8, 0, 0]).flat()]]);
+  });
+  it('keeps number values in natural loops, including immutable count aliases', () => {
+    const source = lowerJavaScript(render(`const count = pixels.count; let total = 0;
+      for (let i = 0; i < count; i++) { let value = i; value += 0.5; total += value; pixels[i] = rgb(value, 0, 0); }
+      pixels[0] = rgb(total, 0, 0);`));
+    expect(replay(source)).toEqual([[12,0,0,1,0,0,2,0,0,3,0,0,4,0,0]]);
+  });
+  it('accepts shared colours, powers and ring positions in everyday spelling', () => {
+    const source = lowerJavaScript('const ORANGE = rgb(40, 8, 0);' + render('pixels.fill(ORANGE); pixels[wrapIndex(-1, pixels.count)] = rgb(2 ** 3, 0, 0);'));
+    expect(replay(source)).toEqual([[...Array(4).fill([40,8,0]).flat(),8,0,0]]);
   });
   it('keeps state and typed array contents across renders', () => {
     const source = lowerJavaScript(`export function init(s,r) { s.data = new Float32Array([1,2]); s.total = 0; }

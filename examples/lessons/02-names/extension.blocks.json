@@ -1,0 +1,261 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "colour",
+                "SCOPE": "local"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 40
+                          },
+                          "inputs": {},
+                          "id": "02-names-extension-4"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 8
+                          },
+                          "inputs": {},
+                          "id": "02-names-extension-5"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "02-names-extension-6"
+                        }
+                      }
+                    },
+                    "id": "02-names-extension-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0
+                        },
+                        "inputs": {},
+                        "id": "02-names-extension-8"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_get",
+                        "fields": {
+                          "NAME": "colour",
+                          "SCOPE": "local"
+                        },
+                        "inputs": {},
+                        "id": "02-names-extension-9"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_pixel",
+                      "fields": {},
+                      "inputs": {
+                        "INDEX": {
+                          "block": {
+                            "type": "lm_math",
+                            "fields": {
+                              "OP": "-"
+                            },
+                            "inputs": {
+                              "A": {
+                                "block": {
+                                  "type": "lm_runtime",
+                                  "fields": {
+                                    "PROPERTY": "count"
+                                  },
+                                  "inputs": {},
+                                  "id": "02-names-extension-12"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 1
+                                  },
+                                  "inputs": {},
+                                  "id": "02-names-extension-13"
+                                }
+                              }
+                            },
+                            "id": "02-names-extension-11"
+                          }
+                        },
+                        "COLOR": {
+                          "block": {
+                            "type": "lm_get",
+                            "fields": {
+                              "NAME": "colour",
+                              "SCOPE": "local"
+                            },
+                            "inputs": {},
+                            "id": "02-names-extension-14"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "type": "lm_set",
+                          "fields": {
+                            "NAME": "middle_colour",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {
+                            "VALUE": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "02-names-extension-17"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 4
+                                      },
+                                      "inputs": {},
+                                      "id": "02-names-extension-18"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "02-names-extension-19"
+                                    }
+                                  }
+                                },
+                                "id": "02-names-extension-16"
+                              }
+                            }
+                          },
+                          "next": {
+                            "block": {
+                              "type": "lm_pixel",
+                              "fields": {},
+                              "inputs": {
+                                "INDEX": {
+                                  "block": {
+                                    "type": "lm_convert",
+                                    "fields": {
+                                      "FUNCTION": "int"
+                                    },
+                                    "inputs": {
+                                      "VALUE": {
+                                        "block": {
+                                          "type": "lm_math",
+                                          "fields": {
+                                            "OP": "/"
+                                          },
+                                          "inputs": {
+                                            "A": {
+                                              "block": {
+                                                "type": "lm_runtime",
+                                                "fields": {
+                                                  "PROPERTY": "count"
+                                                },
+                                                "inputs": {},
+                                                "id": "02-names-extension-23"
+                                              }
+                                            },
+                                            "B": {
+                                              "block": {
+                                                "type": "lm_number",
+                                                "fields": {
+                                                  "VALUE": 2
+                                                },
+                                                "inputs": {},
+                                                "id": "02-names-extension-24"
+                                              }
+                                            }
+                                          },
+                                          "id": "02-names-extension-22"
+                                        }
+                                      }
+                                    },
+                                    "id": "02-names-extension-21"
+                                  }
+                                },
+                                "COLOR": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "middle_colour",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "02-names-extension-25"
+                                  }
+                                }
+                              },
+                              "id": "02-names-extension-20"
+                            }
+                          },
+                          "id": "02-names-extension-15"
+                        }
+                      },
+                      "id": "02-names-extension-10"
+                    }
+                  },
+                  "id": "02-names-extension-7"
+                }
+              },
+              "id": "02-names-extension-2"
+            }
+          }
+        },
+        "id": "02-names-extension-1"
+      }
+    ]
+  }
+}

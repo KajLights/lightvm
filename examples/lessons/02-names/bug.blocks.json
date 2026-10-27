@@ -1,0 +1,170 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "colour",
+                "SCOPE": "local"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 40
+                          },
+                          "inputs": {},
+                          "id": "02-names-bug-4"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 8
+                          },
+                          "inputs": {},
+                          "id": "02-names-bug-5"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "02-names-bug-6"
+                        }
+                      }
+                    },
+                    "id": "02-names-bug-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "colour",
+                    "SCOPE": "local"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0.5
+                        },
+                        "inputs": {},
+                        "id": "02-names-bug-8"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_pixel",
+                      "fields": {},
+                      "inputs": {
+                        "INDEX": {
+                          "block": {
+                            "type": "lm_number",
+                            "fields": {
+                              "VALUE": 0
+                            },
+                            "inputs": {},
+                            "id": "02-names-bug-10"
+                          }
+                        },
+                        "COLOR": {
+                          "block": {
+                            "type": "lm_get",
+                            "fields": {
+                              "NAME": "colour",
+                              "SCOPE": "local"
+                            },
+                            "inputs": {},
+                            "id": "02-names-bug-11"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "-"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "count"
+                                      },
+                                      "inputs": {},
+                                      "id": "02-names-bug-14"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 1
+                                      },
+                                      "inputs": {},
+                                      "id": "02-names-bug-15"
+                                    }
+                                  }
+                                },
+                                "id": "02-names-bug-13"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "colour",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "02-names-bug-16"
+                              }
+                            }
+                          },
+                          "id": "02-names-bug-12"
+                        }
+                      },
+                      "id": "02-names-bug-9"
+                    }
+                  },
+                  "id": "02-names-bug-7"
+                }
+              },
+              "id": "02-names-bug-2"
+            }
+          }
+        },
+        "id": "02-names-bug-1"
+      }
+    ]
+  }
+}

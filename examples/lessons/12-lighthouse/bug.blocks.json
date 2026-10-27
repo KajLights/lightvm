@@ -1,0 +1,430 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_procedure",
+        "fields": {
+          "NAME": "draw_beam",
+          "PARAM": "front"
+        },
+        "inputs": {
+          "DO": {
+            "block": {
+              "type": "lm_repeat",
+              "fields": {
+                "NAME": "behind"
+              },
+              "inputs": {
+                "COUNT": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 3
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-bug-3"
+                  }
+                },
+                "DO": {
+                  "block": {
+                    "type": "lm_set",
+                    "fields": {
+                      "NAME": "position",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "-"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_convert",
+                                "fields": {
+                                  "FUNCTION": "int"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "front",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-bug-7"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-bug-6"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "behind",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-bug-8"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-bug-5"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "type": "lm_if",
+                        "fields": {},
+                        "inputs": {
+                          "TEST": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "=="
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "behind",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "12-lighthouse-bug-11"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "12-lighthouse-bug-12"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-bug-10"
+                            }
+                          },
+                          "THEN": {
+                            "block": {
+                              "type": "lm_set",
+                              "fields": {
+                                "NAME": "colour",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_rgb",
+                                    "fields": {},
+                                    "inputs": {
+                                      "R": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 40
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-bug-15"
+                                        }
+                                      },
+                                      "G": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 20
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-bug-16"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 0
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-bug-17"
+                                        }
+                                      }
+                                    },
+                                    "id": "12-lighthouse-bug-14"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-bug-13"
+                            }
+                          },
+                          "ELSE": {
+                            "block": {
+                              "type": "lm_set",
+                              "fields": {
+                                "NAME": "colour",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_rgb",
+                                    "fields": {},
+                                    "inputs": {
+                                      "R": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 10
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-bug-20"
+                                        }
+                                      },
+                                      "G": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 2
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-bug-21"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 0
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-bug-22"
+                                        }
+                                      }
+                                    },
+                                    "id": "12-lighthouse-bug-19"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-bug-18"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "lm_pixel",
+                            "fields": {},
+                            "inputs": {
+                              "INDEX": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "position",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "12-lighthouse-bug-24"
+                                }
+                              },
+                              "COLOR": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "colour",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "12-lighthouse-bug-25"
+                                }
+                              }
+                            },
+                            "id": "12-lighthouse-bug-23"
+                          }
+                        },
+                        "id": "12-lighthouse-bug-9"
+                      }
+                    },
+                    "id": "12-lighthouse-bug-4"
+                  }
+                }
+              },
+              "id": "12-lighthouse-bug-2"
+            }
+          }
+        },
+        "id": "12-lighthouse-bug-1"
+      },
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-bug-28"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-bug-30"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-bug-29"
+                }
+              },
+              "id": "12-lighthouse-bug-27"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "%"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "+"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "state"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-bug-34"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "delta"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-bug-36"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "speed",
+                                        "SCOPE": "state"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-bug-37"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-bug-35"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-bug-33"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_runtime",
+                          "fields": {
+                            "PROPERTY": "count"
+                          },
+                          "inputs": {},
+                          "id": "12-lighthouse-bug-38"
+                        }
+                      }
+                    },
+                    "id": "12-lighthouse-bug-32"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_call_procedure",
+                  "fields": {
+                    "NAME": "draw_beam"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_get",
+                        "fields": {
+                          "NAME": "position",
+                          "SCOPE": "state"
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-bug-40"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-bug-39"
+                }
+              },
+              "id": "12-lighthouse-bug-31"
+            }
+          }
+        },
+        "id": "12-lighthouse-bug-26"
+      }
+    ]
+  }
+}

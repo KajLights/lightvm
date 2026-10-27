@@ -1,0 +1,74 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_pixel",
+              "fields": {},
+              "inputs": {
+                "INDEX": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "01-first-lights-starter-3"
+                  }
+                },
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 40
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-starter-5"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 8
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-starter-6"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-starter-7"
+                        }
+                      }
+                    },
+                    "id": "01-first-lights-starter-4"
+                  }
+                }
+              },
+              "id": "01-first-lights-starter-2"
+            }
+          }
+        },
+        "id": "01-first-lights-starter-1"
+      }
+    ]
+  }
+}

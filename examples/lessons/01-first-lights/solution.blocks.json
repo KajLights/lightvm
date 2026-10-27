@@ -1,0 +1,201 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_fill",
+              "fields": {},
+              "inputs": {
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-solution-4"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-solution-5"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-solution-6"
+                        }
+                      }
+                    },
+                    "id": "01-first-lights-solution-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0
+                        },
+                        "inputs": {},
+                        "id": "01-first-lights-solution-8"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 40
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-solution-10"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 8
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-solution-11"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-solution-12"
+                            }
+                          }
+                        },
+                        "id": "01-first-lights-solution-9"
+                      }
+                    }
+                  },
+                  "next": {
+                    "block": {
+                      "type": "lm_pixel",
+                      "fields": {},
+                      "inputs": {
+                        "INDEX": {
+                          "block": {
+                            "type": "lm_math",
+                            "fields": {
+                              "OP": "-"
+                            },
+                            "inputs": {
+                              "A": {
+                                "block": {
+                                  "type": "lm_runtime",
+                                  "fields": {
+                                    "PROPERTY": "count"
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-solution-15"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 1
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-solution-16"
+                                }
+                              }
+                            },
+                            "id": "01-first-lights-solution-14"
+                          }
+                        },
+                        "COLOR": {
+                          "block": {
+                            "type": "lm_rgb",
+                            "fields": {},
+                            "inputs": {
+                              "R": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 0
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-solution-18"
+                                }
+                              },
+                              "G": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 4
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-solution-19"
+                                }
+                              },
+                              "B": {
+                                "block": {
+                                  "type": "lm_number",
+                                  "fields": {
+                                    "VALUE": 40
+                                  },
+                                  "inputs": {},
+                                  "id": "01-first-lights-solution-20"
+                                }
+                              }
+                            },
+                            "id": "01-first-lights-solution-17"
+                          }
+                        }
+                      },
+                      "id": "01-first-lights-solution-13"
+                    }
+                  },
+                  "id": "01-first-lights-solution-7"
+                }
+              },
+              "id": "01-first-lights-solution-2"
+            }
+          }
+        },
+        "id": "01-first-lights-solution-1"
+      }
+    ]
+  }
+}

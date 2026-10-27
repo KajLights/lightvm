@@ -95,6 +95,7 @@ def draw(ctx,runtime,pixels):
         for bound in (0,-1):
             self.compare(PREFIX+f'''@render
 def draw(ctx,runtime,pixels):
+ i=7
  for i in range({bound}):
   pixels[i]=rgb(int(1.0/0.0),0,0)
  pixels[0]=rgb(i,0,0)
@@ -164,6 +165,12 @@ def draw(ctx,runtime,pixels):
         self.assertEqual(self.client.status_fields()['heap'],heap)
         with self.assertRaises(ProtocolError):self.client.require_ok(self.client.command(FRAME,struct.pack('<I',1000),output='lights'))
         self.assertEqual(self.client.snapshot(output='lights',layer='fg')[1],before)
+        running = self.client.program_state(output='lights',layer='fg')
+        artifact = compile_source(source)
+        self.assertTrue(running['faulted'])
+        self.assertEqual(running['program_crc32'], artifact.debug['crc32'])
+        self.assertEqual(artifact.debug['instructions'][running['fault_pc']]['line'], 6)
+        self.assertIn('255', running['fault_message'])
 
 
 if __name__=='__main__':unittest.main()

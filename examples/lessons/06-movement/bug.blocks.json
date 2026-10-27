@@ -1,0 +1,195 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "06-movement-bug-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "06-movement-bug-5"
+                      }
+                    }
+                  },
+                  "id": "06-movement-bug-4"
+                }
+              },
+              "id": "06-movement-bug-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "%"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "+"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "state"
+                                },
+                                "inputs": {},
+                                "id": "06-movement-bug-9"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 1
+                                },
+                                "inputs": {},
+                                "id": "06-movement-bug-10"
+                              }
+                            }
+                          },
+                          "id": "06-movement-bug-8"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_runtime",
+                          "fields": {
+                            "PROPERTY": "count"
+                          },
+                          "inputs": {},
+                          "id": "06-movement-bug-11"
+                        }
+                      }
+                    },
+                    "id": "06-movement-bug-7"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_convert",
+                        "fields": {
+                          "FUNCTION": "int"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "position",
+                                "SCOPE": "state"
+                              },
+                              "inputs": {},
+                              "id": "06-movement-bug-14"
+                            }
+                          }
+                        },
+                        "id": "06-movement-bug-13"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 40
+                              },
+                              "inputs": {},
+                              "id": "06-movement-bug-16"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 8
+                              },
+                              "inputs": {},
+                              "id": "06-movement-bug-17"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {},
+                              "id": "06-movement-bug-18"
+                            }
+                          }
+                        },
+                        "id": "06-movement-bug-15"
+                      }
+                    }
+                  },
+                  "id": "06-movement-bug-12"
+                }
+              },
+              "id": "06-movement-bug-6"
+            }
+          }
+        },
+        "id": "06-movement-bug-1"
+      }
+    ]
+  }
+}

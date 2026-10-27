@@ -4,6 +4,7 @@ The function table carries explicit permissions/result types; animation entry
 selection is profile metadata. No source code runs during compilation.
 """
 import ast
+import copy
 import json
 import math
 import struct
@@ -48,9 +49,13 @@ LIBRARIES = {'lightvm.motion', 'lightvm.easing', 'lightvm.transitions'}
 
 
 class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
-    def __init__(self, source, optimize=True):
+    def __init__(self, source, optimize=True, debug=False):
         super().__init__(source)
-        self.optimize = optimize
+        self.optimize = optimize and not debug
+        self.debug = debug
+        self.source_node = None
+        self.code_locations, self.checkpoints = [], {}
+        self.library_location = None
         # Runtime arguments are flattened into typed input registers. Context
         # fields and array bindings belong to this instance, never module globals.
         self.regs, self.names = [], {}
@@ -68,6 +73,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         self.resource_names, self.setting_names = {}, {}
         self.helpers, self.call_stack, self.return_stack, self.loop_stack = {}, [], [], []
         self.fields, self.caps, self.declarations, self.imports = {}, {}, {}, {}
+        self.module_values, self.module_constants = {}, {}
         self.rights, self.depth = 0, 0
         self.feature_setup()
         self.input_setup()
@@ -118,6 +124,32 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         equal = self.reg(B); self.emit('EQ', equal, reg, zero)
         out = self.reg(B); self.emit('EQ', out, equal, self.literal(False)); return out
 
+    def snapshot(self, reg, *, local=False):
+        """An earlier operand must survive a later helper changing context."""
+        if reg >= 0 and self.regs[reg][1] in ((LOCAL, STATE) if local else (STATE,)):
+            saved = self.reg(self.typ(reg)); self.emit('MOV', saved, reg)
+            return saved
+        return reg
+
+    def comparison(self, op, a, b, node):
+        if isinstance(op, (ast.Eq, ast.NotEq)) and self.typ(a) == self.typ(b):
+            if self.typ(a) == REF: self.fail(node, 'Compare values from an array, rather than the arrays themselves.')
+            out = self.reg(B); self.emit('EQ', out, a, b)
+        else:
+            a, b, typ = self.pair(a, b)
+            if isinstance(op, (ast.Eq, ast.NotEq)):
+                out = self.reg(B); self.emit('EQ', out, a, b)
+            else:
+                if isinstance(op, (ast.Gt, ast.LtE)): a, b = b, a
+                if not isinstance(op, (ast.Lt, ast.Gt, ast.LtE, ast.GtE)):
+                    self.fail(node, 'Use <, <=, >, >=, == or != to compare these values.')
+                if typ == Q: out = self.numeric_op('QLT', a, b)
+                else:
+                    out = self.reg(B); self.emit('FLT' if typ == F else 'ILT', out, a, b)
+        if isinstance(op, (ast.NotEq, ast.LtE, ast.GtE)):
+            negated = self.reg(B); self.emit('EQ', negated, out, self.literal(False)); out = negated
+        return out
+
     def convert(self, reg, typ, explicit=False):
         if self.typ(reg) == C and typ == I: return self.native('color_int', [reg], None)
         if self.typ(reg) == I and typ == C: return self.native('int_color', [reg], None)
@@ -135,16 +167,20 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         return len(self.regs) - 1
 
     def typ(self, register):
-        if register < 0: raise CompileError('void operation cannot be used as a value')
+        if register < 0: raise CompileError('This function draws or changes values but does not give back a value.', self.source_node)
         return super().typ(register)
 
     def emit(self, op, a=0, b=0, c=0, imm=0):
         if op in ('FMIN', 'FMAX'): self.kernels_used = True
         self.code.append([P_OP[op], a, b, c, imm])
+        node = self.library_location or self.source_node
+        self.code_locations.append({'line': getattr(node, 'lineno', 1), 'column': getattr(node, 'col_offset', 0) + 1})
         return len(self.code) - 1
 
     def declarative(self, node):
         """Checked acyclic numeric expressions, evaluated by native admission."""
+        if isinstance(node, ast.Name) and node.id in self.module_values:
+            return self.declarative(self.module_values[node.id])
         if isinstance(node, ast.Constant):
             r = self.literal(node.value)
             typ, _, bits = self.regs[r]
@@ -266,6 +302,15 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             self.fail(node, 'stage cannot mutate this resource')
 
     def expr(self, n):
+        before = self.source_node
+        self.source_node = n
+        try: return self._expr(n)
+        except CompileError as error:
+            if error.node is None: error.node = n
+            raise
+        finally: self.source_node = before
+
+    def _expr(self, n):
         live_input = self.input_read(n)
         if live_input is not None: return live_input
         feature = self.feature_expr(n)
@@ -284,11 +329,14 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if isinstance(n, ast.Name):
             if self.imports.get(n.id) == 'math.pi': return self.literal(math.pi)
             if self.capability(n): self.fail(n, 'caller objects may only be passed to helpers or accessed by property')
+            if n.id in self.module_constants and n.id not in self.env: return self.module_constants[n.id]
+            if n.id not in self.env:
+                self.fail(n, 'Give "' + n.id + '" a value before using it. If it is set inside a loop or condition, set a starting value first.')
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute):
             if n.func.attr in ('fill', 'copy_from'):
                 try: ref, kind = self.resource(n.func.value)
                 except CompileError: kind = None
-                if kind == 20:
+                if kind in (1, 2, 7, 8, 11, 20):
                     self.check_write(ref, n)
                     if len(n.args) != 1: self.fail(n, 'one positional argument required')
                     if n.func.attr == 'copy_from':
@@ -299,10 +347,10 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     else:
                         kws = {k.arg:k.value for k in n.keywords}
                         if len(kws) != len(n.keywords) or set(kws) - {'start', 'stop'}: self.fail(n, 'invalid fill range')
-                        value = self.expr(n.args[0])
-                        if self.typ(value) != Q: self.fail(n, 'fixed array fill requires an explicit fixed value')
-                        start = self.expr(kws['start']) if 'start' in kws else self.literal(0)
-                        if 'stop' in kws: stop = self.expr(kws['stop'])
+                        value = self.snapshot(self.convert(self.expr(n.args[0]), self.element_type(kind)))
+                        ranges = {key: self.snapshot(self.expr(item)) for key, item in kws.items()}
+                        start = ranges['start'] if 'start' in ranges else self.literal(0)
+                        if 'stop' in ranges: stop = ranges['stop']
                         else: stop = self.reg(I); self.emit('LENGTH', stop, ref)
                         if self.typ(start) != I or self.typ(stop) != I: self.fail(n, 'fill range must be i32')
                         self.emit('RESOURCE_FILL', ref, value, start, stop)
@@ -313,7 +361,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 return self.math_call(n.func.attr,n)
             if module == 'math' and n.func.attr == 'sin':
                 if n.keywords: self.fail(n, 'math.sin takes one positional argument')
-                return self.native('sin', [self.expr(a) for a in n.args], n)
+                return self.native('sin', [self.snapshot(self.expr(a)) for a in n.args], n)
             method = n.func.attr
             if self.capability(n.func.value) == 'pixels' and method in ('mix', 'copy_composition'):
                 if self.profile_name != 'transition' or self.stage != 1:
@@ -331,47 +379,49 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                                    [self.output, value, self.expr(args['start']), self.expr(args['stop'])], n)
             if self.capability(n.func.value) == 'pixels' and method in ('point', 'colorwheel', 'gradient', 'palette'):
                 if n.keywords: self.fail(n, 'native drawing takes positional arguments')
-                args = [self.output] + [self.expr(a) for a in n.args]
+                args = [self.output] + [self.snapshot(self.expr(a)) for a in n.args]
                 if method == 'point' and len(args) == 3: args.append(self.literal(255))
                 return self.native({'point':'image_point', 'colorwheel':'image_colorwheel', 'gradient':'image_gradient', 'palette':'image_palette'}[method], args, n)
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.Not):
             r = self.truth(self.expr(n.operand))
             out = self.reg(B); self.emit('EQ', out, r, self.literal(False)); return out
-        if isinstance(n, ast.Compare) and len(n.ops) == 1:
-            a, b = self.expr(n.left), self.expr(n.comparators[0])
-            op = n.ops[0]
-            if isinstance(op, (ast.Eq, ast.NotEq)) and self.typ(a) == self.typ(b):
-                if self.typ(a) == REF: self.fail(n, 'resource comparisons are not supported')
-                out = self.reg(B); self.emit('EQ', out, a, b)
-            else:
-                a, b, typ = self.pair(a, b)
-                if isinstance(op, (ast.Eq, ast.NotEq)):
-                    out = self.reg(B); self.emit('EQ', out, a, b)
-                    if isinstance(op, ast.NotEq):
-                        other = self.reg(B); self.emit('EQ', other, out, self.literal(False)); out = other
-                    return out
-                if isinstance(op, (ast.Gt, ast.LtE)): a, b = b, a
-                if not isinstance(op, (ast.Lt, ast.Gt, ast.LtE, ast.GtE)): self.fail(n, 'unsupported comparison')
-                if typ == Q: out = self.numeric_op('QLT', a, b)
-                else:
-                    out = self.reg(B); self.emit('FLT' if typ == F else 'ILT', out, a, b)
-            if isinstance(op, (ast.NotEq, ast.LtE, ast.GtE)):
-                negated = self.reg(B); self.emit('EQ', negated, out, self.literal(False)); out = negated
+        if isinstance(n, ast.BinOp):
+            a = self.snapshot(self.expr(n.left))
+            return self.binary(n.op, a, self.expr(n.right))
+        if isinstance(n, ast.IfExp):
+            cond = self.truth(self.expr(n.test)); branch = self.emit('JZ', cond)
+            a = self.expr(n.body); out = self.reg(self.typ(a)); self.emit('MOV', out, a)
+            jump = self.emit('JMP'); self.code[branch][4] = len(self.code)
+            b = self.expr(n.orelse)
+            if self.typ(a) != self.typ(b): self.fail(n, 'Both choices must produce the same type of value.')
+            self.emit('MOV', out, b); self.code[jump][4] = len(self.code)
+            return out
+        if isinstance(n, ast.Compare):
+            left = self.snapshot(self.expr(n.left))
+            if len(n.ops) == 1:
+                return self.comparison(n.ops[0], left, self.expr(n.comparators[0]), n)
+            out = self.reg(B); exits = []
+            for index, (op, item) in enumerate(zip(n.ops, n.comparators)):
+                right = self.snapshot(self.expr(item))
+                self.emit('MOV', out, self.comparison(op, left, right, n))
+                if index + 1 < len(n.ops): exits.append(self.emit('JZ', out))
+                left = right
+            for jump in exits: self.code[jump][4] = len(self.code)
             return out
         if isinstance(n, ast.BoolOp):
-            # Short-circuit with bool-only operands.
-            out = self.reg(B)
-            for i, item in enumerate(n.values):
-                r = self.truth(self.expr(item))
-                self.emit('MOV', out, r)
-                if i == len(n.values) - 1: break
+            first = self.expr(n.values[0]); out = self.reg(self.typ(first))
+            if self.typ(first) not in (I, F, C, B, Q): self.fail(n, 'Use numbers, colours or true/false values with and/or.')
+            self.emit('MOV', out, first); exits = []
+            for item in n.values[1:]:
+                r = self.truth(out)
                 if isinstance(n.op, ast.Or):
-                    inv = self.reg(B); self.emit('EQ', inv, out, self.literal(False)); r = inv
-                jump = self.emit('JZ', r)
-                # Recurse over the tail to make one short-circuit region.
-                tail = n.values[i+1:]
-                other = self.expr(tail[0] if len(tail) == 1 else ast.BoolOp(op=n.op, values=tail))
-                self.emit('MOV', out, other); self.code[jump][4] = len(self.code); break
+                    inv = self.reg(B); self.emit('EQ', inv, r, self.literal(False)); r = inv
+                exits.append(self.emit('JZ', r))
+                other = self.expr(item)
+                if self.typ(other) != self.typ(out):
+                    self.fail(n, 'The values joined by and/or must have the same type. Use comparisons for a true/false condition.')
+                self.emit('MOV', out, other)
+            for jump in exits: self.code[jump][4] = len(self.code)
             return out
         if isinstance(n, ast.Subscript):
             ref, kind = self.resource(n.value)
@@ -394,12 +444,13 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 return self.math_call(imported[5:],n)
             if imported == 'math.sin' or imported in NATIVES:
                 if n.keywords: self.fail(n, 'helper takes positional arguments')
-                return self.native('sin' if imported == 'math.sin' else imported, [self.expr(a) for a in n.args], n)
+                return self.native('sin' if imported == 'math.sin' else imported, [self.snapshot(self.expr(a)) for a in n.args], n)
             if name not in self.helpers and imported in self.helpers:
                 name = imported
             if name in self.helpers:
                 library = name.startswith('lightvm.')
-                if (n.keywords and not library) or name in self.call_stack or len(self.call_stack) >= 8: self.fail(n, 'bounded nonrecursive positional helper required')
+                if name in self.call_stack or len(self.call_stack) >= 8:
+                    self.fail(n, 'Functions cannot call themselves: ' + ' → '.join(self.call_stack + [name]))
                 fn = self.helpers[name]
                 names = tuple(arg.arg for arg in fn.args.args)
                 defaults = dict(zip(names[len(names)-len(fn.args.defaults):], fn.args.defaults)) if fn.args.defaults else {}
@@ -408,8 +459,21 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     return any(isinstance(item, ast.Return) and item.value is not None or
                                isinstance(item, ast.If) and returns(item.body) and returns(item.orelse)
                                for item in nodes)
-                if not returns(fn.body): self.fail(fn, 'helper must return a value on every path')
-                evaluated = {key: (self.capability(a), None) if self.capability(a) else (None, self.expr(a)) for key,a in values.items()}
+                valued = any(isinstance(item, ast.Return) and item.value is not None for item in ast.walk(fn))
+                if valued and (not returns(fn.body) or any(isinstance(item, ast.Return) and item.value is None for item in ast.walk(fn))):
+                    self.fail(fn, 'This function needs to return a value on every path, including the else case.')
+                supplied = set(names[:len(n.args)]) | {keyword.arg for keyword in n.keywords}
+                evaluated = {}
+                for key, argument in values.items():
+                    if key in supplied:
+                        evaluated[key] = (self.capability(argument), None) if self.capability(argument) else (None, self.snapshot(self.expr(argument)))
+                    else:
+                        # Defaults are immutable declaration expressions, not
+                        # expressions in the caller's local scope.
+                        caller_env, caller_caps = self.env, self.caps
+                        self.env, self.caps = {}, {}
+                        evaluated[key] = (None, self.expr(argument))
+                        self.env, self.caps = caller_env, caller_caps
                 args = [evaluated[key] for key in names]
                 previous_env, previous_writes, previous_loops, previous_caps = self.env, self.writes, self.loop_stack, self.caps
                 self.env = {}; self.loop_stack = []; self.caps = {}
@@ -422,10 +486,12 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.writes = {s for item in ast.walk(fn) if isinstance(item, ast.Global) for s in item.names}
                 if self.writes & {a.arg for a in fn.args.args}: self.fail(fn, 'argument cannot also be global')
                 self.call_stack.append(name); returns = []; self.return_stack.append(returns)
+                previous_library_location = self.library_location
+                if library and self.library_location is None: self.library_location = n
                 self.statements(fn.body)
+                self.library_location = previous_library_location
                 self.return_stack.pop(); self.call_stack.pop()
-                if not returns: self.fail(fn, 'helper must return a value')
-                out = returns[0][1]
+                out = returns[0][1] if returns else -1
                 for jump, result in returns:
                     if result != out: self.fail(fn, 'inconsistent helper return')
                     self.code[jump][4] = len(self.code)
@@ -439,7 +505,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         expected=2 if name=='pow' else 1
         if len(node.args)!=expected or node.keywords:self.fail(node, name+' takes '+str(expected)+' positional arguments')
         operation='FABS' if name in ('abs','fabs') else 'F'+name.upper()
-        args=[self.convert(self.expr(arg),F) for arg in node.args]
+        args=[self.snapshot(self.convert(self.expr(arg),F)) for arg in node.args]
         result=self.numeric_op(operation,*args)
         return self.convert(result,I) if name in ('floor','ceil','trunc') else result
 
@@ -475,17 +541,18 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             if len(args) == 1: args.insert(0, ast.Constant(value=0))
             if len(args) == 2: args.append(ast.Constant(value=1))
         else: self.fail(node, 'unsupported random function')
-        regs = [self.expr(a) for a in args]
+        regs = [self.snapshot(self.expr(a)) for a in args]
         if any(self.typ(r) != I for r in regs): self.fail(node, 'random bounds and step must be integers')
         return self.native(name, regs, node)
 
     def assign(self, name, value, node):
+        if name in self.module_values and name not in self.env: self.fail(node, '"' + name + '" is a shared constant. Use a local variable or remembered value for something that changes.')
         if name in self.input_symbols: self.fail(node, 'Input declarations cannot be rebound')
         if name in self.caps or name in self.imports: self.fail(node, 'cannot rebind a caller argument or import')
         target = self.env.get(name)
         if target is None: target = self.reg(self.typ(value)); self.env[name] = target
         if self.regs[target][1] != LOCAL: self.fail(node, 'setting and array bindings are frozen')
-        if self.typ(target) != self.typ(value) or self.typ(value) == REF: self.fail(node, 'assignment changes type or array binding')
+        if self.typ(target) != self.typ(value) or self.typ(value) == REF: self.fail(node, 'Keep "' + name + '" the same kind of value. For a number that needs fractions, start with 0.0. Create arrays once in @init.')
         self.declarations.pop(name, None)
         self.emit('MOV', target, value)
 
@@ -497,11 +564,11 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         if isinstance(target, ast.Attribute) and self.capability(target.value) == 'ctx':
             reg = self.fields.get(target.attr)
             if reg is None:
-                if self.stage != 0 or self.depth or self.call_stack: self.fail(node, 'create context fields unconditionally in @init')
+                if self.stage != 0 or self.depth or self.call_stack: self.fail(node, 'Give this remembered value a starting value directly in @init, before using it in a loop or condition.')
                 if self.typ(value) == REF: self.fail(node, 'array aliases are unsupported')
                 reg = self.reg(self.typ(value), STATE); self.fields[target.attr] = reg
             if self.regs[reg][1] != STATE or self.typ(reg) == REF: self.fail(node, 'cannot rebind this context field')
-            if self.typ(reg) != self.typ(value): self.fail(node, 'context field changes type')
+            if self.typ(reg) != self.typ(value): self.fail(node, 'Keep this remembered value the same kind of value. Start with 0.0 if it needs fractions.')
             self.declarations.pop('ctx.' + target.attr, None)
             self.emit('MOV', reg, value); return
         if isinstance(target, ast.Subscript):
@@ -579,16 +646,39 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.emit('STORE_ELEM', reg, self.literal(i), value)
 
     def statements(self, nodes):
+        before = self.source_node
+        try:
+            for node in nodes:
+                self.source_node = node
+                self._statements([node])
+                if self.debug and not self.library_location:
+                    values = {name: r for name, r in self.env.items() if not name.startswith('__') and self.typ(r) != REF}
+                    values.update({'state.' + name: r for name, r in self.fields.items() if self.typ(r) != REF})
+                    self.checkpoints[len(self.code)] = {'line': getattr(node, 'lineno', 1), 'column': getattr(node, 'col_offset', 0) + 1, 'variables': values}
+        except CompileError as error:
+            if error.node is None: error.node = self.source_node
+            raise
+        finally: self.source_node = before
+
+    def _statements(self, nodes):
         for n in nodes:
             if isinstance(n, ast.Pass) or isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str): continue
             if isinstance(n, ast.Assert):
                 if n.msg is not None: self.fail(n, 'assert messages are unsupported')
                 self.native('require', [self.truth(self.expr(n.test))], n)
             elif isinstance(n, ast.Assign) and len(n.targets) == 1:
+                if isinstance(n.targets[0], (ast.Tuple, ast.List)):
+                    target = n.targets[0]
+                    if not isinstance(n.value, (ast.Tuple, ast.List)) or len(target.elts) != len(n.value.elts):
+                        self.fail(n, 'Give one value for each name on the left of =.')
+                    if not all(isinstance(item, ast.Name) for item in target.elts): self.fail(n, 'Use simple variable names for this assignment.')
+                    values = [self.snapshot(self.expr(item), local=True) for item in n.value.elts]
+                    for item, value in zip(target.elts, values): self.assign_target(item, value, n)
+                    continue
                 if self.feature_assignment(n.targets[0], n.value, n): continue
                 if isinstance(n.value, ast.Call) and self.imports.get(getattr(n.value.func, 'id', '')) in ('setting', 'array.array', 'SpriteBatch', 'PixelArray', 'FixedArray'):
                     self.declaration(n.targets[0], n.value, n)
-                else: self.assign_target(n.targets[0], self.expr(n.value), n)
+                else: self.assign_target(n.targets[0], self.snapshot(self.expr(n.value)), n)
             elif isinstance(n, ast.AugAssign):
                 if isinstance(n.target, ast.Subscript):
                     ref, kind = self.resource(n.target.value); self.check_write(ref, n)
@@ -609,12 +699,13 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     kws = {k.arg: k.value for k in call.keywords}
                     if 'alpha' in kws:
                         if len(kws) != len(call.keywords) or set(kws) != {'alpha'}: self.fail(n, 'alpha fill covers the whole surface')
-                        self.native('image_fill', [ref, self.expr(call.args[0]), self.expr(kws['alpha']), self.literal(0), self.inputs['pixel_count']], n)
+                        self.native('image_fill', [ref, self.snapshot(self.expr(call.args[0])), self.snapshot(self.expr(kws['alpha'])), self.literal(0), self.inputs['pixel_count']], n)
                         continue
                     if len(kws) != len(call.keywords) or set(kws) - {'start', 'stop'}: self.fail(n, 'invalid fill range')
-                    val = self.convert(self.expr(call.args[0]), C)
-                    start = self.expr(kws['start']) if 'start' in kws else self.literal(0)
-                    stop = self.expr(kws['stop']) if 'stop' in kws else self.inputs['pixel_count']
+                    val = self.snapshot(self.convert(self.expr(call.args[0]), C))
+                    ranges = {key: self.snapshot(self.expr(item)) for key, item in kws.items()}
+                    start = ranges['start'] if 'start' in ranges else self.literal(0)
+                    stop = ranges['stop'] if 'stop' in ranges else self.inputs['pixel_count']
                     if self.typ(start) != I or self.typ(stop) != I: self.fail(n, 'fill range must be i32')
                     self.emit('RESOURCE_FILL', ref, val, start, stop)
                 else: self.expr(call)
@@ -630,31 +721,19 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.emit('JMP', imm=head)
                 for jump in breaks + [end]: self.code[jump][4] = len(self.code)
                 self.env = before
-            elif isinstance(n, ast.For) and isinstance(n.target, ast.Name) and isinstance(n.iter, ast.Call) and getattr(n.iter.func, 'id', '') == 'range' and len(n.iter.args) == 1 and not n.iter.keywords and not n.orelse:
-                if n.target.id in self.names or n.target.id in self.caps or n.target.id in self.imports: self.fail(n, 'loop variable shadows a binding')
-                stop = self.expr(n.iter.args[0])
-                if self.typ(stop) != I: self.fail(n, 'range bound must be i32')
-                bound = self.reg(I); self.emit('MOV', bound, stop)
-                loop = self.reg(I); self.env[n.target.id] = loop; self.emit('MOV', loop, self.literal(0))
-                head = len(self.code); cond = self.reg(B); self.emit('ILT', cond, loop, bound); end = self.emit('JZ', cond)
-                breaks, continues = [], []; self.loop_stack.append((breaks, continues)); self.depth += 1; self.statements(n.body); self.depth -= 1; self.loop_stack.pop()
-                for j in continues: self.code[j][4] = len(self.code)
-                self.emit('IADD', loop, loop, self.literal(1)); self.emit('JMP', imm=head)
-                for j in breaks + [end]: self.code[j][4] = len(self.code)
-                reason = 'optimisation is disabled' if not self.optimize else 'break/continue requires ordered loop control'
-                if self.optimize and not breaks and not continues:
-                    reason = self.optimize_pixel_loop(head, loop, bound)
-                self.map_reports.append((n, self.code[head][0] == P_OP['PIXEL_MAP'], reason))
+                self.map_reports.append((n, False, 'a while loop checks its changing condition at each step'))
+            elif isinstance(n, ast.For):
+                self.for_loop(n)
             elif isinstance(n, (ast.Break, ast.Continue)):
                 if not self.loop_stack: self.fail(n, 'loop control outside loop')
                 self.loop_stack[-1][isinstance(n, ast.Continue)].append(self.emit('JMP'))
             elif isinstance(n, ast.Return):
                 if self.return_stack:
-                    if n.value is None: self.fail(n, 'helper must return a value')
-                    val = self.expr(n.value); returns = self.return_stack[-1]
-                    out = returns[0][1] if returns else self.reg(self.typ(val))
-                    if self.typ(out) != self.typ(val): self.fail(n, 'helper return type mismatch')
-                    self.emit('MOV', out, val); returns.append((self.emit('JMP'), out))
+                    val = self.expr(n.value) if n.value is not None else -1; returns = self.return_stack[-1]
+                    out = returns[0][1] if returns else self.reg(self.typ(val)) if val != -1 else -1
+                    if (out == -1) != (val == -1) or val != -1 and self.typ(out) != self.typ(val): self.fail(n, 'Each return in this function must give the same type of value.')
+                    if val != -1: self.emit('MOV', out, val)
+                    returns.append((self.emit('JMP'), out))
                 elif self.sprite_context:
                     if n.value is not None or self.sprite_context[2]=='init': self.fail(n, 'sprite render may only return without a value')
                     self.sprite_returns.append(self.emit('JMP'))
@@ -663,7 +742,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 else: self.fail(n, 'void entry cannot return a value')
             elif isinstance(n, ast.If):
                 cond = self.truth(self.expr(n.test))
-                jump = self.emit('JZ', cond); before = dict(self.env); before_decl = dict(self.declarations); self.depth += 1; self.statements(n.body); body_decl = dict(self.declarations)
+                jump = self.emit('JZ', cond); before = dict(self.env); before_decl = dict(self.declarations); self.depth += 1; self.statements(n.body); body_decl = dict(self.declarations); body_env = dict(self.env)
                 # An exiting arm has no fallthrough to skip. Emitting another
                 # jump after it would leave unreachable code in pure map CFGs.
                 def exits(body):
@@ -674,18 +753,189 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 end = self.emit('JMP') if n.orelse and not exits(n.body) else None
                 self.code[jump][4] = len(self.code); self.env = dict(before)
                 self.declarations = dict(before_decl); self.statements(n.orelse); self.depth -= 1
+                other_env = dict(self.env)
+                if exits(n.body):
+                    merged = other_env
+                elif exits(n.orelse):
+                    merged = body_env
+                else:
+                    merged = dict(before)
+                    for name in sorted(body_env.keys() & other_env.keys() - before.keys()):
+                        a, b = body_env[name], other_env[name]
+                        if self.typ(a) != self.typ(b): self.fail(n, 'Both choices must give "' + name + '" the same type of value.')
+                        if self.typ(a) == REF: self.fail(n, 'Create this array once, in the starting function.')
+                        if a != b: self.emit('MOV', a, b)
+                        merged[name] = a
                 if end is not None: self.code[end][4] = len(self.code)
-                self.env = before
+                self.env = merged
                 self.declarations = {k:v for k,v in self.declarations.items() if body_decl.get(k) == v}
             else: self.fail(n, 'unsupported statement in portable profile')
 
-    def optimize_pixel_loop(self, head, index, bound):
+    def for_loop(self, node):
+        """A private cursor advances independently of assignments to the target."""
+        if not isinstance(node.target, ast.Name) or node.orelse:
+            self.fail(node, 'Use one variable in this loop. A loop else clause is not supported.')
+        name = node.target.id
+        if name in self.names or name in self.caps or name in self.imports or name in self.module_values:
+            self.fail(node, 'Choose a loop variable that does not replace an existing array, input or imported name.')
+        iterator = node.iter; source = None; positive = False
+        if isinstance(iterator, ast.Call) and getattr(iterator.func, 'id', '') == 'range':
+            if iterator.keywords or not 1 <= len(iterator.args) <= 3:
+                self.fail(iterator, 'Use range(stop), range(start, stop), or range(start, stop, step).')
+            values = [self.snapshot(self.expr(arg)) for arg in iterator.args]
+            if any(self.typ(r) != I for r in values): self.fail(iterator, 'Range needs whole numbers. Use int(value) if you want to remove a fractional part.')
+            if len(values) == 1: values.insert(0, self.literal(0))
+            if len(values) == 2: values.append(self.literal(1))
+            start, stop, step = values
+            def literal(r):
+                return numeric.signed(self.regs[r][2]) if self.regs[r][1] == CONST else None
+            first, last, stride = map(literal, values)
+            if stride == 0: self.fail(iterator, 'The step in range cannot be zero: the loop would never move forward.')
+            if stride is None:
+                self.native('require', [self.comparison(ast.NotEq(), step, self.literal(0), node)], node)
+            if None not in (first, last, stride): positive = (first < last if stride > 0 else first > last)
+            elif first == 0 and stride == 1 and stop == self.inputs['pixel_count']: positive = True
+            typ = I
+        else:
+            source, kind = self.resource(iterator)
+            if kind not in (1, 2, 7, 8, 11, 20): self.fail(iterator, 'Loop over a number array, or use range(...) for pixel positions.')
+            typ = self.element_type(kind)
+            start, step, stride, first = self.literal(0), self.literal(1), 1, 0
+            stop = self.reg(I); self.emit('LENGTH', stop, source)
+            length = self.expressions[self.resources[self.regs[source][2]][1]]
+            positive = length[0] == 0 and numeric.signed(length[4]) > 0
+        before = dict(self.env)
+        target = before.get(name)
+        if target is None: target = self.reg(typ)
+        elif self.typ(target) != typ or self.regs[target][1] != LOCAL:
+            self.fail(node, 'The loop variable "' + name + '" needs the same type as the values being counted or read.')
+        bound = self.reg(I); self.emit('MOV', bound, stop)
+        cursor = self.reg(I); self.emit('MOV', cursor, start)
+        head = len(self.code)
+        if stride is None:
+            direction = self.comparison(ast.Gt(), step, self.literal(0), node)
+            negative = self.emit('JZ', direction)
+            cond = self.reg(B); self.emit('ILT', cond, cursor, bound)
+            joined = self.emit('JMP'); self.code[negative][4] = len(self.code)
+            self.emit('ILT', cond, bound, cursor); self.code[joined][4] = len(self.code)
+        else:
+            cond = self.reg(B); self.emit('ILT', cond, cursor if stride > 0 else bound, bound if stride > 0 else cursor)
+        end = self.emit('JZ', cond)
+        self.env[name] = target
+        if source is None: self.emit('MOV', target, cursor)
+        else: self.emit('LOAD_ELEM', target, source, cursor)
+        breaks, continues = [], []; self.loop_stack.append((breaks, continues))
+        body = self.common_pixel_store(node.body, name) if self.optimize else node.body
+        self.depth += 1; self.statements(body); self.depth -= 1; self.loop_stack.pop()
+        body_env = dict(self.env)
+        for jump in continues: self.code[jump][4] = len(self.code)
+        overflow = []
+        if stride not in (1, -1):
+            # i32 arithmetic wraps, but a Python range must finish before its
+            # next value would leave the representable integer domain.
+            if stride is None:
+                direction = self.comparison(ast.Gt(), step, self.literal(0), node)
+                negative = self.emit('JZ', direction)
+            if stride is None or stride > 0:
+                limit = self.binary(ast.Sub(), self.literal(2147483647), step)
+                safe = self.comparison(ast.LtE(), cursor, limit, node)
+                overflow.append(self.emit('JZ', safe))
+            if stride is None:
+                joined = self.emit('JMP'); self.code[negative][4] = len(self.code)
+            if stride is None or stride < 0:
+                limit = self.binary(ast.Sub(), self.literal(-2147483648), step)
+                safe = self.comparison(ast.GtE(), cursor, limit, node)
+                overflow.append(self.emit('JZ', safe))
+            if stride is None: self.code[joined][4] = len(self.code)
+        self.emit('IADD', cursor, cursor, step); self.emit('JMP', imm=head)
+        for jump in breaks + overflow + [end]: self.code[jump][4] = len(self.code)
+        reason = 'optimisation is disabled' if not self.optimize else 'this loop needs ordered steps'
+        if self.optimize and (breaks or continues): reason = 'break/continue changes which steps run'
+        if self.optimize and first == 0 and stride == 1 and source is None and not breaks and not continues:
+            reason = self.optimize_pixel_loop(head, cursor, bound, target)
+        self.map_reports.append((node, self.code[head][0] == P_OP['PIXEL_MAP'], reason))
+        self.env = before
+        if positive:
+            self.env[name] = target
+            if not breaks and not continues: self.env.update(body_env)
+
+    def common_pixel_store(self, body, index):
+        """Join exclusive stores without changing when colours are evaluated."""
+        if not body or not isinstance(body[-1], ast.If): return body
+        stores = []
+        def collect(nodes):
+            if not nodes: return False
+            last = nodes[-1]
+            if any(isinstance(item, (ast.Return, ast.Break, ast.Continue, ast.For, ast.While)) for node in nodes[:-1] for item in ast.walk(node)):
+                return False
+            if isinstance(last, ast.If): return collect(last.body) and collect(last.orelse)
+            if isinstance(last, ast.Assign) and len(last.targets) == 1:
+                target = last.targets[0]
+                if isinstance(target, ast.Subscript) and isinstance(target.slice, ast.Name) and target.slice.id == index:
+                    try: ref, kind = self.resource(target.value)
+                    except CompileError: return False
+                    if kind in (12,14,15,16,17): stores.append((last, ref)); return True
+            return False
+        branch = copy.deepcopy(body[-1])
+        if not collect([branch]) or len({ref for _, ref in stores}) != 1: return body
+        # No source assignment to the index may change the delayed store's
+        # location. The containing map analysis independently rejects effects.
+        if any(isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store) and n.id == index for n in ast.walk(branch)):
+            return body
+        name = '__lightvm_colour_' + str(len(self.regs))
+        while any(isinstance(n, ast.Name) and n.id == name for n in ast.walk(self.tree)): name += '_'
+        destination = copy.deepcopy(stores[0][0].targets[0])
+        for store, _ in stores: store.targets = [ast.copy_location(ast.Name(id=name, ctx=ast.Store()), store)]
+        final = ast.copy_location(ast.Assign(targets=[destination], value=ast.Name(id=name, ctx=ast.Load())), body[-1])
+        return [*body[:-1], branch, final]
+
+    def constant_expression(self, node):
+        """Check static expressions without evaluating guest source code."""
+        if isinstance(node, ast.Constant) and type(node.value) in (int, float, bool): return
+        if isinstance(node, ast.Name) and (node.id in self.module_values or self.imports.get(node.id) == 'math.pi'): return
+        if isinstance(node, ast.Attribute) and self.imports.get(getattr(node.value, 'id', '')) == 'math' and node.attr == 'pi': return
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub, ast.Not, ast.Invert)):
+            self.constant_expression(node.operand); return
+        if isinstance(node, ast.BinOp):
+            self.constant_expression(node.left); self.constant_expression(node.right); return
+        if isinstance(node, ast.Call) and not node.keywords and isinstance(node.func, ast.Name):
+            name = self.imports.get(node.func.id, node.func.id)
+            if name in ('int', 'float', 'min', 'max', 'rgb', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'):
+                for argument in node.args: self.constant_expression(argument)
+                return
+        self.fail(node, 'Use a number, colour, or calculation with earlier constants here. Put changing values in the starting or frame function.')
+
+    def optimize_pixel_loop(self, head, index, bound, source_target=None):
         """Recognize independent maps after normal typing/helper inlining.
 
         Keep unsafe/unsupported loops unchanged. The body retains its existing
         typed operations, including f32 rounding and scalar colour functions.
         """
-        body = self.code[head+2:-2]
+        body = [list(ins) for ins in self.code[head+2:-2]]
+        locations = self.code_locations[head+2:-2]
+        sites = {}
+        # A simple source target can be replaced by the private cursor inside
+        # the map. Restore its last yielded value after a nonempty map.
+        restore_target = source_target is not None
+        if source_target is not None:
+            if any(ins[1] == source_target and ins[0] not in (P_OP['STORE_ELEM'], P_OP['JZ'], P_OP['JMP'], P_OP['RESOURCE_FILL'], P_OP['RESOURCE_COPY']) for ins in body[1:]):
+                return 'the body changes the loop variable'
+            body.pop(0)
+            locations = locations[1:]
+            # All current kernel operands except branch targets/native site IDs
+            # are registers. Native arguments are handled below separately.
+            for ins in body:
+                op = ins[0]
+                positions = [2, 3] if op not in (P_OP['JMP'], P_OP['JZ'], P_OP['NATIVE']) else [1] if op == P_OP['JZ'] else []
+                if op in (P_OP['RGB'], P_OP['HSV']): positions.append(4)
+                for pos in positions:
+                    if ins[pos] == source_target: ins[pos] = index
+                if op in (P_OP['JMP'], P_OP['JZ']): ins[4] -= 1
+            # Stage native operands too. Commit only after verifying the map.
+            for ins in body:
+                if ins[0] == P_OP['NATIVE']:
+                    binding, args = self.calls[ins[4]]
+                    sites[ins[4]] = (binding, [index if r == source_target else r for r in args])
         if not 1 <= len(body) <= 128:return 'the body exceeds the 1..128 instruction limit'
         unary = {P_OP[n] for n in ('MOV','ITOF','FTOI','LENGTH')}
         binary = {P_OP[n] for n in ('IADD','ISUB','IMUL','IDIV','IMOD','FADD','FSUB','FMUL','FDIV','FMOD','ILT','FLT','EQ','IMIN','IMAX','FMIN','FMAX','HASH')}
@@ -700,7 +950,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif op in binary:reads=[b,c]
             elif op in (P_OP['RGB'],P_OP['HSV']):reads=[b,c,d]
             elif op==P_OP['NATIVE']:
-                binding,reads=self.calls[d]
+                binding,reads=sites.get(d,self.calls[d])
                 if binding not in (7,8,9,10,11) and binding not in {row['binding'] for row in numeric.NOISE_OPERATIONS.values()}:return 'a native call has state/RNG effects or is unsupported in a kernel'
             elif op in (P_OP['JMP'],P_OP['JZ']):
                 if not first+offset<d<end:return 'the branch shape has a backward edge or can skip the final store'
@@ -745,6 +995,13 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             if ins[0] in (P_OP['JMP'],P_OP['JZ']):ins[4]-=1
         end=head+1+len(body)
         self.code[head:]=[[P_OP['PIXEL_MAP'],stores[0],index,bound,end]]+body
+        self.code_locations[head:] = [self.code_locations[head]] + locations
+        for site, call in sites.items(): self.calls[site] = call
+        if restore_target:
+            nonempty = self.comparison(ast.Gt(), bound, self.literal(0), None)
+            skip = self.emit('JZ', nonempty)
+            self.emit('ISUB', source_target, bound, self.literal(1))
+            self.code[skip][4] = len(self.code)
         if extended:self.kernels_used=True
 
     def compile(self):
@@ -779,8 +1036,16 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.sprite_definition(n.targets[0],n.value,n)
             elif isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.value,ast.Call) and self.imports.get(getattr(n.value.func,'id',''))=='Input':
                 self.input_declaration(n.targets[0],n.value,n)
+            elif isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+                name = n.targets[0].id
+                if name in self.module_values or name in self.imports or name in self.helpers or name in self.input_symbols or name in self.artwork:
+                    self.fail(n, 'The name "' + name + '" is already in use.')
+                self.constant_expression(n.value)
+                self.module_values[name] = n.value
             elif isinstance(n, ast.FunctionDef):
-                if n.args.posonlyargs or n.args.kwonlyargs or n.args.vararg or n.args.kwarg or n.args.defaults or n.args.kw_defaults: self.fail(n, 'simple positional functions required')
+                if n.args.posonlyargs or n.args.kwonlyargs or n.args.vararg or n.args.kwarg or n.args.kw_defaults: self.fail(n, 'Use named arguments, with optional starting values; *args and **kwargs are not supported.')
+                if n.decorator_list and n.args.defaults: self.fail(n, 'Starting and frame functions receive their arguments automatically; leave out default values here.')
+                for value in n.args.defaults: self.constant_expression(value)
                 if len({a.arg for a in n.args.args}) != len(n.args.args): self.fail(n, 'duplicate argument')
                 if n.name in self.helpers or any(fn.name == n.name for fn in self.funcs.values()) or n.name in self.imports or n.name in self.input_symbols: self.fail(n, 'duplicate function name')
                 if any(a.arg in self.input_symbols for a in n.args.args): self.fail(n, 'function argument shadows an Input declaration')
@@ -793,8 +1058,11 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant) and isinstance(n.value.value, str)):
                 self.fail(n, 'module state is unsupported; initialize ctx fields in @init')
         if not marked or 'render' not in self.funcs: raise CompileError('program requires a profile and @render entry')
+        for name in self.module_values.keys() & self.imports.keys():
+            self.fail(self.module_values[name], 'Choose a constant name that is different from an imported name.')
         for fn in (*self.helpers.values(), *self.funcs.values()):
             if any(arg.arg in self.input_symbols for arg in fn.args.args): self.fail(fn, 'function argument shadows an Input declaration')
+            if fn.name in self.module_values: self.fail(fn, 'Choose a function name that is different from a shared constant.')
         feature_floor = '1.1.0' if any('control' in port for port in self.input_manifest) else BASELINE
         if minimum_release and release_error(minimum_release, feature_floor):
             raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
@@ -802,6 +1070,12 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         for self.stage, role, self.rights in ((0, 'init', 9), (1, 'render', 13)):
             self.descriptions = {k:v for k,v in self.descriptions.items() if k.startswith('ctx.')}
             start = len(self.code); fn = self.funcs.get(role); self.env = {}; self.writes = set(); self.caps = {}; self.declarations = {}
+            if role == 'init':
+                for name, value in self.module_values.items():
+                    reg = self.expr(value)
+                    if self.regs[reg][1] != CONST:
+                        stored = self.reg(self.typ(reg), STATE); self.emit('MOV', stored, reg); reg = stored
+                    self.module_constants[name] = reg
             if fn:
                 self.caps = {a.arg: cap for a, cap in zip(fn.args.args, ('ctx', 'runtime', 'pixels'))}
                 if any(a.arg in self.imports for a in fn.args.args): self.fail(fn, 'caller argument shadows an import')
@@ -884,6 +1158,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                     after = set().union(*(live[j-start] for j in following))
                     defined = {ins[k] for k in defs}; used = {ins[k] for k in uses}
                     if ins[0] == P_OP['NATIVE']: used.update(self.calls[ins[4]][1])
+                    if self.debug: used.update(self.checkpoints.get(pc, {}).get('variables', {}).values())
                     before = used | (after-defined)
                     if before != live[pc-start]: live[pc-start] = before; changed = True
                     for r in defined:
@@ -911,4 +1186,5 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         self.calls = [(binding,[mapping[r] for r in args]) for binding,args in self.calls]
         self.expressions = [(op,typ,mapping[a] if op == 2 else a,b,v) for op,typ,a,b,v in self.expressions]
         self.settings = [(n,mapping[r],d,lo,hi) for n,r,d,lo,hi in self.settings]
+        self.checkpoints = {pc: {**point, 'variables': {name: mapping[r] for name, r in point['variables'].items()}} for pc, point in self.checkpoints.items() if pc < len(self.code)}
         self.regs = physical

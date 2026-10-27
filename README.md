@@ -21,8 +21,8 @@ Multiple independent outputs run concurrently, subject to controller resources. 
 a [native composition](docs/composition.md) with independent background and transparent
 foreground animations. The [PixelArray and sprite SDK](docs/pixelarray-sprites.md)
 adds shared artwork, user-defined sprite callbacks, optional channels and native
-geometry/colour transforms. Multiple languages and a broader component system
-remain future work.
+geometry/colour transforms. Python, JavaScript and Blocks share the same checked
+compiler and runtime. A broader component system remains future work.
 
 [Motion helpers](docs/motion.md) add compiled easing, bounce progress, fitting
 bounds and periodic drawing. The [15-pixel rainbow sprite](examples/animations/rainbow_sprite.py)
@@ -222,6 +222,10 @@ See [configuration and management](docs/configuration.md),
 [networking](docs/networking.md) and [power recovery](docs/boot-sequence.md).
 
 ## Verification and measurements
+
+For the browser build, install Emscripten 4.0.7 and set `EMCC` if needed.
+The [teaching guide](docs/teaching.md) covers the local preview and the
+[twelve beginner lessons](examples/lessons/README.md).
 
 ```sh
 ctest --test-dir build/host --output-on-failure

@@ -26,11 +26,12 @@ class NumericWorkTests(unittest.TestCase):
     def test_weighted_body_is_charged_even_with_few_dispatches(self):
         package=self.package('rgb(i%255,0,0)')
         normal=self.run_work(package)
-        # MOD=8, RGB=1, STORE=1 per pixel; two MOVs, three chunks, END.
-        self.assertEqual(normal['work'],129*10+2+3+1)
-        self.assertLess(normal['dispatches'],10)
+        # MOD=8, RGB=1, STORE=1 per pixel; two MOVs, three chunks,
+        # three instructions preserving the last Python loop value, END.
+        self.assertEqual(normal['work'],129*10+2+3+3+1)
+        self.assertLess(normal['dispatches'],13)
         yielded=self.run_work(package,tick=1000)
-        self.assertEqual(yielded['work'],129*10+2+129+1)
+        self.assertEqual(yielded['work'],129*10+2+129+3+1)
         speculative=self.run_work(package,workers=2,tick=1000)
         self.assertGreater(speculative['work'],yielded['work'])
         self.assertEqual(speculative['pixels'],normal['pixels'])
@@ -43,9 +44,9 @@ class NumericWorkTests(unittest.TestCase):
         package=self.package('rgb(int(math.exp(0.5)),0,0)')
         normal=self.run_work(package)
         # EXP=128 then FTOI, RGB, STORE. Later pixels use three cached reads.
-        self.assertEqual(normal['work'],3*131+126*4+2+3+1)
+        self.assertEqual(normal['work'],3*131+126*4+2+3+3+1)
         yielded=self.run_work(package,tick=1000)
-        self.assertEqual(yielded['work'],129*131+2+129+1)
+        self.assertEqual(yielded['work'],129*131+2+129+3+1)
         self.assertEqual(yielded['pixels'],normal['pixels'])
         self.assertEqual(self.run_work(package,budget=130)['status'],-1)
         fault=self.run_work(self.package('rgb(int(math.exp(1000.0)),0,0)'))

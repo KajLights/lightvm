@@ -1,0 +1,449 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_procedure",
+        "fields": {
+          "NAME": "draw_beam",
+          "PARAM": "front"
+        },
+        "inputs": {
+          "DO": {
+            "block": {
+              "type": "lm_repeat",
+              "fields": {
+                "NAME": "behind"
+              },
+              "inputs": {
+                "COUNT": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 3
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-solution-3"
+                  }
+                },
+                "DO": {
+                  "block": {
+                    "type": "lm_set",
+                    "fields": {
+                      "NAME": "position",
+                      "SCOPE": "local"
+                    },
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "-"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_convert",
+                                "fields": {
+                                  "FUNCTION": "int"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "front",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-solution-7"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-solution-6"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "behind",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-solution-8"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-solution-5"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "type": "lm_if",
+                        "fields": {},
+                        "inputs": {
+                          "TEST": {
+                            "block": {
+                              "type": "lm_compare",
+                              "fields": {
+                                "OP": "=="
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_get",
+                                    "fields": {
+                                      "NAME": "behind",
+                                      "SCOPE": "local"
+                                    },
+                                    "inputs": {},
+                                    "id": "12-lighthouse-solution-11"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_integer",
+                                    "fields": {
+                                      "VALUE": 0
+                                    },
+                                    "inputs": {},
+                                    "id": "12-lighthouse-solution-12"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-solution-10"
+                            }
+                          },
+                          "THEN": {
+                            "block": {
+                              "type": "lm_set",
+                              "fields": {
+                                "NAME": "colour",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_rgb",
+                                    "fields": {},
+                                    "inputs": {
+                                      "R": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 40
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-solution-15"
+                                        }
+                                      },
+                                      "G": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 20
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-solution-16"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 0
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-solution-17"
+                                        }
+                                      }
+                                    },
+                                    "id": "12-lighthouse-solution-14"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-solution-13"
+                            }
+                          },
+                          "ELSE": {
+                            "block": {
+                              "type": "lm_set",
+                              "fields": {
+                                "NAME": "colour",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {
+                                "VALUE": {
+                                  "block": {
+                                    "type": "lm_rgb",
+                                    "fields": {},
+                                    "inputs": {
+                                      "R": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 10
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-solution-20"
+                                        }
+                                      },
+                                      "G": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 2
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-solution-21"
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "lm_number",
+                                          "fields": {
+                                            "VALUE": 0
+                                          },
+                                          "inputs": {},
+                                          "id": "12-lighthouse-solution-22"
+                                        }
+                                      }
+                                    },
+                                    "id": "12-lighthouse-solution-19"
+                                  }
+                                }
+                              },
+                              "id": "12-lighthouse-solution-18"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "lm_pixel",
+                            "fields": {},
+                            "inputs": {
+                              "INDEX": {
+                                "block": {
+                                  "type": "lm_wrap",
+                                  "fields": {},
+                                  "inputs": {
+                                    "INDEX": {
+                                      "block": {
+                                        "type": "lm_get",
+                                        "fields": {
+                                          "NAME": "position",
+                                          "SCOPE": "local"
+                                        },
+                                        "inputs": {},
+                                        "id": "12-lighthouse-solution-25"
+                                      }
+                                    },
+                                    "COUNT": {
+                                      "block": {
+                                        "type": "lm_runtime",
+                                        "fields": {
+                                          "PROPERTY": "count"
+                                        },
+                                        "inputs": {},
+                                        "id": "12-lighthouse-solution-26"
+                                      }
+                                    }
+                                  },
+                                  "id": "12-lighthouse-solution-24"
+                                }
+                              },
+                              "COLOR": {
+                                "block": {
+                                  "type": "lm_get",
+                                  "fields": {
+                                    "NAME": "colour",
+                                    "SCOPE": "local"
+                                  },
+                                  "inputs": {},
+                                  "id": "12-lighthouse-solution-27"
+                                }
+                              }
+                            },
+                            "id": "12-lighthouse-solution-23"
+                          }
+                        },
+                        "id": "12-lighthouse-solution-9"
+                      }
+                    },
+                    "id": "12-lighthouse-solution-4"
+                  }
+                }
+              },
+              "id": "12-lighthouse-solution-2"
+            }
+          }
+        },
+        "id": "12-lighthouse-solution-1"
+      },
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-solution-30"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-solution-32"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-solution-31"
+                }
+              },
+              "id": "12-lighthouse-solution-29"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "%"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "+"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "state"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-solution-36"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "delta"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-solution-38"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "speed",
+                                        "SCOPE": "state"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-solution-39"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-solution-37"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-solution-35"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_runtime",
+                          "fields": {
+                            "PROPERTY": "count"
+                          },
+                          "inputs": {},
+                          "id": "12-lighthouse-solution-40"
+                        }
+                      }
+                    },
+                    "id": "12-lighthouse-solution-34"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_call_procedure",
+                  "fields": {
+                    "NAME": "draw_beam"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_get",
+                        "fields": {
+                          "NAME": "position",
+                          "SCOPE": "state"
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-solution-42"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-solution-41"
+                }
+              },
+              "id": "12-lighthouse-solution-33"
+            }
+          }
+        },
+        "id": "12-lighthouse-solution-28"
+      }
+    ]
+  }
+}

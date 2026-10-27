@@ -1,5 +1,20 @@
 # Pico stack-path accounting
 
+## Teaching diagnostics — 27 October
+
+The new `pbc_fault_reason` and `pbc_fault_message` entry points can inline the
+instruction/table reader. Their indirect reads use the existing `vm_read` and
+stored-program reader targets; neither introduces a new callback type or a
+recursive edge. The explicit read-callback set now includes both entry points.
+Map tasks retain the failing instruction and reason per lane and propagate it
+after joining. Rebuild the audit for actual task/frame sizes; older fixed scratch
+estimates in compiler advice have been removed. The 100-pixel USB Pico Release
+build passes with main/worker bounds 11,516/5,108 bytes and margins 4,868/3,084
+bytes in unchanged 16/8 KiB stacks. Physical stress remains a separate gate.
+The 100-pixel Pico W Release profile with Wi-Fi, HTTP, WebSocket, MQTT and boot
+recovery also passes: 12,152/5,120 bytes, leaving 4,232/3,072 bytes. These builds
+do not change the reviewed SDK sources or the existing recursion guards.
+
 ## Audio receiver audit — 26 October
 
 The 200-pixel Pico W receiver build adds `audio_received` to `udp_input`'s target

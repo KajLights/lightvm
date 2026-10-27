@@ -68,7 +68,7 @@ static const char *complete_render(VmInstance *a){
        instruction quota repeatedly ran whole service epochs during preparation.
        Finish the invocation before returning to its caller when it is done. */
     do{uint64_t started=platform_time_us();status=pbc_resume(a->portable,4096);a->render_cpu_us+=platform_time_us()-started;if(!status)runtime_checkpoint();}while(!status);
-    return status<0?fault(a,"portable execution fault"):finish(a);
+    return status<0?fault(a,pbc_fault_reason(a->portable)):finish(a);
 }
 int animation_prepare_step(AnimationPreparation *s,VmInstance *a){
     const char *error=NULL;int status;
@@ -86,7 +86,7 @@ int animation_prepare_step(AnimationPreparation *s,VmInstance *a){
         /* Let the interpreter time slice bound a heavy initializer; a tiny
            instruction quota adds avoidable foreground/transport round trips. */
         status=pbc_resume(a->portable,4096);
-        if(status<0){error="portable initialization fault";break;}
+        if(status<0){error=pbc_fault_reason(a->portable);break;}
         if(status>0)s->stage=3;
         return 0;
     case 3:
@@ -95,7 +95,7 @@ int animation_prepare_step(AnimationPreparation *s,VmInstance *a){
     case 4:{
         uint64_t began=platform_time_us();status=pbc_resume(a->portable,4096);
         a->render_cpu_us+=platform_time_us()-began;
-        if(status<0){error="portable execution fault";break;}
+        if(status<0){error=pbc_fault_reason(a->portable);break;}
         if(status>0){error=finish(a);if(error)break;s->stage=5;}
         return 0;
     }
@@ -141,7 +141,7 @@ const char *animation_commit(AnimationSlice *slice,uint64_t elapsed_us,bool *rea
     VmInstance *a=slice->vm;int status=slice->status;
     *ready=false;
     a->render_cpu_us+=elapsed_us;
-    if(status<0)return fault(a,"portable execution fault");
+    if(status<0)return fault(a,pbc_fault_reason(a->portable));
     if(!status)return NULL;
     const char *error=finish(a);*ready=!error;return error;
 }

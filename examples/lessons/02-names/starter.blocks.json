@@ -1,0 +1,153 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_pixel",
+              "fields": {},
+              "inputs": {
+                "INDEX": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "02-names-starter-3"
+                  }
+                },
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 40
+                          },
+                          "inputs": {},
+                          "id": "02-names-starter-5"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 8
+                          },
+                          "inputs": {},
+                          "id": "02-names-starter-6"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "02-names-starter-7"
+                        }
+                      }
+                    },
+                    "id": "02-names-starter-4"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_math",
+                        "fields": {
+                          "OP": "-"
+                        },
+                        "inputs": {
+                          "A": {
+                            "block": {
+                              "type": "lm_runtime",
+                              "fields": {
+                                "PROPERTY": "count"
+                              },
+                              "inputs": {},
+                              "id": "02-names-starter-10"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 1
+                              },
+                              "inputs": {},
+                              "id": "02-names-starter-11"
+                            }
+                          }
+                        },
+                        "id": "02-names-starter-9"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 40
+                              },
+                              "inputs": {},
+                              "id": "02-names-starter-13"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 8
+                              },
+                              "inputs": {},
+                              "id": "02-names-starter-14"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {},
+                              "id": "02-names-starter-15"
+                            }
+                          }
+                        },
+                        "id": "02-names-starter-12"
+                      }
+                    }
+                  },
+                  "id": "02-names-starter-8"
+                }
+              },
+              "id": "02-names-starter-2"
+            }
+          }
+        },
+        "id": "02-names-starter-1"
+      }
+    ]
+  }
+}

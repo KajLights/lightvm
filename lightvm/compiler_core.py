@@ -54,6 +54,9 @@ class Compiler:
     def typ(self, r):
         return self.regs[r][0]
 
+    def snapshot(self, reg):
+        return reg
+
     def raw_constant(self, typ, bits):
         key = typ, bits & 0xffffffff
         if key not in self.constants:
@@ -126,6 +129,10 @@ class Compiler:
             return self.literal(n.value)
         if isinstance(n, ast.Name) and n.id in self.env:
             return self.env[n.id]
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.UAdd):
+            value = self.expr(n.operand)
+            if self.typ(value) not in (I, F, Q): self.fail(n, 'Use a number after +.')
+            return value
         if isinstance(n, ast.UnaryOp) and isinstance(n.op, ast.USub):
             if isinstance(n.operand, ast.Constant):
                 return self.literal(-n.operand.value)
@@ -163,7 +170,7 @@ class Compiler:
                 return literal if literal is not None else self.convert(self.expr(n.args[0]), Q, explicit=True)
             if name in ('fixed_bits', 'fixed_from_bits', 'fixed_sqrt') and len(n.args) == 1:
                 return self.numeric_op({'fixed_bits':'QBITS', 'fixed_from_bits':'QFROMBITS', 'fixed_sqrt':'QSQRT'}[name], self.expr(n.args[0]))
-            args = [self.expr(a) for a in n.args]
+            args = [self.snapshot(self.expr(a)) for a in n.args]
             if name in ('int', 'float') and len(args)==1:
                 return self.convert(args[0], I if name=='int' else F, explicit=True)
             if name == 'abs' and len(args)==1:
@@ -182,6 +189,10 @@ class Compiler:
         self.fail(n, 'unsupported expression')
 
     def binary(self, op, a, b):
+        if isinstance(op, ast.Pow):
+            if Q in (self.typ(a), self.typ(b)):
+                raise CompileError('Convert fixed values to float before raising them to a power.')
+            return self.numeric_op('FPOW', self.convert(a, F), self.convert(b, F))
         bitops = {ast.BitAnd:'IAND', ast.BitOr:'IOR', ast.BitXor:'IXOR', ast.LShift:'ISHL', ast.RShift:'ISHR'}
         if type(op) in bitops: return self.numeric_op(bitops[type(op)], a, b)
         a,b,t=self.pair(a,b)

@@ -5,6 +5,11 @@ own draft for this session. Examples are filtered to that language. All three
 use the same settings, live-input recipes, code checks, preview, deployment and
 bytecode downloads. Save locally before closing the browser.
 
+For a first course, use [Learn with lights](teaching.md). It adds twelve matching
+lessons, an offline strip/ring preview, frame and statement stepping, and source
+locations for runtime problems. Blocks opens with a smaller beginner toolbox;
+**Show all blocks** exposes the full set.
+
 **Save locally** downloads a `.lightvm.json` document containing the original
 source, filename, preview settings and input bindings. Import that file to
 continue editing. Raw `.py`, `.js` and `.blocks.json` files can also be imported
@@ -69,11 +74,11 @@ numbers and fixed resource types; it is not a general browser JavaScript engine.
 | Feature | Supported forms |
 | --- | --- |
 | Variables | `let`, `const`, lexical block scope; scalar module constants |
-| Functions | Named functions, function expressions and arrow functions assigned to module constants; nonrecursive helpers returning a value on every path |
+| Functions | Named functions, function expressions and arrow functions assigned to module constants; nonrecursive value helpers and drawing procedures, constant defaults |
 | Callbacks | Exported `init` / `render` functions or const functions; `animation({...})` / `transition({...})` with methods or named callbacks |
-| Control flow | `if` / `else`, ternaries, C-style `for`, `while`, `for…of` over managed typed arrays, `break`, `continue`, early render return |
+| Control flow | `if` / `else`, ternaries, C-style `for`, `while`, `for…of` over managed typed arrays or whole-number `range(...)`, `break`, `continue`, early render return |
 | Operators | `+ - * / %`, comparisons, `=== !==`, unary `+ - !`, explicit i32 `& \| ^ ~ << >>`, standalone `++ --`, assignments and `+= -= *= /=` |
-| Logical operators | `&&` / `||` short circuit and return operand values; result branches must have the same LightVM type. Store an effectful left operand in a local first. |
+| Logical operators | `&&` / `||` short circuit and return operand values; result branches must have the same LightVM type. Each operand is evaluated at most once. |
 | Maths | `Math.sin/cos/sqrt/log/exp/pow/abs/min/max/floor/ceil/round/trunc/random`, `Math.PI`, `Math.E`; `Number`, `float` and `int` |
 | Collections | `new Float32Array`, `Int32Array`, `Uint32Array`, `Uint8Array`, `Uint16Array` with a length and optional `{ fill }` or a literal array; `new FixedArray(length, { fill })`; indexing, element writes, `.length` |
 | SDK descriptions | `new PixelArray`, `Sprite`, `SpriteBatch`, `Transform`, `ColorTransform`; `input` / `Input`, `ramp` / `Ramp` |
@@ -93,7 +98,8 @@ lowering; it is not a new native operation. Blocks exposes the same operations
 through its native-math dropdown and power block.
 
 JavaScript `%` uses the dividend's sign. Use `repeat(x)` for positive wrapped
-motion. Logical operands must be compatible scalar types. Guest strings are
+motion, `wrap(value, length)` for a moving value, or `wrapIndex(position, count)`
+for a whole pixel position. Logical operands must be compatible scalar types. Guest strings are
 supported only as static SDK descriptions (input names, modes, source A/B, etc.).
 No DOM, network, dynamic imports, `eval`, promises, exceptions, classes,
 destructuring, closures over locals or arbitrary allocation are available.
@@ -186,17 +192,17 @@ Integer array fills also check the destination range: Uint8 0..255, Uint16
 0..65535 and Uint32 0..2147483647 within the shared signed i32 domain. They never
 silently wrap narrow stores.
 
-For a bulk-eligible JavaScript loop, declare `let i = int(0)`, use `i++`, and
-compare `i < pixels.count`, `i < runtime.pixelCount` or a nonnegative literal
-bound. A literal without `int(...)` must be at most 16777216, where conversion
-to f32 remains exact. Mutable bounds, modified counters, break/continue or
-effects can keep the loop scalar. Ordinary `let i = 0` loops retain their f32
-counter behavior. Compiler advice reports kernel selection or a specific reason
-a range loop stays scalar, plus resource/plan estimates; it is not an FPS claim.
+Ordinary `for (let i = 0; i < pixels.count; i++)` loops can use the bulk path,
+as can immutable local count aliases. An explicit `int(0)` is not required for
+this form. The frontend proves the count is stable and exactly representable,
+while expressions still see the expected f32 counter value. Mutable bounds,
+modified counters, break/continue or effects can keep the loop ordered.
+Compiler advice reports selection or a reason for ordered execution, including
+while loops, plus resource/plan estimates; it is not an FPS claim.
 
 Blocks offers exact decimal fixed literals in a text field, signed integer
 literals, conversion and bitwise blocks, all six numeric array kinds, array
-length, fixed fill/copy, native math and power. Pixel/repeat loop counters are
+length, typed array fill/copy, native math and power. Pixel/repeat loop counters are
 i32 in both direct Blocks compilation and the optional JavaScript learning view.
 This keeps eligible numeric gathers and conditional pixel work on the same bulk
 path. Fixed/scalar bitwise features need 1.2.0; extended maps and new native math
@@ -222,7 +228,7 @@ The palette includes:
 - Sprite definitions with **when created** and **each frame** sections, bounded
   batches, creation arguments, transforms, colour/opacity and explicit removal.
 - Shared immutable RGBA artwork, supplied as comma-separated channel bytes.
-- Reusable one-argument functions with a return value.
+- Reusable calculations and drawing functions with up to three named inputs.
 - Crossfades, wipes and explicit composition range copies.
 
 Place remembered-state initialization, settings and resource creation in **When
@@ -272,7 +278,8 @@ loop never completes its frame; it does not execute during compilation.
 
 The browser worker packages both frontends and loads the existing pinned
 Pyodide backend. Blockly is packaged locally and loaded when opening Blocks.
-Compiler initialization still needs network access for Pyodide on a first visit.
+Pyodide and CodeMirror are also packaged locally. Serving the complete editor
+folder supports a first lesson without internet access.
 Source is limited to 64 KiB; blocks additionally limit workspace size and nesting.
 The existing VM code, register, resource and package limits apply to all languages.
 

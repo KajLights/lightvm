@@ -20,6 +20,14 @@ for (const name of COMPILER_FILES) {
 }
 cpSync(resolve(root, 'examples/animations'), resolve(staticAssets, 'examples/animations'), { recursive: true });
 cpSync(resolve(root, 'examples/transitions'), resolve(staticAssets, 'examples/transitions'), { recursive: true });
+// These are served alongside the app: a lesson never needs a public CDN.
+mkdirSync(resolve(staticAssets, 'vendor/pyodide'), { recursive: true });
+for (const name of ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']) {
+  cpSync(resolve(root, 'node_modules/pyodide', name), resolve(staticAssets, 'vendor/pyodide', name));
+}
+cpSync(resolve(root, 'node_modules/codemirror'), resolve(staticAssets, 'vendor/codemirror'), { recursive: true });
+cpSync(resolve(root, 'THIRD_PARTY_NOTICES.md'), resolve(staticAssets, 'THIRD_PARTY_NOTICES.md'));
+cpSync(resolve(root, 'licenses'), resolve(staticAssets, 'licenses'), { recursive: true });
 
 export default defineConfig({
   root: resolve(root, 'web'), base: './', publicDir: staticAssets,

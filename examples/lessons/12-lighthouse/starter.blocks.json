@@ -1,0 +1,217 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0
+                    },
+                    "inputs": {},
+                    "id": "12-lighthouse-starter-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_set",
+                  "fields": {
+                    "NAME": "speed",
+                    "SCOPE": "state"
+                  },
+                  "inputs": {
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 8
+                        },
+                        "inputs": {},
+                        "id": "12-lighthouse-starter-5"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-starter-4"
+                }
+              },
+              "id": "12-lighthouse-starter-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_set",
+              "fields": {
+                "NAME": "position",
+                "SCOPE": "state"
+              },
+              "inputs": {
+                "VALUE": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "%"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "+"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "state"
+                                },
+                                "inputs": {},
+                                "id": "12-lighthouse-starter-9"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "delta"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-starter-11"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "speed",
+                                        "SCOPE": "state"
+                                      },
+                                      "inputs": {},
+                                      "id": "12-lighthouse-starter-12"
+                                    }
+                                  }
+                                },
+                                "id": "12-lighthouse-starter-10"
+                              }
+                            }
+                          },
+                          "id": "12-lighthouse-starter-8"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_runtime",
+                          "fields": {
+                            "PROPERTY": "count"
+                          },
+                          "inputs": {},
+                          "id": "12-lighthouse-starter-13"
+                        }
+                      }
+                    },
+                    "id": "12-lighthouse-starter-7"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_convert",
+                        "fields": {
+                          "FUNCTION": "int"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "position",
+                                "SCOPE": "state"
+                              },
+                              "inputs": {},
+                              "id": "12-lighthouse-starter-16"
+                            }
+                          }
+                        },
+                        "id": "12-lighthouse-starter-15"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 40
+                              },
+                              "inputs": {},
+                              "id": "12-lighthouse-starter-18"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 8
+                              },
+                              "inputs": {},
+                              "id": "12-lighthouse-starter-19"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 0
+                              },
+                              "inputs": {},
+                              "id": "12-lighthouse-starter-20"
+                            }
+                          }
+                        },
+                        "id": "12-lighthouse-starter-17"
+                      }
+                    }
+                  },
+                  "id": "12-lighthouse-starter-14"
+                }
+              },
+              "id": "12-lighthouse-starter-6"
+            }
+          }
+        },
+        "id": "12-lighthouse-starter-1"
+      }
+    ]
+  }
+}

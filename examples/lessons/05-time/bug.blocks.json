@@ -1,0 +1,83 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_while",
+              "fields": {},
+              "inputs": {
+                "TEST": {
+                  "block": {
+                    "type": "lm_bool",
+                    "fields": {
+                      "VALUE": "TRUE"
+                    },
+                    "inputs": {},
+                    "id": "05-time-bug-3"
+                  }
+                },
+                "DO": {
+                  "block": {
+                    "type": "lm_fill",
+                    "fields": {},
+                    "inputs": {
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_rgb",
+                          "fields": {},
+                          "inputs": {
+                            "R": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 40
+                                },
+                                "inputs": {},
+                                "id": "05-time-bug-6"
+                              }
+                            },
+                            "G": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 8
+                                },
+                                "inputs": {},
+                                "id": "05-time-bug-7"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "05-time-bug-8"
+                              }
+                            }
+                          },
+                          "id": "05-time-bug-5"
+                        }
+                      }
+                    },
+                    "id": "05-time-bug-4"
+                  }
+                }
+              },
+              "id": "05-time-bug-2"
+            }
+          }
+        },
+        "id": "05-time-bug-1"
+      }
+    ]
+  }
+}

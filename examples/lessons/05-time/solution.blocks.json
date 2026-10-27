@@ -1,0 +1,184 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_if",
+              "fields": {},
+              "inputs": {
+                "TEST": {
+                  "block": {
+                    "type": "lm_compare",
+                    "fields": {
+                      "OP": "=="
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "%"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_convert",
+                                "fields": {
+                                  "FUNCTION": "int"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "time"
+                                      },
+                                      "inputs": {},
+                                      "id": "05-time-solution-6"
+                                    }
+                                  }
+                                },
+                                "id": "05-time-solution-5"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_integer",
+                                "fields": {
+                                  "VALUE": 2
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-7"
+                              }
+                            }
+                          },
+                          "id": "05-time-solution-4"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_integer",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "05-time-solution-8"
+                        }
+                      }
+                    },
+                    "id": "05-time-solution-3"
+                  }
+                },
+                "THEN": {
+                  "block": {
+                    "type": "lm_fill",
+                    "fields": {},
+                    "inputs": {
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_rgb",
+                          "fields": {},
+                          "inputs": {
+                            "R": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 40
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-11"
+                              }
+                            },
+                            "G": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 8
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-12"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-13"
+                              }
+                            }
+                          },
+                          "id": "05-time-solution-10"
+                        }
+                      }
+                    },
+                    "id": "05-time-solution-9"
+                  }
+                },
+                "ELSE": {
+                  "block": {
+                    "type": "lm_fill",
+                    "fields": {},
+                    "inputs": {
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_rgb",
+                          "fields": {},
+                          "inputs": {
+                            "R": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-16"
+                              }
+                            },
+                            "G": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-17"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "05-time-solution-18"
+                              }
+                            }
+                          },
+                          "id": "05-time-solution-15"
+                        }
+                      }
+                    },
+                    "id": "05-time-solution-14"
+                  }
+                }
+              },
+              "id": "05-time-solution-2"
+            }
+          }
+        },
+        "id": "05-time-solution-1"
+      }
+    ]
+  }
+}

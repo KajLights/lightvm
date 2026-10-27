@@ -147,7 +147,7 @@ class SpriteCompiler:
             return regs
         if not isinstance(node,ast.Call) or self.imports.get(getattr(node.func,'id',''))!=kind:self.fail(node,'expected '+kind)
         args=self.arguments(node,names,{k:defaults[k] for k in names})
-        return [self.colour_constant(defaults[k]) if k=='tint' and isinstance(args[k],ast.Constant) and args[k].value==defaults[k] else self.convert(self.expr(args[k]),C if k=='tint' else F) for k in names]
+        return [self.colour_constant(defaults[k]) if k=='tint' and isinstance(args[k],ast.Constant) and args[k].value==defaults[k] else self.snapshot(self.convert(self.expr(args[k]),C if k=='tint' else F)) for k in names]
 
     def set_style(self,geometry,color,node):
         ref=self.style(node)
@@ -193,14 +193,14 @@ class SpriteCompiler:
             self.check_write(ref,call)
             if method=='point':
                 args=self.arguments(call,('index','color','alpha'),{'alpha':255})
-                return self.native('image_point',[ref]+[self.expr(args[k]) for k in ('index','color','alpha')],call)
+                return self.native('image_point',[ref]+[self.snapshot(self.expr(args[k])) for k in ('index','color','alpha')],call)
             if method=='palette':
                 args=self.arguments(call,('colors','phase','stride'))
                 source,_=self.resource(args['colors'])
                 return self.native('image_palette',[ref,source,self.expr(args['phase']),self.expr(args['stride'])],call)
             names=('first','last') if method=='gradient' else ('phase','stride')
             args=self.arguments(call,names)
-            return self.native('image_'+method,[ref]+[self.expr(args[k]) for k in names],call)
+            return self.native('image_'+method,[ref]+[self.snapshot(self.expr(args[k])) for k in names],call)
         if method=='fill' and kind>=14:
             self.check_write(ref,call)
             args=self.arguments(call,('color','alpha','start','stop'),{'alpha':255,'start':0,'stop':None})
@@ -291,7 +291,7 @@ class SpriteCompiler:
         if method=='spawn':
             fn=batch['definition']['init'];names=tuple(a.arg for a in fn.args.args[2:]) if fn else ()
             args=self.arguments(call,names)
-            values=[self.expr(args[name]) for name in names]
+            values=[self.snapshot(self.expr(args[name])) for name in names]
             slot=self.native('batch_reserve',[ref,now],call)
             out=self.reg(B);cond=self.reg(B);self.emit('ILT',cond,slot,self.literal(0));self.emit('EQ',out,cond,self.literal(False))
             jump=self.emit('JZ',out)

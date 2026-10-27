@@ -1,0 +1,161 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "brightness",
+                "TYPE": "f"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "09-arrays-solution-3"
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0.08
+                    },
+                    "inputs": {},
+                    "id": "09-arrays-solution-4"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_array_set",
+                  "fields": {
+                    "NAME": "brightness"
+                  },
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_integer",
+                        "fields": {
+                          "VALUE": 0
+                        },
+                        "inputs": {},
+                        "id": "09-arrays-solution-6"
+                      }
+                    },
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0.25
+                        },
+                        "inputs": {},
+                        "id": "09-arrays-solution-7"
+                      }
+                    }
+                  },
+                  "id": "09-arrays-solution-5"
+                }
+              },
+              "id": "09-arrays-solution-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_pixel",
+                    "fields": {},
+                    "inputs": {
+                      "INDEX": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "09-arrays-solution-10"
+                        }
+                      },
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_hsv",
+                          "fields": {},
+                          "inputs": {
+                            "H": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0.08
+                                },
+                                "inputs": {},
+                                "id": "09-arrays-solution-12"
+                              }
+                            },
+                            "S": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 1
+                                },
+                                "inputs": {},
+                                "id": "09-arrays-solution-13"
+                              }
+                            },
+                            "V": {
+                              "block": {
+                                "type": "lm_array_get",
+                                "fields": {
+                                  "NAME": "brightness"
+                                },
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "09-arrays-solution-15"
+                                    }
+                                  }
+                                },
+                                "id": "09-arrays-solution-14"
+                              }
+                            }
+                          },
+                          "id": "09-arrays-solution-11"
+                        }
+                      }
+                    },
+                    "id": "09-arrays-solution-9"
+                  }
+                }
+              },
+              "id": "09-arrays-solution-8"
+            }
+          }
+        },
+        "id": "09-arrays-solution-1"
+      }
+    ]
+  }
+}

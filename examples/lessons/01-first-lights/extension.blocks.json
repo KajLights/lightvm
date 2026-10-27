@@ -1,0 +1,154 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_fill",
+              "fields": {},
+              "inputs": {
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-extension-4"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-extension-5"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "01-first-lights-extension-6"
+                        }
+                      }
+                    },
+                    "id": "01-first-lights-extension-3"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_pixel",
+                  "fields": {},
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_convert",
+                        "fields": {
+                          "FUNCTION": "int"
+                        },
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "type": "lm_math",
+                              "fields": {
+                                "OP": "/"
+                              },
+                              "inputs": {
+                                "A": {
+                                  "block": {
+                                    "type": "lm_runtime",
+                                    "fields": {
+                                      "PROPERTY": "count"
+                                    },
+                                    "inputs": {},
+                                    "id": "01-first-lights-extension-10"
+                                  }
+                                },
+                                "B": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 2
+                                    },
+                                    "inputs": {},
+                                    "id": "01-first-lights-extension-11"
+                                  }
+                                }
+                              },
+                              "id": "01-first-lights-extension-9"
+                            }
+                          }
+                        },
+                        "id": "01-first-lights-extension-8"
+                      }
+                    },
+                    "COLOR": {
+                      "block": {
+                        "type": "lm_rgb",
+                        "fields": {},
+                        "inputs": {
+                          "R": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 30
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-extension-13"
+                            }
+                          },
+                          "G": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 30
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-extension-14"
+                            }
+                          },
+                          "B": {
+                            "block": {
+                              "type": "lm_number",
+                              "fields": {
+                                "VALUE": 30
+                              },
+                              "inputs": {},
+                              "id": "01-first-lights-extension-15"
+                            }
+                          }
+                        },
+                        "id": "01-first-lights-extension-12"
+                      }
+                    }
+                  },
+                  "id": "01-first-lights-extension-7"
+                }
+              },
+              "id": "01-first-lights-extension-2"
+            }
+          }
+        },
+        "id": "01-first-lights-extension-1"
+      }
+    ]
+  }
+}

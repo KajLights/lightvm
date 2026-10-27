@@ -365,3 +365,10 @@ input:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid
 .audio-master .master-faders { max-width: 360px; }
 .audio-master .audio-meters > div { grid-template-columns: minmax(100px, 150px) minmax(0, 1fr) 36px; }
 @media (max-width: 520px) { .output-light fieldset { grid-template-columns: 1fr; gap: 18px; } }
+
+.local-preview { padding: 1rem; border-top: 1px solid #344955; }
+.preview-controls { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
+.preview-controls input[type=number], .preview-input input { width: 5rem; }
+.preview-strip { width: 100%; min-height: 60px; margin-top: 1rem; }
+.preview-ring { display: block; width: min(100%, 340px); margin: 1rem auto; }
+.preview-input { display: inline-flex; gap: .5rem; margin: .5rem; }

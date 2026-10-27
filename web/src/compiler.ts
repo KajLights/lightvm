@@ -26,16 +26,25 @@ export class Compiler {
   private initializationDeadline?: ReturnType<typeof setTimeout>;
   private compilationDeadline?: ReturnType<typeof setTimeout>;
   private unsubscribe?: () => void;
+  private previewSerial = 0;
+  private previews = new Map<string, { revision: number; source: string; resolve: (value: Compilation) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   constructor(private store: AppStore) {}
   start() {
     if (this.worker) return;
     this.store.dispatch(editorActions.compiler({ status: 'loading', message: 'Loading the LightVM compiler…' }));
     try {
       this.worker = new Worker(new URL('./compiler-worker.ts', import.meta.url), { type: 'module' });
-      this.initializationDeadline = setTimeout(() => this.fail('Compiler download timed out. Check your internet connection and retry.'), 60000);
+      this.initializationDeadline = setTimeout(() => this.fail('The compiler took too long to load. Check that the editor files are available and retry.'), 60000);
       this.worker.postMessage({ type: 'initialize', baseUrl: assetUrl('./') });
-      this.worker.onerror = event => this.fail(event.message || 'The compiler could not load. Check your internet connection and retry.');
+      this.worker.onerror = event => this.fail(event.message || 'The compiler could not load. Check that the editor files are available and retry.');
       this.worker.onmessage = ({ data }) => {
+        if (data.type === 'preview-compiled' || data.type === 'preview-failed') {
+          const request = this.previews.get(data.id); if (!request) return;
+          clearTimeout(request.timer); this.previews.delete(data.id);
+          if (data.type === 'preview-failed') request.reject(new Error(data.message));
+          else request.resolve({ ...data, id: request.revision, source: request.source });
+          return;
+        }
         if (data.type === 'status') this.store.dispatch(editorActions.compiler({ status: 'loading', message: data.message }));
         else if (data.type === 'fatal') this.fail(data.message);
         else if (data.type === 'ready') {
@@ -71,6 +80,16 @@ export class Compiler {
   edit(source: string, filename?: string) {
     this.store.dispatch(editorActions.edited({ source, filename }));
   }
+  preview(debug: boolean): Promise<Compilation> {
+    const editor = this.store.getState().editor;
+    if (editor.compiler !== 'ready' || !this.worker) return Promise.reject(new Error('Wait for the compiler to finish loading, then try the preview.'));
+    const id = 'preview-' + ++this.previewSerial;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { this.previews.delete(id); reject(new Error('The preview compilation took too long. Try a smaller program.')); }, 15000);
+      this.previews.set(id, { revision: editor.revision, source: editor.source, resolve, reject, timer });
+      this.worker!.postMessage({ type: 'preview', id, source: editor.source, language: editor.language, filename: editor.filename, debug });
+    });
+  }
   language(language: Language) { this.store.dispatch(editorActions.languageChanged(language)); }
   fail(message: string) {
     this.stop();
@@ -79,6 +98,8 @@ export class Compiler {
   }
   retry() { this.stop(); this.start(); }
   stop() {
+    for (const request of this.previews.values()) { clearTimeout(request.timer); request.reject(new Error('The compiler stopped. Start the preview again.')); }
+    this.previews.clear();
     this.worker?.terminate(); this.worker = null; this.artifact = null;
     this.unsubscribe?.(); this.unsubscribe = undefined;
     clearTimeout(this.timer); clearTimeout(this.initializationDeadline); clearTimeout(this.compilationDeadline);

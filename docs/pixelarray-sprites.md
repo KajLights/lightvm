@@ -5,7 +5,8 @@ Animations and [transitions](transition-profile.md) share these drawing and spri
 declarations and document kind `lightvm.program`.
 [Application releases](versioning.md) govern compatibility for drawing and all other features.
 Images, sprites and wrapped drawing are part of the LightVM 1.0.0 baseline.
-Optimized pixel loops use API 4; see [pixel maps](pixel-maps.md).
+Optimized pixel loops declare the required LightVM release; see [pixel maps](pixel-maps.md)
+and the [version contract](versioning.md).
 Target-aware compilation checks the required schema. Superseded packages are rejected; recompile their source.
 New SpriteBatch source uses the general API.
 

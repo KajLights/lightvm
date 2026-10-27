@@ -235,7 +235,7 @@ static bool evaluate(Instruction i,Value *v,const Portable *p) {
 }
 typedef struct {
     const struct PbcMapPlan *plan;const Portable *vm;PbcResource *image;
-    unsigned first,end,completed,stride,work,budget;uint64_t deadline;bool success;
+    unsigned first,end,completed,stride,work,budget,fault_pc,fault_code;uint64_t deadline;bool success;
     Mask written;Value values[128];
 } MapTask;
 static LIGHTVM_DRAW_CODE void map_pixels(void *context){
@@ -250,10 +250,11 @@ static LIGHTVM_DRAW_CODE void map_pixels(void *context){
         /* Reserve the verified worst path before starting a pixel. Charge
          * attempts too, including faults and unpublished/recomputed suffixes. */
         unsigned work=pixel==task->first?k->first_weight:k->weight;
-        if(work>task->budget-task->work)return;
+        if(work>task->budget-task->work){task->fault_code=PBC_FAULT_BUDGET;return;}
         task->work+=work;
         values[k->index].u=pixel;
         for(unsigned n=0;n<length;){
+            task->fault_pc=k->first+n;task->fault_code=PBC_FAULT_OPERATION;
             Instruction i=k->code[n];bool cached=(i.op&128)!=0;i.op&=127;
             if(i.op==JMP){n=i.d;continue;}
             if(i.op==JZ){n=values[i.a].u?n+1:i.d;continue;}
@@ -293,7 +294,7 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     if(remaining<2u*LBC_MAP_WORK_BUDGET)parallel=false;
     unsigned budget=remaining/(parallel?2u:1u);
     if(budget>LBC_MAP_WORK_BUDGET)budget=LBC_MAP_WORK_BUDGET;
-    if(budget<plan->first_weight)return false;
+    if(budget<plan->first_weight){p->fault_code=PBC_FAULT_BUDGET;return false;}
     unsigned pixels=1u+(budget-plan->first_weight)/plan->weight;
     if(parallel)pixels*=2;
     unsigned cap=parallel?128u:transient?64u:32u;if(pixels>cap)pixels=cap;
@@ -310,7 +311,10 @@ bool pbc_map_run(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned i
     RenderJob jobs[2]={{map_pixels,&tasks[0],0},{map_pixels,&tasks[1],0}};render_execute(jobs,count);
     bool success=true;
     for(unsigned n=0;n<count;n++){p->used+=tasks[n].work;success&=tasks[n].success;}
-    if(!success)return false;
+    if(!success){
+        for(unsigned n=0;n<count;n++)if(!tasks[n].success){p->fault_pc=tasks[n].fault_pc;p->fault_code=tasks[n].fault_code;break;}
+        return false;
+    }
     /* Only the contiguous completed prefix advances. A speculative transient
      * suffix is unpublished and will be recomputed if the first lane yielded. */
     if(tasks[0].completed<middle)count=1;

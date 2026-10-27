@@ -4,6 +4,7 @@ Source is parsed and never executed. No WASM assembler or device toolchain is us
 """
 import argparse
 import ast
+import binascii
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
@@ -24,18 +25,19 @@ class Compilation:
     manifest: dict = field(default_factory=dict)
     diagnostics: list = field(default_factory=list)
     advisories: list = field(default_factory=list)
+    debug: dict = field(default_factory=dict)
 
     @property
     def success(self):
         return not self.diagnostics
 
 
-def compile_source(source, filename="<string>", target=None, *, optimize=True):
+def compile_source(source, filename="<string>", target=None, *, optimize=True, debug=False):
     try:
         if len(source.encode()) > 65536:
             raise CompileError("source exceeds 64 KiB")
         bulk = optimize
-        compiler = PortableCompiler(source, optimize=bulk)
+        compiler = PortableCompiler(source, optimize=bulk, debug=debug)
         bytecode, manifest = compiler.compile()
         if target is not None:
             if manifest['profile'] == 'transition' and not target.get('transition_programs'):
@@ -49,7 +51,10 @@ def compile_source(source, filename="<string>", target=None, *, optimize=True):
             error = release_error(target.get('version'), manifest['requires'])
             if error:
                 raise CompileError(error)
-        return Compilation(bytecode, manifest, advisories=performance_advice(compiler, filename))
+        source_map = {'schema': 'lightvm.debug', 'crc32': binascii.crc32(bytecode), 'filename': filename,
+                      'stepping': debug, 'instructions': compiler.code_locations,
+                      'checkpoints': [{'pc': pc, **point} for pc, point in sorted(compiler.checkpoints.items())]}
+        return Compilation(bytecode, manifest, advisories=performance_advice(compiler, filename), debug=source_map)
     except (CompileError, SyntaxError, ValueError, OverflowError, RecursionError) as error:
         node = getattr(error, "node", None)
         return Compilation(diagnostics=[Diagnostic(str(error), filename,
@@ -103,9 +108,9 @@ def performance_advice(compiler, filename):
             filename, render.lineno, render.col_offset + 1))
         plans = [ins[4]-pc-1 for pc, ins in enumerate(compiler.code) if ins[0] == 39]
         if plans:
-            notes.append(Diagnostic(f'Kernel plan estimate on 32-bit targets: {sum(48+8*n for n in plans)} bytes for {len(plans)} plans, excluding allocator overhead. '
-                'Pico scratch uses two 576-byte lane tasks plus 512 bytes per executing lane, within the audited stack paths. '
-                'These are separate from pixel/state memory; use map_plan_bytes and stack telemetry on the target.',
+            notes.append(Diagnostic(f'Kernel plan estimate on 32-bit targets: {sum(48+12*n for n in plans)} bytes for {len(plans)} plans, excluding allocator overhead. '
+                'Temporary work space also uses the native stacks. '
+                'These are separate from pixel/state memory; use map_plan_bytes and the current target stack audit for actual sizes.',
                 filename, render.lineno, render.col_offset + 1))
     return notes
 

@@ -6,9 +6,14 @@ import { useRuntime } from './runtime';
 import { EXAMPLES, exampleForSource } from './examples';
 import { DevelopmentWorkflow } from './Workflow';
 import type { Diagnostic } from './types';
+import { LocalPreview } from './LocalPreview';
+import { LessonPicker } from './LessonPicker';
+import { runtimeDiagnostic } from './runtime-diagnostic';
 
 function Editor({ active }: { active: boolean }) {
   const { compiler } = useRuntime(), editor = useAppSelector(state => state.editor);
+  const running = useAppSelector(state => state.controller.programState);
+  const deviceError = runtimeDiagnostic(running, compiler.artifact);
   const textarea = useRef<HTMLTextAreaElement>(null), cm = useRef<any>(null), marks = useRef<any[]>([]);
   const [cursor, setCursor] = useState('Ln 1, Col 1');
   const example = exampleForSource(editor.source);
@@ -35,6 +40,10 @@ function Editor({ active }: { active: boolean }) {
   }, [compiler, editor.language]);
   useEffect(() => { if (cm.current && cm.current.getValue() !== editor.source) cm.current.setValue(editor.source); }, [editor.source]);
   useEffect(() => {
+    const focus = (event: Event) => focusDiagnostic((event as CustomEvent<Diagnostic>).detail);
+    window.addEventListener('lightvm-focus-source', focus); return () => window.removeEventListener('lightvm-focus-source', focus);
+  }, []);
+  useEffect(() => {
     const instance = cm.current;
     if (!instance) return;
     marks.current.forEach(mark => mark.clear()); marks.current = []; instance.clearGutter('error-gutter');
@@ -58,6 +67,7 @@ function Editor({ active }: { active: boolean }) {
   return <section className="editor-panel" aria-label={label + " source editor"}>
     <div className="editor-toolbar"><div className="file-label"><span className="python-dot" /><span id="filename">{editor.filename}</span></div><div className="toolbar-actions"><label className="sr-only" htmlFor="editor-language">Language</label><select id="editor-language" value={editor.language} onChange={event => compiler.language(event.target.value as Language)}>{Object.entries(LANGUAGE_LABELS).map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select><label className="sr-only" htmlFor="example">Load example</label><select id="example" value={example?.id ?? ''} onChange={event => loadExample(event.target.value)}><option value="">Examples…</option>{EXAMPLES.filter(item => item.language === editor.language).map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div></div>
     {example && <p id="example-description" className="helper">{example.description}</p>}
+    <LessonPicker />
     <div hidden={editor.language === 'blocks'}><label className="sr-only" htmlFor="source">{label} source</label><textarea ref={textarea} id="source" value={editor.source} spellCheck={false} autoCapitalize="off" autoComplete="off" onChange={event => compiler.edit(event.target.value)} /></div>
     {editor.language === 'blocks' && <Suspense fallback={<p className="helper">Opening the blocks toolbox…</p>}><BlocksEditor active={active} source={editor.source} diagnostics={editor.diagnostics} onChange={source => compiler.edit(source)} /></Suspense>}
 
@@ -66,6 +76,8 @@ function Editor({ active }: { active: boolean }) {
     <div className="diagnostics-header"><h2>Code checks</h2><span id="check-state">{editor.compiler === 'error' ? 'Compiler unavailable' : editor.checking ? 'Checking…' : editor.diagnostics.length ? 'Code needs attention' : editor.artifact ? 'All checks passed' : 'Waiting for compiler…'}</span></div>
     <div id="diagnostics" className="diagnostics" role="status" aria-live="polite">{editor.diagnostics.length ? editor.diagnostics.map((item, index) => <button key={index} className="diagnostic" onClick={() => focusDiagnostic(item)}><strong>{item.blockId ? 'Show block' : `Line ${item.line}:${item.column}`}</strong><span>{item.message}</span></button>) : <p className={editor.artifact ? 'check-ok' : 'muted'}>{editor.compiler === 'error' ? editor.message : editor.artifact ? '✓ Code checks passed. The compiled program is ready.' : editor.message}</p>}</div>
     {editor.advisories.length > 0 && <details className="language-guide"><summary>Performance notes · {editor.advisories.length}</summary><p className="helper">Suggestions and applied optimisations. Your program is ready to use.</p>{editor.advisories.map((item, index) => <button key={index} className="diagnostic" onClick={() => focusDiagnostic(item)}><strong>{item.blockId ? 'Show block' : `Line ${item.line}:${item.column}`}</strong><span>{item.message}</span></button>)}</details>}
+    <LocalPreview />
+    {running?.faulted && <div role="alert" className="diagnostics"><p>{running.fault_message ?? 'The device stopped while running its program.'}</p>{deviceError ? <button className="diagnostic" onClick={() => focusDiagnostic(deviceError)}>Show the problem {deviceError.blockId ? 'block' : `on line ${deviceError.line}`}</button> : <p className="helper">Open the source used for this device program to locate the problem. The current draft is different.</p>}</div>}
   </section>;
 }
 

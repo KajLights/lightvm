@@ -1,0 +1,117 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_fill",
+              "fields": {},
+              "inputs": {
+                "COLOR": {
+                  "block": {
+                    "type": "lm_hsv",
+                    "fields": {},
+                    "inputs": {
+                      "H": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0.08
+                          },
+                          "inputs": {},
+                          "id": "05-time-extension-4"
+                        }
+                      },
+                      "S": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 1
+                          },
+                          "inputs": {},
+                          "id": "05-time-extension-5"
+                        }
+                      },
+                      "V": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "*"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0.2
+                                },
+                                "inputs": {},
+                                "id": "05-time-extension-7"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_motion",
+                                "fields": {
+                                  "FUNCTION": "pingpong"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "/"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_runtime",
+                                            "fields": {
+                                              "PROPERTY": "time"
+                                            },
+                                            "inputs": {},
+                                            "id": "05-time-extension-10"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 2
+                                            },
+                                            "inputs": {},
+                                            "id": "05-time-extension-11"
+                                          }
+                                        }
+                                      },
+                                      "id": "05-time-extension-9"
+                                    }
+                                  }
+                                },
+                                "id": "05-time-extension-8"
+                              }
+                            }
+                          },
+                          "id": "05-time-extension-6"
+                        }
+                      }
+                    },
+                    "id": "05-time-extension-3"
+                  }
+                }
+              },
+              "id": "05-time-extension-2"
+            }
+          }
+        },
+        "id": "05-time-extension-1"
+      }
+    ]
+  }
+}

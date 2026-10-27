@@ -1,0 +1,128 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_pixel",
+              "fields": {},
+              "inputs": {
+                "INDEX": {
+                  "block": {
+                    "type": "lm_math",
+                    "fields": {
+                      "OP": "+"
+                    },
+                    "inputs": {
+                      "A": {
+                        "block": {
+                          "type": "lm_convert",
+                          "fields": {
+                            "FUNCTION": "int"
+                          },
+                          "inputs": {
+                            "VALUE": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_input",
+                                      "fields": {
+                                        "NAME": "progress",
+                                        "DEFAULT": 0.5
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-bug-6"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "count"
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-bug-7"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-bug-5"
+                              }
+                            }
+                          },
+                          "id": "08-controls-bug-4"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_integer",
+                          "fields": {
+                            "VALUE": 1
+                          },
+                          "inputs": {},
+                          "id": "08-controls-bug-8"
+                        }
+                      }
+                    },
+                    "id": "08-controls-bug-3"
+                  }
+                },
+                "COLOR": {
+                  "block": {
+                    "type": "lm_rgb",
+                    "fields": {},
+                    "inputs": {
+                      "R": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 40
+                          },
+                          "inputs": {},
+                          "id": "08-controls-bug-10"
+                        }
+                      },
+                      "G": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 8
+                          },
+                          "inputs": {},
+                          "id": "08-controls-bug-11"
+                        }
+                      },
+                      "B": {
+                        "block": {
+                          "type": "lm_number",
+                          "fields": {
+                            "VALUE": 0
+                          },
+                          "inputs": {},
+                          "id": "08-controls-bug-12"
+                        }
+                      }
+                    },
+                    "id": "08-controls-bug-9"
+                  }
+                }
+              },
+              "id": "08-controls-bug-2"
+            }
+          }
+        },
+        "id": "08-controls-bug-1"
+      }
+    ]
+  }
+}

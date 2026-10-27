@@ -164,6 +164,12 @@ static void describe(ControlWriter *w,bool with_manifest) {
     if(a->portable){
         Portable *p=a->portable;
         snprintf(b,sizeof(b),",\"program_crc32\":%" PRIu32,a->code.crc);text(w,b);
+        if(c->faulted&&a->portable->fault_code){
+            uint8_t instruction[8]={0};pbc_read_instruction(a->portable,a->portable->fault_pc,instruction);
+            snprintf(b,sizeof(b),",\"fault_pc\":%" PRIu32 ",\"fault_op\":%u,\"fault_code\":%" PRIu32,
+                a->portable->fault_pc,instruction[0],a->portable->fault_code);text(w,b);
+            text(w,",\"fault_message\":\"");text(w,pbc_fault_message(p,b,sizeof(b)));text(w,"\"");
+        }
         snprintf(b,sizeof(b),",\"pixel_format\":\"%s\",\"render_total_us\":%" PRIu64 ",\"native_draw_us\":%" PRIu64 ",\"dispatch_count\":%" PRIu64 ",\"slice_count\":%" PRIu64,"rgba8-premul",a->render_total_us,p->native_draw_us,p->dispatch_count,p->slice_count);text(w,b);
         snprintf(b,sizeof(b),",\"render_count\":%" PRIu64 ",\"active_wall_us\":%" PRIu64,p->render_count,p->active_wall_us);text(w,b);
         snprintf(b,sizeof(b),",\"render_reusable\":%s,\"displayed_frame\":%lu,\"distinct_presentations\":%" PRIu64,p->render_reusable?"true":"false",(unsigned long)c->displayed.frame,c->distinct_presentations);text(w,b);

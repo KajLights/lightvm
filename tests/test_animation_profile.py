@@ -42,7 +42,7 @@ class PortableCompilerTests(unittest.TestCase):
             '@init\ndef setup(ctx,runtime,pixels): pass\n@render\ndef draw(ctx,runtime,pixels): pass',
             '@render\ndef draw(ctx,runtime,pixels): pixels.fill(rgb(count,0,0))',
             '@render\ndef draw(ctx,runtime,pixels): x=time+delta',
-            'x=0\n@render\ndef draw(ctx,runtime,pixels): pass',
+            'x=0\n@render\ndef draw(ctx,runtime,pixels): x=1',
             '@render\ndef draw(ctx,runtime,pixels): ctx.x=1',
             '@init\ndef setup(ctx,runtime):\n if True: ctx.x=1\n@render\ndef draw(ctx,runtime,pixels): pass',
             '@init\ndef setup(ctx,runtime): return\n@render\ndef draw(ctx,runtime,pixels): pass',

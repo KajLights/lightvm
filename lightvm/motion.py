@@ -10,6 +10,18 @@ def repeat(x):
     return x % 1.0
 
 
+def wrap_index(index, count):
+    """Keep a whole-number position on a ring, including negative positions."""
+    assert count > 0
+    return index % count
+
+
+def wrap(value, length):
+    """Repeat a number from zero up to length, including backwards motion."""
+    assert length > 0
+    return value % length
+
+
 def pingpong(x):
     """0 -> 1 -> 0; each leg takes one input unit."""
     p = x % 2.0

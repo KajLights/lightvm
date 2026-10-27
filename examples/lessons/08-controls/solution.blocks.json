@@ -1,0 +1,208 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_if",
+                    "fields": {},
+                    "inputs": {
+                      "TEST": {
+                        "block": {
+                          "type": "lm_compare",
+                          "fields": {
+                            "OP": "<"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "08-controls-solution-5"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_math",
+                                "fields": {
+                                  "OP": "*"
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_input",
+                                      "fields": {
+                                        "NAME": "progress",
+                                        "DEFAULT": 0.5
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-7"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_runtime",
+                                      "fields": {
+                                        "PROPERTY": "count"
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-8"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-solution-6"
+                              }
+                            }
+                          },
+                          "id": "08-controls-solution-4"
+                        }
+                      },
+                      "THEN": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "08-controls-solution-10"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-12"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 8
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-13"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-14"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-solution-11"
+                              }
+                            }
+                          },
+                          "id": "08-controls-solution-9"
+                        }
+                      },
+                      "ELSE": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "08-controls-solution-16"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 0
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-18"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 4
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-19"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 40
+                                      },
+                                      "inputs": {},
+                                      "id": "08-controls-solution-20"
+                                    }
+                                  }
+                                },
+                                "id": "08-controls-solution-17"
+                              }
+                            }
+                          },
+                          "id": "08-controls-solution-15"
+                        }
+                      }
+                    },
+                    "id": "08-controls-solution-3"
+                  }
+                }
+              },
+              "id": "08-controls-solution-2"
+            }
+          }
+        },
+        "id": "08-controls-solution-1"
+      }
+    ]
+  }
+}

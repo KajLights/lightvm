@@ -1,0 +1,269 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "INIT": {
+            "block": {
+              "type": "lm_array",
+              "fields": {
+                "NAME": "brightness",
+                "TYPE": "f"
+              },
+              "inputs": {
+                "LENGTH": {
+                  "block": {
+                    "type": "lm_runtime",
+                    "fields": {
+                      "PROPERTY": "count"
+                    },
+                    "inputs": {},
+                    "id": "09-arrays-extension-3"
+                  }
+                },
+                "FILL": {
+                  "block": {
+                    "type": "lm_number",
+                    "fields": {
+                      "VALUE": 0.08
+                    },
+                    "inputs": {},
+                    "id": "09-arrays-extension-4"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_array_set",
+                  "fields": {
+                    "NAME": "brightness"
+                  },
+                  "inputs": {
+                    "INDEX": {
+                      "block": {
+                        "type": "lm_integer",
+                        "fields": {
+                          "VALUE": 0
+                        },
+                        "inputs": {},
+                        "id": "09-arrays-extension-6"
+                      }
+                    },
+                    "VALUE": {
+                      "block": {
+                        "type": "lm_number",
+                        "fields": {
+                          "VALUE": 0.25
+                        },
+                        "inputs": {},
+                        "id": "09-arrays-extension-7"
+                      }
+                    }
+                  },
+                  "id": "09-arrays-extension-5"
+                }
+              },
+              "id": "09-arrays-extension-2"
+            }
+          },
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_array_set",
+                    "fields": {
+                      "NAME": "brightness"
+                    },
+                    "inputs": {
+                      "INDEX": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "09-arrays-extension-10"
+                        }
+                      },
+                      "VALUE": {
+                        "block": {
+                          "type": "lm_math",
+                          "fields": {
+                            "OP": "*"
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_array_get",
+                                "fields": {
+                                  "NAME": "brightness"
+                                },
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "09-arrays-extension-13"
+                                    }
+                                  }
+                                },
+                                "id": "09-arrays-extension-12"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_native_math",
+                                "fields": {
+                                  "FUNCTION": "exp"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "*"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": -1
+                                            },
+                                            "inputs": {},
+                                            "id": "09-arrays-extension-16"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_runtime",
+                                            "fields": {
+                                              "PROPERTY": "delta"
+                                            },
+                                            "inputs": {},
+                                            "id": "09-arrays-extension-17"
+                                          }
+                                        }
+                                      },
+                                      "id": "09-arrays-extension-15"
+                                    }
+                                  }
+                                },
+                                "id": "09-arrays-extension-14"
+                              }
+                            }
+                          },
+                          "id": "09-arrays-extension-11"
+                        }
+                      }
+                    },
+                    "id": "09-arrays-extension-9"
+                  }
+                }
+              },
+              "next": {
+                "block": {
+                  "type": "lm_each",
+                  "fields": {
+                    "NAME": "position"
+                  },
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "lm_pixel",
+                        "fields": {},
+                        "inputs": {
+                          "INDEX": {
+                            "block": {
+                              "type": "lm_get",
+                              "fields": {
+                                "NAME": "position",
+                                "SCOPE": "local"
+                              },
+                              "inputs": {},
+                              "id": "09-arrays-extension-20"
+                            }
+                          },
+                          "COLOR": {
+                            "block": {
+                              "type": "lm_hsv",
+                              "fields": {},
+                              "inputs": {
+                                "H": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 0.08
+                                    },
+                                    "inputs": {},
+                                    "id": "09-arrays-extension-22"
+                                  }
+                                },
+                                "S": {
+                                  "block": {
+                                    "type": "lm_number",
+                                    "fields": {
+                                      "VALUE": 1
+                                    },
+                                    "inputs": {},
+                                    "id": "09-arrays-extension-23"
+                                  }
+                                },
+                                "V": {
+                                  "block": {
+                                    "type": "lm_array_get",
+                                    "fields": {
+                                      "NAME": "brightness"
+                                    },
+                                    "inputs": {
+                                      "INDEX": {
+                                        "block": {
+                                          "type": "lm_get",
+                                          "fields": {
+                                            "NAME": "position",
+                                            "SCOPE": "local"
+                                          },
+                                          "inputs": {},
+                                          "id": "09-arrays-extension-25"
+                                        }
+                                      }
+                                    },
+                                    "id": "09-arrays-extension-24"
+                                  }
+                                }
+                              },
+                              "id": "09-arrays-extension-21"
+                            }
+                          }
+                        },
+                        "id": "09-arrays-extension-19"
+                      }
+                    }
+                  },
+                  "id": "09-arrays-extension-18"
+                }
+              },
+              "id": "09-arrays-extension-8"
+            }
+          }
+        },
+        "id": "09-arrays-extension-1"
+      }
+    ]
+  }
+}

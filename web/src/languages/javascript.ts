@@ -4,7 +4,7 @@ import { SDK_IMPORTS, SourceError, type LoweredSource, type SourceLocation } fro
 // ESTree nodes are consumed through an explicit allowlist. Nothing in the guest
 // module is evaluated, imported, or handed to Function/eval.
 type Node = any;
-type Binding = { name: string; constant: boolean; node?: Node; kind?: string };
+type Binding = { name: string; constant: boolean; node?: Node; kind?: string; countBound?: boolean; floatCounter?: boolean };
 const aliases: Record<string, string> = {
   input: 'Input', ramp: 'Ramp', hash01: 'hash01', colorwheel: 'colorwheel', hueDegrees: 'hue_degrees', picoColorwheel: 'pico_colorwheel',
   fitStart: 'fit_start', fitEnd: 'fit_end', quadraticIn: 'quadratic_in', quadraticOut: 'quadratic_out', quadraticInOut: 'quadratic_in_out',
@@ -13,8 +13,11 @@ const aliases: Record<string, string> = {
   fixedBits: 'fixed_bits', fixedFromBits: 'fixed_from_bits', fixedSqrt: 'fixed_sqrt',
   sineIn: 'sine_in', sineOut: 'sine_out', sineInOut: 'sine_in_out', circularIn: 'circular_in', circularOut: 'circular_out', circularInOut: 'circular_in_out', exponentialIn: 'exponential_in', exponentialOut: 'exponential_out', exponentialInOut: 'exponential_in_out',
   copyFrom: 'copy_from',
+  wrapIndex: 'wrap_index',
 };
 const calls = new Set('setting Input Ramp rgb hsv hash01 perlin2 perlin3 simplex2 simplex3 PixelArray Sprite SpriteBatch Transform ColorTransform red green blue colorwheel pico_colorwheel hue_degrees repeat pingpong clamp01 lerp fit_start fit_end linear smoothstep quadratic_in quadratic_out quadratic_in_out cubic_in cubic_out cubic_in_out sine_in sine_out sine_in_out circular_in circular_out circular_in_out exponential_in exponential_out exponential_in_out crossfade wipe fixed fixed_bits fixed_from_bits fixed_sqrt FixedArray floor ceil trunc'.split(' '));
+calls.add('wrap_index');
+calls.add('wrap');
 const keywords = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
 const methods = new Set('input fill clear draw copy copy_from transform point colorwheel gradient palette mix copy_composition has_channel set_channel set_alpha multiply_alpha spawn render remove'.split(' '));
 // Equal-sign operands avoid losing a tiny f32 remainder when correcting a
@@ -22,7 +25,7 @@ const methods = new Set('input fill clear draw copy copy_from transform point co
 // uses exact integer-backed correction. Multiplying by zero retains f32 sign.
 const helperSource = `
 def _js_remainder(a, b):
-    zero = a - a
+    zero = (a - a) + (b - b)
     if a == zero or ((a < zero) == (b < zero)):
         remainder = a % b
         return a * zero if remainder == zero else remainder
@@ -43,6 +46,7 @@ export function lowerJavaScript(source: string): LoweredSource {
 
 class JavaScriptFrontend {
   lines: string[] = []; locations: SourceLocation[] = []; depth = 0; serial = 0;
+  names: Record<string, string> = {};
   scopes: Map<string, Binding>[] = [new Map()]; functions: { name: string; fn: Node; role?: string }[] = [];
   globals: { node: Node; binding: Binding }[] = []; loops: (Node | null)[] = []; expanding = new Set<string>();
   profile = 'animation'; roles = new Set<string>();
@@ -54,7 +58,7 @@ class JavaScriptFrontend {
     if (n?.type !== 'Identifier') this.fail(n, 'Use a simple name here; destructuring is not supported.');
     const scope = this.scopes.at(-1)!;
     if (scope.has(n.name)) this.fail(n, `The name “${n.name}” is already declared in this scope.`);
-    const b = { name: name ?? `_js_v${++this.serial}`, constant, kind }; scope.set(n.name, b); return b;
+    const b = { name: name ?? `_js_v${++this.serial}`, constant, kind }; scope.set(n.name, b); this.names[b.name] = n.name; return b;
   }
   addFunction(name: string, fn: Node, role?: string) {
     if (fn.async || fn.generator) this.fail(fn, 'Callbacks run synchronously; async and generators are not supported.');
@@ -78,7 +82,7 @@ class JavaScriptFrontend {
     for (const f of this.functions.filter(f => !f.role)) this.function(f);
     for (const { node, binding } of this.globals) this.emit(`${binding.name} = ${this.expr(node)}`, node);
     for (const f of this.functions.filter(f => f.role)) this.function(f);
-    return { python: this.lines.join('\n') + '\n', locations: this.locations };
+    return { python: this.lines.join('\n') + '\n', locations: this.locations, names: this.names };
   }
   module(item: Node) {
     const exported = item.type === 'ExportNamedDeclaration';
@@ -106,7 +110,7 @@ class JavaScriptFrontend {
           b.kind = 'resource'; this.globals.push({ binding: b, node: d.init });
         } else {
           const pure = (v: Node): boolean => Boolean(v && (['Literal', 'Identifier'].includes(v.type) || v.type === 'UnaryExpression' && pure(v.argument) || v.type === 'BinaryExpression' && pure(v.left) && pure(v.right) || v.type === 'ArrayExpression' && v.elements.every(pure) ||
-            v.type === 'CallExpression' && ['int', 'float', 'Number', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'].includes(this.callName(v.callee)) && v.arguments.every(pure)));
+            v.type === 'CallExpression' && ['rgb', 'int', 'float', 'Number', 'fixed', 'fixed_bits', 'fixed_from_bits', 'fixed_sqrt'].includes(this.callName(v.callee)) && v.arguments.every(pure)));
           if (!pure(d.init)) this.fail(d.init, 'Module constants need literal values or arithmetic. Create settings and mutable resources in init().');
           b.node = d.init;
         }
@@ -131,7 +135,14 @@ class JavaScriptFrontend {
   }
   function({ name, fn, role }: { name: string; fn: Node; role?: string }) {
     this.scopes.push(new Map());
-    const params = fn.params.map((p: Node, i: number) => this.declare(p, false, role ? ['state', 'runtime', 'pixels'][i] : undefined).name);
+    const params = fn.params.map((p: Node, i: number) => {
+      if (p.type === 'AssignmentPattern') {
+        if (role) this.fail(p, 'Starting and frame functions receive their values automatically. Leave out default values here.');
+        const initial = this.expr(p.right), binding = this.declare(p.left, false);
+        return `${binding.name}=${initial}`;
+      }
+      return this.declare(p, false, role ? ['state', 'runtime', 'pixels'][i] : undefined).name;
+    });
     if (role && params.length !== (role === 'init' ? 2 : 3)) this.fail(fn, `${role} takes ${role === 'init' ? '(state, runtime)' : '(state, runtime, pixels)'}.`);
     if (role) this.emit('@' + role, fn);
     this.emit(`def ${name}(${params.join(', ')}):`, fn); this.depth++;
@@ -153,9 +164,13 @@ class JavaScriptFrontend {
       case 'VariableDeclaration':
         if (n.kind === 'var') this.fail(n, 'Use let or const so each variable has a clear block scope.');
         for (const d of n.declarations) {
-          if (!d.init) this.fail(d, 'Give the variable an initial value.');
           const b = this.scopes.at(-1)!.get(d.id.name) ?? this.declare(d.id, n.kind === 'const', 'pending');
-          const value = this.expr(d.init); b.kind = undefined; this.emit(`${b.name} = ${value}`, d);
+          if (!d.init) {
+            if (n.kind !== 'let') this.fail(d, 'Give a constant its value when you declare it.');
+            b.kind = 'uninitialized'; this.emit('pass', d); continue;
+          }
+          const value = this.expr(d.init); b.countBound = n.kind === 'const' && this.safeCountBound(d.init);
+          b.kind = undefined; this.emit(`${b.name} = ${value}`, d);
         } break;
       case 'ExpressionStatement': this.expressionStatement(n.expression); break;
       case 'IfStatement':
@@ -170,8 +185,17 @@ class JavaScriptFrontend {
         this.emit(`while ${n.test ? this.expr(n.test) : 'True'}:`, n); this.depth++; this.loops.push(n.update);
         this.block(n.body); if (n.update) this.expressionStatement(n.update); this.loops.pop(); this.depth--; this.scopes.pop(); break;
       case 'ForOfStatement': {
-        if (n.await || n.left.type !== 'VariableDeclaration' || n.left.declarations.length !== 1 || n.left.kind === 'var') this.fail(n, 'Use for (const value of array) with a managed typed array.');
-        const array = this.expr(n.right); this.scopes.push(new Map()); const b = this.declare(n.left.declarations[0].id, n.left.kind === 'const'), i = `_js_index${++this.serial}`;
+        const declaration = n.left.type === 'VariableDeclaration';
+        if (n.await || declaration && (n.left.declarations.length !== 1 || n.left.kind === 'var') || !declaration && n.left.type !== 'Identifier') this.fail(n, 'Use for (const value of array), or a variable declared with let.');
+        const bind = () => declaration ? this.declare(n.left.declarations[0].id, n.left.kind === 'const') : { name: this.target(n.left) };
+        if (n.right.type === 'CallExpression' && n.right.callee.type === 'Identifier' && n.right.callee.name === 'range' && !this.binding('range')) {
+          if (n.right.arguments.length < 1 || n.right.arguments.length > 3 || n.right.arguments.some((a: Node) => a.type === 'SpreadElement')) this.fail(n.right, 'Use range(stop), range(start, stop), or range(start, stop, step).');
+          const args = n.right.arguments.map((a: Node) => `int(${this.expr(a)})`).join(', ');
+          this.scopes.push(new Map()); const b = bind();
+          this.emit(`for ${b.name} in range(${args}):`, n); this.depth++; this.loops.push(null);
+          this.block(n.body); this.loops.pop(); this.depth--; this.scopes.pop(); break;
+        }
+        const array = this.expr(n.right); this.scopes.push(new Map()); const b = bind(), i = `_js_index${++this.serial}`;
         this.emit(`for ${i} in range(len(${array})):`, n); this.depth++; this.emit(`${b.name} = ${array}[${i}]`, n);
         this.loops.push(null); this.block(n.body); this.loops.pop(); this.depth--; this.scopes.pop(); break;
       }
@@ -185,25 +209,33 @@ class JavaScriptFrontend {
       default: this.fail(n, `${n.type} is not supported. Try a helper function, if, for or while.`);
     }
   }
+  safeCountBound(b: Node, integerBound = false, allowWideInteger = false): boolean {
+    if (b?.type === 'Identifier') {
+      const binding = this.binding(b.name);
+      return Boolean(binding?.constant && (binding.countBound || binding.node && this.safeCountBound(binding.node, integerBound, allowWideInteger)));
+    }
+    return b?.type === 'Literal' && Number.isInteger(b.value) && b.value >= 0 && b.value <= (integerBound && allowWideInteger ? 2147483647 : 16777216) ||
+      b?.type === 'CallExpression' && this.callName(b.callee) === 'int' && b.arguments.length === 1 && this.safeCountBound(b.arguments[0], true, allowWideInteger) ||
+      b?.type === 'MemberExpression' && !b.computed && (this.binding(b.object.name)?.kind === 'pixels' && b.property.name === 'count' || this.binding(b.object.name)?.kind === 'runtime' && b.property.name === 'pixelCount');
+  }
   rangeLoop(n: Node): boolean {
-    // Capture only immutable literal/pixel-count bounds, and only an explicitly
-    // i32 counter. Ordinary JS-number loops retain their f32 while semantics.
+    // Whole-valued counters up to 2^24 have exact f32 increments. Keep their
+    // observable number type while using a private integer cursor in the VM.
     const d = n.init?.type === 'VariableDeclaration' && n.init.kind === 'let' && n.init.declarations.length === 1 ? n.init.declarations[0] : undefined;
     const integerZero = d?.init?.type === 'CallExpression' && this.callName(d.init.callee) === 'int' && d.init.arguments.length === 1 && d.init.arguments[0].type === 'Literal' && d.init.arguments[0].value === 0;
+    const numberZero = d?.init?.type === 'Literal' && d.init.value === 0;
     const update = n.update?.type === 'UpdateExpression' && n.update.operator === '++' && n.update.argument.name === d?.id.name;
-    if (!integerZero || !update || n.test?.type !== 'BinaryExpression' || n.test.operator !== '<' || n.test.left.type !== 'Identifier' || n.test.left.name !== d.id.name) return false;
-    const safeBound = (b: Node, integerBound = false): boolean => b?.type === 'Literal' && Number.isInteger(b.value) && b.value >= 0 && b.value <= (integerBound ? 2147483647 : 16777216) ||
-      b?.type === 'CallExpression' && this.callName(b.callee) === 'int' && b.arguments.length === 1 && safeBound(b.arguments[0], true) ||
-      b?.type === 'MemberExpression' && !b.computed && (this.binding(b.object.name)?.kind === 'pixels' && b.property.name === 'count' || this.binding(b.object.name)?.kind === 'runtime' && b.property.name === 'pixelCount');
-    if (!safeBound(n.test.right)) return false;
+    if (!(integerZero || numberZero) || !update || n.test?.type !== 'BinaryExpression' || n.test.operator !== '<' || n.test.left.type !== 'Identifier' || n.test.left.name !== d.id.name) return false;
+    if (!this.safeCountBound(n.test.right, false, integerZero)) return false;
     const changesCounter = (v: any): boolean => v && typeof v === 'object' && (
       (v.type === 'AssignmentExpression' && v.left?.name === d.id.name) ||
       (v.type === 'UpdateExpression' && v.argument?.name === d.id.name) ||
       (v.type === 'VariableDeclarator' && v.id?.name === d.id.name) ||
       Object.values(v).some(child => Array.isArray(child) ? child.some(changesCounter) : changesCounter(child)));
     if (changesCounter(n.body)) return false;
-    const bound = this.expr(n.test.right, true);
+    const bound = `int(${this.expr(n.test.right, true)})`;
     this.scopes.push(new Map()); const b = this.declare(d.id, false);
+    b.floatCounter = numberZero;
     this.emit(`for ${b.name} in range(${bound}):`, n); this.depth++; this.loops.push(null);
     this.block(n.body); this.loops.pop(); this.depth--; this.scopes.pop(); return true;
   }
@@ -262,12 +294,15 @@ class JavaScriptFrontend {
           if (this.expanding.has(n.name)) this.fail(n, 'Constants cannot refer to themselves.');
           this.expanding.add(n.name); const result = this.expr(b.node, integer); this.expanding.delete(n.name); return result;
         }
-        return b.name;
+        return b.floatCounter && !integer ? `float(${b.name})` : b.name;
       }
       case 'ArrayExpression': return `[${n.elements.map((v: Node) => this.expr(v, integer)).join(', ')}]`;
       case 'MemberExpression': {
         if (n.optional) this.fail(n, 'Optional chaining is not supported.');
-        if (n.computed) return `${this.expr(n.object)}[int(${this.expr(n.property)})]`;
+        if (n.computed) {
+          const index = n.property.type === 'Identifier' && this.binding(n.property.name)?.floatCounter ? this.expr(n.property, true) : this.expr(n.property);
+          return `${this.expr(n.object)}[int(${index})]`;
+        }
         if (n.object.name === 'Math' && !this.binding('Math')) {
           if (n.property.name === 'PI') return 'math.pi';
           if (n.property.name === 'E') return '2.718281828459045';
@@ -288,22 +323,15 @@ class JavaScriptFrontend {
         if (!['+', '-', '!', '~'].includes(n.operator)) this.fail(n, 'Use numeric + / -, boolean ! or i32 ~.');
         return n.operator === '+' ? this.expr(n.argument, integer) : `(${n.operator === '!' ? 'not ' : n.operator}${this.expr(n.argument, integer)})`;
       case 'BinaryExpression': {
-        const ops: Record<string, string> = { '+': '+', '-': '-', '*': '*', '/': '/', '<': '<', '<=': '<=', '>': '>', '>=': '>=', '===': '==', '!==': '!=', '&': '&', '|': '|', '^': '^', '<<': '<<', '>>': '>>' };
+        const ops: Record<string, string> = { '+': '+', '-': '-', '*': '*', '/': '/', '**': '**', '<': '<', '<=': '<=', '>': '>', '>=': '>=', '===': '==', '!==': '!=', '&': '&', '|': '|', '^': '^', '<<': '<<', '>>': '>>' };
         if (n.operator === '%') return `_js_remainder(${this.expr(n.left)}, ${this.expr(n.right)})`;
-        if (!ops[n.operator]) this.fail(n, 'Use arithmetic, comparisons, === / !== or signed i32 bitwise operations. Coercing equality, >>> and exponentiation are not supported.');
+        if (!ops[n.operator]) this.fail(n, 'Use arithmetic, comparisons, === / !== or signed i32 bitwise operations. Coercing equality and >>> are not supported.');
         return `(${this.expr(n.left, integer)} ${ops[n.operator]} ${this.expr(n.right, integer)})`;
       }
       case 'LogicalExpression': {
         if (!['&&', '||'].includes(n.operator)) this.fail(n, 'Nullish coalescing is not supported.');
-        // Re-reading a scalar is safe. Reject effectful left operands instead of
-        // duplicating random calls or mutations in the conditional lowering.
-        const pure = (v: Node): boolean => ['Identifier', 'Literal'].includes(v.type) ||
-          v.type === 'MemberExpression' && pure(v.object) && (!v.computed || pure(v.property)) ||
-          v.type === 'UnaryExpression' && pure(v.argument) ||
-          ['BinaryExpression', 'LogicalExpression'].includes(v.type) && pure(v.left) && pure(v.right);
-        if (!pure(n.left)) this.fail(n.left, 'Store the left operand in a variable before using && or ||, so it is evaluated once.');
         const a = this.expr(n.left), b = this.expr(n.right);
-        return n.operator === '&&' ? `(${b} if (not not ${a}) else ${a})` : `(${a} if (not not ${a}) else ${b})`;
+        return `(${a} ${n.operator === '&&' ? 'and' : 'or'} ${b})`;
       }
       case 'ConditionalExpression': return `(${this.expr(n.consequent)} if (not not ${this.expr(n.test)}) else ${this.expr(n.alternate)})`;
       case 'CallExpression': case 'NewExpression': return this.call(n, integer);
@@ -364,12 +392,12 @@ class JavaScriptFrontend {
     if (!member && !calls.has(name) && this.binding(n.callee.name)?.kind !== 'function') this.fail(n, `Unknown function “${n.callee.name}”.`);
     if (n.type === 'NewExpression' && !['PixelArray', 'FixedArray', 'Sprite', 'SpriteBatch', 'Transform', 'ColorTransform', 'Input', 'Ramp'].includes(name)) this.fail(n, 'new is only supported for LightVM resources and typed arrays.');
     const options = args.at(-1)?.type === 'ObjectExpression' ? this.properties(args.pop()) : [];
-    const intPositions: Record<string, number[]> = { PixelArray: [0], FixedArray: [0], Sprite: [0], SpriteBatch: [1], rgb: [0, 1, 2], hash01: [0, 1], perlin2: [2, 3, 4], perlin3: [3, 4, 5, 6], simplex2: [2], simplex3: [3], pico_colorwheel: [0] };
+    const intPositions: Record<string, number[]> = { wrap_index: [0, 1], PixelArray: [0], FixedArray: [0], Sprite: [0], SpriteBatch: [1], rgb: [0, 1, 2], hash01: [0, 1], perlin2: [2, 3, 4], perlin3: [3, 4, 5, 6], simplex2: [2], simplex3: [3], pico_colorwheel: [0] };
     const integerSetting = name === 'setting' && (args[0]?.callee?.name === 'int' ||
       args[0]?.type === 'MemberExpression' && ['pixelCount', 'count'].includes(args[0].property?.name));
     const positional = args.map((a, i) => {
       const result = this.expr(a, (intPositions[name]?.includes(i) ?? false) || integerSetting);
-      return name === 'hash01' || ['perlin2', 'perlin3', 'simplex2', 'simplex3'].includes(name) && intPositions[name].includes(i) ? `int(${result})` : result;
+      return ['hash01', 'wrap_index'].includes(name) || ['perlin2', 'perlin3', 'simplex2', 'simplex3'].includes(name) && intPositions[name].includes(i) ? `int(${result})` : result;
     });
     for (const p of options) {
       const key = { min: 'minimum', max: 'maximum' }[this.key(p)] ?? this.key(p);

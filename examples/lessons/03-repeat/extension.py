@@ -1,0 +1,12 @@
+# Paint a changing band of colour on any strip length without copying instructions.
+from lightvm import profile, rgb, render
+
+profile("animation")
+
+@render
+def draw(state, runtime, pixels):
+    for position in range(pixels.count):
+        if ((position % 2.0) == 0.0):
+            pixels[int(position)] = rgb(0, 4, 40)
+        else:
+            pixels[int(position)] = rgb(int((60.0 * (position / pixels.count))), 0, 0)

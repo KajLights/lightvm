@@ -1,0 +1,460 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_if",
+                    "fields": {},
+                    "inputs": {
+                      "TEST": {
+                        "block": {
+                          "type": "lm_compare",
+                          "fields": {
+                            "OP": "=="
+                          },
+                          "inputs": {
+                            "A": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-extension-5"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_convert",
+                                "fields": {
+                                  "FUNCTION": "int"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "/"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_runtime",
+                                            "fields": {
+                                              "PROPERTY": "count"
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-8"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 2
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-9"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-extension-7"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-extension-6"
+                              }
+                            }
+                          },
+                          "id": "04-choices-extension-4"
+                        }
+                      },
+                      "THEN": {
+                        "block": {
+                          "type": "lm_pixel",
+                          "fields": {},
+                          "inputs": {
+                            "INDEX": {
+                              "block": {
+                                "type": "lm_get",
+                                "fields": {
+                                  "NAME": "position",
+                                  "SCOPE": "local"
+                                },
+                                "inputs": {},
+                                "id": "04-choices-extension-11"
+                              }
+                            },
+                            "COLOR": {
+                              "block": {
+                                "type": "lm_rgb",
+                                "fields": {},
+                                "inputs": {
+                                  "R": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 30
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-extension-13"
+                                    }
+                                  },
+                                  "G": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 30
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-extension-14"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_number",
+                                      "fields": {
+                                        "VALUE": 30
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-extension-15"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-extension-12"
+                              }
+                            }
+                          },
+                          "id": "04-choices-extension-10"
+                        }
+                      },
+                      "ELSE": {
+                        "block": {
+                          "type": "lm_if",
+                          "fields": {},
+                          "inputs": {
+                            "TEST": {
+                              "block": {
+                                "type": "lm_compare",
+                                "fields": {
+                                  "OP": ">="
+                                },
+                                "inputs": {
+                                  "A": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-extension-18"
+                                    }
+                                  },
+                                  "B": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "*"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_runtime",
+                                            "fields": {
+                                              "PROPERTY": "count"
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-20"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0.75
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-21"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-extension-19"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-extension-17"
+                              }
+                            },
+                            "THEN": {
+                              "block": {
+                                "type": "lm_pixel",
+                                "fields": {},
+                                "inputs": {
+                                  "INDEX": {
+                                    "block": {
+                                      "type": "lm_get",
+                                      "fields": {
+                                        "NAME": "position",
+                                        "SCOPE": "local"
+                                      },
+                                      "inputs": {},
+                                      "id": "04-choices-extension-23"
+                                    }
+                                  },
+                                  "COLOR": {
+                                    "block": {
+                                      "type": "lm_rgb",
+                                      "fields": {},
+                                      "inputs": {
+                                        "R": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 40
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-25"
+                                          }
+                                        },
+                                        "G": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-26"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 0
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-27"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-extension-24"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-extension-22"
+                              }
+                            },
+                            "ELSE": {
+                              "block": {
+                                "type": "lm_if",
+                                "fields": {},
+                                "inputs": {
+                                  "TEST": {
+                                    "block": {
+                                      "type": "lm_compare",
+                                      "fields": {
+                                        "OP": "<"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-30"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_math",
+                                            "fields": {
+                                              "OP": "/"
+                                            },
+                                            "inputs": {
+                                              "A": {
+                                                "block": {
+                                                  "type": "lm_runtime",
+                                                  "fields": {
+                                                    "PROPERTY": "count"
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-32"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 2
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-33"
+                                                }
+                                              }
+                                            },
+                                            "id": "04-choices-extension-31"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-extension-29"
+                                    }
+                                  },
+                                  "THEN": {
+                                    "block": {
+                                      "type": "lm_pixel",
+                                      "fields": {},
+                                      "inputs": {
+                                        "INDEX": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-35"
+                                          }
+                                        },
+                                        "COLOR": {
+                                          "block": {
+                                            "type": "lm_rgb",
+                                            "fields": {},
+                                            "inputs": {
+                                              "R": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 40
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-37"
+                                                }
+                                              },
+                                              "G": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 8
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-38"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 0
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-39"
+                                                }
+                                              }
+                                            },
+                                            "id": "04-choices-extension-36"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-extension-34"
+                                    }
+                                  },
+                                  "ELSE": {
+                                    "block": {
+                                      "type": "lm_pixel",
+                                      "fields": {},
+                                      "inputs": {
+                                        "INDEX": {
+                                          "block": {
+                                            "type": "lm_get",
+                                            "fields": {
+                                              "NAME": "position",
+                                              "SCOPE": "local"
+                                            },
+                                            "inputs": {},
+                                            "id": "04-choices-extension-41"
+                                          }
+                                        },
+                                        "COLOR": {
+                                          "block": {
+                                            "type": "lm_rgb",
+                                            "fields": {},
+                                            "inputs": {
+                                              "R": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 0
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-43"
+                                                }
+                                              },
+                                              "G": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 4
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-44"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_number",
+                                                  "fields": {
+                                                    "VALUE": 40
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "04-choices-extension-45"
+                                                }
+                                              }
+                                            },
+                                            "id": "04-choices-extension-42"
+                                          }
+                                        }
+                                      },
+                                      "id": "04-choices-extension-40"
+                                    }
+                                  }
+                                },
+                                "id": "04-choices-extension-28"
+                              }
+                            }
+                          },
+                          "id": "04-choices-extension-16"
+                        }
+                      }
+                    },
+                    "id": "04-choices-extension-3"
+                  }
+                }
+              },
+              "id": "04-choices-extension-2"
+            }
+          }
+        },
+        "id": "04-choices-extension-1"
+      }
+    ]
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "lm_program",
+        "fields": {
+          "PROFILE": "animation"
+        },
+        "inputs": {
+          "RENDER": {
+            "block": {
+              "type": "lm_each",
+              "fields": {
+                "NAME": "position"
+              },
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "lm_pixel",
+                    "fields": {},
+                    "inputs": {
+                      "INDEX": {
+                        "block": {
+                          "type": "lm_get",
+                          "fields": {
+                            "NAME": "position",
+                            "SCOPE": "local"
+                          },
+                          "inputs": {},
+                          "id": "03-repeat-solution-4"
+                        }
+                      },
+                      "COLOR": {
+                        "block": {
+                          "type": "lm_rgb",
+                          "fields": {},
+                          "inputs": {
+                            "R": {
+                              "block": {
+                                "type": "lm_convert",
+                                "fields": {
+                                  "FUNCTION": "int"
+                                },
+                                "inputs": {
+                                  "VALUE": {
+                                    "block": {
+                                      "type": "lm_math",
+                                      "fields": {
+                                        "OP": "*"
+                                      },
+                                      "inputs": {
+                                        "A": {
+                                          "block": {
+                                            "type": "lm_number",
+                                            "fields": {
+                                              "VALUE": 60
+                                            },
+                                            "inputs": {},
+                                            "id": "03-repeat-solution-8"
+                                          }
+                                        },
+                                        "B": {
+                                          "block": {
+                                            "type": "lm_math",
+                                            "fields": {
+                                              "OP": "/"
+                                            },
+                                            "inputs": {
+                                              "A": {
+                                                "block": {
+                                                  "type": "lm_get",
+                                                  "fields": {
+                                                    "NAME": "position",
+                                                    "SCOPE": "local"
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "03-repeat-solution-10"
+                                                }
+                                              },
+                                              "B": {
+                                                "block": {
+                                                  "type": "lm_runtime",
+                                                  "fields": {
+                                                    "PROPERTY": "count"
+                                                  },
+                                                  "inputs": {},
+                                                  "id": "03-repeat-solution-11"
+                                                }
+                                              }
+                                            },
+                                            "id": "03-repeat-solution-9"
+                                          }
+                                        }
+                                      },
+                                      "id": "03-repeat-solution-7"
+                                    }
+                                  }
+                                },
+                                "id": "03-repeat-solution-6"
+                              }
+                            },
+                            "G": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "03-repeat-solution-12"
+                              }
+                            },
+                            "B": {
+                              "block": {
+                                "type": "lm_number",
+                                "fields": {
+                                  "VALUE": 0
+                                },
+                                "inputs": {},
+                                "id": "03-repeat-solution-13"
+                              }
+                            }
+                          },
+                          "id": "03-repeat-solution-5"
+                        }
+                      }
+                    },
+                    "id": "03-repeat-solution-3"
+                  }
+                }
+              },
+              "id": "03-repeat-solution-2"
+            }
+          }
+        },
+        "id": "03-repeat-solution-1"
+      }
+    ]
+  }
+}
