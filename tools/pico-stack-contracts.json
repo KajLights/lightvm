@@ -547,7 +547,7 @@
   },
   "project": {
     "src/runtime.c": "70cb655d67b707d4be23238b62fdcbad43fdfce92ed51d63359d85ec8733168a",
-    "src/app.c": "66bbc6bfd047a9363f79ca8201451c47d307e9925d6c529c0abb233b647a168f",
+    "src/app.c": "76578e171c58e462f094c4ae5927e9213665418bbb51c6a9aa2bbc11a361d45c",
     "src/preparation.c": "af6d0f3bc62922b5ec07b87496e453d671255f2636d70ae0a69345484db6e0b5",
     "src/render_executor.c": "68321a5d5c1949e72afb99fdc9a2262cab961c40af1bc11db736fa47a0a11e86",
     "platforms/pico/render_executor.c": "6b195ad70aa147f2fffd510343e63eb8ec2bd8afdc189bb375e5ca93f75feeba",
@@ -569,9 +569,13 @@
     "platforms/pico/board_status.c": "d57c5dec55ac362e808e642a9ba0b82efd9133290d8dc26c1da37dbcc8476abc",
     "src/audio_receiver.c": "652ac4080619b16d486f8b0f478f952b37a7cb8274af3039495758912677ffa1",
     "src/inputs.c": "83fa12411db5f6bb65bf8de1cc038002478d166a23bab38b78ee5f3f93002b40",
-    "src/outputs.c": "a436cdb51ea69772fd1b45b86fc58225e1ccb289904300accc1b41c5aa9c1167",
+    "src/outputs.c": "e1ef2b2c91860a95d5b3208ebdcf44576379270bf531736eece68a6bd8ca74ef",
     "shared/device-core/src/websocket.c": "fecc63ddb86a4bcf160b3b5f97c85b6514c21e4e2e93aa23c0f76fa122ff00dd",
     "src/audio_receiver.h": "77dc16a6c5838f049b365f1f7563286dd4efb64aa3746cb4978ce08717eac0d8",
-    "src/inputs.h": "ac5cfb8042bb499e8cf39249f857119fb09a6e6f57cd3d53e247f2455bdb636f"
+    "src/inputs.h": "ac5cfb8042bb499e8cf39249f857119fb09a6e6f57cd3d53e247f2455bdb636f",
+    "src/mqtt.c": "e0229b99b00ebd381025d935bc199e48fb509621486823d2e990b5f299890dbb",
+    "src/mqtt.h": "bba46b277f0f6ba03646c22e873757c580ec4cbf6218c92e1d9afba00b378424",
+    "src/home_assistant.c": "05c90d7740116c55ff338f9ec6fd3cd07318d80482f82476497641300d4e91bf",
+    "src/home_assistant.h": "91b3b2aa21e1a3d9d6daf74009562c4448aa790dd6f4dd65250ad03dacc99ef1"
   }
 }

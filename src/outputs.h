@@ -6,7 +6,6 @@
 #include "digital_inputs.h"
 #include "audio_receiver.h"
 #define EMPTY_CONFIG "{\"schema\":\"lightvm.config\",\"outputs\":[]}"
-#define HA_PRESET_LIMIT 16u
 typedef enum { STARTUP_OFF, STARTUP_RESTORE_LAST, STARTUP_PRESET } StartupMode;
 typedef struct {
     char program[OBJECT_NAME_LIMIT + 1];
@@ -18,8 +17,6 @@ typedef struct {
     StartupMode startup_mode;
     char startup_preset[OBJECT_NAME_LIMIT + 1];
     char ha_default_preset[OBJECT_NAME_LIMIT + 1], ha_name[65];
-    char ha_presets[HA_PRESET_LIMIT][OBJECT_NAME_LIMIT + 1];
-    unsigned ha_preset_count;
     bool indicators;
     PixelConfig pixels;
 } HardwareOutput;

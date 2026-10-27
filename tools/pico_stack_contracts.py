@@ -66,7 +66,7 @@ CALLBACKS = {
     'shared/device-core/src/http.c:expire': ('src/device_host.c:disconnect',),
     'shared/device-core/src/http.c:command': ('src/device_host.c:dispatch',),
     'shared/device-core/src/http.c:execute': ('src/device_host.c:disconnect','src/device_host.c:dispatch'),
-    'mqtt_tick': STREAM+('src/home_assistant.c:message',), 'mqtt_close': STREAM,
+    'mqtt_tick': STREAM+('src/home_assistant.c:message','src/home_assistant.c:discovery_read'), 'mqtt_close': STREAM,
     'network_apply': NETWORK, 'network_tick': NETWORK,
     'shared/device-core/src/network.c:configure_radio': NETWORK, 'shared/device-core/src/network.c:backoff': NETWORK, 'shared/device-core/src/network.c:next': NETWORK,
     'shared/device-core/src/discovery.c:query': ('platforms/pico/network_port.c:discovery_send',),

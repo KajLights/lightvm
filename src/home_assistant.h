@@ -5,7 +5,7 @@
 #define HA_OUTPUT_LIMIT 8u
 typedef struct {
     char id[OBJECT_NAME_LIMIT+1], name[65];
-    uint32_t binding_crc, state_crc;
+    uint32_t state_crc;
     unsigned remove_phase;
     bool discovered, known, removing;
 } HaOutput;
@@ -26,6 +26,9 @@ typedef struct {
     char root[96];
     HaOutput outputs[HA_OUTPUT_LIMIT];
     HaKey keys[DIGITAL_INPUT_LIMIT*DIGITAL_INPUT_CHANNELS];
+    // Streaming discovery borrows the catalogue only while these revisions hold.
+    char discovery_output[OBJECT_NAME_LIMIT+1];
+    uint32_t discovery_store_generation, discovery_config_revision;
     uint32_t key_revision;
     bool keys_pending;
 } HomeAssistant;

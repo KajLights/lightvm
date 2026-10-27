@@ -176,23 +176,12 @@ static bool parse(const Json *j,HardwareConfig *cfg,char *error,size_t capacity)
             return failure(error,capacity,"outputs.type: unsupported output type");
         int ha=json_get(j,t,"home_assistant");
         if(ha>=0){
-            static const char *const ha_fields[]={"default_preset","presets","name",NULL};
-            if(!json_fields(j,ha,ha_fields) ||
-               !json_string(j,json_get(j,ha,"default_preset"),d->ha_default_preset,sizeof(d->ha_default_preset)) ||
+            static const char *const ha_fields[]={"default_preset","name",NULL};
+            if(!json_fields(j,ha,ha_fields))
+                return failure(error,capacity,"home_assistant: expected default_preset and optional name; preset lists are not supported");
+            if(!json_string(j,json_get(j,ha,"default_preset"),d->ha_default_preset,sizeof(d->ha_default_preset)) ||
                !object_name_valid(d->ha_default_preset))
                 return failure(error,capacity,"home_assistant.default_preset: expected a stored preset name (1..32 bytes)");
-            int presets=json_get(j,ha,"presets");bool has_default=false;
-            if(presets<0||j->tokens[presets].type!=JSON_ARRAY||!j->tokens[presets].children||(unsigned)j->tokens[presets].children>HA_PRESET_LIMIT)
-                return failure(error,capacity,"home_assistant.presets: expected 1..16 unique preset names");
-            for(int p=presets+1;p<j->tokens[presets].next;p=j->tokens[p].next){
-                char *name=d->ha_presets[d->ha_preset_count];
-                if(!json_string(j,p,name,OBJECT_NAME_LIMIT+1)||!object_name_valid(name)||!strcmp(name,"off")||!strcmp(name,"Custom"))
-                    return failure(error,capacity,"home_assistant.presets: invalid preset name");
-                for(unsigned n=0;n<d->ha_preset_count;n++)if(!strcmp(name,d->ha_presets[n]))
-                    return failure(error,capacity,"home_assistant.presets: duplicate preset name");
-                has_default|=!strcmp(name,d->ha_default_preset);d->ha_preset_count++;
-            }
-            if(!has_default)return failure(error,capacity,"home_assistant.default_preset: must appear in presets");
             int name=json_get(j,ha,"name");
             if(name>=0 && (!json_string(j,name,d->ha_name,sizeof(d->ha_name)) || !d->ha_name[0]))
                 return failure(error,capacity,"home_assistant.name: expected 1..64 UTF-8 bytes");

@@ -15,6 +15,7 @@ PROJECT=(
     'src/board_status.c','platforms/pico/board_status.c',
     'src/runtime.c','src/app.c','src/preparation.c','src/render_executor.c',
     'src/device_host.c','src/store_policy.c',
+    'src/mqtt.c','src/mqtt.h','src/home_assistant.c','src/home_assistant.h',
     'src/audio_receiver.c','src/audio_receiver.h','src/inputs.c','src/inputs.h','src/outputs.c',
     'shared/device-core/src/http.c','shared/device-core/src/http_setup.c',
     'shared/device-core/src/websocket.c',

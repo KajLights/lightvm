@@ -107,16 +107,12 @@ bool app_output_color_control(const AppOutput *d){
 }
 size_t app_output_light_json(const App *a,const AppOutput *d,char *buffer,size_t capacity,bool mqtt){
     const char *preset=app_output_selected_preset(a,d);
-    if(mqtt&&preset){
-        bool exposed=false;for(unsigned n=0;n<d->hardware.ha_preset_count;n++)if(!strcmp(preset,d->hardware.ha_presets[n]))exposed=true;
-        if(!exposed)preset=NULL;
-    }
     uint32_t color=d->pixels.light.color;
     int n;
     if(mqtt)n=snprintf(buffer,capacity,
         "{\"state\":\"%s\",\"brightness\":%u,\"color_mode\":\"%s\",\"color\":{\"r\":%u,\"g\":%u,\"b\":%u},\"effect\":\"%s\"}",
         app_output_power(d)?"ON":"OFF",(unsigned)lroundf(d->pixels.light.brightness*255),
-        app_output_color_control(d)?"rgb":"brightness",(unsigned)((color>>16)&255),(unsigned)((color>>8)&255),(unsigned)(color&255),preset?preset:"Custom");
+        app_output_color_control(d)?"rgb":"brightness",(unsigned)((color>>16)&255),(unsigned)((color>>8)&255),(unsigned)(color&255),preset?preset:"");
     else n=snprintf(buffer,capacity,
         "{\"revision\":%lu,\"composition_revision\":%lu,\"power\":%s,\"brightness\":%.9g,\"color\":%u,\"color_control\":%s,\"preset\":%s%s%s}",
         (unsigned long)d->light_revision,(unsigned long)d->composition_revision,app_output_power(d)?"true":"false",

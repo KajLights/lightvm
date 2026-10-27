@@ -20,6 +20,8 @@ typedef struct {
     void (*close)(void *);
 } MqttStream;
 typedef void (*MqttMessage)(void *, const char *, const uint8_t *, size_t, bool retained);
+/* Read exactly the requested slice, or -1 if its immutable source changed. */
+typedef int (*MqttPayloadRead)(void *,size_t,uint8_t *,size_t);
 #define MQTT_BUFFER_SIZE 2048u
 #define MQTT_TOPIC_SIZE 192u
 typedef enum { MQTT_DOWN, MQTT_TCP, MQTT_CONNACK, MQTT_ONLINE } MqttState;
@@ -36,11 +38,18 @@ typedef struct {
     unsigned failures;
     uint32_t generation;
     uint16_t sequence, subscription;
+    MqttPayloadRead payload_read;
+    void *payload_context;
+    size_t payload_size,payload_offset;
 } Mqtt;
 void mqtt_init(Mqtt *, MqttStream, const char *client_id, const char *will_topic, MqttMessage, void *);
 void mqtt_close(Mqtt *);
 void mqtt_tick(Mqtt *, const MqttConfig *, bool network_ready, uint64_t now);
 bool mqtt_publish(Mqtt *, const char *topic, const void *, size_t, bool retained);
+/* One borrowed publication at a time, using the existing fixed TX buffer.
+ * Source/context stay valid until mqtt_publishing() becomes false or close. */
+bool mqtt_publish_stream(Mqtt *,const char *,size_t,MqttPayloadRead,void *,bool retained);
+bool mqtt_publishing(const Mqtt *);
 /* One subscription may be outstanding; rejection disconnects the session. */
 bool mqtt_subscribe(Mqtt *, const char *filter);
 #endif

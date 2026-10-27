@@ -101,8 +101,8 @@ or select a saved preset. The preset supplies the startup transition.
 ## Names at integration boundaries
 
 LightVM uses controller for the board and output for one LED connection. In HA,
-the controller becomes a device grouping, each output becomes a light, and its
-exposed presets become its standard light effects. HA scenes can recall
+the controller becomes a device grouping, each output becomes a light, and
+all installed presets become its standard light effects. HA scenes can recall
 these entities alongside other household equipment. They are separate from a
 LightVM composition. Arbitrary layer settings are not exposed automatically.
 

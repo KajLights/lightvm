@@ -5,7 +5,7 @@
       "id": "desk",
       "type": "ws2812b",
       "config": {"pin": "GP16", "count": 100, "order": "GRB", "brightness_limit": 32},
-      "home_assistant": {"default_preset": "evening", "presets": ["evening"], "name": "Desk lamp"}
+      "home_assistant": {"default_preset": "evening", "name": "Desk lamp"}
     }
   ]
 }

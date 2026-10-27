@@ -163,9 +163,9 @@ class MqttTests(unittest.TestCase):
         self.client = Client(ProcessTransport(self.receiver, self.storage))
         self.config = {'schema': 'lightvm.config', 'outputs': [
             {'id': 'desk', 'type': 'ws2812b', 'config': {'pin': 'GP16', 'count': 5},
-             'home_assistant': {'name': 'Desk "light" 🌈', 'default_preset': 'blue', 'presets': ['blue']}},
+             'home_assistant': {'name': 'Desk "light" 🌈', 'default_preset': 'blue'}},
             {'id': 'other', 'type': 'ws2812b', 'config': {'pin': 'GP17', 'count': 5},
-             'home_assistant': {'default_preset': 'blue', 'presets': ['blue']}}]}
+             'home_assistant': {'default_preset': 'blue'}}]}
         self.client.configure(self.config, save=True)
         program = compile_source('''from lightvm import profile, init, render, rgb
 profile("animation")
@@ -214,8 +214,6 @@ def draw(ctx, runtime, pixels):
         self.client.save_program('eye', bytecode)
         self.client.save_preset('eye', [{'id': 'eye', 'program': 'eye', 'crc32': zlib.crc32(bytecode),
                                       'inputs': {'intensity': {'source': 'music.level'}}}])
-        self.config['outputs'][0]['home_assistant']['presets'].append('eye')
-        self.client.configure(self.config)
         self.wait_options(['blue', 'eye'])
         publisher = self.client.claim_inputs({'music.level': 'float'})
         self.client.publish_inputs(publisher, 1, {'music.level': 0.5})
@@ -308,8 +306,6 @@ def draw(ctx, runtime, pixels):
         layers = self.client.preset('blue')['layers']
         layers[0]['opacity'] = 100
         self.client.save_preset('dim', layers, output='desk')
-        self.config['outputs'][0]['home_assistant']['presets'].append('dim')
-        self.client.configure(self.config)
         self.wait_options(['blue', 'dim'])
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'dim'}), qos=1)
         self.wait_light(state='ON', effect='dim')
@@ -326,34 +322,30 @@ def draw(ctx, runtime, pixels):
         self.wait_light(state='ON', effect='dim')
         self.assertEqual(self.client.describe()['outputs'][0]['selected_preset'], 'dim')
         self.broker.publish(f'{self.root}/other/set', json.dumps({'effect': 'dim'}))
-        time.sleep(.05)
-        self.assertFalse(self.client.composition('other')['active'])
+        self.wait_light(output='other', state='ON', effect='dim')
 
-    def test_preset_options_follow_catalog_and_binding_changes(self):
-        self.config['outputs'][0]['home_assistant']['presets'].append('later')
-        self.client.configure(self.config)
-        self.wait_options(['blue'])
+    def test_preset_options_follow_catalog_without_reconfiguration(self):
+        self.assertEqual(json.loads(self.broker.latest[self.discovery])['effect_list'], ['blue'])
         self.client.save_preset('later', self.client.preset('blue')['layers'], output='desk')
         self.wait_options(['blue', 'later'])
         self.client.delete_preset('later')
         self.wait_options(['blue'])
-        self.config['outputs'][0]['home_assistant']['presets'] = ['later']
         self.config['outputs'][0]['home_assistant']['default_preset'] = 'later'
         self.client.configure(self.config)
-        self.wait_options([])
+        self.assertEqual(json.loads(self.broker.latest[self.discovery])['effect_list'], ['blue'])
 
     def test_preset_state_observes_serial_edits_and_catalog_versions(self):
         self.client.activate_preset('blue', output='desk')
         self.wait_light(effect='blue')
         self.client.layer_opacity('base', 100, output='desk')
-        self.wait_light(effect='Custom')
+        self.wait_light(effect='')
         self.assertIsNone(self.client.composition('desk')['preset'])
         self.client.activate_preset('blue', output='desk')
         self.wait_light(effect='blue')
         layers = self.client.preset('blue')['layers']
         layers[0]['opacity'] = 200
         self.client.save_preset('blue', layers, output='desk')
-        self.wait_light(effect='Custom')
+        self.wait_light(effect='')
         self.assertTrue(self.client.composition('desk')['playing'])
         self.assertIsNone(self.client.describe()['outputs'][0]['preset'])
 
@@ -363,8 +355,6 @@ def draw(ctx, runtime, pixels):
         before = self.client.composition('desk')['revision']
         for payload in ('blue', 'unknown', 'bad/name', b'blue\x00junk'):
             self.broker.publish(f'{self.root}/desk/set', payload, retained=True)
-        self.config['outputs'][0]['home_assistant']['presets'].append('missing')
-        self.client.configure(self.config)
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': 'missing'}))
         self.wait_light(effect='blue')
         self.assertEqual(self.client.composition('desk')['revision'], before)
@@ -378,27 +368,28 @@ def draw(ctx, runtime, pixels):
         self.client.activate_preset('blue', output='desk', slot='B')
         self.wait_light(effect='blue')
         self.client.set_progress(50, output='desk')
-        self.wait_light(effect='Custom')
+        self.wait_light(effect='')
         self.client.set_progress(100, output='desk')
         self.wait_light(effect='blue')
         with self.assertRaises(ProtocolError):
             self.client.reset_program({'unknown': 1}, output='desk', slot='B', layer='base')
         self.assertEqual(self.client.composition('desk', slot='B')['preset'], 'blue')
         self.client.reset_program(output='desk', slot='B', layer='base')
-        self.wait_light(effect='Custom')
+        self.wait_light(effect='')
 
-    def test_maximum_effect_list_and_escaped_name_fit_mqtt(self):
-        names = [f'p{i:031d}' for i in range(16)]
+    def test_full_catalog_streams_beyond_mqtt_buffer_with_escaped_name(self):
+        names = [f'p{i:031d}' for i in range(64)]
         layers = self.client.preset('blue')['layers']
         for name in names:
             self.client.save_preset(name, layers, output='desk')
         output = self.config['outputs'][0]
         output['id'] = 'x' * 32
-        output['home_assistant'] = {'name': '\x01' * 64, 'default_preset': names[0], 'presets': names}
+        output['home_assistant'] = {'name': '\x01' * 64, 'default_preset': names[0]}
         self.client.configure(self.config)
         topic = f'homeassistant/light/{self.controller_id}/{output["id"].encode().hex()}/config'
         payload = json.loads(self.broker.wait(topic))
-        self.assertEqual(payload['effect_list'], names)
+        self.assertEqual(payload['effect_list'], ['blue'] + names)
+        self.assertGreater(len(json.dumps(payload)), 2048)
         self.assertEqual(payload['name'], '\x01' * 64)
         self.broker.publish(f'{self.root}/{output["id"]}/set', json.dumps({"effect": names[-1]}))
         self.wait_light(output=output["id"], effect=names[-1])
@@ -428,24 +419,30 @@ def draw(ctx, runtime, pixels):
         self.assertEqual(again['B']['preset'], 'blue')
         self.assertEqual(again['driver']['start'], 0)
 
-    def test_on_uses_exposed_default_when_last_recall_is_not_exposed(self):
+    def test_on_recalls_any_installed_preset_without_an_allow_list(self):
         self.client.save_preset('private', self.client.preset('blue')['layers'], output='desk')
         self.client.recall_preset('private', 'desk')
         self.client.set_power(False, 'desk')
         self.wait_light(output='desk', state='OFF')
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
-        self.wait_light(state='ON', effect='blue')
-        self.assertEqual(self.client.transition('desk')['recall']['preset'], 'blue')
+        self.wait_light(state='ON', effect='private')
+        self.assertEqual(self.client.transition('desk')['recall']['preset'], 'private')
 
     def test_ha_binding_validation(self):
-        for changes in ({'presets': []}, {'presets': ['blue', 'blue']}, {'presets': ['other']},
-                        {'presets': ['blue', 'bad/name']}, {'presets': ['blue', 'Custom']}, {'presets': ['blue', 'off']},
-                        {'presets': ['blue'] + [f'p{i}' for i in range(16)]},
-                        {'default_preset': 'x' * 33}):
+        for changes in ({'presets': ['blue']}, {'default_preset': 'x' * 33},
+                        {'default_preset': ''}, {'default_preset': 'bad/name'}):
             config = copy.deepcopy(self.config)
             config['outputs'][0]['home_assistant'].update(changes)
             with self.assertRaises(ProtocolError):
                 self.client.configure(config)
+
+    def test_all_installed_names_are_selectable_including_former_sentinels(self):
+        for name in ('Custom', 'off'):
+            self.client.save_preset(name, self.client.preset('blue')['layers'], output='desk')
+        self.wait_options(['blue', 'Custom', 'off'])
+        for name in ('Custom', 'off'):
+            self.broker.publish(f'{self.root}/desk/set', json.dumps({'effect': name}))
+            self.wait_light(state='ON', effect=name)
 
     def test_discovery_and_independent_on_off_with_real_presets(self):
         discovery = json.loads(self.broker.latest[self.discovery])
@@ -536,7 +533,6 @@ def draw(ctx, runtime, pixels):
         time.sleep(.1)
         self.assertFalse(self.client.composition('desk')['active'])
         self.config['outputs'][0]['home_assistant']['default_preset'] = 'missing'
-        self.config['outputs'][0]['home_assistant']['presets'] = ['missing']
         self.client.configure(self.config)
         self.broker.publish(f'{self.root}/desk/set', json.dumps({'state': 'ON'}))
         self.wait_light(output='desk', state='OFF')

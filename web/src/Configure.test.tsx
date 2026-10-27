@@ -90,7 +90,7 @@ describe('configuration drafts', () => {
     }
   });
 
-  it('assigns a default and selectable HA presets per output and preserves them through other edits', async () => {
+  it('assigns an HA default while all installed presets are automatically selectable', async () => {
     const store = readyStore();
     store.dispatch(controllerActions.description({ ...description, mqtt_supported: true }));
     store.dispatch(controllerActions.presets([{ name: 'warm', size: 100, crc32: 1 }, { name: 'stars', size: 100, crc32: 2 }]));
@@ -98,12 +98,13 @@ describe('configuration drafts', () => {
     render(<Provider store={store}><Configure /></Provider>);
     fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
     fireEvent.change(screen.getByLabelText('Home Assistant default preset'), { target: { value: 'warm' } });
-    expect(screen.getByLabelText('Expose preset warm')).toBeDisabled();
-    fireEvent.click(screen.getByLabelText('Expose preset stars'));
+    expect(screen.queryByLabelText('Expose preset warm')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Expose preset stars')).not.toBeInTheDocument();
+    expect(screen.getByText(/All presets installed on this controller appear automatically/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Home Assistant name'), { target: { value: 'Desk lamp' } });
     fireEvent.change(screen.getByLabelText('Pixel count'), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
-    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({ outputs: [expect.objectContaining({ home_assistant: { default_preset: 'warm', presets: ['warm', 'stars'], name: 'Desk lamp' }, config: expect.objectContaining({ count: 7 }) })] }), expect.anything(), { save: true }));
+    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({ outputs: [expect.objectContaining({ home_assistant: { default_preset: 'warm', name: 'Desk lamp' }, config: expect.objectContaining({ count: 7 }) })] }), expect.anything(), { save: true }));
     fireEvent.change(screen.getByLabelText('Home Assistant default preset'), { target: { value: '' } });
     expect(JSON.parse((screen.getByLabelText('Controller configuration JSON') as HTMLTextAreaElement).value).outputs[0]).not.toHaveProperty('home_assistant');
   });

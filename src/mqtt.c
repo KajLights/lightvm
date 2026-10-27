@@ -3,6 +3,7 @@
 #include <string.h>
 
 static bool queue(Mqtt *m, uint8_t header, const void *body, size_t size) {
+    if(m->payload_read)return false;
     uint8_t length[4]; size_t n=0, remaining=size;
     do { length[n]=(uint8_t)(remaining%128); remaining/=128; if(remaining)length[n]|=128; n++; } while(remaining && n<4);
     if(remaining || 1+n+size>sizeof(m->tx)-m->queued)return false;
@@ -17,6 +18,7 @@ static size_t string(uint8_t *out,const char *s) {
 static void down(Mqtt *m,const char *error,uint64_t now) {
     m->stream.close(m->stream.context);m->state=MQTT_DOWN;
     m->received=m->queued=m->sent=0;m->subscription=0;m->ping_deadline=0;
+    m->payload_read=NULL;m->payload_context=NULL;m->payload_size=m->payload_offset=0;
     snprintf(m->error,sizeof(m->error),"%s",error);
     unsigned shift=m->failures<5?m->failures:5;
     unsigned seconds=1u<<shift;if(seconds>30)seconds=30;
@@ -29,6 +31,7 @@ void mqtt_init(Mqtt *m,MqttStream stream,const char *id,const char *will,MqttMes
 void mqtt_close(Mqtt *m) {
     m->stream.close(m->stream.context);m->state=MQTT_DOWN;
     m->received=m->queued=m->sent=0;m->subscription=0;m->ping_deadline=0;
+    m->payload_read=NULL;m->payload_context=NULL;m->payload_size=m->payload_offset=0;
 }
 static bool connect_packet(Mqtt *m) {
     uint8_t body[512]={0,4,'M','Q','T','T',4,0x26,0,30}; /* clean session; retained QoS0 will */
@@ -41,7 +44,7 @@ static bool connect_packet(Mqtt *m) {
 }
 bool mqtt_publish(Mqtt *m,const char *topic,const void *payload,size_t size,bool retained) {
     size_t t=strlen(topic);
-    if(m->state!=MQTT_ONLINE || !t || t>=MQTT_TOPIC_SIZE || size>MQTT_BUFFER_SIZE-8-t)return false;
+    if(m->payload_read || m->state!=MQTT_ONLINE || !t || t>=MQTT_TOPIC_SIZE || size>MQTT_BUFFER_SIZE-8-t)return false;
     /* Construct directly in the unused tail: framing is at most three bytes. */
     size_t body=t+2+size,header=body>=128?3:2;
     if(header+body>sizeof(m->tx)-m->queued)return false;
@@ -49,6 +52,17 @@ bool mqtt_publish(Mqtt *m,const char *topic,const void *payload,size_t size,bool
     p[1]=(uint8_t)(body%128);if(body>=128){p[1]|=128;p[2]=(uint8_t)(body/128);}
     string(p+header,topic);if(size)memcpy(p+header+2+t,payload,size);
     m->queued+=header+body;return true;
+}
+bool mqtt_publishing(const Mqtt *m){return m->payload_read!=NULL;}
+bool mqtt_publish_stream(Mqtt *m,const char *topic,size_t size,MqttPayloadRead read,void *context,bool retained){
+    size_t t=strlen(topic);
+    if(m->state!=MQTT_ONLINE||m->queued||m->payload_read||!read||!t||t>=MQTT_TOPIC_SIZE||size>268435455u-2-t)return false;
+    size_t remaining=2+t+size,n=1;
+    m->tx[0]=retained?0x31:0x30;
+    do {uint8_t b=remaining%128;remaining/=128;m->tx[n++]=b|(remaining?128:0);} while(remaining);
+    n+=string(m->tx+n,topic);m->queued=n;m->sent=0;
+    m->payload_read=read;m->payload_context=context;m->payload_size=size;m->payload_offset=0;
+    return true;
 }
 bool mqtt_subscribe(Mqtt *m,const char *filter) {
     if(m->state!=MQTT_ONLINE || m->subscription || strlen(filter)>=MQTT_TOPIC_SIZE)return false;
@@ -133,6 +147,12 @@ void mqtt_tick(Mqtt *m,const MqttConfig *config,bool ready,uint64_t now) {
     if((m->state==MQTT_CONNACK && now>=m->deadline) || (m->subscription && now>=m->deadline) || (m->ping_deadline && now>=m->ping_deadline)){
         down(m,"MQTT reply timed out",now);return;
     }
+    if(m->payload_read&&!m->queued&&m->payload_offset<m->payload_size){
+        size_t size=m->payload_size-m->payload_offset;if(size>sizeof(m->tx))size=sizeof(m->tx);
+        int n=m->payload_read(m->payload_context,m->payload_offset,m->tx,size);
+        if(n<0||(size_t)n!=size){down(m,"MQTT publication source changed",now);return;}
+        m->queued=size;m->payload_offset+=size;
+    }
     if(m->state==MQTT_ONLINE && !m->ping_deadline && now-m->last_sent>=15000000u){
         if(queue(m,0xc0,NULL,0))m->ping_deadline=now+10000000u;
     }
@@ -141,7 +161,10 @@ void mqtt_tick(Mqtt *m,const MqttConfig *config,bool ready,uint64_t now) {
         if(n<0){down(m,"MQTT write failed",now);return;}
         if(n){m->sent+=(size_t)n;m->tx_progress=now;m->last_sent=now;}
         else if(now-m->tx_progress>=5000000u){down(m,"MQTT write stalled",now);return;}
-        if(m->sent==m->queued){m->sent=m->queued=0;m->tx_progress=now;}
+        if(m->sent==m->queued){
+            m->sent=m->queued=0;m->tx_progress=now;
+            if(m->payload_read&&m->payload_offset==m->payload_size){m->payload_read=NULL;m->payload_context=NULL;}
+        }
     }else m->tx_progress=now;
     /* Subscription timeout starts after the SUBSCRIBE is queued/flushed. */
     if(!m->subscription && m->state==MQTT_ONLINE)m->deadline=now+10000000u;

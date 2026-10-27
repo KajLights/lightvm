@@ -39,7 +39,7 @@ that boot and retains the saved broker settings.
 1. Save the desired animation programs and the presets to the controller through the
    existing editor or CLI. A preset can contain one animation or a layered composition.
 2. Under **Configure → Output & startup**, choose **Home Assistant default preset**
-   for each output to expose, then check the presets to include in its effect list.
+   for each output to expose. All installed presets appear automatically in its effect list.
    Optionally set its Home Assistant display name.
    Apply in RAM to try it, or apply and save for reboot.
 3. Under the network settings, enable MQTT and enter the broker hostname or IPv4 address,
@@ -58,22 +58,24 @@ physical output in `lightvm.config` (see `examples/config/mqtt-lights.json`):
 ```json
 "home_assistant": {
   "default_preset": "evening",
-  "presets": ["evening", "rainbow", "stars"],
   "name": "Desk lamp"
 }
 ```
 
-`presets` is a required list of 1–16 unique preset names for that output.
-`default_preset` must appear in it. Names contain 1–32 letters, digits, dots,
-underscores or hyphens. The names `off` and `Custom` are reserved and cannot be exposed. `name` accepts 1–64 UTF-8 bytes. These limits also remain
-subject to the controller's configuration size and JSON token budget.
+`default_preset` is the initial selection when HA first turns an output on.
+Names contain 1–32 letters, digits, dots, underscores or hyphens; `name` accepts
+1–64 UTF-8 bytes. All stored presets are selectable on every exposed output,
+matching the editor's preset library. There is no separate allow-list or 16-name
+limit. Saving, replacing or deleting a preset refreshes discovery automatically.
 
-Only presets currently stored on the controller appear in HA's options. Saving,
-replacing or deleting a preset refreshes discovery; changing the output's list
-also refreshes it. Bindings may refer to presets before upload. A missing or
-incompatible preset leaves playback unchanged and reports an error in
-`network_status.mqtt_error`. Configure each output's list for its pixel count and
-available memory; activation still validates the full composition on that output.
+The default may refer to a preset before upload. A missing or incompatible preset
+leaves playback unchanged and reports an error in `network_status.mqtt_error`;
+activation validates the full composition for the output's pixel count and memory.
+
+For an existing experimental installation, export the hardware configuration,
+remove `home_assistant.presets` from every output, and reapply/save the config over
+USB after upgrading. The removed field is rejected rather than migrated. Stored
+programs and presets remain intact.
 
 Network settings extend `lightvm.network` with a separate `mqtt` object:
 
@@ -146,7 +148,7 @@ keeps its stable unique ID and belongs to its controller's HA device.
 
 A command can contain any combination of `state` (`ON` or `OFF`), `brightness`
 (0–255), `color` (complete integer `r`, `g`, `b` channels in 0–255) and `effect`
-(an exposed preset name). Optional `color_mode` must be `rgb`. Unknown fields and
+(an installed preset name). Optional `color_mode` must be `rgb`. Unknown fields and
 invalid values reject the entire command before changing controls or playback.
 Retained commands are ignored. Discovery disables HA flash and transition commands;
 preset entry transitions supply the transition behavior.
@@ -163,7 +165,8 @@ or effect update controls without turning an off light on. Brightness zero means
 OFF in the HA adapter, preserving the previous dimmer level for the next ON.
 
 State reports the accepted power, master brightness, selected RGB and current
-`effect`. `Custom` identifies an edited, private or unidentified composition.
+`effect`. An empty effect string identifies an edited, private or unidentified
+composition; presets named `Custom` or `off` are ordinary selectable presets.
 `color_mode` is `rgb` when a visible animation follows light colour; otherwise it
 is `brightness`, as permitted for active effects. Colour remains stored for a
 later colour-following preset. Audio fluctuations do not become HA light state;
@@ -175,7 +178,7 @@ and [effect colour modes](https://developers.home-assistant.io/docs/core/entity/
 
 Selecting a preset invokes the application's recall operation: it completes the
 previous destination, moves it into A if necessary, prepares the new preset in B,
-and runs its entry transition forward. ON recalls the last identifiable, exposed
+and runs its entry transition forward. ON recalls the last identifiable, installed
 selection or `default_preset`, using that preset's saved transition.
 OFF uses the selected preset's same transition to black and retains the selection.
 Startup uses the same preset-owned transition. A preset with no transition cuts
@@ -195,7 +198,7 @@ Recall publishes the accepted preset and logical power target even while the
 physical transition is running. OFF does not mean the rendering engine has stopped.
 Manual A/B controls keep fixed slots and release recall ownership. An intermediate
 manual mix, edited layers, unsaved compositions or changed/deleted recipe versions
-report the `Custom` effect; an endpoint can identify its unmodified preset.
+report an empty effect; an endpoint can identify its unmodified preset.
 `describe.outputs[].preset` remains the actual visible endpoint identity, while
 `selected_preset` and `transition_get.recall` expose the recall selection separately.
 
@@ -441,7 +444,12 @@ failure behavior remain shared with HTTP/WebSocket/serial. HA uses `preset_recal
 and `output_power`. `preset_activate` prepares a fixed slot (A by default),
 retaining its transition owner and progress.
 
-The generic client reserves 2 KiB for receive and 2 KiB for transmit buffers. Work
+The generic client reserves 2 KiB for receive and 2 KiB for transmit buffers.
+Discovery streams the complete installed-preset catalogue through the existing
+transmit buffer, without allocating a full JSON copy or truncating options.
+Concurrent catalogue/configuration changes abort and retry that publication on a
+fresh MQTT connection, preserving packet framing. Incoming command size remains
+bounded by the receive buffer. Work
 per tick and published messages per binding tick are bounded; buffer pressure
 retries without blocking the animation loop. `describe` reports `mqtt_supported`;
 `network_status` adds `mqtt_connected` and `mqtt_error`. Connected means the broker

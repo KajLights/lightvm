@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-27",
+  "scope": "Installed preset selection cleanup; subscription protocol remains a design",
+  "pico_firmware_sha256": "002c19d182fe429a201132f5cf66fa0c90197575d213a437916d0116dbaa4749",
+  "pico_ram": {
+    "sram_bytes": 270336,
+    "vm_heap_automatic": true,
+    "vm_heap_capacity": 87672,
+    "static_bytes": 134312,
+    "vm_heap_ceiling": 87672,
+    "native_stack": 24576,
+    "pixel_driver_max": 7392,
+    "operating_headroom": 16384,
+    "remaining_bytes_after_reservations": 0,
+    "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+  },
+  "hardware": {
+    "catalog_preserved": true,
+    "obsolete_list_removed": true,
+    "preset_names": [
+      "rainbow",
+      "stars",
+      "audio_features",
+      "audio_pulse",
+      "audio_spectrum",
+      "audio_spectrum_no_flash"
+    ],
+    "final_preset": "audio_spectrum_no_flash",
+    "brightness": 0.400000006,
+    "wifi_connected": true,
+    "mqtt_connected": true,
+    "mqtt_error": "",
+    "audio_online": true,
+    "audio_invalid": 0,
+    "main_stack_peak": 5848,
+    "worker_stack_peak": 460
+  },
+  "checks": {
+    "isolated_native_asan_ubsan": 33,
+    "isolated_mqtt_presets_startup": 46,
+    "pico_build_accounting": 24,
+    "web_configuration_presets": 19,
+    "web_build": true,
+    "esp32s3_wifi_http_mqtt_build": true,
+    "catalogue_stream_test_presets": 65
+  },
+  "isolation": "Native and integration regression tests used HEAD compiler/fixtures plus this task's C and test changes, because a separate teaching/compiler task was modifying the working tree. Integration firmware disabled boot-sequence recovery for rapid restart tests; installed Pico firmware retains it."
+}

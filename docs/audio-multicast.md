@@ -5,6 +5,10 @@ ordinary animation inputs. The firmware contains the receiver, configuration
 and typed input adapter. The visualizations below are Python programs compiled
 by the existing compiler and rendered by the existing VM.
 
+The [preset-driven subscription design](design/feature-proposal-audio-subscriptions.md)
+replaces this temporary global receiver configuration in the next protocol
+implementation. It is a design; the current audio transport below remains active.
+
 ## Build and configure
 
 Enable `LIGHTVM_WIFI=ON` and `LIGHTVM_AUDIO_MULTICAST=ON` in a Pico Wi-Fi build.
@@ -149,10 +153,9 @@ Adapt the port/output to the device. A transient `client.upload(...)` starts pau
 call `client.resume_program(...)` for live playback. To restore the current preset
 and master brightness after reboot, save output startup mode `restore_last`.
 
-To expose the saved preset in Home Assistant's effect selector, also add
-`"audio_spectrum"` to the output's `home_assistant.presets` list and save the
-configuration. Saving a preset to the library alone does not add it to this
-explicit list. Preserve the other preset names and the existing default.
+Every saved preset appears automatically in Home Assistant's effect selector
+for outputs with `home_assistant` configured. There is no separate exposed-preset
+list; the output's `default_preset` only chooses its initial ON behavior.
 
 ## Diagnostics and validation
 
