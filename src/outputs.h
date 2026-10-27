@@ -4,7 +4,6 @@
 #include "config.h"
 #include "device/json.h"
 #include "digital_inputs.h"
-#include "audio_receiver.h"
 #define EMPTY_CONFIG "{\"schema\":\"lightvm.config\",\"outputs\":[]}"
 typedef enum { STARTUP_OFF, STARTUP_RESTORE_LAST, STARTUP_PRESET } StartupMode;
 typedef struct {
@@ -26,7 +25,6 @@ typedef struct {
     int default_output;
     unsigned input_count;
     DigitalInputConfig *inputs;
-    AudioReceiver *audio;
 } HardwareConfig;
 typedef struct {
     const char *type;

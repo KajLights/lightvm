@@ -1,4 +1,5 @@
 #include "composition.h"
+#include "audio_sources.h"
 #include "animation.h"
 #include "draw.h"
 #include "runtime.h"
@@ -25,7 +26,7 @@ void composition_destroy(Composition *s) {
     if(s->pending)s->output->type->cancel(s->output->driver);
     for(unsigned i=0;i<s->layer_count;i++)control_destroy(&s->layers[i].vm);
     if(s->output->type)vm_heap_uncharge((size_t)s->count*3);
-    demo_free(s->allocation);demo_free(s);
+    input_scope_release(s->sources);demo_free(s->allocation);demo_free(s);
 }
 void composition_offscreen(Composition *s,PixelBuffer *target) {
     if(s->pending){s->output->type->cancel(s->output->driver);s->pending=false;}

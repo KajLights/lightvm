@@ -159,9 +159,13 @@ class PicoClosedStackTests(unittest.TestCase):
                     self.assertEqual(enabled_target('igmp_tmr',features),http)
                     self.assertTrue(enabled_target('new_unknown_callback',features))
         minimal=dict.fromkeys(('LIGHTVM_WIFI','LIGHTVM_HTTP','LIGHTVM_MQTT'),False)
-        audio={**minimal,'LIGHTVM_WIFI':True,'LIGHTVM_AUDIO_MULTICAST':True}
+        audio={**minimal,'LIGHTVM_WIFI':True,'LIGHTVM_AUDIO_SUBSCRIPTIONS':True}
         self.assertTrue(enabled_target('audio_received',audio))
-        self.assertTrue(enabled_target('igmp_tmr',audio))
+        self.assertFalse(enabled_target('igmp_tmr',audio))
+        self.assertTrue(enabled_target('audio_resolved',audio))
+        self.assertTrue(enabled_target('dns_tmr',audio))
+        self.assertTrue(enabled_target('dns_recv',audio))
+        self.assertFalse(enabled_target('audio_resolved',minimal))
         self.assertFalse(enabled_target('audio_received',minimal))
 
     def test_machine_boundaries_returns_veneers_and_dynamic_reservations(self):

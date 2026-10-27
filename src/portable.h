@@ -37,6 +37,8 @@ typedef struct Portable {
     PbcValue overrides[16]; uint32_t override_mask;
     InputPort *inputs; unsigned ninputs; uint32_t input_revision;
     InputRegistry *input_registry;
+    struct InputSourceScope *source_scope;
+    bool source_demand;
     uint64_t input_epoch;
     uint64_t now_us,render_count,active_wall_us,random_state;
     uint64_t native_draw_us,dispatch_count,slice_count;

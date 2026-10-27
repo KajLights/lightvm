@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct InputSourceScope;
 #define INPUT_LIMIT 8u
 #define INPUT_SOURCE_LIMIT 32u
 _Static_assert(INPUT_SOURCE_LIMIT<=32u,"source publication mask is uint32");
@@ -46,6 +47,9 @@ typedef struct {
     uint8_t bounds, default_mode, default_easing, default_control;
     bool fallback, has_last;
     const LightControls *light;
+    struct InputSourceScope *scope; /* borrowed from the invocation */
+    uint64_t event_baseline;
+    uint32_t event_visible;
     InputDriver driver;
 } InputPort;
 struct Portable;
@@ -53,6 +57,8 @@ bool input_value_parse(const Json *,int,unsigned,InputValue *);
 double input_value_number(InputValue,unsigned);
 const char *inputs_load(struct Portable *,const Json *);
 void inputs_attach(struct Portable *,InputRegistry *,const LightControls *);
+void inputs_scope(struct Portable *,struct InputSourceScope *);
+const char *inputs_demand(struct Portable *,bool);
 bool inputs_call_valid(struct Portable *,unsigned,unsigned);
 const char *inputs_bind(struct Portable *,const Json *,int,uint64_t);
 void inputs_capture(struct Portable *,uint64_t,bool);

@@ -120,6 +120,7 @@ size_t app_output_light_json(const App *a,const AppOutput *d,char *buffer,size_t
     return n>=0&&(size_t)n<capacity?(size_t)n:0;
 }
 static void composition_modified(Composition *s){if(s){s->preset[0]=0;s->preset_crc=0;}}
+static void binding_text(void *,const char *);
 static void composition_state_for(Writer *w,const AppOutput *d,const Composition *s){
     uint64_t sampled_at=platform_time_us();
     literal(w,"{\"revision\":");number(w,d->composition_revision);
@@ -128,6 +129,7 @@ static void composition_state_for(Writer *w,const AppOutput *d,const Composition
     const char *preset=composition_preset(w->app,s);
     literal(w,",\"preset\":");if(preset)quoted(w,preset);else literal(w,"null");
     if(s){
+        literal(w,",\"sources\":");input_scope_describe(s->sources,binding_text,w);
         literal(w,",\"playing\":");literal(w,s->playing?"true":"false");
         literal(w,",\"frames\":");number(w,s->frames);
         literal(w,",\"composite_frames\":");number(w,s->composite_frames);
@@ -194,7 +196,6 @@ static void destroy_output(AppOutput **slot){
 }
 static void empty_config(App *a) {
     digital_inputs_destroy(&a->digital_inputs);
-    if(a->hardware.audio)input_registry_release(&a->inputs,a->hardware.audio->generation);
     hardware_destroy(&a->hardware);
     for(unsigned i=0;i<a->output_count;i++)destroy_output(&a->outputs[i]);
     platform_free(a->outputs);a->outputs=NULL;a->output_count=0;a->upload_output=&a->fallback;
@@ -213,10 +214,6 @@ static bool same_output(const HardwareOutput *a,const HardwareOutput *b){
 static bool config_apply(App *a,HardwareConfig *config,const void *data,uint32_t size){
     AppOutput **next=platform_calloc(config->count,sizeof(*next));
     if(config->count&&!next){hardware_destroy(config);return false;}
-    if(config->audio&&audio_receiver_claim(config->audio,&a->inputs)){
-        platform_free(next);hardware_destroy(config);return false;
-    }
-    if(a->hardware.audio)input_registry_release(&a->inputs,a->hardware.audio->generation);
     a->hardware_changing=true;
     digital_inputs_apply(&a->digital_inputs,config->inputs,config->input_count);
     /* Output identity, not array position, owns its running instance. */
@@ -394,6 +391,7 @@ void app_destroy(App *a) {
     preparation_destroy(a);
     store_upload_cancel(&a->upload);
     empty_config(a);vm_destroy(&a->fallback.vm);store_destroy(&a->store);
+    audio_sources_destroy(&a->audio);
     input_registry_destroy(&a->inputs);
     render_executor_shutdown();
 }
@@ -447,11 +445,32 @@ static void indicator_tick(App *a,AppOutput *d,uint64_t now) {
 done:
     runtime_leave(previous);
 }
+static void source_demand(VmInstance *vm,bool active){
+    if(!vm||!vm->portable)return;
+    const char *error=inputs_demand(vm->portable,active);
+    if(error)snprintf(vm->animation_error,sizeof(vm->animation_error),"%s",error);
+}
+static void composition_demand(Composition *c,bool active){
+    if(c)for(unsigned n=0;n<c->layer_count;n++)source_demand(&c->layers[n].vm,active&&c->playing&&c->layers[n].vm.playing);
+}
+static void sync_audio_sources(App *a){
+    for(unsigned i=0;i<a->output_count;i++){
+        AppOutput *d=a->outputs[i];Transition *t=d->transition;
+        if(t){
+            bool completed=d->recall_owned&&t->driver==TRANSITION_MANUAL&&t->progress==100;
+            composition_demand(t->compositions[0],t->playing&&!completed);
+            composition_demand(t->compositions[1],t->playing&&(!completed||d->power_on));
+            for(unsigned n=0;n<2;n++)if(t->programs[n])source_demand(&t->programs[n]->vm,t->playing&&!completed);
+        }else if(d->composition)composition_demand(d->composition,d->power_on);
+        else source_demand(&d->vm,d->vm.playing&&d->power_on);
+    }
+}
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
     runtime_foreground(now);
     board_status_tick(&a->board_status,&a->network,now);
-    audio_receiver_publish(a->hardware.audio,&a->inputs,now);
+    sync_audio_sources(a);
+    audio_sources_tick(&a->audio,now);
     digital_inputs_tick(&a->digital_inputs,now);
 #if LIGHTVM_BOOT_SEQUENCE
     boot_sequence_tick(&a->boot_sequence,now);
@@ -616,7 +635,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"transient_settings\":true,\"preset_transitions\":true,\"presets\":true,\"typed_storage\":true");
     literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":");number(&w,INPUT_SOURCE_LIMIT);
     literal(&w,",\"board_status_supported\":true");
-    literal(&w,",\"audio_multicast_supported\":");literal(&w,LIGHTVM_AUDIO_MULTICAST?"true":"false");
+    literal(&w,",\"audio_subscriptions_supported\":");literal(&w,LIGHTVM_AUDIO_SUBSCRIPTIONS?"true":"false");
     literal(&w,",\"composition_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     StoreInfo storage=store_info(&a->store);
@@ -644,7 +663,7 @@ static const StoreEntry *find_program(const Store *store,StoreType type,const ch
 }
 static bool arguments(const Json *j,Arguments *args) {
     memset(args,0,sizeof(*args)); memcpy(args->action,"play",5); memcpy(args->slot,"A",2);
-    static const char *const fields[]={"op","name","type","action","slot","output","expected_revision","expected_saved_revision","settings","inputs","command","delta_ms",NULL};
+    static const char *const fields[]={"op","name","type","action","slot","output","expected_revision","expected_saved_revision","settings","inputs","sources","command","delta_ms",NULL};
     if (!json_fields(j,0,fields) || !json_string(j,json_get(j,0,"op"),args->op,sizeof(args->op))) return false;
     if(json_get(j,0,"settings")>=0&&strcmp(args->op,"program_activate"))return false;
     if(json_get(j,0,"inputs")>=0&&strcmp(args->op,"program_activate"))return false;
@@ -772,7 +791,7 @@ static const char *apply_composition_slot(App *a,AppOutput *d,Composition *candi
     composition_destroy(old);transition_invalidate(t);candidate->revision=++d->composition_revision;d->recall_owned=false;d->power_on=true;return 0;
 }
 static void activate_composition_slot(App *a,AppOutput *d,uint16_t id,const Json *j,unsigned slot){
-    static const char *const fields[]={"op","name","output","slot","action","settings","inputs",NULL};
+    static const char *const fields[]={"op","name","output","slot","action","settings","inputs","sources",NULL};
     char name[OBJECT_NAME_LIMIT+1];
     int action=json_get(j,0,"action");
     if(!json_fields(j,0,fields)||!json_string(j,json_get(j,0,"name"),name,sizeof(name))||!object_name_valid(name)||(action>=0&&!json_equal(j,action,"play"))){error_reply(a,id,STATUS_CONFIG,"invalid_activation","expected a program name and play action");return;}
@@ -960,7 +979,7 @@ const char *app_preparation_commit(App *a,AppOutput *d,PreparedScene *s){
 }
 static bool transition_manage(App *a,AppOutput *d,uint16_t id,const Json *j,const char *op){
     if(strncmp(op,"transition_",11))return false;
-    static const char *const fields[]={"op","output","expected_revision","expected_assignment","binding","progress","target","duration_ms","interval_ms","source","assignment","effect","seed","mask","paint","program","settings","inputs",NULL};
+    static const char *const fields[]={"op","output","expected_revision","expected_assignment","binding","progress","target","duration_ms","interval_ms","source","assignment","effect","seed","mask","paint","program","settings","inputs","sources",NULL};
     if(!json_fields(j,0,fields)||!d->pixels.count){error_reply(a,id,STATUS_CONFIG,"invalid_transition","invalid transition request or output");return true;}
     if(!strcmp(op,"transition_get")){Writer w={.app=a,.id=id};transition_state(&w,d);flush(&w);reply(a,id,STATUS_OK,0,"A/B transition state");return true;}
     const char *error=NULL;double value=0,duration=0,interval=0;char source[OBJECT_NAME_LIMIT+1]="";uint32_t assignment=0,seed=0;
@@ -1541,6 +1560,12 @@ static __attribute__((noinline)) bool validate_object_document(App *a,uint16_t i
 }
 static void command_impl(void *context,uint8_t type,uint16_t id,const uint8_t *p,size_t size) {
     App *a=context;
+    if(type==CMD_AUDIO_FRAME){
+        const char *error=audio_gateway_fragment(&a->audio,a->source,p,size,platform_time_us());
+        if(error)error_reply(a,id,STATUS_CONFIG,"invalid_audio_frame",error);
+        else reply(a,id,STATUS_OK,0,"audio fragment accepted");
+        return;
+    }
     if (a->upload_owner && a->upload_owner!=a->source && (type==CMD_BEGIN || type==CMD_OBJECT_BEGIN || type==CMD_CHUNK || type==CMD_FINISH || type==CMD_OBJECT_CHUNK || type==CMD_OBJECT_FINISH || type==CMD_OBJECT_CANCEL)) {
         error_reply(a,id,STATUS_BUSY,"upload_busy","upload belongs to another session"); return;
     }
@@ -1727,30 +1752,46 @@ static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
     if(error)error_reply(a,id,STATUS_CONFIG,"invalid_input",error);else reply(a,id,STATUS_OK,(int32_t)generation,"input operation completed");
     return true;
 }
+static bool audio_manage(App *a,uint16_t id,const Json *j,const char *op){
+    if(strcmp(op,"audio_claim")&&strcmp(op,"audio_keep")&&strcmp(op,"audio_clock")&&strcmp(op,"audio_release"))return false;
+    const char *error=NULL;AudioChallenge result={0};uint32_t generation=0;uint64_t now=platform_time_us();
+    if(!strcmp(op,"audio_claim"))error=audio_gateway_claim(&a->audio,j,a->source,now,&result);
+    else{
+        static const char *const base[]={"op","boot_id","generation",NULL};
+        static const char *const clock[]={"op","boot_id","generation","challenge","publisher_us",NULL};
+        bool echo=!strcmp(op,"audio_clock");uint64_t challenge=0,remote=0;
+        if(!json_fields(j,0,echo?clock:base)||!json_equal(j,json_get(j,0,"boot_id"),a->boot_id)||
+           !json_u32(j,json_get(j,0,"generation"),&generation)||
+           (echo&&(!audio_source_id(j,json_get(j,0,"challenge"),&challenge)||!audio_source_id(j,json_get(j,0,"publisher_us"),&remote))))
+            error="invalid audio ownership or clock fields";
+        else if(echo)error=audio_gateway_clock(&a->audio,a->source,generation,challenge,remote,now);
+        else if(!strcmp(op,"audio_keep"))error=audio_gateway_keep(&a->audio,a->source,generation,now,&result);
+        else error=audio_gateway_release(&a->audio,a->source,generation);
+    }
+    if(error)error_reply(a,id,STATUS_CONFIG,"invalid_audio",error);
+    else{
+        if(result.generation){
+            Writer w={.app=a,.id=id};char fields[128];literal(&w,"{\"boot_id\":");quoted(&w,a->boot_id);
+            snprintf(fields,sizeof(fields),",\"generation\":%u,\"challenge\":\"%016llx\",\"controller_us\":\"%016llx\"}",
+                (unsigned)result.generation,(unsigned long long)result.challenge,(unsigned long long)result.sent);
+            literal(&w,fields);flush(&w);
+        }
+        reply(a,id,STATUS_OK,0,"audio operation completed");
+    }
+    return true;
+}
 static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
     if(!strcmp(op,"audio_status")){
         static const char *const fields[]={"op",NULL};
         if(!json_fields(j,0,fields)){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","unexpected audio status fields");return;}
-        platform_free(j);AudioReceiver *r=a->hardware.audio;Writer w={.app=a,.id=id};
-        literal(&w,"{\"supported\":");literal(&w,LIGHTVM_AUDIO_MULTICAST?"true":"false");
-        literal(&w,",\"configured\":");literal(&w,r?"true":"false");
-        if(r){
-            char b[128];snprintf(b,sizeof(b),",\"sensor_id\":\"%016" PRIx64 "\",\"session_id\":\"%016" PRIx64 "\"",r->config.sensor,r->session);literal(&w,b);
-            literal(&w,",\"listening\":");literal(&w,r->listening?"true":"false");
-            literal(&w,",\"conflict\":");literal(&w,r->conflict?"true":"false");
-            literal(&w,",\"online\":");literal(&w,r->received&&platform_time_us()-r->received<AUDIO_TIMEOUT_US?"true":"false");
-            literal(&w,",\"sequence\":");wide(&w,r->sequence);
-            literal(&w,",\"age_ms\":");if(r->received)wide(&w,(platform_time_us()-r->received)/1000);else literal(&w,"null");
-#define AUDIO_COUNT(name) literal(&w,",\"" #name "\":");number(&w,r->name)
-            AUDIO_COUNT(packets);AUDIO_COUNT(published);AUDIO_COUNT(invalid);AUDIO_COUNT(ignored);
-            AUDIO_COUNT(reordered);AUDIO_COUNT(gaps);AUDIO_COUNT(coalesced);AUDIO_COUNT(onsets);
-            AUDIO_COUNT(duplicates);AUDIO_COUNT(expired);AUDIO_COUNT(overflow);AUDIO_COUNT(max_service_us);
-#undef AUDIO_COUNT
-        }
-        literal(&w,"}");flush(&w);reply(a,id,STATUS_OK,0,"audio receiver status");return;
+        platform_free(j);Writer w={.app=a,.id=id};
+        literal(&w,"{\"providers\":");audio_sources_status(&a->audio,binding_text,&w);
+        literal(&w,"}");flush(&w);reply(a,id,STATUS_OK,0,"structured audio source status");return;
     }
+
+    if(audio_manage(a,id,j,op)){platform_free(j);return;}
     if(preparation_manage(a,id,j,op)){platform_free(j);return;}
     AppOutput *d=request_output(a,j);
     if(!d){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_output","invalid request, unknown output or invalid A/B slot");return;}
@@ -1904,6 +1945,7 @@ void app_execute_command(App *a,uint64_t source,SendMessage send,void *transport
     a->send=previous_send;a->transport=previous_transport;a->source=previous_source;
 }
 void app_disconnect(App *a,uint64_t source) {
+    audio_gateway_disconnect(&a->audio,source);
     if (!source || a->upload_owner!=source) return;
     if(a->command_active){a->disconnect_pending=true;return;}
     a->upload_owner=0; a->uploading=false; a->staged=false;

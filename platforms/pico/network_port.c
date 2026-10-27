@@ -18,7 +18,7 @@ static PicoMqtt mqtt_stream;
 #include "device/websocket.h"
 #endif
 #endif
-#if LIGHTVM_HTTP || LIGHTVM_AUDIO_MULTICAST
+#if LIGHTVM_HTTP || LIGHTVM_AUDIO_SUBSCRIPTIONS
 #include "lwip/udp.h"
 #include "lwip/igmp.h"
 #endif
@@ -27,49 +27,77 @@ static bool initialized;
 static NetworkMode mode;
 static PicoDhcp dhcp;
 static struct netif *active_netif(void) { return &cyw43_state.netif[mode==NET_MODE_AP?CYW43_ITF_AP:CYW43_ITF_STA]; }
-#if LIGHTVM_AUDIO_MULTICAST
-static struct udp_pcb *audio_pcb;
-static ip4_addr_t audio_group,audio_address;
-static uint32_t audio_revision;
-static uint64_t audio_retry;
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
+#include "lwip/dns.h"
+#include "vm_allocator.h"
+typedef struct {struct udp_pcb *pcb;ip_addr_t peer;ip4_addr_t local;bool resolved;} PicoAudio;
+typedef struct {AudioProvider *owner;bool pending;} AudioLookup;
+static AudioLookup audio_lookups[AUDIO_PROVIDER_LIMIT];
 static unsigned audio_budget;
-static void audio_received(void *ctx,struct udp_pcb *pcb,struct pbuf *p,const ip_addr_t *address,u16_t port){
-    (void)ctx;(void)pcb;(void)address;(void)port;
-    AudioReceiver *r=engine->hardware.audio;
-    if(p&&r){
-        if(!audio_budget)r->overflow++;
-        else {
-            --audio_budget;
-            if(p->tot_len>AUDIO_PACKET_LIMIT)r->invalid++;
-            else {
-                uint8_t packet[AUDIO_PACKET_LIMIT];
-                if(pbuf_copy_partial(p,packet,p->tot_len,0)==p->tot_len)
-                    audio_receiver_receive(r,packet,p->tot_len,platform_time_us());
-                else r->invalid++;
-            }
+static bool audio_unicast(const ip_addr_t *ip){
+    if(!ip||!IP_IS_V4(ip))return false;
+    uint32_t host=lwip_ntohl(ip4_addr_get_u32(ip_2_ip4(ip)));
+    return (host>>24)!=0&&(host>>24)<224;
+}
+static void audio_received(void *ctx,struct udp_pcb *pcb,struct pbuf *packet,const ip_addr_t *peer,u16_t port){
+    AudioProvider *p=ctx;PicoAudio *native=p->native;(void)pcb;
+    if(packet&&native&&native->resolved&&port==p->config.port&&ip_addr_cmp(peer,&native->peer)){
+        if(!audio_budget||packet->tot_len>KF_WIRE_MAX)p->receiver.invalid++;
+        else{
+            --audio_budget;uint8_t data[KF_WIRE_MAX];
+            if(pbuf_copy_partial(packet,data,packet->tot_len,0)==packet->tot_len)
+                audio_source_receive(p,data,packet->tot_len,platform_time_us());
         }
     }
-    if(p)pbuf_free(p);
+    if(packet)pbuf_free(packet);
 }
-static void stop_audio(void){
-    if(audio_pcb){igmp_leavegroup_netif(active_netif(),&audio_group);udp_remove(audio_pcb);audio_pcb=NULL;}
-    audio_receiver_disconnect(engine->hardware.audio);
+static void audio_close(void *ctx,AudioProvider *p){
+    (void)ctx;for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++)if(audio_lookups[i].owner==p)audio_lookups[i].owner=NULL;
+    PicoAudio *native=p->native;if(!native)return;
+    if(native->pcb)udp_remove(native->pcb);
+    platform_free(native);p->native=NULL;
 }
+static void audio_resolved(const char *name,const ip_addr_t *ip,void *ctx){
+    AudioLookup *lookup=ctx;AudioProvider *p=lookup->owner;(void)name;
+    lookup->owner=NULL;lookup->pending=false;if(!p||!p->native)return;
+    PicoAudio *native=p->native;
+    if(audio_unicast(ip)){native->peer=*ip;native->resolved=true;p->error=NULL;}
+    else{p->receiver.client=0;p->retry_at=platform_time_us()+1000000;p->error="DNS unavailable or non-unicast address";}
+}
+static bool audio_open(void *ctx,AudioProvider *p){
+    (void)ctx;
+    if(!initialized||!network_online(&engine->network)||engine->network_settings.pending)return false;
+    PicoAudio *native=platform_calloc(1,sizeof(*native));if(!native)return false;
+    p->native=native;native->local=*netif_ip4_addr(active_netif());native->pcb=udp_new_ip_type(IPADDR_TYPE_V4);
+    if(!native->pcb||udp_bind(native->pcb,IP_ANY_TYPE,0)!=ERR_OK){audio_close(NULL,p);return false;}
+    native->pcb->ttl=1;udp_bind_netif(native->pcb,active_netif());udp_recv(native->pcb,audio_received,p);
+    if(ipaddr_aton(p->config.address,&native->peer)){
+        native->resolved=audio_unicast(&native->peer);if(!native->resolved){audio_close(NULL,p);return false;}return true;
+    }
+    for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++)if(!audio_lookups[i].pending){
+        AudioLookup *lookup=&audio_lookups[i];lookup->owner=p;lookup->pending=true;
+        err_t result=dns_gethostbyname(p->config.address,&native->peer,audio_resolved,lookup);
+        if(result==ERR_INPROGRESS)return true;
+        lookup->owner=NULL;lookup->pending=false;
+        if(result==ERR_OK&&audio_unicast(&native->peer)){native->resolved=true;p->error=NULL;return true;}break;
+    }
+    audio_close(NULL,p);p->error="DNS unavailable";return false;
+}
+static bool audio_send(void *ctx,AudioProvider *p,const uint8_t *data,size_t size){
+    (void)ctx;PicoAudio *native=p->native;
+    if(!native||!native->resolved)return false;
+    struct pbuf *packet=pbuf_alloc(PBUF_TRANSPORT,(u16_t)size,PBUF_RAM);if(!packet)return false;
+    pbuf_take(packet,data,(u16_t)size);err_t result=udp_sendto(native->pcb,packet,&native->peer,p->config.port);
+    pbuf_free(packet);return result==ERR_OK;
+}
+static void stop_audio(void){audio_sources_disconnect(&engine->audio);}
 static void poll_audio(void){
-    AudioReceiver *r=engine->hardware.audio;
-    bool enabled=network_online(&engine->network)&&!engine->network_settings.pending&&r&&!r->conflict;
-    if(audio_pcb&&(!enabled||audio_revision!=engine->revision||!ip4_addr_cmp(&audio_address,netif_ip4_addr(active_netif()))))stop_audio();
-    uint64_t now=platform_time_us();
-    if(!enabled||audio_pcb||now<audio_retry)return;
-    audio_retry=now+1000000u;
-    audio_pcb=udp_new_ip_type(IPADDR_TYPE_V4);
-    if(!audio_pcb)return;
-    const uint8_t *g=r->config.group;IP4_ADDR(&audio_group,g[0],g[1],g[2],g[3]);
-    if(udp_bind(audio_pcb,IP_ANY_TYPE,r->config.port)!=ERR_OK){udp_remove(audio_pcb);audio_pcb=NULL;return;}
-    udp_bind_netif(audio_pcb,active_netif());
-    if(igmp_joingroup_netif(active_netif(),&audio_group)!=ERR_OK){udp_remove(audio_pcb);audio_pcb=NULL;return;}
-    udp_recv(audio_pcb,audio_received,NULL);
-    audio_address=*netif_ip4_addr(active_netif());audio_revision=engine->revision;r->listening=true;
+    bool online=network_online(&engine->network)&&!engine->network_settings.pending;
+    for(unsigned i=0;i<AUDIO_PROVIDER_LIMIT;i++){
+        AudioProvider *p=engine->audio.providers[i];if(!p||p->config.type!=AUDIO_UDP||!p->native)continue;
+        PicoAudio *native=p->native;
+        if(!online||!ip4_addr_cmp(&native->local,netif_ip4_addr(active_netif()))){stop_audio();break;}
+    }
 }
 #endif
 static bool observed[NETWORK_LIMIT];
@@ -90,7 +118,7 @@ static bool configure(void *ctx,const NetworkConfig *c) {
     (void)ctx;
     uint32_t country=!strcmp(c->country,"XX")?CYW43_COUNTRY_WORLDWIDE:CYW43_COUNTRY(c->country[0],c->country[1],0);
     if (initialized) {
-#if LIGHTVM_AUDIO_MULTICAST
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
         stop_audio();
 #endif
 #if LIGHTVM_MQTT
@@ -141,7 +169,7 @@ static int link(void *ctx,char *ip,size_t capacity,char *error,size_t error_capa
 }
 static void disconnect(void *ctx) {
     (void)ctx; if (!initialized) return;
-#if LIGHTVM_AUDIO_MULTICAST
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
     stop_audio();
 #endif
 #if LIGHTVM_MQTT
@@ -306,6 +334,10 @@ static bool start_http(uint16_t port) {
 #endif
 void pico_network_init(App *app) {
     engine=app;
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
+    engine->audio.transport=(AudioTransport){audio_open,audio_close,audio_send,NULL,sizeof(PicoAudio)+sizeof(struct udp_pcb)};
+    _Static_assert(sizeof(AudioProvider)+sizeof(PicoAudio)+sizeof(struct udp_pcb)<=2048,"UDP provider budget exceeds 2 KiB");
+#endif
 #if LIGHTVM_MQTT
     ha_init(&ha,app,pico_mqtt_stream(&mqtt_stream));
 #endif
@@ -318,7 +350,7 @@ void pico_network_init(App *app) {
     NetworkConfig saved=app->network.config; network_apply(&app->network,&saved);
 }
 void pico_network_poll(void) {
-#if LIGHTVM_AUDIO_MULTICAST
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
     if(initialized){poll_audio();audio_budget=8;}
 #endif
     if (initialized) cyw43_arch_poll();

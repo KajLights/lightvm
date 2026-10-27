@@ -20,6 +20,8 @@ typedef struct {
 } PreparationRequest;
 typedef struct {
     PreparationRequest request;
+    struct InputSourceScope *sources;
+    bool source_demand;
     VmInstance *direct;
     PixelBuffer target;
     Composition *composition;

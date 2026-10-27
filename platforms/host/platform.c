@@ -168,3 +168,10 @@ bool platform_storage_sync(void) { return storage_fd>=0 && fsync(storage_fd)==0;
 void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
 void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }
+
+bool platform_random_bytes(void *bytes,size_t size){
+    int fd=open("/dev/urandom",O_RDONLY);if(fd<0)return false;
+    uint8_t *p=bytes;bool ok=true;
+    while(size){ssize_t n=read(fd,p,size);if(n<0&&errno==EINTR)continue;if(n<=0){ok=false;break;}p+=n;size-=(size_t)n;}
+    close(fd);return ok;
+}

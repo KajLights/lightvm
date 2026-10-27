@@ -102,7 +102,7 @@ def main():
         if not args.objdump:parser.error('--elf requires --objdump')
         from pico_stack_paths import account
         cache={line.split(':',1)[0]:line.split('=',1)[1] for line in (args.build/'CMakeCache.txt').read_text().splitlines() if re.match(r'[^/#][^:]*:[^=]+=',line)}
-        features={key:cmake_enabled(cache.get(key,'OFF')) for key in ('LIGHTVM_WIFI','LIGHTVM_HTTP','LIGHTVM_MQTT','LIGHTVM_WEBSOCKET','LIGHTVM_AUDIO_MULTICAST')}
+        features={key:cmake_enabled(cache.get(key,'OFF')) for key in ('LIGHTVM_WIFI','LIGHTVM_HTTP','LIGHTVM_MQTT','LIGHTVM_WEBSOCKET','LIGHTVM_AUDIO_SUBSCRIPTIONS')}
         report=account(*parse_graph(texts),args.objdump,args.elf,ROOTS,features)
         from pico_stack_fingerprints import verify
         report['contract_identity']=verify(args.build)

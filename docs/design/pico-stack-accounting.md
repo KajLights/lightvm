@@ -1,5 +1,33 @@
 # Pico stack-path accounting
 
+## Subscription and gateway audit — 27 October
+
+The subscription adapter registers `audio_received` and `audio_resolved`, with
+DNS timers enabled for MQTT or audio. Audio no longer enables IGMP; HTTP discovery
+still does. The receiver copies at most 700 bytes for each of eight datagrams per
+poll and calls the common LVAF decoder and subscriber. It performs no allocation,
+FFT or rendering in the receive callback. DNS cancellation clears the owner pointer
+before a provider is freed; an outstanding resolver slot remains occupied until
+its callback returns.
+
+Transport callbacks in `audio_sources_tick`, `audio_sources_disconnect` and
+provider removal resolve to the Pico open/send/close functions. Scope/status writer
+callbacks resolve to the existing app/control writers. Gateway commands perform
+bounded assembly independently of upload staging. Transport closure invalidates
+availability immediately and defers reclamation until the next engine tick, so a
+streamed status reply cannot lose storage beneath its writer. Existing command
+reentrancy guards and stack margins remain unchanged.
+
+The fingerprint manifest includes these project paths and the pinned portable
+wire/subscriber core. SDK identities remain guarded; no unknown callback or frame
+is treated as zero. The full Wi-Fi/HTTP/WebSocket/MQTT/audio Pico W configuration
+passes the software gate with 16 KiB foreground and 8 KiB worker reservations,
+16 KiB native headroom and the existing pixel driver reservation. Physical stack
+watermarks and short end-to-end subscription checks are still pending.
+
+The previous multicast measurements below are historical evidence only; they do
+not qualify the new subscription or gateway implementation.
+
 ## Audio receiver audit — 26 October
 
 The 200-pixel Pico W receiver build adds `audio_received` to `udp_input`'s target

@@ -19,6 +19,9 @@ from device_client import (MAGIC, HEADER, FRAME_LIMIT, MODULE_LIMIT, STATUS, BEG
     ProcessTransport, SerialTransport, HttpTransport)
 
 
+AUDIO_FRAME = 16
+
+
 class Client:
     def __init__(self, transport, timeout=5):
         self.transport = transport
@@ -255,7 +258,7 @@ class Client:
         revision = self.describe()["catalog_revision"]
         return self.manage("program_delete", name=name, expected_revision=revision, **({"type": program_type} if program_type else {}))
 
-    def activate(self, name, action="play", slot=None, settings=None, output=None, layer=None, inputs=None):
+    def activate(self, name, action="play", slot=None, settings=None, output=None, layer=None, inputs=None, sources=None):
         if layer is not None:
             if action != 'play': raise ValueError('composition layers support play activation')
             composition = self.composition(output=output, slot=slot)
@@ -265,6 +268,7 @@ class Client:
             if output is not None: fields['output'] = output
             if settings is not None: fields['settings'] = settings
             if inputs is not None: fields['inputs'] = inputs
+            if sources is not None: raise ValueError('sources belong to the composition, not an individual layer')
             return self.manage('composition_layer_activate', **fields)
         fields = {"name": name, "action": action}
         if output is not None:
@@ -274,6 +278,7 @@ class Client:
         if settings is not None:
             fields["settings"] = settings
         if inputs is not None: fields['inputs'] = inputs
+        if sources is not None: fields['sources'] = sources
         return self.manage("program_activate", **fields)
 
     def program_state(self, slot=None, output=None, layer=None, target=None):
@@ -296,6 +301,35 @@ class Client:
 
     def publish_inputs(self, publisher, sequence, values):
         return self.manage('input_publish', boot_id=publisher['boot_id'], generation=publisher['generation'], sequence=sequence, values=values)
+
+    def claim_audio(self, name, source_id, session, analysis_profile=1, synthetic=False):
+        """Claim structured audio; identities are exactly 16 hexadecimal digits."""
+        self.manage('audio_claim', name=name, source_id=source_id, session=session,
+                    analysis_profile=analysis_profile, synthetic=synthetic)
+        claim = json.loads(self.data_reply)
+        self.audio_clock(claim)
+        return claim
+
+    def audio_clock(self, challenge):
+        return self.manage('audio_clock', boot_id=challenge['boot_id'], generation=challenge['generation'],
+                           challenge=challenge['challenge'], publisher_us=f'{time.monotonic_ns() // 1000:016x}')
+
+    def keep_audio(self, claim):
+        self.manage('audio_keep', boot_id=claim['boot_id'], generation=claim['generation'])
+        challenge = json.loads(self.data_reply)
+        self.audio_clock(challenge)
+        return challenge
+
+    def release_audio(self, claim):
+        return self.manage('audio_release', boot_id=claim['boot_id'], generation=claim['generation'])
+
+    def publish_audio(self, claim, frame_id, record):
+        """Send one LVAF v5 record (neutral lease 1) without borrowing uploads."""
+        if not 92 <= len(record) <= 700 or not 0 < frame_id < 2**64:
+            raise ValueError('invalid audio record length or frame identity')
+        for offset in range(0, len(record), FRAME_LIMIT - 16):
+            header = struct.pack('<IQHH', claim['generation'], frame_id, len(record), offset)
+            self.require_ok(self.command(AUDIO_FRAME, header + record[offset:offset + FRAME_LIMIT - 16]))
 
     def reset_program(self, settings=None, slot=None, output=None, layer=None, inputs=None):
         state = self.program_state(slot=slot, output=output, layer=layer)
@@ -331,9 +365,10 @@ class Client:
         self.manage('composition_get', slot=slot or 'A', **({'output':output} if output is not None else {}))
         return json.loads(self.data_reply)
 
-    def configure_composition(self, layers, output=None, slot="A"):
+    def configure_composition(self, layers, output=None, slot="A", sources=None):
         revision = self.composition(output=output, slot=slot)['revision']
         document = {'schema':'lightvm.composition', 'layers':layers}
+        if sources is not None: document['sources'] = sources
         self.upload_object('composition', json.dumps(document, separators=(',',':')).encode())
         return self.manage('composition_apply', slot=slot, expected_revision=revision, **({'output':output} if output is not None else {}))
 
@@ -393,9 +428,10 @@ class Client:
         self.manage('preset_get', name=name)
         return json.loads(self.data_reply)
 
-    def save_preset(self, name, layers, output=None, entry_transition=None):
+    def save_preset(self, name, layers, output=None, entry_transition=None, sources=None):
         revision = self.describe()['catalog_revision']
         document = {'schema': 'lightvm.preset', 'layers': layers}
+        if sources is not None: document['sources'] = sources
         if entry_transition is not None:
             document['entry_transition'] = entry_transition
         try:
@@ -589,7 +625,7 @@ def main():
             elif args.composition:
                 document=json.loads(args.composition.read_text())
                 if document.get('schema') != 'lightvm.composition': raise ValueError('expected lightvm.composition')
-                client.configure_composition(document['layers'],output=args.output,slot=args.slot or 'A')
+                client.configure_composition(document['layers'],output=args.output,slot=args.slot or 'A',sources=document.get('sources'))
             elif args.get_composition:
                 print(json.dumps(client.composition(output=args.output,slot=args.slot or 'A'),indent=2))
             elif args.composition_snapshot:

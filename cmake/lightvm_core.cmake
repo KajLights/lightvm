@@ -14,7 +14,7 @@ function(lightvm_add_core)
     target_compile_definitions(lightvm_config INTERFACE
         LIGHTVM_BOARD_CONFIG="${LIGHTVM_BOARD_CONFIG}"
         LIGHTVM_WIFI=$<BOOL:${LIGHTVM_WIFI}> LIGHTVM_HTTP=$<BOOL:${LIGHTVM_HTTP}>
-        LIGHTVM_AUDIO_MULTICAST=$<BOOL:${LIGHTVM_AUDIO_MULTICAST}>
+        LIGHTVM_AUDIO_SUBSCRIPTIONS=$<BOOL:${LIGHTVM_AUDIO_SUBSCRIPTIONS}>
         LIGHTVM_WEBSOCKET=$<BOOL:${LIGHTVM_WEBSOCKET}> LIGHTVM_MQTT=$<BOOL:${LIGHTVM_MQTT}>)
     target_compile_definitions(lightvm_config INTERFACE LIGHTVM_BOOT_SEQUENCE=$<BOOL:${LIGHTVM_BOOT_SEQUENCE}>)
 
@@ -39,13 +39,16 @@ function(lightvm_add_core)
     set(DEVICE_BUILD_HTTP ${LIGHTVM_HTTP})
     set(DEVICE_BUILD_WEBSOCKET ${LIGHTVM_WEBSOCKET})
     add_subdirectory("${LIGHTVM_ROOT}/shared/device-core" "${CMAKE_CURRENT_BINARY_DIR}/device-core")
+    include("${LIGHTVM_ROOT}/cmake/kaj_audio.cmake")
     add_library(lightvm_core STATIC "${LIGHTVM_ROOT}/src/store_policy.c" "${LIGHTVM_ROOT}/src/device_host.c"
         "${LIGHTVM_ROOT}/src/release.c" "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/render_executor.c" "${LIGHTVM_ROOT}/src/app.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c" "${LIGHTVM_ROOT}/src/numeric.c" "${LIGHTVM_ROOT}/src/native_math.c" "${LIGHTVM_ROOT}/src/noise.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c" "${LIGHTVM_ROOT}/src/command.c"
-        "${LIGHTVM_ROOT}/src/preparation.c" "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/inputs.c" "${LIGHTVM_ROOT}/src/audio_receiver.c" "${LIGHTVM_ROOT}/src/board_status.c" "${LIGHTVM_ROOT}/src/portable_manifest.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"
+        "${LIGHTVM_ROOT}/src/preparation.c" "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/inputs.c" "${LIGHTVM_ROOT}/src/audio_sources.c" "${LIGHTVM_ROOT}/src/board_status.c" "${LIGHTVM_ROOT}/src/portable_manifest.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"
         "${LIGHTVM_ROOT}/src/portable.c" "${LIGHTVM_ROOT}/src/portable_draw.c" "${LIGHTVM_ROOT}/src/portable_map.c" "${LIGHTVM_ROOT}/src/animation.c" "${LIGHTVM_ROOT}/src/draw.c" "${LIGHTVM_ROOT}/src/composition.c" "${LIGHTVM_ROOT}/src/transition.c"
         "${LIGHTVM_ROOT}/src/outputs.c" "${LIGHTVM_ROOT}/src/digital_inputs.c" "${LIGHTVM_ROOT}/src/apa102.c")
+    target_sources(lightvm_core PRIVATE "${KAJ_AUDIO_CORE}/protocol.c" "${KAJ_AUDIO_CORE}/subscriptions.c" "${KAJ_AUDIO_CORE}/subscriber.c")
+    target_include_directories(lightvm_core PUBLIC "${KAJ_AUDIO_CORE}")
     if(LIGHTVM_STORAGE_BACKEND_SOURCES)
         target_sources(lightvm_core PRIVATE ${LIGHTVM_STORAGE_BACKEND_SOURCES})
     endif()

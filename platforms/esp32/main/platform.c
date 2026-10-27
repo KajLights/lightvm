@@ -269,3 +269,5 @@ bool platform_metric_read(PlatformMetric metric,double *value) {
     default:return false;
     }
 }
+
+bool platform_random_bytes(void *bytes,size_t size){esp_fill_random(bytes,size);return true;}

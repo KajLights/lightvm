@@ -11,6 +11,7 @@ typedef struct {
     VmInstance vm;
 } CompositionLayer;
 typedef struct Composition {
+    struct InputSourceScope *sources;
     char preset[OBJECT_NAME_LIMIT+1];
     uint32_t preset_crc;
     PixelBuffer *output;

@@ -9,6 +9,7 @@
 #include "transition.h"
 #include "command.h"
 #include "board_status.h"
+#include "audio_sources.h"
 #if LIGHTVM_BOOT_SEQUENCE
 #include "boot_sequence.h"
 #endif
@@ -51,6 +52,7 @@ typedef struct App {
     void (*service_io)(void *); void *service_context;
     Network network;
     InputRegistry inputs;
+    AudioSources audio;
     BoardStatus board_status;
     NetworkSettings network_settings;
     DeviceHost device;

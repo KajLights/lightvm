@@ -10,12 +10,13 @@ def enabled_target(name, features):
     Do not infer absence from a missing symbol: that must still fail the gate.
     """
     if features is None:return True
-    if name in ('audio_received','platforms/pico/network_port.c:audio_received') and not features.get('LIGHTVM_AUDIO_MULTICAST',False):return False
-    if name=='igmp_tmr':return features['LIGHTVM_HTTP'] or features.get('LIGHTVM_AUDIO_MULTICAST',False)
+    if name.split(':')[-1] in ('audio_received','audio_resolved','audio_open','audio_close','audio_send') and not features.get('LIGHTVM_AUDIO_SUBSCRIPTIONS',False):return False
+    if name=='igmp_tmr':return features['LIGHTVM_HTTP']
+    if name in ('dns_tmr','dns_recv'):return features['LIGHTVM_MQTT'] or features.get('LIGHTVM_AUDIO_SUBSCRIPTIONS',False)
     # Match LWIP_TCP/DNS/IGMP in lwipopts.h and the guarded timer/UDP registrations.
     if name in ('tcp_tmr','tcpip_tcp_timer') and not (features['LIGHTVM_HTTP'] or features['LIGHTVM_MQTT']):return False
     if (name.startswith(('src/home_assistant.c:', 'src/ha_keys.c:', 'platforms/pico/mqtt_port.c:')) or
-        name in ('ha_tick','mqtt_tick','error_stream','resolved','dns_tmr','dns_recv')) and not features['LIGHTVM_MQTT']:return False
+        name in ('ha_tick','mqtt_tick','error_stream','resolved')) and not features['LIGHTVM_MQTT']:return False
     if (name.startswith(('shared/device-core/src/http.c:', 'shared/device-core/src/discovery.c:')) or name in ('http_tick','failed','discovery_received','igmp_tmr') or
         name.startswith('platforms/pico/network_port.c:') and name.split(':')[-1] in
         ('output','close_client','receive','accept_client','failed','discovery_send','discovery_received')) and not features['LIGHTVM_HTTP']:return False
@@ -55,6 +56,11 @@ CALLBACKS = {
     'control_manage': ('src/app.c:vm_send',),
     'input_binding_describe': ('src/app.c:binding_text','src/control.c:input_text'),
     'inputs_describe': ('src/control.c:input_text',),
+    'input_scope_describe': ('src/app.c:binding_text','src/control.c:input_text'),
+    'audio_sources_status': ('src/app.c:binding_text',),
+    'audio_sources_tick': ('platforms/pico/network_port.c:audio_open','platforms/pico/network_port.c:audio_close','platforms/pico/network_port.c:audio_send'),
+    'audio_sources_disconnect': ('platforms/pico/network_port.c:audio_close',),
+    'src/audio_sources.c:remove_provider': ('platforms/pico/network_port.c:audio_send','platforms/pico/network_port.c:audio_close'),
     'src/outputs.c:parse': ('src/outputs.c:validate_pixels','src/outputs.c:validate_apa102'),
     'http_tick': ('platforms/pico/network_port.c:output','platforms/pico/network_port.c:close_client',
                   'src/device_host.c:busy','src/device_host.c:dispatch','src/device_host.c:disconnect','src/device_host.c:delivered'),
@@ -138,7 +144,7 @@ SDK_CALLBACKS = {
     'tcp_process_refused_data': ('platforms/pico/network_port.c:receive','platforms/pico/mqtt_port.c:received','tcp_recv_null'),
     'tcp_abandon': ('failed','error_stream'), 'tcp_slowtmr': ('failed','error_stream'),
     'udp_input': ('discovery_received','audio_received','dhcp_recv','dns_recv','platforms/pico/dhcp_port.c:received'),
-    'dns_call_found': ('resolved',), 'dns_recv': ('resolved',),
+    'dns_call_found': ('resolved','audio_resolved'), 'dns_recv': ('resolved','audio_resolved'),
     'sys_check_timeouts': ('lwip_cyclic_timer','tcpip_tcp_timer'),
     'lwip_cyclic_timer': ('tcp_tmr','ip_reass_tmr','etharp_tmr','dhcp_coarse_tmr','dhcp_fine_tmr','dns_tmr','igmp_tmr','acd_tmr'),
     '_vsnprintf': ('_out_buffer','_out_null','_out_char'), '_out_rev': ('_out_buffer','_out_null','_out_char'),

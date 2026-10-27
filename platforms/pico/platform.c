@@ -121,3 +121,7 @@ __attribute__((noreturn)) void lightvm_panic(const char *format, ...) {
     __breakpoint();
     for(;;)__wfe();
 }
+
+bool platform_random_bytes(void *bytes,size_t size){
+    uint8_t *p=bytes;while(size){uint64_t value=get_rand_64();size_t n=size<sizeof(value)?size:sizeof(value);memcpy(p,&value,n);p+=n;size-=n;}return true;
+}
