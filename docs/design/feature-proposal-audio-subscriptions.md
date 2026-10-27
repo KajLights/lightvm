@@ -1,9 +1,15 @@
-# Preset-driven Sense subscriptions
+# Preset-driven audio subscriptions and gateway sources
 
 Status: implementation design, 27 October 2026. Subscription behavior below is
 **planned**, not enabled by the current firmware. The independent cleanup that
 makes every installed preset selectable in Home Assistant is implemented alongside
 this design. Audio visualizations remain Python compiled to platform bytecode.
+
+The extended design also requires the webservice/browser analyser to adopt the
+Sense's current algorithm, supports explicitly selected alternative algorithms
+for browser experiments, and permits publishers on a Mac or Raspberry Pi. These
+requirements are specified in [shared audio analysis](audio-analysis-profiles.md);
+none of those analyser or service changes are implemented yet.
 
 The wire specification is maintained with the publisher in kaj-fi's
 [`docs/subscriptions.md`](https://github.com/KajLights/kaj-fi/blob/main/docs/subscriptions.md).
@@ -12,7 +18,8 @@ In the shared checkout it is `../kaj-fi/docs/subscriptions.md`.
 ## User-facing model
 
 A preset declares named external sources and its ordinary INPUT bindings use those
-names. The address belongs to the preset, so changing presets can change the Sense.
+names. The address belongs to the preset, so changing presets can change the
+publisher: a Sense, a Mac or a Raspberry Pi service.
 The address is configuration, never a destination compiled into either firmware.
 
 Illustrative new preset schema:
@@ -22,10 +29,11 @@ Illustrative new preset schema:
   "schema": "lightvm.preset",
   "sources": {
     "audio": {
-      "type": "kaj-fi",
+      "type": "lvaf",
       "address": "10.77.10.245",
       "port": 49152,
-      "sensor_id": "00001cdbd45cce94",
+      "source_id": "00001cdbd45cce94",
+      "analysis_profile": 1,
       "allow_synthetic": false
     }
   },
@@ -53,8 +61,9 @@ The other two rainbow layers use this same `audio` alias. The flashing preset
 binds `onsets` to `audio.onsets` instead. All 16 bands and auto-levelling remain
 implemented by the existing Python example.
 
-Only `type` and `address` are required. Port defaults to 49152; synthetic input
-is rejected by default. An optional sensor ID pins the intended physical Sense.
+For `type: "lvaf"`, only `type` and `address` are required. Port defaults to 49152,
+analysis profile to 1 (Adaptive percussion v1), and synthetic input is rejected
+by default. An optional source ID pins the intended logical analysis source.
 The editor should discover/read the ID and save that pin when possible, showing
 an identity mismatch instead of silently following a different device at an old IP.
 Hand-written address-only presets accept the identity returned by the handshake;
@@ -75,6 +84,89 @@ Expose a source editor under the preset: address, optional identity pin, and
 live connection/format status. Python INPUT declarations and bytecode do not gain
 network operations. Saving/listing a preset does not subscribe; activating it does.
 
+## Coexistence with the webservice gateway
+
+The gateway is the existing HTTP/WebSocket command path used by browser music
+and generic `input_claim` / `input_publish` clients. It remains usable while UDP
+subscriptions are active. There is no global "web or Sense" mode and no transport
+switch in an animation. A single invocation can bind some inputs to one provider
+and others to another, alongside `board.*`, light controls and generic publishers.
+
+Illustrative future preset combining both paths:
+
+```json
+{
+  "schema": "lightvm.preset",
+  "sources": {
+    "room": {
+      "type": "lvaf", "address": "10.77.10.245", "analysis_profile": 1
+    },
+    "desk": {
+      "type": "gateway", "name": "music", "analysis_profile": 1
+    }
+  },
+  "layers": [{
+    "id": "mixed", "program": "eye",
+    "inputs": {
+      "width": {"source": "room.bass"},
+      "intensity": {"source": "desk.level"}
+    }
+  }]
+}
+```
+
+`type: "gateway"` names a structured audio publisher on this controller, not
+a remote HTTP URL. It takes `name` (a bounded ordinary object name), optional
+`source_id`, `analysis_profile` (default 1) and `allow_synthetic` (default false).
+Selecting this preset does not open a microphone or seize a publisher's ownership.
+It waits for that explicitly started publisher, using fallbacks until it appears.
+The same provider vocabulary exposes `level`, `bass`, `mid`, `treble`, `centroid`,
+`onset`, spectrum bands and per-consumer `onsets` through either transport.
+
+The updated browser runs profile 1 from the common analysis core. Its existing
+six-scalar publisher cannot provide full spectrum/event semantics by merely
+renaming fields. Add a bounded structured-audio ingress to the gateway: claim a
+named provider with controller boot/generation ownership and source/profile/session
+metadata, publish complete feature/event frames, and release it explicitly.
+Claims are separate from generic scalar-name claims; neither can revoke or write
+a UDP subscription. Starting a new owner of the same gateway name invalidates the
+old generation atomically. A profile or pinned identity mismatch makes the scoped
+provider unavailable instead of falling through to a matching global scalar.
+
+Use the same validated feature record and event logic as the UDP adapter. Commit
+all metrics/bands from one frame atomically and inspect events before coalescing.
+Keep transport-specific tokens outside that record. A maximum spectrum frame
+exceeds the current 512-byte command payload: use bounded feature-frame
+fragmentation/reassembly with a frame identity, generation, exact length and
+completion check. Charge at most one 700-byte staging frame per gateway provider;
+expire incomplete frames within 250 ms and reject overlapping/reordered fragments.
+Do not enlarge every command buffer or borrow the program/config upload slot.
+No partial frame reaches INPUTs. Allocate operation numbers and detailed ingress
+encoding alongside implementation, with 64-band/four-event boundary tests.
+
+Retain one request in flight and the newest pending snapshot in the web client;
+retain live events only within their TTL. A late reliable HTTP/WebSocket response
+does not make an old frame fresh. Establish the same bounded clock-offset interval
+as UDP using gateway reply challenges: controller send time `c0`, publisher echo
+timestamp `s`, controller receipt `c1` give `[c0-s,c1-s]`. Correlate each challenge
+with boot/generation and a unique request, renew within four seconds, expire after
+five, and use the same 350 ms age ceiling. A publisher cannot substitute receipt
+time for capture time. Reset on clock discontinuity; reject stale queued events.
+
+Gateway ownership expires after 15 seconds without a valid frame/keepalive, or
+on explicit release or owning transport-session closure. This differs from the
+ordinary scalar registry's retained-until-reboot names. A preset dropping its last
+reference does not stop independently user-started browser capture; the browser
+owns that permission and lifetime. Losing either transport leaves the other
+provider usable. Rendering snapshots both on the engine owner, but promises no
+cross-device sample synchronization and adds no waiting for the slower provider.
+
+Browser comparisons can forward two explicitly named structured providers; local
+comparison needs no controller slots. The old generic six-scalar audio publisher
+is replaced when the shared-core browser lands. Arbitrary non-audio scalar clients
+continue to use the generic registry; that is an independent feature, not an
+obsolete-audio compatibility shim. Update affected experimental presets directly.
+
 ## Why source scope is necessary
 
 Today one `AudioReceiver` in `HardwareConfig` claims all 23 global `audio.*` names.
@@ -89,28 +181,32 @@ Introduce an `InputSourceScope` owned by a composition or standalone invocation:
 - The source manager owns the latest measurement and one network lease per shared
   endpoint. Scopes reference it; they do not duplicate 23 global signals.
 - An explicitly declared local alias takes precedence over a global source name.
-  If its Sense is offline, use the binding's fallback; do **not** fall through to
+  If its provider is offline, use the binding's fallback; do **not** fall through to
   an unrelated browser publisher with a matching name.
-- Undeclared sources retain current generic-registry behavior, including browser
-  `music.*`, board measurements and light controls. Reserve `board` and `light`
+- Undeclared sources retain generic-registry behavior, including web-published
+  controls, board measurements and light controls. Reserve `board` and `light`
   aliases for the built-in domains. Alias names and full binding names must fit
   the existing 32-byte source-name contract.
 - Lookup and capture continue through the shared INPUT implementation. Each
   invocation snapshots its inputs together before rendering, on the engine owner.
   No network callback calls a renderer or mutates a worker's snapshot.
 
-Canonical subscription identity includes normalized address/port, optional pinned
-sensor ID, accepted feature version and synthetic policy. Identical declarations
-share a connection across layers, slots and outputs. Different pins/policies do
+Canonical subscription identity includes provider type, normalized address/port
+or gateway name, optional pinned source ID, analysis profile, accepted feature
+version and synthetic policy. Identical declarations share a connection across
+layers, slots and outputs. Different pins/policies do
 not accidentally share. Initial implementation need not merge differently spelled
 DNS aliases solely because they resolve to the same sensor.
 
-Use at most four simultaneous active or preparing source connections, each
-allocated and charged to the VM budget when acquired. Keep declarations for
-inactive retained scenes, but no live socket state for them. Avoid preallocating
+Use at most four simultaneous active/preparing or gateway-claimed structured audio
+providers **in total across both transports**, each allocated and charged to the
+VM budget when acquired. Ordinary scalar publishers retain their separate 32-name
+limit. Keep declarations for inactive retained scenes, but no live socket state
+for them. Avoid preallocating
 four full receivers in static RAM. Measure exact structure/native PCB costs in
-Pico builds; target no more than 2 KiB of charged state per connection, excluding
-existing shared network buffers, and fail admission before replacing a live scene
+Pico builds; target no more than 2 KiB of charged state per UDP connection,
+excluding existing shared network buffers. Account separately for gateway staging
+and its HTTP/WebSocket connection, and fail admission before replacing a live scene
 if capacity is unavailable. The existing eight INPUTs per program do not change.
 
 ## Lifecycle and transitions
@@ -130,6 +226,12 @@ if capacity is unavailable. The existing eight INPUTs per program do not change.
 | Pause | Release demand for the paused invocation; retain displayed pixels and reset event baseline on resume |
 | Cancel/delete/reset/replace/configure output | Release the affected references on all success/failure/cancel paths |
 | Controller reconnect/reboot | Reacquire only sources needed by restored active scenes; persisted lease tokens are forbidden |
+
+These lease actions apply to UDP sources on any host. Gateway references observe
+the independently owned claim lifecycle above. Browser/host algorithm changes
+create a new session and invalidate profile-incompatible claims or leases; changing
+a preset must never retune a source used by another controller. Different algorithm
+outputs have distinct logical source identities/endpoints or gateway names.
 
 Normal presets remain usable without the Sense online; remote availability must
 not turn local preparation into an unbounded network transaction. A future
@@ -155,7 +257,7 @@ from old subscriptions out of a newly activated preset. Receiver source status
 distinguishes offline, wrong identity, unsupported format, capacity refusal and
 stale data.
 
-Deduplicate each onset once at the shared connection using sensor/session/event
+Deduplicate each onset once at the shared provider using source/session/event
 identity. **Consumption remains per invocation.** For the current `audio.onsets`
 integer interface, each binding starts its own visible counter at zero and samples
 only new eligible occurrences after activation. Its visible counter never drops
@@ -218,6 +320,13 @@ step rather than implementing an obsolete multicast fallback.
   status, with no networking logic in Python effect code.
 - kaj-fi publisher: receiver lease table, fan-out, independent repetition budgets
   and removal of the hardcoded destination, per its wire specification.
+- Browser/webservice analyser: replace `AudioFeatureExtractor` with the common
+  C/WASM core, add the algorithm/comparison selector, and forward full structured
+  frames over the existing gateway. See the shared-analysis conformance plan.
+- Gateway adapter: claim ownership, bounded frame ingress, clock mapping and
+  source-scope binding alongside UDP; keep ordinary scalar publishing independent.
+- Optional Mac/Pi publisher: native analysis and UDP service adapters using the
+  same wire protocol, with no embedded-device identity or SDK assumption.
 
 Prove two receivers on one Sense; two different Sense sources across A/B; two
 outputs sharing one lease; cancellation and failed preparation without leaks;
@@ -227,6 +336,17 @@ in charged state after repeated acquire/release. Unit tests should exhaust the
 four-source limit and test the complete rollback path. On hardware, use short
 functional checks and record actual memory and management latency. A simulated
 second Sense is explicitly a simulation, not a two-Sense physical validation.
+
+Also prove one animation consuming UDP and gateway values simultaneously, including
+both kinds during a crossfade; independent timeout/reconnect; identical alias names
+in different scenes; a generic claim unable to overwrite either audio provider;
+shared four-provider exhaustion with rollback; and full-spectrum gateway frames
+crossing the 512-byte command boundary. Algorithm tests compare native and WASM
+output on identical PCM, switching/reset without old events, mismatched profiles,
+two local browser detectors and optional forwarding under two distinct names.
+Host-service contract tests cover a persistent non-MAC source ID, process restart,
+sleep/resume and two service ports. No Mac/Pi daemon is required for this design
+task; a future test server is an optional implementation aid.
 
 ## Implemented preset cleanup validation
 
