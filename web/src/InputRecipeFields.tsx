@@ -4,10 +4,12 @@ import { useRuntime } from './runtime';
 import type { InputSource } from './types';
 import { inputsFor } from './program';
 import type { InputBindings, Manifest } from './types';
+import type { SceneSources } from './types';
+import { scopedInputSources } from './scene-sources';
 
-export function InputRecipeFields({ manifest, values, onChange, onValidity, prefix }: {
+export function InputRecipeFields({ manifest, values, onChange, onValidity, prefix, sceneSources }: {
   manifest: Manifest; values: InputBindings; onChange: (values: InputBindings) => void;
-  onValidity?: (valid: boolean) => void; prefix: string;
+  onValidity?: (valid: boolean) => void; prefix: string; sceneSources?: SceneSources;
 }) {
   const { controllers } = useRuntime(), client = controllers.client;
   const [sources, setSources] = useState<InputSource[]>([]);
@@ -20,10 +22,10 @@ export function InputRecipeFields({ manifest, values, onChange, onValidity, pref
   const [text, setText] = useState(encoded), [error, setError] = useState('');
   useEffect(() => { setText(encoded); setError(''); onValidity?.(true); }, [encoded]);
   if (!manifest.inputs?.length && !Object.keys(values).length && !error) return null;
-  return <details className="input-recipe"><summary>What controls this animation?</summary><p className="helper">Choose light controls, fixed values, timers, board sensors or music. These bindings travel with the animation recipe.</p>
+  return <details className="input-recipe"><summary>What controls this animation?</summary><p className="helper">Choose light controls, fixed values, timers, board sensors or declared audio sources. These bindings travel with the animation recipe.</p>
     {manifest.inputs?.map(input => {
       const binding = values[input.name] ?? defaultBinding(input);
-      return <InputBindingControl sources={sources} key={input.name} declaration={input} binding={binding} value={'value' in binding ? binding.value : input.default} publish={next => {
+      return <InputBindingControl sources={scopedInputSources(sources, sceneSources)} key={input.name} declaration={input} binding={binding} value={'value' in binding ? binding.value : input.default} publish={next => {
         try { const updated = inputsFor(manifest, { ...values, [input.name]: next }); setError(''); onValidity?.(true); onChange(updated); }
         catch (problem) { setError((problem as Error).message); onValidity?.(false); }
       }} />;

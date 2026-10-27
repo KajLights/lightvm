@@ -18,6 +18,7 @@ export interface Description {
   recovery_supported?: boolean;
   board_status_supported?: boolean;
   live_inputs?: boolean; light_controls?: boolean; input_limit?: number; input_source_limit?: number;
+  audio_subscriptions_supported?: boolean;
   boot_sequence?: { count: number; triggered: boolean; error: string };
 }
 export interface TransitionSpec {
@@ -26,7 +27,6 @@ export interface TransitionSpec {
 }
 export interface HardwareConfig {
   schema: 'lightvm.config';
-  audio?: { sensor_id: string; group?: string; port?: number; allow_synthetic?: boolean };
   inputs?: { id: string; type: 'tca9555'; config: { sda: string; scl: string; address?: number; active_low?: boolean; debounce_ms?: number; long_press_ms?: number; multi_press_ms?: number }; home_assistant?: { indicators?: string; names?: string[] } }[];
   outputs: { id: string; type: 'ws2812b' | 'apa102'; mode?: 'animation' | 'indicators'; home_assistant?: { default_preset: string; name?: string }; startup?: { mode: 'off' | 'restore_last' } | { mode: 'preset'; preset: string }; config: { pin?: string; data_pin?: string; clock_pin?: string; enable_pin?: string; frequency?: number; count: number; order?: string; brightness_limit?: number } }[];
 }
@@ -46,9 +46,18 @@ export type InputBinding = { value: number | boolean } | { driver: RampDriver } 
 export type InputBindings = Record<string, InputBinding>;
 export interface InputDeclaration extends Setting { default: number | boolean; unit?: string; driver?: RampDriver; control?: LightControl }
 export interface InputState { value: number | boolean; fallback: boolean; binding: InputBinding }
-export interface InputSource { name: string; origin?: 'board' | 'publisher'; label?: string; unit?: string; suggested_min?: number; suggested_max?: number; type: Setting['type']; valid: boolean; value: number | boolean | null; age_ms: number | null }
+export interface InputSource { name: string; origin?: 'board' | 'publisher' | 'scene'; label?: string; unit?: string; suggested_min?: number; suggested_max?: number; type: Setting['type']; valid: boolean; value: number | boolean | null; age_ms: number | null }
+export type SceneSource = { source_id?: string; analysis_profile?: 1 | 2; allow_synthetic?: boolean } &
+  ({ type: 'lvaf'; address: string; port?: number } | { type: 'gateway'; name: string });
+export type SceneSources = Record<string, SceneSource>;
+export interface AudioProviderStatus {
+  type: SceneSource['type']; address: string; port: number; expected_source_id: string; expected_profile: number; allow_synthetic: boolean;
+  source_id: string; profile: number; status: string; bands: number; band_edges: number[]; session: string;
+  references: number; packets: number; age_rejections: number; rtt_us: number;
+}
 export interface Manifest { compiler_version: string; requires: string; schema: string; profile: string; pixels: { format: string }; settings: Setting[]; inputs?: InputDeclaration[] }
 export interface ProgramState {
+  sources?: SceneSources;
   output?: string; layer?: string;
   target?: 'transition';
   manifest: Manifest;
@@ -64,6 +73,7 @@ export const EMPTY_CONFIG: HardwareConfig = { schema: 'lightvm.config', outputs:
 export const DEFAULT_SOURCE = DEFAULT_EXAMPLE.source;
 
 export interface CompositionState {
+  sources?: SceneSources;
   active: boolean; preset?: string | null; revision?: number; playing?: boolean;
   sampled_at_us?: number;
   layers?: { id: string; program: string; generation?: number; frames?: number; distinct_presentations?: number;

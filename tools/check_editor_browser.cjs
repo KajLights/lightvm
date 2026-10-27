@@ -226,9 +226,11 @@ async function grantLocalNetwork(cdp, page, origin) {
     await liveInputs.getByLabel('color driver', { exact: true }).waitFor();
     assert.equal(await liveInputs.getByLabel('color driver', { exact: true }).inputValue(), 'control:color');
     const musicBinding = waitForCommand('program_inputs');
-    await liveInputs.getByLabel('intensity driver', { exact: true }).selectOption('music.level'); await musicBinding;
+    await liveInputs.getByLabel('intensity driver', { exact: true }).selectOption('source');
+    await liveInputs.getByLabel('intensity source', { exact: true }).fill('control.level');
+    await liveInputs.getByRole('button', { name: 'Bind source', exact: true }).click(); await musicBinding;
     await page.screenshot({ path: path.join(root, 'build/light-controls-desktop.png'), fullPage: true });
-    console.log('Standard light dimmer, automatic colour binding and generic music selection: passed');
+    console.log('Standard light dimmer, automatic colour binding and named scalar source selection: passed');
 
     for (const name of ['Editor', 'Configuration', 'Mixer', 'Audio Playground']) {
       await tab(name).click();

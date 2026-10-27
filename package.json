@@ -9,7 +9,8 @@
     "test": "vitest run",
     "test:protocol": "node --test tests/test_editor.mjs",
     "test:browser": "node tools/check_editor_browser.cjs",
-    "test:audio-browser": "node tools/check_audio_browser.mjs"
+    "test:audio-browser": "node tools/check_audio_browser.mjs",
+    "test:audio-sources-browser": "node tools/check_audio_sources_browser.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "2.13.0",

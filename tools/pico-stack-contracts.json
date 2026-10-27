@@ -558,7 +558,7 @@
     "src/mqtt.h": "bba46b277f0f6ba03646c22e873757c580ec4cbf6218c92e1d9afba00b378424",
     "src/home_assistant.c": "05c90d7740116c55ff338f9ec6fd3cd07318d80482f82476497641300d4e91bf",
     "src/home_assistant.h": "91b3b2aa21e1a3d9d6daf74009562c4448aa790dd6f4dd65250ad03dacc99ef1",
-    "src/audio_sources.c": "fa70985f69929f98c31894f0738f9d419ff257a7d72429149349e77cf4e9d93c",
+    "src/audio_sources.c": "81bbd335c22883ae3ae4edf4327e4c0c66fbfc85b38338bc9f4e0c7630283818",
     "src/audio_sources.h": "3b1cbaa147df72eed569b075143507386d2a6dcd877fbe216c3a76963924329a",
     "src/control.c": "59daf2aa708e6db38123404865404bf28ddcefdd1796f8d05cd667dfbad56b98",
     "kaj-audio.rev": "a089bd1c9859eb16f85dafaf45bc39e8fecbc2c699e74c9ce286b53099e67910",

@@ -4,6 +4,7 @@ import { activityActions, controllerActions, useAppDispatch, useAppSelector } fr
 import { LiveInputSession } from './live-input-session';
 import { InputBindingControl } from './InputBindingControl';
 import type { InputBindings, InputSource, ProgramState } from './types';
+import { scopedInputSources } from './scene-sources';
 
 export function LiveInputs({ active = true, target, onCapture }: { active?: boolean; target?: 'transition'; onCapture?: (bindings: InputBindings, state: ProgramState) => void }) {
   const { controllers } = useRuntime(), dispatch = useAppDispatch();
@@ -75,7 +76,7 @@ export function LiveInputs({ active = true, target, onCapture }: { active?: bool
     <p className="helper">Drag a value to take manual control. Timers and bindings keep the same animation running.</p>
     <fieldset disabled={!session || !controller.selectedPath || busy || state?.faulted}>{declarations.map(declaration => {
       const input = state!.inputs![declaration.name];
-      return input && <InputBindingControl sources={sources} key={state!.generation + ':' + declaration.name} declaration={declaration} binding={input.binding} fallback={input.fallback} value={values[declaration.name] ?? input.value} publish={binding => {
+      return input && <InputBindingControl sources={scopedInputSources(sources, state?.sources)} key={state!.generation + ':' + declaration.name} declaration={declaration} binding={input.binding} fallback={input.fallback} value={values[declaration.name] ?? input.value} publish={binding => {
         if ('value' in binding) setValues(previous => ({ ...previous, [declaration.name]: binding.value }));
         session?.publish({ [declaration.name]: binding });
       }} />;

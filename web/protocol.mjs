@@ -271,6 +271,7 @@ export class LightVMClient {
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
+  /** @param {import('./src/types').SceneSources} [sources] */
   async configureComposition(layers, output, slot = 'A', sources = undefined) {
     const state = await this.json('composition_get', { output, slot });
     try {
@@ -296,6 +297,7 @@ export class LightVMClient {
     return this.json('transition_select', { output, effect, expected_revision: state.revision, ...options });
   }
 
+  /** @param {import('./src/types').SceneSources} [sources] */
   async savePreset(name, layers, output, entry_transition, expectedRevision, sources = undefined) {
     const state = expectedRevision === undefined ? await this.describe() : { catalog_revision: expectedRevision };
     try {

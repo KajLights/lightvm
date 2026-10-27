@@ -1,9 +1,9 @@
 # ESP32-S3 audio analyser and multicast inputs
 
-Status: Pico receiver and Python examples implemented on 26 October 2026;
-broader subscription and event-consumption design remains proposed.
+Status: historical experiment implemented on 26 October 2026, superseded by
+[preset-driven subscriptions](feature-proposal-audio-subscriptions.md).
 
-See the [current implementation guide](../audio-multicast.md). The first slice
+See the [current implementation guide](../audio-subscriptions.md). The first slice
 uses 23 fixed `audio.*` names: six scalar features, a deduplicated onset
 counter and sixteen spectrum values. Configurable prefixes, ESP32 reception, per-animation event queues and
 pause/resume trigger expiry below are future work. The counter is not a complete

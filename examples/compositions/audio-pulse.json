@@ -1,5 +1,8 @@
 {
   "schema": "lightvm.composition",
+  "sources": {
+    "audio": {"type": "lvaf", "address": "192.0.2.40", "analysis_profile": 1}
+  },
   "layers": [
     {
       "id": "pulse",

@@ -25,6 +25,13 @@ passes the software gate with 16 KiB foreground and 8 KiB worker reservations,
 16 KiB native headroom and the existing pixel driver reservation. Physical stack
 watermarks and short end-to-end subscription checks are still pending.
 
+The preset source editor adds port, expected identity and synthetic-input policy
+to `audio_status`. Review confirmed that serialization reuses the existing
+384-byte buffer and writer callback, with no new allocation, callback target or
+recursion. Only `audio_sources.c` changed in the guarded fingerprints. The rebuilt
+Pico W image retains the 12,184/5,104-byte main/worker bounds, 134,512 static bytes,
+64,400-byte automatic VM heap and unchanged stack/headroom reservations.
+
 The previous multicast measurements below are historical evidence only; they do
 not qualify the new subscription or gateway implementation.
 
@@ -48,7 +55,8 @@ The resulting main/worker bounds are 12,152/5,104 bytes, leaving 4,232/3,088 byt
 within the unchanged 16/8 KiB stacks. RAM reservations leave 21,628 bytes with
 `LIGHTVM_PIXEL_CAPACITY=200`. Short functional checks observed a main peak of
 5,852 bytes during configuration, uploads and reception; this is not a new stress
-qualification. See [the receiver guide](../audio-multicast.md).
+qualification. The current [subscription guide](../audio-subscriptions.md)
+replaces that experimental receiver configuration.
 
 The later sixteen-band input extension retains these same linked path bounds
 and RAM reservations. The decoded frame and receiver each add 64 bytes of bounded

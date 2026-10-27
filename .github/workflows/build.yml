@@ -27,6 +27,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
+      - run: python tools/fetch_audio_core.py
       - run: npm ci
       - name: Configure and build
         shell: bash
@@ -104,6 +105,10 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npm run test:audio-browser
+          cmake -S . -B build/host -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=ON -DLIGHTVM_WEBSOCKET=ON -DLIGHTVM_AUDIO_SUBSCRIPTIONS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/host --parallel 2
+          PYTHONPATH=tools:. python -m unittest discover -s tests -p test_audio_gateway.py -v
+          npm run test:audio-sources-browser
       - uses: actions/upload-artifact@v4
         with:
           name: lightvm-editor
@@ -111,6 +116,8 @@ jobs:
             build/web/
             build/audio-browser-validation.json
             build/audio-comparison-*.png
+            build/audio-sources-*.png
+            build/audio-sources-browser-validation.json
 
   pico:
     runs-on: ubuntu-24.04
@@ -144,6 +151,7 @@ jobs:
           echo "$PWD/build/deps/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin" >> "$GITHUB_PATH"
       - name: Build firmware
         run: |
+          python3 tools/fetch_audio_core.py
           cmake -S . -B build/${{ matrix.name }} -DLIGHTVM_PLATFORM=pico -DPICO_BOARD=${{ matrix.board }} -DLIGHTVM_WIFI=${{ matrix.wifi }} -DLIGHTVM_HTTP=${{ matrix.http }} -DLIGHTVM_WEBSOCKET=${{ (matrix.name == 'pico-w-websocket' || matrix.name == 'pico2-w-websocket') && 'ON' || 'OFF' }} -DLIGHTVM_MQTT=${{ matrix.mqtt || 'OFF' }} -DLIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
           cmake --build build/${{ matrix.name }} --parallel 2
           arm-none-eabi-size build/${{ matrix.name }}/lightvm.elf > build/${{ matrix.name }}/size.txt
@@ -179,6 +187,7 @@ jobs:
       - name: Build firmware and record size
         run: |
           . "$IDF_PATH/export.sh"
+          python tools/fetch_audio_core.py
           idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ (matrix.transport == 'http' || matrix.transport == 'websocket') && 'ON' || 'OFF' }} -D LIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -D LIGHTVM_MQTT=${{ (matrix.transport == 'websocket' || matrix.transport == 'mqtt') && 'ON' || 'OFF' }} -D LIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} build
           idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" size > build/${{ matrix.board }}-${{ matrix.transport }}/size.txt
       - uses: actions/upload-artifact@v4

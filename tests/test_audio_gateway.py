@@ -74,6 +74,10 @@ class GatewayTests(unittest.TestCase):
         events = [(0xf100000000000001 + n, timestamp) for n in range(4)]
         self.client.publish_audio(claim, 1, record(1, events=events))
         self.assertEqual(self.frame(), bytes([75, 50, 4]))
+        status = self.providers()[0]
+        self.assertEqual((status['type'], status['port'], status['expected_source_id'], status['expected_profile'], status['allow_synthetic']),
+                         ('gateway', 0, '0000000000000000', 1, False))
+        self.assertEqual((status['source_id'], status['profile'], status['bands']), (f'{SOURCE_ID:016x}', 1, 64))
         self.client.publish_audio(claim, 2, record(2, events=events))
         self.assertEqual(self.frame(), bytes([75, 50, 4]))
         # Generic scalar ownership cannot write or revoke the scoped stream.

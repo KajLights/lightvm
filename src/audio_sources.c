@@ -233,6 +233,8 @@ void audio_sources_status(const AudioSources *m,void (*write)(void *,const char 
             kf_subscriber_available(r,now)?"connected":r->expires?"stale":"offline";
         snprintf(b,sizeof(b),"%s{\"type\":\"%s\",\"address\":\"%s\",\"profile\":%u,\"source_id\":\"%016llx\",\"status\":\"%s\"",
             comma?",":"",p->config.type==AUDIO_UDP?"lvaf":"gateway",p->config.address,(unsigned)r->profile,(unsigned long long)r->source,status);write(ctx,b);
+        snprintf(b,sizeof(b),",\"port\":%u,\"expected_source_id\":\"%016llx\",\"allow_synthetic\":%s",
+            p->config.port,(unsigned long long)p->config.pin,p->config.synthetic?"true":"false");write(ctx,b);
         bool ingress_owner=true;
         for(unsigned k=0;k<i;k++)if(p->gateway&&m->providers[k]&&m->providers[k]->gateway==p->gateway)ingress_owner=false;
         snprintf(b,sizeof(b),",\"references\":%u,\"packets\":%u,\"age_rejections\":%u,\"rtt_us\":%llu,\"bands\":%u,\"charged_bytes\":%zu",
