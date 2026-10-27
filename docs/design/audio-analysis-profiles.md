@@ -1,7 +1,9 @@
 # Shared audio analysis and browser experiments
 
-Status: design requirement, 27 October 2026. No analyser or service changes are
-implemented by this document. It complements the
+Status: design requirement, 27 October 2026. The shared core and browser adapter
+are implemented; [browser validation](../audio-analysis-browser.md) records the
+verified subset. Physical S3 parity and full subscription lifecycle acceptance
+remain pending. This document complements the
 [subscription design](feature-proposal-audio-subscriptions.md).
 
 The webservice/browser analyser must be updated to run the **same default
@@ -32,7 +34,7 @@ See the [Web Audio FFT definition](https://www.w3.org/TR/webaudio/#fft-windowing
 
 ## One implementation, several hosts
 
-Extract kaj-fi's portable `main/features.[ch]` and `main/onset.[ch]` behind a small
+Extract kaj-fi's portable `core/features.[ch]` and `core/onset.[ch]` behind a small
 PCM-in/features-out library interface. Keep acquisition, clocks, transport and
 platform FFT adapters outside it. Maintain one versioned source of truth in
 kaj-fi; pin that dependency in LightVM rather than copying the detector into
@@ -89,7 +91,7 @@ feature interpretation, including the detector, rather than only a wire version.
   gate, background/context gates, 500 ms warmup, rearming and refractory period.
   Its reference definition and regression cases are in kaj-fi's
   [onset design](https://github.com/KajLights/kaj-fi/blob/main/docs/onset-detection.md)
-  and `main/onset.c`; do not replace it with a display-level delta.
+  and `core/onset.c`; do not replace it with a display-level delta.
 - `onset` is a float envelope: one on detection, 160 ms exponential decay.
   An occurrence separately has an ID, capture time and threshold-excess strength.
   Consumer `onsets` is the per-invocation integer counter described in the
@@ -119,7 +121,7 @@ The browser exposes an algorithm selector. Profile 1 is the default. Alternative
 detectors are deliberate experiments with their own stable numeric profile ID,
 versioned label, parameter schema and fixtures. ID zero is invalid; IDs are never
 reused for changed semantics. Do not label an experimental algorithm as profile 1.
-Registry additions live here and in a future generated manifest shared by
+Registry additions live here and in the pinned `core/profiles.json` manifest shared by
 publishers and receivers. No additional numeric ID is assigned until its contract
 is defined. Each registry entry specifies required fields/bands, sample geometry,
 publication cadence, event semantics and parameter ranges; implementations
@@ -165,5 +167,8 @@ WASM and the S3 FFT adapter with identical hop boundaries and settings. Check:
 - Gateway and UDP delivery of the same analysis: equal values and event identity
   after deduplication despite loss, repeated packets, delayed messages and reconnect.
 
-These are planned acceptance criteria, not results from the current browser.
-The current browser extractor does **not** yet conform to profile 1.
+These are the complete acceptance criteria. The browser now runs the common
+profile 1 implementation and explicit profile 2 level-rise baseline from
+`core/profiles.json`. Passing native/WASM/browser fixture checks does not establish
+physical S3 FFT parity or complete UDP/gateway delivery equivalence; those still
+need their own evidence.

@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "audio:build": "python3 tools/build_audio_web.py",
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:protocol": "node --test tests/test_editor.mjs",
-    "test:browser": "node tools/check_editor_browser.cjs"
+    "test:browser": "node tools/check_editor_browser.cjs",
+    "test:audio-browser": "node tools/check_audio_browser.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "2.13.0",

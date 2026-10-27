@@ -104,11 +104,13 @@ JSON remains available under Advanced.
 
 ## Audio Playground
 
-The audio desk shows six generic music meters and sensitivity/noise-floor/release
-controls. **Start listening** analyzes locally; **Send music to controller**
-publishes reusable signals. Choose Music → Level, Bass, etc. in each animation's
-**What controls this?** selector, with response ranges or a colour palette.
-The adapter does not change animation bindings. Stopping uses each input's fallback.
+The audio desk runs the pinned shared C/WASM analyser for microphone or silent PCM
+fixtures, with full calibration controls and an explicit algorithm comparison.
+**Start listening** analyzes locally; **Send music to controller** forwards the
+selected result as a named structured gateway. Declare that gateway in a scene's
+`sources` and bind its alias in the animation's INPUTs. The adapter does not change
+animation bindings. Stopping uses each input's fallback. Comparison export retains
+per-hop features and events, parameters, profile/session identity and input hash.
 Listening continues across workspace routes with a visible stop control and stops
 when the browser tab is hidden. See the [audio guide](audio-source.md).
 
@@ -128,6 +130,9 @@ review state. See [WebSocket](websocket.md).
 From the repository root, with Node 22 and Python 3 installed:
 
     npm ci
+    python3 tools/fetch_audio_core.py
+    # With Emscripten 4.0.7's emcc on PATH:
+    npm run audio:build
     python3 tools/serve_editor.py
 
 Open **http://localhost:8000** in desktop Chrome or Edge. The server binds to

@@ -1,9 +1,9 @@
 # Structured audio gateway
 
-Implementation record, 27 October 2026. The engine and Python/browser wire
-clients implement the ingress below. The browser capture UI is still being
-converted to the shared WASM analyser; its old scalar publisher does not exercise
-this ingress. Physical board validation is pending.
+Implementation record, 27 October 2026. The engine and Python/browser clients
+implement the ingress below. The [browser capture UI](audio-analysis-browser.md)
+runs the shared WASM analyser and forwards structured snapshots through this
+ingress. Physical board validation is pending.
 
 ## Ownership and declarations
 
@@ -124,5 +124,6 @@ The ARM compiler measures 928 bytes per provider plus 16 adapter bytes and a
 40-byte lwIP PCB: **984 charged bytes per UDP provider**, below the 2 KiB target.
 Shared gateway state is 1,512 bytes including its 700-byte staging buffer, in
 addition to its canonical provider slots and the existing HTTP/WebSocket budget.
-The Pico W build passes the existing RAM/stack gates. This is software evidence,
-not a physical microphone, RF delivery or browser AudioWorklet conformance result.
+The Pico W build passes the existing RAM/stack gates. Browser AudioWorklet
+conformance is recorded separately in the [browser analysis checks](audio-analysis-browser.md).
+Physical microphone and RF delivery validation are still pending.
