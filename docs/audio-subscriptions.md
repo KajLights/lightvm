@@ -7,9 +7,11 @@ hardware `audio` setting or global multicast receiver.
 
 ## Build and provision
 
-Fetch the portable wire/subscriber dependency pinned in `kaj-audio.rev` with
-`python tools/fetch_audio_core.py`, or set `KAJ_AUDIO_CORE` to that revision's
-`core` directory. Enable `LIGHTVM_AUDIO_SUBSCRIPTIONS=ON`; Pico W also needs
+Materialize the verified source snapshot pinned in `kaj-audio.rev` with
+`python tools/fetch_audio_core.py`; this needs no network or private-repository
+credential. Alternatively set `KAJ_AUDIO_CORE` to a checkout whose consumed files
+match the pinned hashes. See [snapshot provenance and updates](../third_party/kaj-audio/README.md).
+Enable `LIGHTVM_AUDIO_SUBSCRIPTIONS=ON`; Pico W also needs
 `LIGHTVM_WIFI=ON`. HTTP, WebSocket and MQTT are separate options. The host port
 supports the same UDP and gateway contract for deterministic local checks.
 
@@ -133,6 +135,13 @@ rejection. The source-editor browser check uses the real native engine to verify
 that stored recipes preserve both transports, saves leave subscriptions alone,
 and explicit identity pinning takes effect on activation. Run
 `npm run test:audio-sources-browser` against an audio-enabled HTTP host build.
+
+`tests/test_audio_transports.py` drives a real loopback UDP publisher and the
+framed gateway together. It compares all six metrics and 64 bands through actual
+animation INPUT capture, checks duplicate/reordered/expired events and restart,
+and exercises two outputs sharing a lease plus distinct simulated sources during
+a mixed crossfade. A rejected fifth provider preserves scene identity and charged
+heap. The [acceptance record](audio-acceptance.md) links all conformance evidence.
 
 The current Pico W build passes its unchanged RAM/stack gates: 134,512 static
 bytes, a 64,400-byte automatic VM heap, 16/8 KiB main/worker stacks and 16 KiB

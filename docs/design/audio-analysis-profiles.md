@@ -1,10 +1,11 @@
 # Shared audio analysis and browser experiments
 
-Status: design requirement, 27 October 2026. The shared core and browser adapter
-are implemented; [browser validation](../audio-analysis-browser.md) records the
-verified subset. Physical optimized-S3 parity now passes for the committed corpus
-in both profiles and 0/16/64-band layouts. Threshold-boundary and complete
-UDP/gateway delivery equivalence remain pending. This document complements the
+Status: implemented and checked, 27 October 2026. The shared core and browser
+adapter pass the [browser checks](../audio-analysis-browser.md) and physical
+optimized-S3 corpus parity for both profiles and 0/16/64-band layouts. Separate
+threshold cases expose one one-ULP native/WASM decision difference at equality;
+the S3 matches native in all 14 cases. Real UDP/gateway integration checks cover
+all metrics/bands, reordered events, loss, delay and restart. This document complements the
 [subscription design](feature-proposal-audio-subscriptions.md).
 
 The webservice/browser analyser must be updated to run the **same default
@@ -12,13 +13,13 @@ algorithm as the Sense**, including spectral scaling, smoothing and the adaptive
 percussion onset detector. Giving different algorithms the same signal names or
 adding profile labels to the current browser extractor is not sufficient.
 
-## Current differences to remove
+## Original differences addressed by the shared core
 
 The webservice gateway here means LightVM's HTTP/WebSocket management ingress;
 today its music publisher runs in the browser. The gateway transports features,
 not raw PCM, and does not currently perform the FFT itself.
 
-| Concern | Current browser | Current Sense / required common default |
+| Concern | Original browser | Shared implementation |
 | --- | --- | --- |
 | Capture and scheduling | AudioContext sample rate; timer reads every 33 ms | 48 kHz PCM; contiguous 1,024-sample hops |
 | FFT | 2,048-point AnalyserNode output | 2,048-point periodic Hann window; explicit power calibration |
@@ -91,7 +92,7 @@ feature interpretation, including the detector, rather than only a wire version.
   whitening, frequency-neighbour suppression, median/MAD threshold, percussion
   gate, background/context gates, 500 ms warmup, rearming and refractory period.
   Its reference definition and regression cases are in kaj-fi's
-  [onset design](https://github.com/KajLights/kaj-fi/blob/main/docs/onset-detection.md)
+  [onset design](https://github.com/KajLights/kaj-fi/blob/a8e536a96cd5722a71564d02c0bd9202799aa25b/docs/onset-detection.md)
   and `core/onset.c`; do not replace it with a display-level delta.
 - `onset` is a float envelope: one on detection, 160 ms exponential decay.
   An occurrence separately has an ID, capture time and threshold-excess strength.
@@ -168,9 +169,13 @@ WASM and the S3 FFT adapter with identical hop boundaries and settings. Check:
 - Gateway and UDP delivery of the same analysis: equal values and event identity
   after deduplication despite loss, repeated packets, delayed messages and reconnect.
 
-These are the complete acceptance criteria. The browser now runs the common
+These are the complete acceptance criteria. The browser runs the common
 profile 1 implementation and explicit profile 2 level-rise baseline from
 `core/profiles.json`. Passing native/WASM/browser fixture checks does not establish
-physical S3 FFT parity or complete UDP/gateway delivery equivalence. The former
-now has [separate physical evidence](../validation/audio-s3-parity-2026-10-27.json);
-the latter and threshold-boundary cases still need their own evidence.
+physical S3 FFT parity or UDP/gateway delivery equivalence by itself. Those have
+[physical S3 evidence](../validation/audio-s3-parity-2026-10-27.json),
+[threshold-boundary evidence](../validation/audio-boundaries-2026-10-27.json), and
+[transport integration evidence](../validation/audio-transports-2026-10-27.json).
+The boundary report retains the exact scores, thresholds, margins and decisions;
+it does not weaken the ordinary corpus tolerances or claim bit-identical detector
+decisions at floating-point equality.

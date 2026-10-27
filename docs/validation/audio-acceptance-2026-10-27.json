@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-27",
+  "result": "passed",
+  "core_revision": "a8e536a96cd5722a71564d02c0bd9202799aa25b",
+  "kaj_fi_diagnostic_revision": "973491c4500d45471d1fc63aa3fadefb87eb15d5",
+  "checks": {
+    "python": {
+      "run": 419,
+      "skipped": 3,
+      "elapsed_seconds": 145.09
+    },
+    "native_ctest": {
+      "passed": 33,
+      "elapsed_seconds": 10.13
+    },
+    "focused_transport_gateway_dependency": {
+      "passed": 19
+    },
+    "rate_adapter": {
+      "passed": 5
+    },
+    "kaj_fi_sanitizers_and_python": {
+      "passed": true,
+      "python_tests": 20
+    },
+    "silent_browser": {
+      "fixture_sha256": "bd6dd19323e84ddd1fc7d7f71e86f4d5a9008f3c05a13ad07131f144555787ee",
+      "core_revision": "a8e536a96cd5722a71564d02c0bd9202799aa25b",
+      "browser": "156.0.8078.48",
+      "profiles": [
+        1,
+        2
+      ],
+      "ready_hops_per_profile": 599,
+      "native_metric_max_error": 1.1920928955078125e-07,
+      "audio_worklet_max_error": 0,
+      "event_ids_and_hops_equal": true,
+      "exact_band_edges": true,
+      "main_thread_stall_ms": 500,
+      "irregular_blocks_equal": true,
+      "gap_resets_history": true,
+      "wasm_heap_bytes": 1048576,
+      "ui_fixture_export": true,
+      "desktop_and_mobile_layout": true,
+      "speaker_connections": 0
+    },
+    "threshold_cases": 14,
+    "threshold_decision_disagreements": [
+      {
+        "case": "profile1_boundary_+0ulp",
+        "platform": "wasm",
+        "native": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449304819107056,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        },
+        "observed": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26449304819107056,
+          "margin": 2.9802322387695312e-08,
+          "strength": 1.1267714938867357e-07,
+          "event": true
+        }
+      }
+    ],
+    "host_suspend_resume": "passed",
+    "s3_probe_build_from_snapshot": "passed",
+    "s3_probe_matches_production_machine_code": true
+  },
+  "dependency": {
+    "offline_materialization": true,
+    "files_match_upstream_git_blobs": 40,
+    "archive_bytes": 338925,
+    "archive_sha256": "e6645e83c6b7d4a17e92505e0f2a4b1785a9a5e17c6b9f298950ae4530c7d84a",
+    "modified_dependency_rejected_without_overwrite": true
+  },
+  "firmware": {
+    "pico_uf2_sha256": "4a41c7a36168ea84010dc9a033f39685dd771a55bbf47eb7a9de0e8007956099",
+    "pico_identical_to_physical_check_image": true,
+    "sense_app_sha256": "8dc72bbae2c273f77ecd5846c07105ece75d369875befa011a1b3ed2841ef11c",
+    "pico_static_bytes": 134512,
+    "pico_vm_heap_bytes": 64400,
+    "main_stack_bytes": 16384,
+    "worker_stack_bytes": 8192,
+    "native_headroom_bytes": 16384,
+    "software_memory_and_stack_gates": "passed"
+  },
+  "final_boards": {
+    "pico_power": false,
+    "pico_brightness": 0.400000006,
+    "pico_preset": "audio_spectrum_no_flash",
+    "saved_programs": 12,
+    "saved_presets": 6,
+    "pico_providers": 0,
+    "sense_subscribers": 0,
+    "sense_overruns": 0,
+    "both_networks": "connected",
+    "configuration_and_selection_preserved": true
+  },
+  "speaker_playback": false,
+  "extended_physical_stress": false,
+  "remote_ci_run": false
+}

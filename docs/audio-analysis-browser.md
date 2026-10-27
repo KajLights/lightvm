@@ -17,9 +17,11 @@ npm run build
 python3 tools/serve_editor.py
 ```
 
-`KAJ_AUDIO_CORE=/path/to/kaj-fi/core` can select an existing clean checkout. Its
-HEAD must equal `kaj-audio.rev`. The build rejects dirty core/build inputs and
-copies the common parameter/profile manifest alongside the module. Vite rejects
+`KAJ_AUDIO_CORE=/path/to/kaj-fi/core` can select an existing checkout. Its consumed
+source files must match the hashes exported from `kaj-audio.rev`. The default
+snapshot materializes offline, without a private-repository CI credential. The
+build rejects changed core/build inputs and copies the common parameter/profile
+manifest alongside the module. Vite rejects
 missing or stale WASM assets rather than shipping a different analyser. Unit tests
 can run without generated assets; the browser conformance check requires them.
 The `audio-web` CI job builds and packages the editor and runs silent conformance.
@@ -103,7 +105,28 @@ hops per profile, native metric error at most `1.1920929e-7`, zero AudioWorklet/
 error and identical events. A separate [physical S3 comparison](validation/audio-s3-parity-2026-10-27.json)
 now covers both profiles with 0, 16 and 64 bands: event counts/hops are identical,
 maximum level/band/envelope error is `2.5331974e-7`, and maximum centroid error is
-`1.4901162e-7`. This does not establish acoustic equivalence, threshold-boundary
-behavior or full UDP/gateway delivery equivalence. Those remain separate acceptance
-work. Build/run instructions for the USB-only harness are in
+`1.4901162e-7`. Build/run instructions for the USB-only harness are in
 [the S3 fixture check](../tests/audio_s3_probe/README.md).
+
+The [14 threshold-boundary cases](validation/audio-boundaries-2026-10-27.json)
+use frozen float32 thresholds immediately around one eligible attack per profile,
+plus controls separated by `1e-4`. Native C and the physical S3 agree in all cases.
+WASM differs once: profile 1's score is `2.9802322387695312e-8` higher at native
+equality, producing strength `1.1267714938867357e-7` instead of zero. The occurrence
+also starts its onset envelope, so the envelope differs on that hop. The report
+keeps this numerical boundary difference explicit; separated controls still
+require equal event hops and the original metric tolerances. No acoustic
+equivalence between different microphones is implied.
+
+Run native/WASM boundary checks with:
+
+```sh
+python tools/check_audio_boundaries.py --core .deps/kaj-fi/core --output build/audio-boundaries-validation.json
+```
+
+The committed cases are replayed by default. `--generate` deliberately recalibrates
+them and should only be used when reviewing a new core version. Physical checks
+add `--port`, `--firmware` and `--application-build` as for the S3 fixture harness,
+and require restoring the normal Sense app afterward. The probe uses byte-identical
+production DSP machine code. Independent [transport checks](audio-acceptance.md)
+compare the same structured records through UDP and the gateway.

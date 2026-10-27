@@ -16,7 +16,7 @@ const fixture = gunzipSync(fs.readFileSync(path.join(core, '../tests/fixtures/co
 const corpus = JSON.parse(fs.readFileSync(path.join(core, '../tests/fixtures/conformance.json')));
 assert.equal(createHash('sha256').update(fixture).digest('hex'), corpus.sha256);
 const revision = fs.readFileSync(path.join(root, 'kaj-audio.rev'), 'utf8').trim();
-assert.equal(execFileSync('git', ['-C', core, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), revision);
+assert.equal(execFileSync(process.env.PYTHON || 'python3', [path.join(root, 'tools/audio_dependency.py'), '--verify', core], { encoding: 'utf8' }).trim(), revision);
 assert.equal(fs.readFileSync(path.join(root, 'build/audio/revision.txt'), 'utf8').trim(), revision);
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build/audio/profiles.json')));
 const parameters = Object.fromEntries(Object.entries(manifest.parameters).map(([key, value]) => [key, value.default]));

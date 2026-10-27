@@ -1,0 +1,1287 @@
+{
+  "core_revision": "a8e536a96cd5722a71564d02c0bd9202799aa25b",
+  "fixture_sha256": "bd6dd19323e84ddd1fc7d7f71e86f4d5a9008f3c05a13ad07131f144555787ee",
+  "physical_s3": true,
+  "speaker_playback": false,
+  "microphone_capture": false,
+  "cases": [
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_-32ulp",
+      "threshold": 0.26449209451675415,
+      "threshold_f32_hex": "3e876b82",
+      "kind": "boundary",
+      "native_expected_event": true,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449209451675415,
+          "margin": 9.5367431640625e-07,
+          "strength": 3.6056817407370545e-06,
+          "event": true
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26449209451675415,
+          "margin": 9.834766387939453e-07,
+          "strength": 3.718359266713378e-06,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 1.1267752597632352e-07
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449209451675415,
+          "margin": 9.5367431640625e-07,
+          "strength": 3.6056817407370545e-06,
+          "event": true
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 2031,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_-1ulp",
+      "threshold": 0.26449301838874817,
+      "threshold_f32_hex": "3e876ba1",
+      "kind": "boundary",
+      "native_expected_event": true,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449301838874817,
+          "margin": 2.9802322387695312e-08,
+          "strength": 1.1267716359952828e-07,
+          "event": true
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26449301838874817,
+          "margin": 5.960464477539063e-08,
+          "strength": 2.2535432719905657e-07,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 1.1267716359952828e-07
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449301838874817,
+          "margin": 2.9802322387695312e-08,
+          "strength": 1.1267716359952828e-07,
+          "event": true
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 1751,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_+0ulp",
+      "threshold": 0.26449304819107056,
+      "threshold_f32_hex": "3e876ba2",
+      "kind": "boundary",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449304819107056,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26449304819107056,
+          "margin": 2.9802322387695312e-08,
+          "strength": 1.1267714938867357e-07,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.7693067640066147,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 1.1267714938867357e-07
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449304819107056,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 1796,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_+1ulp",
+      "threshold": 0.26449307799339294,
+      "threshold_f32_hex": "3e876ba3",
+      "kind": "boundary",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449307799339294,
+          "margin": -2.9802322387695312e-08,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26449307799339294,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449307799339294,
+          "margin": -2.9802322387695312e-08,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 1745,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_+32ulp",
+      "threshold": 0.26449400186538696,
+      "threshold_f32_hex": "3e876bc2",
+      "kind": "boundary",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449400186538696,
+          "margin": -9.5367431640625e-07,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26449400186538696,
+          "margin": -9.238719940185547e-07,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26449400186538696,
+          "margin": -9.5367431640625e-07,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 1797,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_separated_-1",
+      "threshold": 0.26439306139945984,
+      "threshold_f32_hex": "3e875e87",
+      "kind": "separated",
+      "native_expected_event": true,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26439306139945984,
+          "margin": 9.998679161071777e-05,
+          "strength": 0.0003781747946050018,
+          "event": true
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.26439306139945984,
+          "margin": 0.00010001659393310547,
+          "strength": 0.00037828751374036074,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 1.1271913535892963e-07
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375,
+          386
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.26439306139945984,
+          "margin": 9.998679161071777e-05,
+          "strength": 0.0003781747946050018,
+          "event": true
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 1745,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_separated_+1",
+      "threshold": 0.2645930349826813,
+      "threshold_f32_hex": "3e8778bd",
+      "kind": "separated",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.2645930349826813,
+          "margin": -9.998679161071777e-05,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449307799339294,
+          "threshold": 0.2645930349826813,
+          "margin": -9.995698928833008e-05,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 6.705522537231445e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 2.9802322387695312e-08,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          281,
+          328,
+          375
+        ],
+        "target": {
+          "novelty": 0.26449304819107056,
+          "threshold": 0.2645930349826813,
+          "margin": -9.998679161071777e-05,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.7136335372924805e-07,
+        "centroid_max": 1.4901161193847656e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 2.384185791015625e-07,
+        "threshold_max": 1.4901161193847656e-07,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 387,
+        "max_dsp_us": 1798,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_-32ulp",
+      "threshold": 0.16972357034683228,
+      "threshold_f32_hex": "3e2dcc04",
+      "kind": "boundary",
+      "native_expected_event": true,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972357034683228,
+          "margin": 4.76837158203125e-07,
+          "strength": 1.9073486328125e-06,
+          "event": true
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972357034683228,
+          "margin": 4.76837158203125e-07,
+          "strength": 1.9073486328125e-06,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972357034683228,
+          "margin": 4.76837158203125e-07,
+          "strength": 1.9073486328125e-06,
+          "event": true
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1580,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_-1ulp",
+      "threshold": 0.16972403228282928,
+      "threshold_f32_hex": "3e2dcc23",
+      "kind": "boundary",
+      "native_expected_event": true,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972403228282928,
+          "margin": 1.4901161193847656e-08,
+          "strength": 5.960464477539063e-08,
+          "event": true
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972403228282928,
+          "margin": 1.4901161193847656e-08,
+          "strength": 5.960464477539063e-08,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972403228282928,
+          "margin": 1.4901161193847656e-08,
+          "strength": 5.960464477539063e-08,
+          "event": true
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1605,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_+0ulp",
+      "threshold": 0.16972404718399048,
+      "threshold_f32_hex": "3e2dcc24",
+      "kind": "boundary",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972404718399048,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972404718399048,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972404718399048,
+          "margin": 0.0,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1569,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_+1ulp",
+      "threshold": 0.16972406208515167,
+      "threshold_f32_hex": "3e2dcc25",
+      "kind": "boundary",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972406208515167,
+          "margin": -1.4901161193847656e-08,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972406208515167,
+          "margin": -1.4901161193847656e-08,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972406208515167,
+          "margin": -1.4901161193847656e-08,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1570,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_+32ulp",
+      "threshold": 0.16972452402114868,
+      "threshold_f32_hex": "3e2dcc44",
+      "kind": "boundary",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972452402114868,
+          "margin": -4.76837158203125e-07,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972452402114868,
+          "margin": -4.76837158203125e-07,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16972452402114868,
+          "margin": -4.76837158203125e-07,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1569,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_separated_-1",
+      "threshold": 0.16962404549121857,
+      "threshold_f32_hex": "3e2db1ed",
+      "kind": "separated",
+      "native_expected_event": true,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16962404549121857,
+          "margin": 0.00010000169277191162,
+          "strength": 0.0004000067710876465,
+          "event": true
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16962404549121857,
+          "margin": 0.00010000169277191162,
+          "strength": 0.0004000067710876465,
+          "event": true
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257,
+          281
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.16962404549121857,
+          "margin": 0.00010000169277191162,
+          "strength": 0.0004000067710876465,
+          "event": true
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1569,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_separated_+1",
+      "threshold": 0.1698240488767624,
+      "threshold_f32_hex": "3e2de65b",
+      "kind": "separated",
+      "native_expected_event": false,
+      "native": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.1698240488767624,
+          "margin": -0.00010000169277191162,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.1698240488767624,
+          "margin": -0.00010000169277191162,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "wasm_errors": {
+        "calibrated_metrics_max": 5.960464477539063e-08,
+        "centroid_max": 5.960464477539063e-08,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 0.0,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "s3": {
+        "event_hops": [
+          46,
+          93,
+          257
+        ],
+        "target": {
+          "novelty": 0.16972404718399048,
+          "threshold": 0.1698240488767624,
+          "margin": -0.00010000169277191162,
+          "strength": 0.0,
+          "event": false
+        }
+      },
+      "s3_errors": {
+        "calibrated_metrics_max": 1.1920928955078125e-07,
+        "centroid_max": 1.1920928955078125e-07,
+        "onset_envelope_max": 0.0,
+        "novelty_max": 5.960464477539063e-08,
+        "threshold_max": 0.0,
+        "strength_max": 0.0
+      },
+      "device": {
+        "chip": "esp32s3",
+        "revision": 2,
+        "mac": "1cdbd45cce94",
+        "idf": "v5.5.3",
+        "fft": "aes3",
+        "hops": 282,
+        "max_dsp_us": 1569,
+        "free_heap": 333940,
+        "min_heap": 333924,
+        "stack_free": 4340
+      }
+    }
+  ],
+  "result": "passed; boundary decisions reported separately",
+  "production_matching_code_sha256": {
+    "features.c.obj": "c7cb3ddc9817145416428d249b0846f10b8334188d14594631e4c0ab11b1d642",
+    "onset.c.obj": "06a546f919a28c308bea5a60472095fdcbddf6b5816fe091f71b945c7d568773",
+    "fft.c.obj": "b822c403ac8a0efb4a7a496a58ca89185825b89beb54f160a05202fbaa89627f"
+  },
+  "probe_sha256": "db1f55e2cc948727b7350765564e90de2d8dad090e0e16e824f0483727a6b534",
+  "application_sha256": "8dc72bbae2c273f77ecd5846c07105ece75d369875befa011a1b3ed2841ef11c",
+  "device": {
+    "chip": "esp32s3",
+    "revision": 2,
+    "mac": "1cdbd45cce94",
+    "idf": "v5.5.3",
+    "fft": "aes3",
+    "hops": 0,
+    "max_dsp_us": 0,
+    "free_heap": 333940,
+    "min_heap": 333924,
+    "stack_free": 5172
+  },
+  "cases_sha256": "af660e66fbe416cb67c60fd41df25f1331a880560260ea620b2bd43826d21a65",
+  "parameters": {
+    "gain_db": 0,
+    "floor_db": -50,
+    "attack_ms": 30,
+    "release_ms": 220,
+    "onset_threshold": 0.08,
+    "onset_refractory_ms": 200
+  },
+  "decision_disagreements": [
+    {
+      "case": "profile1_boundary_+0ulp",
+      "platform": "wasm",
+      "native": {
+        "novelty": 0.26449304819107056,
+        "threshold": 0.26449304819107056,
+        "margin": 0.0,
+        "strength": 0.0,
+        "event": false
+      },
+      "observed": {
+        "novelty": 0.26449307799339294,
+        "threshold": 0.26449304819107056,
+        "margin": 2.9802322387695312e-08,
+        "strength": 1.1267714938867357e-07,
+        "event": true
+      }
+    }
+  ],
+  "elapsed_seconds": 29.846573708986398,
+  "restored_sense": {
+    "config": {
+      "schema": "kaj-fi.analysis",
+      "band_count": 16,
+      "gain_db": 0,
+      "floor_db": -72,
+      "release_ms": 220,
+      "attack_ms": 30,
+      "onset_threshold": 0.0799999982,
+      "onset_refractory_ms": 200
+    },
+    "stats": {
+      "frames": 209,
+      "onsets": 0,
+      "sent": 0,
+      "send_errors": 0,
+      "send_errno": 0,
+      "backpressure": 0,
+      "gaps": 0,
+      "dsp_max_us": 4212,
+      "dsp_total_us": 431031,
+      "dsp_calls": 211,
+      "overruns": 0,
+      "min_heap": 143724,
+      "rssi_dbm": -32,
+      "analysis_profile": 1,
+      "feature_version": 5,
+      "service_port": 49152,
+      "subscribers": 0,
+      "offers": 0,
+      "lease_expired": 0,
+      "lease_full": 0,
+      "control_invalid": 0,
+      "control_limited": 0
+    },
+    "network": {
+      "state": "connected",
+      "ip": "10.77.10.245",
+      "revision": 3,
+      "http_port": 80,
+      "rssi_dbm": -32,
+      "analysis_profile": 1,
+      "feature_version": 5,
+      "service_port": 49152,
+      "subscribers": 0,
+      "offers": 0,
+      "lease_expired": 0,
+      "lease_full": 0,
+      "control_invalid": 0,
+      "control_limited": 0
+    }
+  },
+  "pico_light_unchanged": {
+    "revision": 0,
+    "composition_revision": 0,
+    "power": false,
+    "brightness": 0.400000006,
+    "color": 16777215,
+    "color_control": false,
+    "preset": "audio_spectrum_no_flash"
+  }
+}

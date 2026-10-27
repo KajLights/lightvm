@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-27",
+  "result": "passed",
+  "physical_devices": false,
+  "simulated_udp_publishers": true,
+  "host_engine_base_commit": "7850083",
+  "host_binary_sha256": "d588110d1605820d1e0a15cbb71ca8af69fd80eb367692927931f5b1615eb256",
+  "test_file": "tests/test_audio_transports.py",
+  "test_sha256": "d3e2def1c2dfd9d32994ca735e2b073256a738a002ff86e3aa1daf4d33c4790c",
+  "command": "LIGHTVM_RECEIVER=$PWD/build/host/lightvm PYTHONPATH=tools:.:tests python -m unittest -v test_audio_transports test_audio_gateway",
+  "tests_passed": 17,
+  "elapsed_seconds": 3.067,
+  "checks": [
+    "All six metrics and 64 distinct spectrum values equal through actual INPUT capture",
+    "Exact 65 band edges and uint64 source/session identities above 2**53",
+    "Maximum 700-byte/four-event record crosses two gateway command fragments",
+    "Lost initial OPEN retries; one admitted UDP lease",
+    "Dropped sequence, duplicate frames, lower reordered event ID recovered exactly once without metric rewind",
+    "Expired capture rejected; expired occurrence in fresh frame skipped; counters held across stale gaps",
+    "Publisher restart retains persistent non-MAC identity, rejects old session/gateway generation and admits new event IDs",
+    "Two outputs share one UDP lease",
+    "Two simulated sources on independent ports and two gateways use all four provider slots",
+    "One animation consumes both transports during a mixed crossfade; identical aliases remain scene-local",
+    "Generic scalar claims cannot overwrite either scoped audio source",
+    "Fifth-provider rejection preserves scene revision, source declarations, generation, playback and charged heap",
+    "UDP and gateway time out and recover independently"
+  ]
+}

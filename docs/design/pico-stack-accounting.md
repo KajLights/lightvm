@@ -329,3 +329,15 @@ that source review; stack reservations, callback contracts and margins stay
 unchanged. Use a fresh build directory after the device-core source move: stale
 `.ci` files from deleted root sources otherwise remain in the audit inventory.
 Current cross-build results are recorded in the ESP32 campaign report.
+
+## Offline audio dependency verification, 27 October 2026
+
+The pinned audio dependency now materializes from a checked source archive and
+per-file SHA-256 manifest, without private-repository CI credentials. The reviewed
+`cmake/kaj_audio.cmake` change replaces Git HEAD inspection with source-byte
+verification. It changes no runtime code, callbacks, recursion guards or reserves.
+Only that CMake fingerprint changed; all 543 SDK, 38 project and eight audio-core
+entries remain covered. Rebuilding the complete Pico image from the snapshot
+produced the identical UF2 SHA-256
+`4a41c7a36168ea84010dc9a033f39685dd771a55bbf47eb7a9de0e8007956099`
+as the installed physical-check image. RAM/stack software gates pass unchanged.

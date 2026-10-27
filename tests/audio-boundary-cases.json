@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "fixture_sha256": "bd6dd19323e84ddd1fc7d7f71e86f4d5a9008f3c05a13ad07131f144555787ee",
+  "bands": 16,
+  "parameters": {
+    "gain_db": 0,
+    "floor_db": -50,
+    "attack_ms": 30,
+    "release_ms": 220,
+    "onset_threshold": 0.08,
+    "onset_refractory_ms": 200
+  },
+  "target_hop_indexing": "zero-based; input is the corpus prefix through this hop",
+  "cases": [
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_-32ulp",
+      "threshold": 0.26449209451675415,
+      "threshold_f32_hex": "3e876b82",
+      "kind": "boundary",
+      "native_expected_event": true
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_-1ulp",
+      "threshold": 0.26449301838874817,
+      "threshold_f32_hex": "3e876ba1",
+      "kind": "boundary",
+      "native_expected_event": true
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_+0ulp",
+      "threshold": 0.26449304819107056,
+      "threshold_f32_hex": "3e876ba2",
+      "kind": "boundary",
+      "native_expected_event": false
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_+1ulp",
+      "threshold": 0.26449307799339294,
+      "threshold_f32_hex": "3e876ba3",
+      "kind": "boundary",
+      "native_expected_event": false
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_boundary_+32ulp",
+      "threshold": 0.26449400186538696,
+      "threshold_f32_hex": "3e876bc2",
+      "kind": "boundary",
+      "native_expected_event": false
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_separated_-1",
+      "threshold": 0.26439306139945984,
+      "threshold_f32_hex": "3e875e87",
+      "kind": "separated",
+      "native_expected_event": true
+    },
+    {
+      "profile": 1,
+      "target_hop": 386,
+      "name": "profile1_separated_+1",
+      "threshold": 0.2645930349826813,
+      "threshold_f32_hex": "3e8778bd",
+      "kind": "separated",
+      "native_expected_event": false
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_-32ulp",
+      "threshold": 0.16972357034683228,
+      "threshold_f32_hex": "3e2dcc04",
+      "kind": "boundary",
+      "native_expected_event": true
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_-1ulp",
+      "threshold": 0.16972403228282928,
+      "threshold_f32_hex": "3e2dcc23",
+      "kind": "boundary",
+      "native_expected_event": true
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_+0ulp",
+      "threshold": 0.16972404718399048,
+      "threshold_f32_hex": "3e2dcc24",
+      "kind": "boundary",
+      "native_expected_event": false
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_+1ulp",
+      "threshold": 0.16972406208515167,
+      "threshold_f32_hex": "3e2dcc25",
+      "kind": "boundary",
+      "native_expected_event": false
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_boundary_+32ulp",
+      "threshold": 0.16972452402114868,
+      "threshold_f32_hex": "3e2dcc44",
+      "kind": "boundary",
+      "native_expected_event": false
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_separated_-1",
+      "threshold": 0.16962404549121857,
+      "threshold_f32_hex": "3e2db1ed",
+      "kind": "separated",
+      "native_expected_event": true
+    },
+    {
+      "profile": 2,
+      "target_hop": 281,
+      "name": "profile2_separated_+1",
+      "threshold": 0.1698240488767624,
+      "threshold_f32_hex": "3e2de65b",
+      "kind": "separated",
+      "native_expected_event": false
+    }
+  ]
+}

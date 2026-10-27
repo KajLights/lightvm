@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 import zlib
+from audio_dependency import verify
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'shared/device-core/python'))
@@ -92,9 +93,7 @@ def main():
     parser.add_argument('--bands',default='16');parser.add_argument('--profiles',default='1,2')
     parser.add_argument('--firmware',type=Path,required=True);parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--application-build',type=Path,required=True)
-    args=parser.parse_args();core=args.core.resolve();revision=(ROOT/'kaj-audio.rev').read_text().strip()
-    assert subprocess.check_output(['git','-C',str(core),'rev-parse','HEAD'],text=True).strip()==revision
-    assert not subprocess.check_output(['git','-C',str(core.parent),'status','--porcelain','--','core','main/fft.c']).strip()
+    args=parser.parse_args();core=args.core.resolve();revision=verify(core)
     pcm=gzip.decompress((core.parent/'tests/fixtures/conformance.pcm.gz').read_bytes())
     manifest=json.loads((core.parent/'tests/fixtures/conformance.json').read_text())
     assert hashlib.sha256(pcm).hexdigest()==manifest['sha256']

@@ -105,9 +105,11 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           npm run test:audio-browser
+          python tools/check_audio_boundaries.py --core .deps/kaj-fi/core --output build/audio-boundaries-validation.json
           cmake -S . -B build/host -DLIGHTVM_PLATFORM=host -DLIGHTVM_HTTP=ON -DLIGHTVM_WEBSOCKET=ON -DLIGHTVM_AUDIO_SUBSCRIPTIONS=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build build/host --parallel 2
           PYTHONPATH=tools:. python -m unittest discover -s tests -p test_audio_gateway.py -v
+          PYTHONPATH=tools:. python -m unittest discover -s tests -p test_audio_transports.py -v
           npm run test:audio-sources-browser
       - uses: actions/upload-artifact@v4
         with:
@@ -115,6 +117,7 @@ jobs:
           path: |
             build/web/
             build/audio-browser-validation.json
+            build/audio-boundaries-validation.json
             build/audio-comparison-*.png
             build/audio-sources-*.png
             build/audio-sources-browser-validation.json

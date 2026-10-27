@@ -6,11 +6,12 @@ network, NVS or storage writes. A CRC protects every request and response. The
 fixture runner compares every ready hop with the native portable FFT, validates
 exact band edges/events, and checks gap/reset/silence behavior and DSP duration.
 
-With ESP-IDF **5.5.3** activated and a clean kaj-fi checkout at `kaj-audio.rev`:
+With ESP-IDF **5.5.3** activated and the verified snapshot (or matching kaj-fi sources):
 
 ```sh
+python tools/fetch_audio_core.py
 idf.py -C tests/audio_s3_probe -B "$PWD/build/audio-s3" \
-  -DKAJ_AUDIO_CORE=/absolute/path/to/kaj-fi/core build
+  -DKAJ_AUDIO_CORE="$PWD/.deps/kaj-fi/core" build
 ```
 
 Back up the device's configuration and retain its normal application image.
@@ -39,4 +40,6 @@ all six corpus cases plus gap/reset checks in 24.40 seconds, without playback.
 It used the existing Sense (`1cdbd45cce94`, ESP32-S3 revision 2). Native/S3 event
 hops matched exactly, metric error stayed below `2.54e-7`, and the largest measured
 DSP hop was 1,963 µs against a 21,333 µs hop budget. This is digital parity evidence;
-it is not a microphone acoustic comparison or threshold-boundary qualification.
+it is not a microphone acoustic comparison. A separate [14-case threshold run](../../docs/validation/audio-boundaries-2026-10-27.json)
+completed in 29.85 seconds and reports boundary decisions explicitly, including
+one native/WASM disagreement and identical native/S3 decisions.

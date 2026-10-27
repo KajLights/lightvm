@@ -566,7 +566,7 @@
     "src/audio_sources.h": "948cec714e9d7fb11f4e3bc7d1663a4d5748242677a606ddfcf47440da56c1dc",
     "src/control.c": "ccc0bdb3fb75d67434479134987f519bda57d902d14b26cb876c9434f60ee777",
     "kaj-audio.rev": "a089bd1c9859eb16f85dafaf45bc39e8fecbc2c699e74c9ce286b53099e67910",
-    "cmake/kaj_audio.cmake": "8ea60458baf0dbc31aa75658c22ce9d1c8be519a786fd4c7ef072e5b1b168432",
+    "cmake/kaj_audio.cmake": "1ed2f1fb974cd7dfb7312ced8d778deab028609d96e905746002b79dfaed661c",
     "src/inputs.c": "a1cbdc4e2b637a595b04eebd165ba1540445533b4b9a37424f2af41e49871db6",
     "src/inputs.h": "64f427048b8cc7be17223d0745e6a330d693126ed10d45399e11ff0bffd63e6e",
     "src/outputs.c": "8abb5d6cc3ec76b5e21227772a0d63a8df41a0149cd86c5e8d45d4c6df303a8d",

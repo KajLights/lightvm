@@ -3,7 +3,8 @@
 Implementation record, 27 October 2026. The engine and Python/browser clients
 implement the ingress below. The [browser capture UI](audio-analysis-browser.md)
 runs the shared WASM analyser and forwards structured snapshots through this
-ingress. Physical board validation is pending.
+ingress. Host/browser checks and physical Sense/Pico UDP checks are recorded in
+the [acceptance record](audio-acceptance.md).
 
 ## Ownership and declarations
 
@@ -84,7 +85,7 @@ command CRC and 512-byte payload limit are unchanged.
 | 14 | uint16 little endian | Exact fragment offset |
 | 16 | remaining bytes | Contiguous record bytes, at most 496 |
 
-The inner record is [LVAF v5](https://github.com/KajLights/kaj-fi/blob/main/docs/protocol.md),
+The inner record is [LVAF v5](https://github.com/KajLights/kaj-fi/blob/a8e536a96cd5722a71564d02c0bd9202799aa25b/docs/protocol.md),
 with its network-byte-order fields and **neutral lease value 1**. Gateway ownership
 stays in the outer command. The receiver substitutes its locally admitted lease
 when using the common record/event validator. Source/session/synthetic metadata
@@ -126,4 +127,7 @@ Shared gateway state is 1,512 bytes including its 700-byte staging buffer, in
 addition to its canonical provider slots and the existing HTTP/WebSocket budget.
 The Pico W build passes the existing RAM/stack gates. Browser AudioWorklet
 conformance is recorded separately in the [browser analysis checks](audio-analysis-browser.md).
-Physical microphone and RF delivery validation are still pending.
+The [physical check](validation/audio-hardware-2026-10-27.json) covers Sense
+microphone features over Wi-Fi to the Pico and host. The mixed UDP/gateway
+equivalence check uses the native engine and simulated publishers; it is not a
+claim of acoustic parity between browser and Sense microphones.
