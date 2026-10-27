@@ -140,6 +140,33 @@ class AudioFeatureExampleTests(unittest.TestCase):
             self.assertAlmostEqual(actual, expected, delta=1)
         self.assertFalse(self.client.program_state()["faulted"])
 
+    def test_spectrum_no_flash_preset_ignores_onsets(self):
+        layers = json.loads((ROOT / "examples/compositions/audio-spectrum-no-flash.json").read_text())["layers"]
+        groups = []
+        for start in (0, 6, 12):
+            names = [f"audio.band{i:02d}" for i in range(start, min(start + 6, 16))]
+            groups.append((self.client.claim_inputs({name: "float" for name in names}), names))
+        self.client.save_program("audio_spectrum", sample("audio_spectrum"))
+        self.client.configure_composition(layers)
+        self.client.require_ok(self.client.command(STOP))
+        for layer in layers:
+            self.client.reset_program(layer=layer["id"])
+        self.publish(level=0.42, onsets=0)
+        for publisher, names in groups:
+            self.client.publish_inputs(publisher, 1, {name: 0.35 for name in names})
+        reference = self.frame()
+        self.assertGreater(max(reference), 100)
+        for count in (1, 2, 20, 200):
+            self.publish(level=0.42, onsets=count)
+            self.assertEqual(self.frame(1), reference)
+            self.assertEqual(self.frame(100), reference)
+        # Spectrum energy still controls brightness with flashes disabled.
+        for publisher, names in groups:
+            self.client.publish_inputs(publisher, 2, {name: 0.0 for name in names})
+        self.assertEqual(max(self.frame(1)), 0)
+        for layer in layers:
+            self.assertFalse(self.client.program_state(layer=layer["id"])["faulted"])
+
 
 if __name__ == "__main__":
     unittest.main()

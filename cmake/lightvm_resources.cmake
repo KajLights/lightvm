@@ -1,4 +1,5 @@
-# AUTO uses the selected board header. Explicit values override that header so
+# AUTO uses the port's memory calculation for the VM, or the selected board
+# header for other settings. Explicit values override that header so
 # an application can trade program/VM/output capacity without copying a board.
 function(lightvm_resource_option name description minimum maximum)
     set(${name} "AUTO" CACHE STRING "${description}; AUTO selects the board default")
@@ -13,7 +14,7 @@ function(lightvm_resource_option name description minimum maximum)
     endif()
 endfunction()
 
-lightvm_resource_option(LIGHTVM_VM_HEAP_BYTES "Aggregate admitted animation memory in bytes" 1024 2147483647)
+lightvm_resource_option(LIGHTVM_VM_HEAP_BYTES "Aggregate animation memory; AUTO budgets usable board RAM after reserves" 1024 2147483647)
 lightvm_resource_option(LIGHTVM_MODULE_BYTES "Maximum compiled program size in bytes" 128 2147483647)
 lightvm_resource_option(LIGHTVM_PIXEL_CAPACITY "Maximum pixels per output" 1 65535)
 lightvm_resource_option(LIGHTVM_NATIVE_HEADROOM_BYTES "Reserved native operating memory in bytes" 4096 2147483647)

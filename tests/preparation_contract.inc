@@ -93,7 +93,7 @@ static void preparation_contract(void){
     /* The 1,024-pixel/four-scalar Pico scene left 7,336 bytes free. Even an
        empty replacement used to need both a 5 KiB parser and a 2.5 KiB config.
        Validation must fit without releasing or changing that live scene. */
-    size_t reserve=VM_HEAP_LIMIT-vm_heap_used()-7336u;
+    size_t reserve=vm_heap_limit()-vm_heap_used()-7336u;
     CHECK(vm_heap_charge(reserve));baseline=vm_heap_used();
     request=(PreparationRequest){.kind=PREPARE_CONFIG_VALIDATE,.active_revision=app.revision,.saved_revision=app.store.config_revision};
     CHECK(!preparation_submit(&app,d,&request,EMPTY_CONFIG,strlen(EMPTY_CONFIG),&id));

@@ -295,7 +295,7 @@ class PicoRamTests(unittest.TestCase):
                 "__scratch_y_end__": top - 16384, "__StackTop": top,
                 "__StackBottom": top - 16384, "__HeapLimit": top - 16384, "__StackOneTop": top - 16384,
                 "__StackOneBottom": top - 16384, "__lightvm_vm_heap": 65536,
-                "__lightvm_native_headroom": 16384,
+                "__lightvm_native_headroom": 16384, "__lightvm_heap_auto": 0,
                 "__lightvm_pixel_capacity": 1024, "__lightvm_output_slots": 7}
 
     def test_target_geometry_and_compiled_limits(self):
@@ -306,6 +306,20 @@ class PicoRamTests(unittest.TestCase):
         self.assertEqual(ram_report(symbols)["remaining_bytes_after_reservations"], large["remaining_bytes_after_reservations"] - 65536)
         symbols["__lightvm_pixel_capacity"] = 175
         self.assertEqual(ram_report(symbols)["pixel_driver_max"], 7 * (175 * 4 + 256))
+
+    def test_automatic_budget_uses_contiguous_heap_after_reserves(self):
+        for kib in (264, 520):
+            symbols=self.symbols(kib)
+            symbols["__end__"]+=4  # Alignment must round down, never into reserves.
+            report=ram_report(symbols)
+            symbols["__lightvm_heap_auto"]=1
+            symbols["__lightvm_vm_heap"]=report["vm_heap_capacity"]
+            report=ram_report(symbols)
+            self.assertTrue(report["vm_heap_automatic"])
+            self.assertEqual(report["remaining_bytes_after_reservations"],4)
+            symbols["__lightvm_vm_heap"]+=8
+            with self.assertRaisesRegex(ValueError,"automatic Pico VM budget"):
+                ram_report(symbols)
 
     def test_ram_code_scratch_and_stacks_are_included(self):
         symbols = self.symbols()

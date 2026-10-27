@@ -182,7 +182,9 @@ execution profile: strict `-O3` for the shared core, instruction RAM for hot
 drawing kernels, memory-mapped flash reads, one render worker and 2 ms
 slice/epoch targets. This is also one actual worker on the dual-core S3.
 Explicit resource options override these defaults. CPU/flash clocks, numeric
-precision, bytecode cache size and heap limits retain their ordinary values.
+precision and bytecode cache size retain their ordinary values. The default
+VM heap automatically uses available RAM after operating reserves; see
+[memory budgeting](docs/multicore-rendering.md#resource-profiles).
 Use `-DLIGHTVM_ESP32_PROFILE=standard` for a comparison build, or an explicit
 `c3`, `c6` or `s3` profile to require that chip. A mismatched profile is an error.
 See the [ESP32 campaign](docs/design/esp32-optimisation-2026-10-24.md) for

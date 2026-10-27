@@ -564,7 +564,7 @@ int main(int argc,char **argv) {
     deny_allocation=false;
     // Admission also rejects an output reservation when the aggregate budget
     // is already occupied; it does not raise the limit or lose that accounting.
-    size_t occupied=VM_HEAP_LIMIT-vm_heap_used()-PIXEL_BYTES+1;
+    size_t occupied=vm_heap_limit()-vm_heap_used()-PIXEL_BYTES+1;
     CHECK(vm_heap_charge(occupied));
     size_t admitted=vm_heap_used();
     reply.snapshot_size=0; command(&session,CMD_FRAME,delta,sizeof(delta));

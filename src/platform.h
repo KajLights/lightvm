@@ -83,4 +83,13 @@ bool platform_boot_storage_sync(void);
 void *platform_calloc(size_t count, size_t size);
 void *platform_realloc(void *memory, size_t size);
 void platform_free(void *memory);
+#if LIGHTVM_PLATFORM_HEAP_BUDGET
+// Physical VM capacity after native reserves. allocated excludes virtual charges.
+// May decrease as SDK services allocate memory; freeing/shrinking remains legal.
+size_t platform_vm_heap_limit(size_t allocated);
+#endif
+#if LIGHTVM_CAPABILITY_HEAP
+// Capability-aware VM storage; returned memory remains platform_free-compatible.
+void *platform_vm_realloc(void *memory,size_t size);
+#endif
 #endif

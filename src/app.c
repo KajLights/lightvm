@@ -533,7 +533,8 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"error\":"); quoted(&w,a->boot_sequence.error); literal(&w,"}");
 #endif
     literal(&w,",\"network_revision\":"); number(&w,a->store.network_revision);
-    literal(&w,",\"vm_heap_limit\":"); number(&w,VM_HEAP_LIMIT);
+    literal(&w,",\"vm_heap_limit\":"); number(&w,vm_heap_limit());
+    literal(&w,",\"vm_heap_automatic\":");literal(&w,LIGHTVM_AUTOMATIC_HEAP?"true":"false");
     literal(&w,",\"preparation_memory_bytes\":");number(&w,(uint32_t)preparation_retained_bytes(a));
     literal(&w,",\"preparation_pending\":");literal(&w,preparation_pending(a)?"true":"false");
     literal(&w,",\"board\":"); quoted(&w,info->board);
@@ -1302,7 +1303,7 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
         status_integer(&w,"module_limit",MODULE_LIMIT);
         status_integer(&w,"heap",vm_heap_used());
         status_integer(&w,"heap_peak",vm_heap_peak());
-        status_integer(&w,"heap_limit",VM_HEAP_LIMIT);
+        status_integer(&w,"heap_limit",vm_heap_limit());
         status_integer(&w,"pixels",d->pixels.count);
         status_field(&w,"mode","transition",SIZE_MAX);
         status_integer(&w,"frames",t->frames);
@@ -1326,7 +1327,7 @@ static bool composition_output_command(App *a,AppOutput *d,uint8_t command,uint1
         status_integer(&w,"module_limit",MODULE_LIMIT);
         status_integer(&w,"heap",vm_heap_used());
         status_integer(&w,"heap_peak",vm_heap_peak());
-        status_integer(&w,"heap_limit",VM_HEAP_LIMIT);
+        status_integer(&w,"heap_limit",vm_heap_limit());
         status_integer(&w,"pixels",s->count);
         status_integer(&w,"frame_interval_us",FRAME_INTERVAL_US);
         status_field(&w,"mode","composition",SIZE_MAX);

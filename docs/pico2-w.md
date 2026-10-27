@@ -58,8 +58,9 @@ The build produces `lightvm.uf2`, `lightvm.elf`, `storage-layout.json`,
 
 ## Resources and storage
 
-Pico 2 W defaults to a 192 KiB VM heap with Wi-Fi and HTTP, or 256 KiB
-without HTTP. Its per-instance instruction cache is 1024 bytes. The module and
+Pico 2 W automatically budgets its VM heap from the linked usable RAM after
+stack, pixel-driver and native operating reserves. Its per-instance instruction
+cache is 1024 bytes. The module and
 physical-pixel ceilings remain 32 KiB and 1024. These budgets, connection limits,
 worker stack and optional refresh cap are tunable through the
 [multicore resource options](multicore-rendering.md).

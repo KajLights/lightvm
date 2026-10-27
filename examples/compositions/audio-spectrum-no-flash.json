@@ -1,0 +1,98 @@
+{
+  "schema": "lightvm.composition",
+  "layers": [
+    {
+      "id": "bands00",
+      "program": "audio_spectrum",
+      "settings": {
+        "first_band": 0
+      },
+      "inputs": {
+        "band0": {
+          "source": "audio.band00"
+        },
+        "band1": {
+          "source": "audio.band01"
+        },
+        "band2": {
+          "source": "audio.band02"
+        },
+        "band3": {
+          "source": "audio.band03"
+        },
+        "band4": {
+          "source": "audio.band04"
+        },
+        "band5": {
+          "source": "audio.band05"
+        },
+        "onsets": {
+          "value": 0
+        },
+        "level": {
+          "source": "audio.level"
+        }
+      }
+    },
+    {
+      "id": "bands06",
+      "program": "audio_spectrum",
+      "settings": {
+        "first_band": 6
+      },
+      "inputs": {
+        "band0": {
+          "source": "audio.band06"
+        },
+        "band1": {
+          "source": "audio.band07"
+        },
+        "band2": {
+          "source": "audio.band08"
+        },
+        "band3": {
+          "source": "audio.band09"
+        },
+        "band4": {
+          "source": "audio.band10"
+        },
+        "band5": {
+          "source": "audio.band11"
+        },
+        "onsets": {
+          "value": 0
+        },
+        "level": {
+          "source": "audio.level"
+        }
+      }
+    },
+    {
+      "id": "bands12",
+      "program": "audio_spectrum",
+      "settings": {
+        "first_band": 12
+      },
+      "inputs": {
+        "band0": {
+          "source": "audio.band12"
+        },
+        "band1": {
+          "source": "audio.band13"
+        },
+        "band2": {
+          "source": "audio.band14"
+        },
+        "band3": {
+          "source": "audio.band15"
+        },
+        "onsets": {
+          "value": 0
+        },
+        "level": {
+          "source": "audio.level"
+        }
+      }
+    }
+  ]
+}

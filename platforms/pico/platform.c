@@ -104,6 +104,11 @@ bool platform_boot_storage_erase(uint32_t offset,size_t size) {
 bool platform_boot_storage_sync(void) { return true; }
 #endif
 void *platform_calloc(size_t count,size_t size) { return calloc(count,size); }
+size_t platform_vm_heap_limit(size_t allocated) {
+    (void)allocated;
+    extern char __lightvm_vm_heap;
+    return (size_t)(uintptr_t)&__lightvm_vm_heap;
+}
 void *platform_realloc(void *memory,size_t size) { return realloc(memory,size); }
 void platform_free(void *memory) { free(memory); }
 

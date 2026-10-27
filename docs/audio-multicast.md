@@ -98,6 +98,12 @@ while paused. Independent trigger consumption and pause expiry remain future wor
   count (at most eight INPUTs). The final instance uses four bands.
   Disjoint sections combine normally; ordinary scalar inputs and the existing
   renderer handle everything. Sixteen native range fills draw the complete strip.
+  The [no-flash composition](../examples/compositions/audio-spectrum-no-flash.json)
+  uses the same bytecode and auto-levelling, with each `onsets` input bound to
+  constant zero. Save it as `audio_spectrum_no_flash` to keep both choices in
+  the preset selector without changing the original flashing version. Direct
+  switching between the two presets has been verified on the 200-pixel Pico
+  with automatic memory budgeting.
 - [`audio_features.py`](../examples/animations/audio_features.py) divides the strip
   into six meters, from the wired end: green level, red bass, amber mid, blue
   treble, purple centroid position, and magenta onset envelope. The final section
@@ -233,3 +239,11 @@ larger retained scene. This is an existing scene-overlap/admission constraint,
 not an onset or transport failure. No firmware or heap limit was changed for
 this example. See `build/audio-receiver/spectrum-stars-via-rainbow.json` for the
 verified sequence.
+
+### Automatic memory budgeting — 27 October 2026
+
+The subsequent [automatic memory budgeting change](design/automatic-memory-budgeting-2026-10-27.md)
+raises this Pico's admitted VM memory to 87,160 bytes while preserving the native
+reserves. Direct Stars → Spectrum and flash ↔ no-flash spectrum switches now pass,
+with a measured 74,582-byte peak. The Rainbow detour described above is no longer
+needed for these presets. Both saved spectrum presets remain selectable.

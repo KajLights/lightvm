@@ -523,7 +523,7 @@ int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
         if(!resolve_settings(p,count,NULL))goto fail;
         s->stage=2;return 0;
     case 2:
-        if(s->index<p->nresources){unsigned n=s->index++;
+        if(s->index<p->nresources){unsigned n=s->index++;size_t heap_limit=vm_heap_limit();
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *spec=&s_value;PbcResource *r=&p->resources[n];PbcValue length,fill,seed,stream;
         if(!evaluate(p,spec->length,count,NULL,&length)||length.i<0||length.i>65535||!evaluate(p,spec->fill,count,NULL,&fill))goto fail;
         r->kind=spec->kind;r->count=(uint32_t)length.i;r->generation=p->generation;
@@ -537,7 +537,7 @@ int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
             if(spec->kind==DRAW_STYLE&&r->count!=1)goto fail;
             r->random_state=seed.u;s->payload=(s->payload+7u)&~(size_t)7u;
             size_t bytes=spec->kind==DRAW_STYLE?sizeof(DrawStyle):draw_batch_bytes(r->count,seed.u);
-            if(s->payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-s->payload)goto fail;
+            if(s->payload>heap_limit||bytes>heap_limit-s->payload)goto fail;
             s->payload+=bytes;
         }else if(spec->kind>=DRAW_IMAGE_RGB&&spec->kind<=DRAW_IMAGE_RGBWA){
             if(!evaluate(p,spec->seed,count,NULL,&seed)||!evaluate(p,spec->stream,count,NULL,&stream)||seed.u>p->ncolors)goto fail;
@@ -545,10 +545,10 @@ int pbc_prepare_step(PbcPreparation *s,Portable *p,LbcBuffer *output){
             if(stream.u&&((size_t)stream.u!=bytes||(bytes+2)/3>p->ncolors-seed.u))goto fail;
             r->random_state=seed.u;r->sealed=spec->flags==2;
             if(r->sealed&&!stream.u)goto fail;
-            if(!r->sealed){if(s->payload>VM_HEAP_LIMIT||bytes>VM_HEAP_LIMIT-s->payload)goto fail;s->payload+=bytes;}
+            if(!r->sealed){if(s->payload>heap_limit||bytes>heap_limit-s->payload)goto fail;s->payload+=bytes;}
         }else{
             size_t bytes=r->count*element_size(r->kind);
-            if(bytes>VM_HEAP_LIMIT-s->payload)goto fail;
+            if(s->payload>heap_limit||bytes>heap_limit-s->payload)goto fail;
             s->payload+=bytes;
         }
 

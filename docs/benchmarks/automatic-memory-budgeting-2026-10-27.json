@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-27",
+  "pico_w": {
+    "sram_bytes": 270336,
+    "vm_heap_automatic": true,
+    "vm_heap_capacity": 87160,
+    "static_bytes": 134824,
+    "vm_heap_ceiling": 87160,
+    "native_stack": 24576,
+    "pixel_driver_max": 7392,
+    "operating_headroom": 16384,
+    "remaining_bytes_after_reservations": 0,
+    "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+  },
+  "pico2_w": {
+    "sram_bytes": 532480,
+    "vm_heap_automatic": true,
+    "vm_heap_capacity": 345064,
+    "static_bytes": 138008,
+    "vm_heap_ceiling": 345064,
+    "native_stack": 24576,
+    "pixel_driver_max": 8448,
+    "operating_headroom": 16384,
+    "remaining_bytes_after_reservations": 0,
+    "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+  },
+  "pico_firmware_sha256": "9bd212ab9c1e9da339838ccb14c651ac94c7328c3e0d26533c1f92dfa60c7fc4",
+  "hardware": {
+    "pixels": 200,
+    "presets_preserved": true,
+    "saved_config_preserved": true,
+    "recalls": [
+      {
+        "preset": "audio_spectrum_no_flash",
+        "muted": false,
+        "vm_used": 36846,
+        "vm_peak": 43014,
+        "error": "-"
+      },
+      {
+        "preset": "stars",
+        "muted": false,
+        "vm_used": 47018,
+        "vm_peak": 54288,
+        "error": "-"
+      },
+      {
+        "preset": "audio_spectrum_no_flash",
+        "muted": false,
+        "vm_used": 43232,
+        "vm_peak": 69928,
+        "error": "-"
+      },
+      {
+        "preset": "stars",
+        "muted": false,
+        "vm_used": 47018,
+        "vm_peak": 69928,
+        "error": "-"
+      },
+      {
+        "preset": "audio_spectrum_no_flash",
+        "muted": false,
+        "vm_used": 43232,
+        "vm_peak": 69928,
+        "error": "-"
+      },
+      {
+        "preset": "audio_spectrum",
+        "muted": true,
+        "vm_used": 51672,
+        "vm_peak": 69928,
+        "error": "-"
+      },
+      {
+        "preset": "audio_spectrum_no_flash",
+        "muted": true,
+        "vm_used": 51672,
+        "vm_peak": 74582,
+        "error": "-"
+      }
+    ],
+    "main_stack_peak": 5316,
+    "worker_stack_peak": 1012,
+    "wifi_connected": true,
+    "mqtt_connected": true,
+    "http_checked": true,
+    "audio_online": true,
+    "audio_invalid": 0,
+    "audio_gaps": 0,
+    "final_preset": "audio_spectrum_no_flash",
+    "final_brightness": 0.400000006
+  },
+  "checks": {
+    "native_asan_ubsan_tests": 33,
+    "pico_python_tests": 24,
+    "audio_input_python_tests": 25,
+    "esp32s3_wifi_http_build": true,
+    "pico2_manual_262144_build": true,
+    "pico2_manual_524288_link_rejected": true
+  }
+}

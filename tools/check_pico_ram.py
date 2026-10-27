@@ -43,7 +43,11 @@ def ram_report(symbols: dict[str, int]) -> dict:
     # VM/output allocations made through malloc.
     heap_remaining = s["__HeapLimit"] - s["__end__"] - sum(
         budgets[key] for key in ("vm_heap_ceiling", "pixel_driver_max", "operating_headroom"))
-    return {"sram_bytes": sram, **budgets,
+    capacity = (s["__HeapLimit"] - s["__end__"] - budgets["pixel_driver_max"] - budgets["operating_headroom"]) & ~7
+    automatic = bool(s["__lightvm_heap_auto"])
+    if automatic and (capacity < 1024 or budgets["vm_heap_ceiling"] != capacity):
+        raise ValueError("automatic Pico VM budget does not match usable RAM after reserves")
+    return {"sram_bytes": sram, "vm_heap_automatic": automatic, "vm_heap_capacity": capacity, **budgets,
             "remaining_bytes_after_reservations": min(sram - sum(budgets.values()), heap_remaining),
             "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"}
 

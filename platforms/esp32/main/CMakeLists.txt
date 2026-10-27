@@ -1,4 +1,4 @@
-set(port_sources main.c platform.c ws2812_encoder.c)
+set(port_sources main.c platform.c vm_memory.c ws2812_encoder.c)
 if(LIGHTVM_MQTT)
     list(APPEND port_sources "${LIGHTVM_ROOT}/src/mqtt_posix.c")
 endif()
@@ -23,6 +23,10 @@ if(NOT LIGHTVM_ESP32_SELECTED_PROFILE STREQUAL "standard")
     target_compile_options(lightvm_core PRIVATE -O3)
 endif()
 target_link_libraries(${COMPONENT_LIB} PUBLIC lightvm_core)
+# The VM references these hooks from a separate archive after libmain. Keep
+# their port object even when no app_main call references it directly.
+target_link_options(${COMPONENT_LIB} INTERFACE
+    "LINKER:--undefined=platform_vm_heap_limit" "LINKER:--undefined=platform_vm_realloc")
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
 # Ordinary libraries must inherit the IDF compile options too (notably Xtensa
 # long calls and section placement). No SDK dependency enters the shared source.

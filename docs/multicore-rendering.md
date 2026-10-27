@@ -123,26 +123,26 @@ SDK lockout handler before announcing readiness. Flash operations pause renderin
 
 ## Resource profiles
 
-All sizes below are compile-time defaults. `AUTO` selects the board/feature
-profile; explicit CMake values override it without copying a board header.
+`LIGHTVM_VM_HEAP_BYTES=AUTO` budgets the usable RAM of the selected board after
+native reserves. Other `AUTO` settings select board/feature defaults; explicit
+CMake values override them without copying a board header.
 
 | Resource | Pico W | Pico 2 W |
 |---|---:|---:|
-| VM heap, Wi-Fi + HTTP | 64 KiB | 192 KiB |
-| VM heap, Wi-Fi without HTTP | 96 KiB | 256 KiB |
-| VM heap, USB only | 128 KiB | 256 KiB |
+| VM heap, all feature combinations | Automatic from linked RAM layout | Automatic from linked RAM layout |
 | Instruction cache per VM | 256 B | 1024 B |
 | HTTP/WebSocket connections | 2 with Wi-Fi | 4 |
 | Core 0 / core 1 stacks | 16 / 8 KiB | 16 / 8 KiB |
 | Native operating headroom | 16 KiB | 16 KiB |
 | Maximum program / pixels per output | 32 KiB / 1024 | 32 KiB / 1024 |
 
-Pico without radio uses the portable 128 KiB VM profile. ESP32 currently uses
-the serial executor; this change does not introduce an ESP32 worker task.
+Pico without radio uses the same automatic calculation. Host builds retain a
+reproducible 128 KiB default. ESP32 uses the SDK's available memory, as described
+below, and retains its serial executor.
 
 | CMake setting | Purpose |
 |---|---|
-| `LIGHTVM_VM_HEAP_BYTES` | Aggregate admission ceiling for VM state, frames and resident resources |
+| `LIGHTVM_VM_HEAP_BYTES` | `AUTO`: usable board RAM after reserves; integer: explicit aggregate admission ceiling |
 | `LIGHTVM_MODULE_BYTES` | Maximum compiled program size; also affects HTTP response storage |
 | `LIGHTVM_PIXEL_CAPACITY` | Per-output pixel ceiling and worst-case driver reservation |
 | `LIGHTVM_BYTECODE_CACHE_BYTES` | Per-instance instruction cache; power of two, 64–16384 bytes |
@@ -168,10 +168,43 @@ For example, append these options to the normal Pico 2 W configuration command:
 The linker excludes both stacks from the native heap. Every Pico build reads
 the compiled ELF geometry and resource settings, writes `ram-report.json`, and
 rejects reservations that exceed either total SRAM or the contiguous heap.
+The automatic VM limit is the contiguous heap from `__end__` to `__HeapLimit`,
+minus the worst-case pixel-driver reservation and native operating headroom,
+rounded down to eight bytes. RAM code, static network buffers and both stacks
+are already excluded. The firmware allocator and report use the same resolved
+linker symbol. A larger board or smaller firmware therefore receives more VM
+memory automatically; an explicit ceiling that cannot preserve reserves fails
+the build. Changing pixel capacity, connection limits or features recalculates
+the budget. This is a ceiling over ordinary allocations, not a preallocated pool.
 Instruction caches are charged within the VM ceiling, not reserved twice.
 Headroom is a reservation, not an enforced malloc partition; stack and native
 allocation peaks still need workload testing. Changing storage size remains a
 separate flash-layout choice documented in the board guide.
+
+ESP32 calculates its effective limit from current internal byte-addressable free
+RAM plus enabled PSRAM and existing physical VM allocations. It subtracts native
+operating headroom from **internal** RAM only: 64 KiB with Wi-Fi, 16 KiB without,
+unless explicitly overridden. This accommodates dynamically created SDK tasks,
+reconnections and network buffers. It also retains a conservative per-RMT-channel
+driver allowance of `pixel_capacity * 3 + 8192` bytes, including DMA staging.
+Already allocated SDK stacks and buffers are absent from free RAM. These reserves
+remain in place even when the corresponding services or outputs are inactive.
+VM allocations prefer PSRAM, when enabled in ESP-IDF; internal fallback checks
+the reserve before and after allocation. An explicit VM ceiling is an additional
+cap and cannot override the native reserve. Capability-aware resizing preserves
+the original block on failure and may temporarily need both old and new blocks.
+
+`describe.vm_heap_limit` and STATUS `heap_limit` report the actual effective
+limit; `describe.vm_heap_automatic` distinguishes automatic from explicit policy.
+On ESP32 the limit may decrease when native services allocate memory. Growth is
+then rejected without unsigned underflow, while frees and shrink attempts remain
+valid. Virtual pixel charges count against admission but never masquerade as
+physical VM allocations when estimating available RAM. Fragmentation, allocator
+metadata and concurrent SDK activity can still cause allocation failure below
+the reported limit; the checks preserve the running scene on failed preparation.
+
+The [October 2026 validation](design/automatic-memory-budgeting-2026-10-27.md)
+records the linked budgets, reserve rejection tests and Pico preset recalls.
 
 MQTT-enabled Pico builds emit `ha-stack-report.json` for the original callback
 regression. Every Pico build also runs the strict `stack-paths.json` gate, using

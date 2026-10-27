@@ -6,7 +6,9 @@
 .global __lightvm_sram_start, __lightvm_sram_end, __lightvm_vm_heap, __lightvm_pixel_capacity, __lightvm_output_slots
 .equ __lightvm_sram_start, SRAM_BASE
 .equ __lightvm_sram_end, SRAM_END
-.equ __lightvm_vm_heap, VM_HEAP_LIMIT
+.global __lightvm_heap_auto, __lightvm_heap_requested
+.equ __lightvm_heap_auto, LIGHTVM_AUTOMATIC_HEAP
+.equ __lightvm_heap_requested, VM_HEAP_LIMIT
 .equ __lightvm_pixel_capacity, PIXEL_CAPACITY
 .global __lightvm_native_headroom
 .equ __lightvm_native_headroom, LIGHTVM_NATIVE_HEADROOM_BYTES

@@ -300,7 +300,7 @@ void vm_command(void *context, uint8_t type, uint16_t id, const uint8_t *p, size
         status_integer(&w,"module_limit",MODULE_LIMIT);
         status_integer(&w,"heap",vm_heap_used());
         status_integer(&w,"heap_peak",vm_heap_peak());
-        status_integer(&w,"heap_limit",VM_HEAP_LIMIT);
+        status_integer(&w,"heap_limit",vm_heap_limit());
         if(a->target&&a->target->count)status_integer(&w,"pin",a->target->config.pin);else status_field(&w,"pin","-1",2);
         status_integer(&w,"pixels",a->target?a->target->count:0);
         status_integer(&w,"brightness",a->target&&a->target->count?a->target->config.brightness:0);
