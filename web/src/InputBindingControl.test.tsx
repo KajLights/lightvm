@@ -20,3 +20,11 @@ it('maps normalized music to declared local behavior bounds and preserves defaul
   fireEvent.click(screen.getByText('Restore default'));
   expect(publish).toHaveBeenLastCalledWith({ default: true });
 });
+it('offers board sensors with units and maps their physical range into the input range', () => {
+  const publish = vi.fn();
+  render(<InputBindingControl declaration={{ name: 'heat', type: 'float', default: 0, minimum: 0, maximum: 1 }} binding={{ value: 0 }} value={0} publish={publish}
+    sources={[{ name: 'board.temperature_c', origin: 'board', label: 'Chip temperature', unit: '°C', type: 'float', valid: false, value: null, age_ms: null, suggested_min: 20, suggested_max: 80 }]} />);
+  expect(screen.getByRole('option', { name: 'Board → Chip temperature (°C)' })).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('heat driver'), { target: { value: 'board.temperature_c' } });
+  expect(publish).toHaveBeenLastCalledWith({ source: 'board.temperature_c', map: { input_min: 20, input_max: 80, output_min: 0, output_max: 1 } });
+});

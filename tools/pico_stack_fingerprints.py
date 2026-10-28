@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 MANIFEST=Path(__file__).with_name('pico-stack-contracts.json')
 PROJECT=(
+    'src/board_status.c','platforms/pico/board_status.c',
     'src/runtime.c','src/app.c','src/preparation.c','src/render_executor.c',
     'src/device_host.c','src/store_policy.c',
     'shared/device-core/src/http.c','shared/device-core/src/http_setup.c',

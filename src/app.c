@@ -382,6 +382,8 @@ void app_init(App *a, SendMessage send, void *transport) {
     }
     network_settings_init(&a->network_settings,&a->network,&a->store);
     network_settings_load(&a->network_settings);
+    board_status_init(&a->board_status,&a->inputs);
+    board_status_tick(&a->board_status,&a->network,platform_time_us());
     a->device=app_device_host(a);
     a->booting=false;runtime_defer_end();
 }
@@ -446,6 +448,7 @@ done:
 void app_tick(App *a) {
     uint64_t now=platform_time_us();
     runtime_foreground(now);
+    board_status_tick(&a->board_status,&a->network,now);
     digital_inputs_tick(&a->digital_inputs,now);
 #if LIGHTVM_BOOT_SEQUENCE
     boot_sequence_tick(&a->boot_sequence,now);
@@ -606,7 +609,7 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"ab_transitions\":true,\"transition_sources\":true,\"transition_programs\":true,\"custom_transitions\":true,\"transition_effects\":[");
     for(unsigned n=0;n<TRANSITION_PROGRAM;n++){if(n)literal(&w,",");quoted(&w,transition_effect_name((TransitionEffect)n));}literal(&w,"]");
     literal(&w,",\"transient_settings\":true,\"preset_transitions\":true,\"presets\":true,\"typed_storage\":true");
-    literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":16");
+    literal(&w,",\"live_inputs\":true,\"input_limit\":8,\"input_source_limit\":16,\"board_status_supported\":true");
     literal(&w,",\"composition_blend_modes\":[\"over\",\"add\",\"screen\",\"multiply\"]");
     literal(&w,",\"storage_available\":"); literal(&w,a->store.available ? "true" : "false");
     StoreInfo storage=store_info(&a->store);
@@ -1692,9 +1695,14 @@ static bool input_manage(App *a,uint16_t id,const Json *j,const char *op){
         else{
             Writer w={.app=a,.id=id};literal(&w,"[");
             static const char *const types[]={"","int","float","rgb8","bool"};
-            for(unsigned n=0;n<a->inputs.count;n++){
-                InputSignal *source=&a->inputs.signals[n];char value[48];if(n)literal(&w,",");
+            for(unsigned n=0;n<a->inputs.native_count+a->inputs.count;n++){
+                bool native=n<a->inputs.native_count;
+                InputSignal *source=native?&a->inputs.native[n]:&a->inputs.signals[n-a->inputs.native_count];char value[48];if(n)literal(&w,",");
                 literal(&w,"{\"name\":");quoted(&w,source->name);literal(&w,",\"type\":");quoted(&w,types[source->type]);
+                literal(&w,",\"origin\":");quoted(&w,native?"board":"publisher");
+                if(native){literal(&w,",\"label\":");quoted(&w,source->label);literal(&w,",\"unit\":");quoted(&w,source->unit);
+                    char range[100];snprintf(range,sizeof(range),",\"suggested_min\":%.9g,\"suggested_max\":%.9g",(double)source->suggested_min,(double)source->suggested_max);literal(&w,range);
+                }
                 literal(&w,",\"generation\":");number(&w,source->publisher);literal(&w,",\"sequence\":");number(&w,source->sequence);
                 literal(&w,",\"valid\":");literal(&w,source->valid?"true":"false");literal(&w,",\"value\":");
                 if(!source->valid)strcpy(value,"null");else if(source->type==T_FLOAT)snprintf(value,sizeof(value),"%.9g",(double)source->value.f);

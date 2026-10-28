@@ -23,6 +23,19 @@ static PicoMqtt mqtt_stream;
 static App *engine;
 static bool initialized;
 static NetworkMode mode;
+bool pico_board_vsys_begin(void) {
+    if(!initialized)return false;
+    cyw43_thread_enter();
+    (void)cyw43_arch_gpio_get(CYW43_WL_GPIO_VBUS_PIN);
+    return true;
+}
+void pico_board_vsys_end(void) { cyw43_thread_exit(); }
+bool pico_board_rssi(double *value) {
+    if(!initialized||mode!=NET_MODE_STATION)return false;
+    int32_t rssi;
+    if(cyw43_wifi_get_rssi(&cyw43_state,&rssi))return false;
+    *value=rssi;return true;
+}
 static PicoDhcp dhcp;
 static struct netif *active_netif(void) { return &cyw43_state.netif[mode==NET_MODE_AP?CYW43_ITF_AP:CYW43_ITF_STA]; }
 static bool observed[NETWORK_LIMIT];

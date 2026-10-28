@@ -11,7 +11,7 @@ target_compile_options(lightvm PRIVATE -fstack-usage -fcallgraph-info=su)
 option(LIGHTVM_OUTPUT_PROBE "Build the Pico hardware output verification image" OFF)
 option(LIGHTVM_NUMERIC_PROBE "Build the isolated numeric conformance image" OFF)
 target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/main.c"
-    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/peripherals.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S"
+    "${CMAKE_CURRENT_LIST_DIR}/platform.c" "${CMAKE_CURRENT_LIST_DIR}/board_status.c" "${CMAKE_CURRENT_LIST_DIR}/pixels.c" "${CMAKE_CURRENT_LIST_DIR}/peripherals.c" "${CMAKE_CURRENT_LIST_DIR}/storage_layout.S"
     "${CMAKE_CURRENT_LIST_DIR}/render_executor.c")
 set(LIGHTVM_WORKER_STACK_BYTES "8192" CACHE STRING "Core 1 render stack reservation")
 if(NOT LIGHTVM_WORKER_STACK_BYTES MATCHES "^[0-9]+$" OR
@@ -40,7 +40,7 @@ pico_set_linker_script_var(lightvm SCRATCH_Y_LENGTH "16384")
 # explicitly marked .time_critical in RAM, including flash program/erase code.
 pico_add_linker_script_override_path(lightvm "${CMAKE_CURRENT_LIST_DIR}/linker"
     FILES default_text_excludes.incl default_rodata_excludes.incl)
-target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand pico_multicore pico_flash hardware_pio hardware_dma hardware_flash hardware_sync hardware_i2c hardware_clocks)
+target_link_libraries(lightvm PRIVATE pico_stdlib pico_stdio_usb pico_unique_id pico_rand pico_multicore pico_flash hardware_pio hardware_dma hardware_flash hardware_sync hardware_i2c hardware_clocks hardware_adc)
 pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/ws2812.pio")
 pico_generate_pio_header(lightvm "${CMAKE_CURRENT_LIST_DIR}/apa102.pio")
 # Keep using the compiler runtime rather than the SDK's ROM double shims.

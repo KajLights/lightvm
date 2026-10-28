@@ -177,6 +177,10 @@ idf.py -C platforms/esp32 -B "$PWD/build/xiao_esp32c3" -p PORT flash
 Use a separate directory and `xiao_esp32s3` or `xiao_esp32c6` for those boards.
 The normal partition tables and flash store are retained.
 
+Board temperature, supported supply-voltage readings and other
+[board-status measurements](docs/board-status.md) are available as native animation
+and transition input sources.
+
 ## Browser workspace and controller APIs
 
 ```sh

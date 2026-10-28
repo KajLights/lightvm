@@ -42,7 +42,7 @@ function(lightvm_add_core)
         "${LIGHTVM_ROOT}/src/release.c" "${LIGHTVM_ROOT}/src/runtime.c" "${LIGHTVM_ROOT}/src/render_executor.c" "${LIGHTVM_ROOT}/src/app.c"
         "${LIGHTVM_ROOT}/src/vm_allocator.c" "${LIGHTVM_ROOT}/src/pixels.c" "${LIGHTVM_ROOT}/src/numeric.c" "${LIGHTVM_ROOT}/src/native_math.c"
         "${LIGHTVM_ROOT}/src/session.c" "${LIGHTVM_ROOT}/src/vm.c" "${LIGHTVM_ROOT}/src/command.c"
-        "${LIGHTVM_ROOT}/src/preparation.c" "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/inputs.c" "${LIGHTVM_ROOT}/src/portable_manifest.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"
+        "${LIGHTVM_ROOT}/src/preparation.c" "${LIGHTVM_ROOT}/src/control.c" "${LIGHTVM_ROOT}/src/inputs.c" "${LIGHTVM_ROOT}/src/board_status.c" "${LIGHTVM_ROOT}/src/portable_manifest.c" "${LIGHTVM_ROOT}/src/bytecode_core.c"
         "${LIGHTVM_ROOT}/src/portable.c" "${LIGHTVM_ROOT}/src/portable_draw.c" "${LIGHTVM_ROOT}/src/portable_map.c" "${LIGHTVM_ROOT}/src/animation.c" "${LIGHTVM_ROOT}/src/draw.c" "${LIGHTVM_ROOT}/src/composition.c" "${LIGHTVM_ROOT}/src/transition.c"
         "${LIGHTVM_ROOT}/src/outputs.c" "${LIGHTVM_ROOT}/src/digital_inputs.c" "${LIGHTVM_ROOT}/src/apa102.c")
     if(LIGHTVM_STORAGE_BACKEND_SOURCES)

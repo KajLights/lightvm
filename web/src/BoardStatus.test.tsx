@@ -1,0 +1,37 @@
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { afterEach, expect, it, vi } from 'vitest';
+import type { LightVMClient } from '../protocol.mjs';
+import { BoardStatus } from './BoardStatus';
+import { Compiler } from './compiler';
+import { ControllerService } from './controller-service';
+import { RuntimeContext } from './runtime';
+import { createAppStore } from './store';
+import type { Description, InputSource } from './types';
+
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+it('shows valid zero readings and units, hides publishers, and drops failed or stale readings', async () => {
+  vi.useFakeTimers();
+  const store = createAppStore(), controllers = new ControllerService(store), compiler = new Compiler(store);
+  const description = { controller_id: 's3', boot_id: 'boot', board_status_supported: true } as Description;
+  const sensor: InputSource = { name: 'board.temperature_c', label: 'Chip temperature', unit: '°C', origin: 'board', type: 'float', valid: true, value: 0, age_ms: 0 };
+  const json = vi.fn().mockResolvedValue([sensor, { ...sensor, name: 'music.level', label: 'Music', origin: 'publisher' }]);
+  const client = { closed: false, transport: { label: 'USB' }, json };
+  controllers.paths.attach('usb', client as unknown as LightVMClient, description); controllers.syncPaths(description);
+  const view = render(<Provider store={store}><RuntimeContext.Provider value={{ compiler, controllers }}><BoardStatus active /></RuntimeContext.Provider></Provider>);
+  await act(async () => {});
+  expect(screen.getByText('Chip temperature')).toBeInTheDocument();
+  expect(screen.getByText('0 °C')).toBeInTheDocument();
+  expect(screen.queryByText('Music')).toBeNull();
+  json.mockResolvedValue([{ ...sensor, age_ms: 2500 }]);
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  expect(screen.getByText('Unavailable')).toBeInTheDocument();
+  json.mockRejectedValue(new Error('Disconnected'));
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+  expect(screen.getByText('Board status unavailable.')).toBeInTheDocument();
+  expect(screen.queryByText('0 °C')).toBeNull();
+  view.unmount();
+  const before = json.mock.calls.length;
+  await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+  expect(json).toHaveBeenCalledTimes(before);
+});

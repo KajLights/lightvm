@@ -36,6 +36,16 @@ int platform_pixels_poll(void *);
 void platform_pixels_cancel(void *);
 bool platform_pixels_show(void *driver, const uint8_t *rgb, size_t count);
 
+// Read-only native board measurements, sampled by the engine owner. Unsupported
+// measurements must not return nominal/configured values as physical readings.
+typedef enum {
+    PLATFORM_METRIC_TEMPERATURE, PLATFORM_METRIC_SUPPLY_VOLTAGE,
+    PLATFORM_METRIC_CPU_FREQUENCY, PLATFORM_METRIC_HEAP_FREE,
+    PLATFORM_METRIC_HEAP_MIN, PLATFORM_METRIC_WIFI_RSSI, PLATFORM_METRIC_COUNT
+} PlatformMetric;
+bool platform_metric_supported(PlatformMetric);
+bool platform_metric_read(PlatformMetric,double *);
+
 // Optional native peripherals. Unsupported ports reject configuration before apply.
 bool platform_apa102_supported(void);
 bool platform_apa102_open(const PixelConfig *, void **);
