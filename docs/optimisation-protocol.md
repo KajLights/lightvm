@@ -37,11 +37,11 @@ The linked reports and raw packages take precedence over rounded chat summaries.
 The C3 [report](design/c3-performance-2026-10-24.md),
 [structured results](benchmarks/c3-performance-2026-10-24.json) and
 [raw archive](benchmarks/c3-performance-2026-10-24.tar.gz) have been preserved here
-from that chat. Its profile implementation was still in the separate `c314`
-worktree when this protocol was written; importing its evidence and tools does
-not install that implementation in this checkout. Inspect the actual build.
-In particular, do not assume `LIGHTVM_ESP32_PROFILE=AUTO` works until that code
-is integrated, or label a current ordinary C3 build as the measured optimised one.
+from that chat. The remaining profile, serial scheduler and USB changes were
+subsequently integrated into the current shared-service layout on 24 October.
+`LIGHTVM_ESP32_PROFILE=AUTO` now selects the C3 profile on C3 and `standard` on
+S3/C6. The recorded hardware timings still identify their original frozen images;
+the integration build is not a fresh hardware performance measurement.
 
 Keep four different evidence classes distinct:
 
@@ -404,6 +404,12 @@ perform the same step using the board-aware client/API. Do not blindly run a
 Pico command on an ESP and mark that board covered. The frozen numeric archive
 also retains the service-load and peak-memory recipes; their local paths and
 credentials must be supplied for the actual rig.
+
+The imported `check_storage_hardware.py` is board-aware and checks repeated flash
+replacement/readback, pinned generations, deletion/recreation and stable heap.
+`check_numeric_runtime_hardware.py` now accepts `--pin` and `--no-reset` for
+scalar/bulk lazy-fault, recovery and rejected-admission checks on ESP as well as
+Pico. Both accept `--process` for host validation.
 
 ## Acceptance and reporting
 

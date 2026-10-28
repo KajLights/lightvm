@@ -79,11 +79,19 @@ static void portable_contract(void){
     vm_tick(&vm);CHECK(vm.control.in_step&&vm.control.program_us==0&&vm.control.committed[0]==first);
     /* Publication may make a skipped VM runnable after collection. It must
        wait for the next collector, never start a serial fallback job. */
-    uint64_t dispatches=p->dispatch_count;
-    vm_tick_begin();vm_tick_budget(&vm,4096);CHECK(p->dispatch_count==dispatches);
-    CHECK(vm_tick_collect(&vm,1));CHECK(!vm_tick_collect(&vm,1));vm_tick_flush();
-    CHECK(p->dispatch_count==dispatches+1);vm_tick_budget(&vm,4096);
-    CHECK(p->dispatch_count==dispatches+1);vm_tick_end();
+    unsigned previous_workers=numeric_workers;
+    for(numeric_workers=1;numeric_workers<=2;numeric_workers++){
+        uint64_t dispatches=p->dispatch_count;
+        vm_tick_begin();vm_tick_budget(&vm,4096);CHECK(p->dispatch_count==dispatches);
+        CHECK(vm_tick_collect(&vm,1));
+        // A single worker executes now so the next admission sees its cost;
+        // two workers retain the first job until its partner or explicit flush.
+        CHECK(p->dispatch_count==dispatches+(numeric_workers==1?1:0));
+        CHECK(!vm_tick_collect(&vm,1));vm_tick_flush();
+        CHECK(p->dispatch_count==dispatches+1);vm_tick_budget(&vm,4096);
+        CHECK(p->dispatch_count==dispatches+1);vm_tick_end();
+    }
+    numeric_workers=previous_workers;
     unsigned pc=p->pc;static const char snapshot[]="{\"op\":\"program_snapshot\"}";
     Json snapshot_json;CHECK(json_parse(&snapshot_json,(const uint8_t*)snapshot,strlen(snapshot)));
     CHECK(control_manage(&vm,77,&snapshot_json,"program_snapshot"));CHECK(p->pc==pc&&reply.code==STATUS_OK);

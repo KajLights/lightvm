@@ -216,7 +216,9 @@ bool vm_tick_collect(VmInstance *a,unsigned budget){
     if(!runtime_epoch_can_collect()){control_wait(a,a->playing?1:0);return false;}
     if(tick_prepare(a,budget,&slices[queued])){
         jobs[queued]=(RenderJob){animation_execute,&slices[queued],0};
-        if(++queued==2)vm_tick_flush();
+        /* A serial executor must charge the first slice to the epoch before
+           admitting another one. Only concurrent workers share a batch. */
+        if(++queued==render_executor_workers())vm_tick_flush();
         return true;
     }
     return false;

@@ -1,10 +1,10 @@
 # ESP32-C3 default profile and Pico comparison
 
-This is the preserved report from **Add C3 optimized default profile**. Its
-firmware changes were in a separate worktree when the
-[optimisation protocol](../optimisation-protocol.md) imported this evidence.
-Build instructions below require those profile sources; this report alone does
-not mean the profile has been integrated into the current checkout.
+This is the preserved hardware report from **Add C3 optimized default profile**.
+The profile and remaining checks were integrated into the current shared-service
+layout on 24 October, after the [optimisation protocol](../optimisation-protocol.md)
+imported this evidence. The historical image hashes and measurements below remain
+unchanged; integration validation does not constitute a new hardware timing run.
 
 24 October 2026. `LIGHTVM_ESP32_PROFILE=AUTO` now selects the measured `c3`
 profile on XIAO ESP32-C3; S3 and C6 continue to select `standard`. The profile

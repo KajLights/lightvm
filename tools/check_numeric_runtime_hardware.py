@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check lazy faults, frame retention, recovery and rejected admission on a Pico."""
+"""Check lazy faults, frame retention, recovery and rejected admission on a controller."""
 import argparse
 import hashlib
 import json
@@ -44,7 +44,7 @@ def reject(action):
 
 
 def run(args):
-    client = Client(SerialTransport(args.port) if args.port else ProcessTransport(args.process), timeout=120)
+    client = Client(SerialTransport(args.port, no_reset=args.no_reset) if args.port else ProcessTransport(args.process), timeout=120)
     result = {'firmware_sha256': hashlib.sha256(args.firmware.read_bytes()).hexdigest(),
               'source': SOURCE, 'oversized_source': LARGE, 'cases': []}
     created = []
@@ -68,7 +68,7 @@ def run(args):
                 client.configure({'schema': 'lightvm.config', 'outputs': []})
                 client.configure({'schema': 'lightvm.config', 'outputs': [{
                     'id': 'numeric', 'type': 'ws2812b',
-                    'config': {'pin': 'GP16', 'count': count, 'brightness_limit': 32}}]})
+                    'config': {'pin': args.pin, 'count': count, 'brightness_limit': 32}}]})
                 client.configure_composition([{'id': 'fg', 'program': name}], output='numeric')
                 client.require_ok(client.command(STOP, output='numeric'))
                 client.reset_program(output='numeric', layer='fg')
@@ -118,6 +118,8 @@ def run(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port')
+    parser.add_argument('--pin', default='GP16')
+    parser.add_argument('--no-reset', action='store_true')
     parser.add_argument('--process', type=Path)
     parser.add_argument('--firmware', type=Path, required=True)
     parser.add_argument('--result', type=Path, required=True)

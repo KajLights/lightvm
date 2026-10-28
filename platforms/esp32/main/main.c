@@ -1,5 +1,7 @@
 #include "session.h"
 #include "port.h"
+#include "runtime.h"
+#include "usb_connection.h"
 #if LIGHTVM_MQTT
 #include "home_assistant.h"
 #include "mqtt_posix.h"
@@ -71,20 +73,22 @@ void app_main(void) {
     ha_init(&ha,&app,mqtt_socket_stream(&mqtt_socket));
 #endif
     app.service_io=service_io;
-    bool connected=usb_serial_jtag_is_connected();
+    Esp32UsbConnection connection={.connected=usb_serial_jtag_is_connected()};
     for (;;) {
 #if LIGHTVM_WIFI
         device_esp32_poll();
 #endif
-        bool current=usb_serial_jtag_is_connected();
-        if (connected && !current) { session_destroy(&session); session_init(&session,&app,1,output_message,&transport); }
-        connected=current;
         app_tick(&app);
 #if LIGHTVM_MQTT
         ha_tick(&ha,network_online(&app.network),platform_time_us());
 #endif
         uint8_t input[256];
+        runtime_ingress(platform_time_us());
         int size = usb_serial_jtag_read_bytes(input, sizeof(input), 0);
+        if (esp32_usb_disconnected(&connection,usb_serial_jtag_is_connected(),size>0,platform_time_us())) {
+            session_destroy(&session);
+            session_init(&session,&app,1,output_message,&transport);
+        }
         if (size > 0) {
             transport.failed = false;
             session_feed(&session, input, (size_t)size); app_reply_delivered(&app,1);
