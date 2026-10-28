@@ -410,6 +410,12 @@ Pico command on an ESP and mark that board covered. The frozen numeric archive
 also retains the service-load and peak-memory recipes; their local paths and
 credentials must be supplied for the actual rig.
 
+The imported `check_storage_hardware.py` is board-aware and checks repeated flash
+replacement/readback, pinned generations, deletion/recreation and stable heap.
+`check_numeric_runtime_hardware.py` accepts `--pin` and `--no-reset` for
+scalar/bulk lazy-fault, recovery and rejected-admission checks on ESP as well as
+Pico. Both accept `--process` for host validation.
+
 ## Acceptance and reporting
 
 These are engineering gates, not numbers inferred from historical tables.
