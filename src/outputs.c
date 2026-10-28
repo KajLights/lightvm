@@ -158,7 +158,7 @@ static bool validate_pixels(const Json *j, int c, PixelConfig *cfg, char *error,
 static bool parse(const Json *j,HardwareConfig *cfg,char *error,size_t capacity){
     memset(cfg,0,sizeof(*cfg));
     cfg->default_output=-1;
-    static const char *const root[]={"schema","outputs","inputs","audio",NULL};
+    static const char *const root[]={"schema","outputs","inputs",NULL};
     if(j->size>CONFIG_LIMIT||!json_fields(j,0,root))
         return failure(error,capacity,"config: invalid JSON, duplicate/unknown fields or configuration limit");
     if(!json_equal(j,json_get(j,0,"schema"),"lightvm.config"))return failure(error,capacity,"schema: expected lightvm.config");
@@ -220,11 +220,10 @@ static bool parse(const Json *j,HardwareConfig *cfg,char *error,size_t capacity)
     }
     if(cfg->count)cfg->default_output=0;
     if(!parse_inputs(j,cfg,error,capacity))return false;
-    if(!audio_config_parse(j,json_get(j,0,"audio"),&cfg->audio,error,capacity))return false;
     error[0]=0;return true;
 }
 
-void hardware_destroy(HardwareConfig *cfg){demo_free(cfg->audio);platform_free(cfg->inputs);platform_free(cfg->outputs);memset(cfg,0,sizeof(*cfg));cfg->default_output=-1;}
+void hardware_destroy(HardwareConfig *cfg){platform_free(cfg->inputs);platform_free(cfg->outputs);memset(cfg,0,sizeof(*cfg));cfg->default_output=-1;}
 bool hardware_decode(const Json *j,HardwareConfig *cfg,char *error,size_t capacity){
     if(parse(j,cfg,error,capacity))return true;
     hardware_destroy(cfg);return false;

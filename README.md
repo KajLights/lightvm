@@ -201,6 +201,9 @@ and transition input sources.
 
 ```sh
 npm ci
+python3 tools/fetch_audio_core.py
+# Emscripten 4.0.7's emcc must be on PATH (source its emsdk_env.sh).
+npm run audio:build
 python3 tools/serve_editor.py
 ```
 
@@ -210,7 +213,10 @@ Deploy to device for animations and transitions. Editable source and settings ar
 imported/exported as external files; there is no browser library or filesystem
 integration. Configuration manages device presets, outputs, Wi-Fi and MQTT. Mixer
 cues presets on A/B buses with transition selection, manual mixing, cuts, timed fades
-and swaps. Audio Playground tunes signal input windows and output ranges.
+and swaps. Audio Playground runs the pinned shared analyser for microphone or
+silent PCM fixtures, compares two profiles, and explicitly forwards named audio
+sources. See [browser audio analysis](docs/audio-analysis-browser.md) for builds,
+capture timing and reproducible comparison exports.
 [MQTT control and Home Assistant lights](docs/mqtt.md) provide optional power and preset selection
 through an existing broker, with one light exposing power, master brightness, colour and preset effects per output.
 Pico W also supports the [Pico RGB Keypad](docs/mqtt.md#keypad-and-rgb-indicators):

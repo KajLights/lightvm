@@ -3,6 +3,7 @@
 #include "command.h"
 #include "composition.h"
 #include "transition.h"
+#include "audio_sources.h"
 struct App;
 struct AppOutput;
 typedef enum { PREPARE_DIRECT,PREPARE_SLOT,PREPARE_COMPOSITION,PREPARE_PRESET,PREPARE_RECALL,PREPARE_RESET,PREPARE_LAYER,PREPARE_TRANSITION,PREPARE_PRESET_SAVE,PREPARE_CONFIG_VALIDATE,PREPARE_CONFIG_APPLY,PREPARE_CONFIG_SAVE } PreparationKind;
@@ -20,6 +21,9 @@ typedef struct {
 } PreparationRequest;
 typedef struct {
     PreparationRequest request;
+    struct InputSourceScope *sources;
+    bool source_demand;
+    AudioSourcePlan retained_sources;
     VmInstance *direct;
     PixelBuffer target;
     Composition *composition;

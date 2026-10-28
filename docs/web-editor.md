@@ -51,6 +51,15 @@ transition and duration. The same transition is used for selection, ON, OFF and
 startup. **Save preset to device** preserves current playback. Opening an existing
 preset reads its catalogue revision; conflicting saves retain the draft for review.
 
+**Sources** declares up to four aliases for a Sense/host UDP endpoint or a browser
+gateway. Choose the expected analysis algorithm, optional identity pin and whether
+synthetic fixture input is accepted. Status shows active matching providers,
+observed identity, format and spectrum edges. **Pin observed identity** copies the
+observed ID into the draft; saving never probes, acquires or changes the running
+scene. Reactivate the preset to apply its edited source policy. Declared aliases
+appear in layer and transition input choices, including spectrum bands and integer
+onset counters. Renaming an alias requires updating its input bindings as well.
+
 **Output & startup** configures physical outputs, pins, pixel counts, brightness,
 Home Assistant bindings and power-on behavior: Off, Restore last state, or Selected
 preset. Validate has no hardware side effect; Apply in RAM is temporary; Apply &
@@ -103,16 +112,18 @@ assignment releases control without automatically reclaiming it.
 Mixer also provides standard **Light** controls. Brightness dims the entire
 output, including music and paused frames. Colour is retained even if the current
 animation does not follow it. Live inputs and saved recipes provide **What controls
-this?** choices for light colour, fixed values, timers, music and named sources;
+this?** choices for light colour, fixed values, timers, declared audio and named sources;
 JSON remains available under Advanced.
 
 ## Audio Playground
 
-The audio desk shows six generic music meters and sensitivity/noise-floor/release
-controls. **Start listening** analyzes locally; **Send music to controller**
-publishes reusable signals. Choose Music → Level, Bass, etc. in each animation's
-**What controls this?** selector, with response ranges or a colour palette.
-The adapter does not change animation bindings. Stopping uses each input's fallback.
+The audio desk runs the pinned shared C/WASM analyser for microphone or silent PCM
+fixtures, with full calibration controls and an explicit algorithm comparison.
+**Start listening** analyzes locally; **Send music to controller** forwards the
+selected result as a named structured gateway. Declare that gateway in a scene's
+`sources` and bind its alias in the animation's INPUTs. The adapter does not change
+animation bindings. Stopping uses each input's fallback. Comparison export retains
+per-hop features and events, parameters, profile/session identity and input hash.
 Listening continues across workspace routes with a visible stop control and stops
 when the browser tab is hidden. See the [audio guide](audio-source.md).
 
@@ -132,6 +143,9 @@ review state. See [WebSocket](websocket.md).
 From the repository root, with Node 22 and Python 3 installed:
 
     npm ci
+    python3 tools/fetch_audio_core.py
+    # With Emscripten 4.0.7's emcc on PATH:
+    npm run audio:build
     python3 tools/serve_editor.py
 
 Open **http://localhost:8000** in desktop Chrome or Edge. The server binds to
@@ -246,7 +260,7 @@ storage and retain source/configuration backups across contract cutovers.
 ## Home Assistant outputs
 
 Under **Configuration → Output & startup**, choose **Home Assistant default preset**
-to expose that output. Check its **Home Assistant presets** and optionally set a
-name. Apply in RAM or save the configuration for reboot. Enable MQTT separately
+to expose that output and optionally set a name. Every installed preset appears
+automatically in its effect selector. Apply in RAM or save the configuration for reboot. Enable MQTT separately
 in **Wi-Fi, HTTP & MQTT**. Each exposed output appears in HA as one light
 with power, master brightness, colour and preset effects; selecting an effect starts its complete composition.

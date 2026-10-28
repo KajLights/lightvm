@@ -65,6 +65,9 @@ int main(int argc, char **argv) {
     static App app;
     static Session session;
     app_init(&app, output_message, stdout);
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
+    host_audio_init(&app.audio);
+#endif
     session_init(&session, &app, 1, output_message, stdout);
 #if LIGHTVM_HTTP
     HostNetwork network={.app=&app,.override=listen_address!=NULL,.address="127.0.0.1",.port=port};
@@ -81,6 +84,9 @@ int main(int argc, char **argv) {
     app.service_io=service_io;
     bool stdin_open=true;
     for (;;) {
+#if LIGHTVM_AUDIO_SUBSCRIPTIONS
+        host_audio_poll(&app.audio);
+#endif
         app_tick(&app);
 #if LIGHTVM_MQTT
         ha_tick(&ha,true,platform_time_us());

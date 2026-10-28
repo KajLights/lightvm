@@ -1,5 +1,6 @@
 // Original LightVM control profile. MIT License, copyright 2026 Kaj Wik Siebert.
 #include "control.h"
+#include "audio_sources.h"
 #include "vm.h"
 #include "vm_allocator.h"
 #include "runtime.h"
@@ -180,6 +181,7 @@ static void describe(ControlWriter *w,bool with_manifest) {
         snprintf(b,sizeof(b),",\"dependency_revision\":%" PRIu32 ",\"dirty_to_display_us\":%" PRIu64 ",\"runnable_wait_us\":%" PRIu64 ",\"composite_wait_us\":%" PRIu64 ",\"output_wait_us\":%" PRIu64,c->dependency_revision,c->dirty_to_display_us,c->wait_us[1],c->wait_us[2],c->wait_us[3]);text(w,b);
         text(w,",\"dirty_age_us\":");if(c->dirty){snprintf(b,sizeof(b),"%" PRIu64,platform_time_us()-c->dirty_since_us);text(w,b);}else text(w,"null");
         inputs_describe(p,input_text,w);
+        text(w,",\"sources\":");input_scope_describe(p->source_scope,input_text,w);
         snprintf(b,sizeof(b),",\"map_plan_bytes\":%zu",p->map_bytes);text(w,b);
         snprintf(b,sizeof(b),",\"instance_context_bytes\":%zu,\"portable_context_bytes\":%zu,\"metadata_bytes\":%zu,\"state_bytes\":%zu,\"resource_payload_bytes\":%zu,\"register_bytes\":%zu,\"call_storage_bytes\":0,\"heap_used\":%zu,\"heap_peak\":%zu",
             sizeof(*a),sizeof(*p),p->metadata_bytes,p->state_bytes,p->payload_bytes,p->register_bytes,vm_heap_used(),vm_heap_peak());text(w,b);
@@ -241,6 +243,8 @@ bool control_manage(VmInstance *a,uint16_t id,const Json *j,const char *op) {
     }
     if (resume) {
         if (!c->initialized || c->faulted) { result(a,id,STATUS_EXECUTION,"initialize with PLAY/FRAME; reactivate a faulted program"); return true; }
+        const char *error=a->output?inputs_demand(a->portable,true):NULL;
+        if(error){result(a,id,STATUS_CONFIG,error);return true;}
         a->playing=true; a->last_frame=platform_time_us(); a->next_frame=a->last_frame;
         /* STOP may have cleared the physical output while retaining these
            pixels. A reusable contribution must be presented again on resume. */

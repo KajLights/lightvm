@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-27",
+  "result": "passed",
+  "scope": "Source capacity reservation for PLAY/resume and gateway anchor rollback",
+  "source_sha256": {
+    "src/app.c": "bbcd84d93e83abcc7be5800ff6e337cea3ec3e8e85b8fc95d2231d3a8d6baa73",
+    "src/audio_sources.c": "7fe3f40764e76cbc94e1a23d1f328217150630586fad555573d6bf43a7c0f284",
+    "src/audio_sources.h": "948cec714e9d7fb11f4e3bc7d1663a4d5748242677a606ddfcf47440da56c1dc",
+    "src/control.c": "ccc0bdb3fb75d67434479134987f519bda57d902d14b26cb876c9434f60ee777",
+    "src/vm.c": "b413833004a2c3ba4c5661ada544c1072d406aacbc85a0feba1a83c1e0e5f704"
+  },
+  "validation": {
+    "ctest": {
+      "passed": 33
+    },
+    "audio_gateway": {
+      "passed": 9
+    },
+    "audio_composition_presets": {
+      "passed": 35
+    },
+    "recall_transitions": {
+      "passed": 38
+    },
+    "full_python_before_final_retained_scene_correction": {
+      "run": 407,
+      "skipped": 3,
+      "result": "passed"
+    },
+    "real_browser_source_editor": {
+      "result": "passed",
+      "speaker_playback": false
+    }
+  },
+  "pico": {
+    "software_gate_passed": true,
+    "ram": {
+      "sram_bytes": 270336,
+      "vm_heap_automatic": true,
+      "vm_heap_capacity": 64400,
+      "static_bytes": 134512,
+      "vm_heap_ceiling": 64400,
+      "native_stack": 24576,
+      "pixel_driver_max": 30464,
+      "operating_headroom": 16384,
+      "remaining_bytes_after_reservations": 0,
+      "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+    },
+    "main": {
+      "foreground_bytes": 10248,
+      "with_interrupts_bytes": 12184,
+      "reservation_bytes": 16384,
+      "remaining_bytes": 4200,
+      "required_margin_bytes": 2048
+    },
+    "worker": {
+      "foreground_bytes": 3168,
+      "with_interrupts_bytes": 5104,
+      "reservation_bytes": 8192,
+      "remaining_bytes": 3088,
+      "required_margin_bytes": 1024
+    },
+    "hardware_validated": false
+  },
+  "remaining": [
+    "manual transition mutations and retained-scene preparation admission",
+    "private off/on scope preservation audit",
+    "physical optimized-S3 FFT parity",
+    "short Sense/Pico subscription checks and configuration restore"
+  ]
+}

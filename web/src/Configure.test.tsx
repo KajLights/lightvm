@@ -31,19 +31,15 @@ function readyStore() {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('configuration drafts', () => {
-  it('preserves a configured audio receiver while editing strip settings', async () => {
-    const store = readyStore(), config = hardware(5);
-    config.audio = { sensor_id: '00001cdbd45cce94', group: '239.255.42.99', port: 49152 };
-    store.dispatch(controllerActions.configuration({ config, revision: 2, savedRevision: 1 }));
+  it('rejects obsolete root audio configuration instead of preserving it', async () => {
+    const store = readyStore();
     const configure = vi.spyOn(runtime.controllers, 'configure').mockResolvedValue(false);
     render(<Provider store={store}><Configure /></Provider>);
     fireEvent.click(screen.getByRole('button', { name: 'Output & startup' }));
-    fireEvent.change(screen.getByLabelText('Brightness limit (0–255)'), { target: { value: '48' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Apply & save for reboot' }));
-    await waitFor(() => expect(configure).toHaveBeenCalledWith(expect.objectContaining({
-      audio: config.audio,
-      outputs: [expect.objectContaining({ config: expect.objectContaining({ brightness_limit: 48 }) })],
-    }), expect.anything(), { save: true }));
+    const editor = document.querySelector('#config-json')!;
+    fireEvent.change(editor, { target: { value: JSON.stringify({ ...hardware(5), audio: { sensor_id: '00001cdbd45cce94' } }) } });
+    expect(screen.getByRole('button', { name: 'Apply & save for reboot' })).toBeDisabled();
+    expect(configure).not.toHaveBeenCalled();
   });
 
   it('adds the Pico keypad as generic input and indicator output and preserves the binding through edits', async () => {

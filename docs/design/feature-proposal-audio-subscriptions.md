@@ -1,18 +1,27 @@
 # Preset-driven audio subscriptions and gateway sources
 
-Status: implementation design, 27 October 2026. Subscription behavior below is
-**planned**, not enabled by the current firmware. The independent cleanup that
-makes every installed preset selectable in Home Assistant is implemented alongside
-this design. Audio visualizations remain Python compiled to platform bytecode.
+Status: implementation and functional validation, 27 October 2026. Scoped UDP/gateway providers,
+lease/session validation, stored source declarations and the browser source editor
+are implemented. Browser/native analysis parity and the Pico software memory/stack
+gates pass. Direct, layer, composition and A/B lifecycle commands, manual edits
+and scene preparation reserve retained-source capacity before changing playback.
+Power off/on and restore-last startup preserve source declarations. Short physical
+Sense/Pico subscription and restoration checks pass. Real UDP/gateway integration
+checks cover equal values/events, mixed crossfades, independent recovery and
+capacity rollback. See the [acceptance record](../audio-acceptance.md). Every installed preset is selectable
+in Home Assistant. Audio visualizations remain Python compiled to platform bytecode.
 
 The extended design also requires the webservice/browser analyser to adopt the
 Sense's current algorithm, supports explicitly selected alternative algorithms
 for browser experiments, and permits publishers on a Mac or Raspberry Pi. These
-requirements are specified in [shared audio analysis](audio-analysis-profiles.md);
-none of those analyser or service changes are implemented yet.
+requirements are specified in [shared audio analysis](audio-analysis-profiles.md).
+The portable analyser, leased publisher and silent browser AudioWorklet are
+implemented; optimized S3 FFT parity on the physical board passes the committed
+corpus for both profiles and 0/16/64 bands. Fourteen explicit threshold cases
+record one native/WASM equality-boundary disagreement; the S3 agrees with native.
 
 The wire specification is maintained with the publisher in kaj-fi's
-[`docs/subscriptions.md`](https://github.com/KajLights/kaj-fi/blob/main/docs/subscriptions.md).
+[`docs/subscriptions.md`](https://github.com/KajLights/kaj-fi/blob/a8e536a96cd5722a71564d02c0bd9202799aa25b/docs/subscriptions.md).
 In the shared checkout it is `../kaj-fi/docs/subscriptions.md`.
 
 ## User-facing model
@@ -301,21 +310,20 @@ the buffer. This does not change the incoming MQTT command size limit.
 Persisted experimental configs with `home_assistant.presets` are invalid under
 the new schema. Export the config, remove that property from each output, and
 reapply/save over USB after upgrading. Programs/presets need no migration or wipe.
-The future subscription implementation will similarly replace root hardware
-`audio` configuration with per-preset declarations; document that provisioning
-step rather than implementing an obsolete multicast fallback.
+Root hardware `audio` configuration is also invalid. Remove it and save
+per-preset declarations as described in the [provisioning guide](../audio-subscriptions.md).
 
 ## Implementation map and acceptance
 
 - `src/inputs.[ch]`: scoped provider resolution, per-consumer event baseline and
   unchanged ordinary INPUT mappings/fallbacks.
-- `src/audio_receiver.[ch]`: LVAF v5 decoding, lease/session validation, latest
-  values, per-connection statistics and control state machine.
+- `src/audio_sources.[ch]` and the pinned kaj-fi wire/subscriber core: LVAF v5
+  decoding, lease/session validation, latest values and provider control state.
 - `src/preparation*`, `composition*`, `app.c`: transactional scope lifetime,
   serialization, source ownership for retained scenes and transitions.
 - `platforms/pico/network_port.c`: bounded shared UDP socket, unicast controls,
-  async DNS and reconnect ownership. Replace the multicast build flag with
-  `LIGHTVM_AUDIO_NETWORK`; host adapter supports deterministic multi-peer tests.
+  async DNS and reconnect ownership. `LIGHTVM_AUDIO_SUBSCRIPTIONS` replaces the
+  multicast build flag; the host adapter supports deterministic multi-peer tests.
 - `web/src/Presets.tsx`, clients and schema tests: source editing/preservation and
   status, with no networking logic in Python effect code.
 - kaj-fi publisher: receiver lease table, fan-out, independent repetition budgets
@@ -373,7 +381,7 @@ with the operating, stack and driver reserves unchanged.
 
 ## References
 
-- [kaj-fi subscription wire design](https://github.com/KajLights/kaj-fi/blob/main/docs/subscriptions.md)
+- [kaj-fi subscription wire design](https://github.com/KajLights/kaj-fi/blob/a8e536a96cd5722a71564d02c0bd9202799aa25b/docs/subscriptions.md)
 - [Home Assistant MQTT light JSON schema](https://www.home-assistant.io/integrations/light.mqtt/#json-schema):
   `effect_list` is a discovery list; a separate per-output preset allow-list is
   our own policy and is not required by Home Assistant.

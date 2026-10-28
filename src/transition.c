@@ -102,17 +102,9 @@ bool transition_source(Transition *t,const char *source,uint32_t assignment,doub
     if(t->driver!=TRANSITION_SOURCE||assignment!=t->assignment||strcmp(t->source,source)||!transition_percentage(value))return false;
     t->progress=value;t->dirty=true;return true;
 }
-const char *transition_bind(Transition *t,InputRegistry *registry,const Json *j,int object){
-    if(t->assignment==UINT32_MAX)return "driver assignment exhausted";
-    InputPort *port=demo_calloc(1,sizeof(*port));if(!port)return "transition input exceeds peak memory budget";
-    strcpy(port->name,"progress");port->type=T_FLOAT;port->bounds=3;port->maximum.f=1;
-    port->light=&t->output->light;
-    port->initial.f=port->snapshot.f=port->driver.value.f=(float)(t->progress/100);
-    const char *error=input_port_bind(registry,port,j,object,platform_time_us());
-    if(error){demo_free(port);return error;}
-    if(port->driver.kind==INPUT_SOURCE&&json_get(j,object,"fallback")<0)port->driver.hold=true;
+void transition_bind_port(Transition *t,InputRegistry *registry,InputPort *port){
     unassign(t);t->input=port;t->input_registry=registry;t->driver=TRANSITION_INPUT;
-    transition_update(t,platform_time_us());return NULL;
+    transition_update(t,platform_time_us());
 }
 static void start(Transition *t){
     t->sampled_progress=t->progress;t->pixel=0;t->phase=0;t->restore_offset=0;t->dirty=false;t->composing=true;

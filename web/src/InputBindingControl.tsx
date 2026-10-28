@@ -20,7 +20,7 @@ export function InputBindingControl({ declaration, binding, value, fallback = fa
   const [from, setFrom] = useState(0), [to, setTo] = useState(1);
   useEffect(() => {
     setSelected('control' in effective ? 'control:' + effective.control : 'driver' in effective ? 'timed' :
-      'source' in effective ? MUSIC_SIGNALS.some(signal => effective.source === 'music.' + signal) ? effective.source : sources.some(signal => signal.name === effective.source) ? effective.source : 'source' : 'manual');
+      'source' in effective ? sources.some(signal => signal.name === effective.source) ? effective.source : 'source' : 'manual');
     if ('driver' in effective) { setDuration(effective.driver.duration); setMode(effective.driver.mode); }
     if ('source' in effective) {
       setSource(effective.source); setLow(effective.map?.input_min ?? effective.palette?.input_min ?? 0); setHigh(effective.map?.input_max ?? effective.palette?.input_max ?? 1);
@@ -33,21 +33,26 @@ export function InputBindingControl({ declaration, binding, value, fallback = fa
     if (Number.isFinite(duration) && duration > 0 && duration <= 1e9) publish({ driver: { kind: 'ramp', duration, mode,
       easing: declaration.driver?.easing ?? 'linear', from: declaration.minimum ?? 0, to: declaration.maximum ?? 1 } });
   }
-  function selectSource(next: string, music = false) {
+  function selectSource(next: string) {
     if (!next) return;
     const signal = sources.find(signal => signal.name === next);
-    const sourceType = music ? 'float' : signal?.type;
+    const sourceType = signal?.type, audio = signal?.origin === 'scene';
     const input_min = signal?.suggested_min ?? 0, input_max = signal?.suggested_max ?? 1;
     const numericSource = sourceType === 'float' || sourceType === 'int';
+    // Occurrence counters stay integers. A previous level mapping would clamp
+    // all later onsets to one, hiding subsequent events from the animation.
+    if (audio && sourceType === 'int' && declaration.type === 'int') {
+      publish({ source: next, ...('source' in effective ? { timeout_ms: effective.timeout_ms, fallback: effective.fallback } : {}) }); return;
+    }
     if ('source' in effective && (effective.map || effective.palette) && sourceType !== 'rgb8' && sourceType !== 'bool') {
       const previousIsBoard = effective.source.startsWith('board.');
-      const resetRange = next !== effective.source && (signal?.origin === 'board' || (previousIsBoard && music));
+      const resetRange = next !== effective.source && (signal?.origin === 'board' || (previousIsBoard && audio));
       publish({ ...effective, source: next,
         ...(resetRange && effective.map ? { map: { ...effective.map, input_min, input_max } } : {}),
         ...(resetRange && effective.palette ? { palette: { ...effective.palette, input_min, input_max } } : {}) });
       return;
     }
-    publish({ source: next, ...(signal?.origin === 'board' && numericSource && numeric ? { map: { input_min, input_max, output_min: declaration.minimum ?? 0, output_max: declaration.maximum ?? 1 } } : music && numeric ? { map: { input_min: 0, input_max: 1, output_min: declaration.minimum ?? 0, output_max: declaration.maximum ?? 1 } } :
+    publish({ source: next, ...((signal?.origin === 'board' || audio) && numericSource && numeric ? { map: { input_min, input_max, output_min: declaration.minimum ?? 0, output_max: declaration.maximum ?? 1 } } :
       numericSource && declaration.type === 'rgb8' ? { palette: { input_min, input_max, from: 0x0044ff, to: 0xff4400 } } :
       numericSource && numeric && sourceType !== declaration.type ? { map: { input_min: 0, input_max: 1, output_min: declaration.minimum ?? 0, output_max: declaration.maximum ?? 1 } } : {}) });
   }
@@ -67,14 +72,12 @@ export function InputBindingControl({ declaration, binding, value, fallback = fa
       if (next === 'manual') publish({ value });
       else if (next === 'timed') timer();
       else if (next === 'control:color' || next === 'control:brightness') publish({ control: next === 'control:color' ? 'color' : 'brightness' });
-      else if (next.startsWith('music.')) selectSource(next, true);
       else if (next !== 'source') selectSource(next);
     }}><option value="manual">Fixed value</option>
       {declaration.type === 'rgb8' && <option value="control:color">Light colour</option>}
       {declaration.type === 'float' && (declaration.minimum ?? 0) <= 0 && (declaration.maximum ?? 1) >= 1 && <option value="control:brightness">Light brightness (behaviour)</option>}
       {declaration.type === 'float' && <option value="timed">Timer</option>}
-      {(numeric || declaration.type === 'rgb8') && MUSIC_SIGNALS.map((signal, index) => <option key={signal} value={'music.' + signal}>Music → {MUSIC_LABELS[index]}</option>)}
-      {sources.filter(signal => !signal.name.startsWith('music.') && (signal.type === declaration.type || ((signal.type === 'float' || signal.type === 'int') && (numeric || declaration.type === 'rgb8')))).map(signal => <option key={signal.name} value={signal.name}>{signal.origin === 'board' ? `Board → ${signal.label ?? signal.name}${signal.unit ? ` (${signal.unit})` : ''}` : signal.name}</option>)}
+      {sources.filter(signal => signal.origin === 'scene' && signal.type === 'int' ? declaration.type === 'int' : signal.type === declaration.type || ((signal.type === 'float' || signal.type === 'int') && (numeric || declaration.type === 'rgb8'))).map(signal => <option key={signal.name} value={signal.name}>{signal.origin === 'board' ? `Board → ${signal.label ?? signal.name}${signal.unit ? ` (${signal.unit})` : ''}` : signal.label ?? signal.name}</option>)}
       <option value="source">Named source…</option>
     </select></label>
     <button className="quiet small" onClick={() => publish({ default: true })}>Restore default</button>

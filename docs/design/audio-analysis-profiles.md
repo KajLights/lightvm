@@ -1,7 +1,11 @@
 # Shared audio analysis and browser experiments
 
-Status: design requirement, 27 October 2026. No analyser or service changes are
-implemented by this document. It complements the
+Status: implemented and checked, 27 October 2026. The shared core and browser
+adapter pass the [browser checks](../audio-analysis-browser.md) and physical
+optimized-S3 corpus parity for both profiles and 0/16/64-band layouts. Separate
+threshold cases expose one one-ULP native/WASM decision difference at equality;
+the S3 matches native in all 14 cases. Real UDP/gateway integration checks cover
+all metrics/bands, reordered events, loss, delay and restart. This document complements the
 [subscription design](feature-proposal-audio-subscriptions.md).
 
 The webservice/browser analyser must be updated to run the **same default
@@ -9,13 +13,13 @@ algorithm as the Sense**, including spectral scaling, smoothing and the adaptive
 percussion onset detector. Giving different algorithms the same signal names or
 adding profile labels to the current browser extractor is not sufficient.
 
-## Current differences to remove
+## Original differences addressed by the shared core
 
 The webservice gateway here means LightVM's HTTP/WebSocket management ingress;
 today its music publisher runs in the browser. The gateway transports features,
 not raw PCM, and does not currently perform the FFT itself.
 
-| Concern | Current browser | Current Sense / required common default |
+| Concern | Original browser | Shared implementation |
 | --- | --- | --- |
 | Capture and scheduling | AudioContext sample rate; timer reads every 33 ms | 48 kHz PCM; contiguous 1,024-sample hops |
 | FFT | 2,048-point AnalyserNode output | 2,048-point periodic Hann window; explicit power calibration |
@@ -32,7 +36,7 @@ See the [Web Audio FFT definition](https://www.w3.org/TR/webaudio/#fft-windowing
 
 ## One implementation, several hosts
 
-Extract kaj-fi's portable `main/features.[ch]` and `main/onset.[ch]` behind a small
+Extract kaj-fi's portable `core/features.[ch]` and `core/onset.[ch]` behind a small
 PCM-in/features-out library interface. Keep acquisition, clocks, transport and
 platform FFT adapters outside it. Maintain one versioned source of truth in
 kaj-fi; pin that dependency in LightVM rather than copying the detector into
@@ -88,8 +92,8 @@ feature interpretation, including the detector, rather than only a wire version.
   whitening, frequency-neighbour suppression, median/MAD threshold, percussion
   gate, background/context gates, 500 ms warmup, rearming and refractory period.
   Its reference definition and regression cases are in kaj-fi's
-  [onset design](https://github.com/KajLights/kaj-fi/blob/main/docs/onset-detection.md)
-  and `main/onset.c`; do not replace it with a display-level delta.
+  [onset design](https://github.com/KajLights/kaj-fi/blob/a8e536a96cd5722a71564d02c0bd9202799aa25b/docs/onset-detection.md)
+  and `core/onset.c`; do not replace it with a display-level delta.
 - `onset` is a float envelope: one on detection, 160 ms exponential decay.
   An occurrence separately has an ID, capture time and threshold-excess strength.
   Consumer `onsets` is the per-invocation integer counter described in the
@@ -119,7 +123,7 @@ The browser exposes an algorithm selector. Profile 1 is the default. Alternative
 detectors are deliberate experiments with their own stable numeric profile ID,
 versioned label, parameter schema and fixtures. ID zero is invalid; IDs are never
 reused for changed semantics. Do not label an experimental algorithm as profile 1.
-Registry additions live here and in a future generated manifest shared by
+Registry additions live here and in the pinned `core/profiles.json` manifest shared by
 publishers and receivers. No additional numeric ID is assigned until its contract
 is defined. Each registry entry specifies required fields/bands, sample geometry,
 publication cadence, event semantics and parameter ranges; implementations
@@ -165,5 +169,13 @@ WASM and the S3 FFT adapter with identical hop boundaries and settings. Check:
 - Gateway and UDP delivery of the same analysis: equal values and event identity
   after deduplication despite loss, repeated packets, delayed messages and reconnect.
 
-These are planned acceptance criteria, not results from the current browser.
-The current browser extractor does **not** yet conform to profile 1.
+These are the complete acceptance criteria. The browser runs the common
+profile 1 implementation and explicit profile 2 level-rise baseline from
+`core/profiles.json`. Passing native/WASM/browser fixture checks does not establish
+physical S3 FFT parity or UDP/gateway delivery equivalence by itself. Those have
+[physical S3 evidence](../validation/audio-s3-parity-2026-10-27.json),
+[threshold-boundary evidence](../validation/audio-boundaries-2026-10-27.json), and
+[transport integration evidence](../validation/audio-transports-2026-10-27.json).
+The boundary report retains the exact scores, thresholds, margins and decisions;
+it does not weaken the ordinary corpus tolerances or claim bit-identical detector
+decisions at floating-point equality.

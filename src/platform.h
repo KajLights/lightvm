@@ -15,6 +15,7 @@ typedef struct {
 const PlatformInfo *platform_info(void);
 // Stable native controller identity and a fresh non-authentication boot nonce.
 void platform_identity(char *controller, size_t controller_capacity, char *boot, size_t boot_capacity);
+bool platform_random_bytes(void *,size_t);
 uint64_t platform_time_us(void); // Monotonic microseconds, including idle time.
 
 typedef struct { const char *name; int32_t gpio; } BoardPin;

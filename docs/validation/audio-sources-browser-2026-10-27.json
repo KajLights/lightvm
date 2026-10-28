@@ -1,0 +1,19 @@
+{
+  "result": "passed",
+  "browser": "156.0.8078.48",
+  "transports": [
+    "lvaf",
+    "gateway"
+  ],
+  "checks": [
+    "stored declarations preserved",
+    "spectrum and integer onset bindings",
+    "save acquires no providers",
+    "live provider status",
+    "explicit identity pin adoption",
+    "save preserves active policy",
+    "activation applies edited policy",
+    "desktop and mobile layout"
+  ],
+  "speakerPlayback": false
+}

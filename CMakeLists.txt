@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 option(LIGHTVM_WIFI "Include native Wi-Fi" OFF)
-option(LIGHTVM_AUDIO_MULTICAST "Include the kaj-fi LVAF v4 receiver (Pico Wi-Fi)" OFF)
+option(LIGHTVM_AUDIO_SUBSCRIPTIONS "Include preset-driven LVAS/LVAF subscriptions" OFF)
 option(LIGHTVM_MQTT "Include MQTT control and Home Assistant lights" OFF)
 option(LIGHTVM_HTTP "Include HTTP management" OFF)
 option(LIGHTVM_WEBSOCKET "Include plain WebSocket management (requires HTTP)" OFF)

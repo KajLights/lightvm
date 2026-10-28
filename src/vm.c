@@ -237,11 +237,15 @@ void vm_tick_budget(VmInstance *a,unsigned budget) {
 }
 void vm_tick(VmInstance *a){vm_tick_budget(a,4096);}
 static void play(VmInstance *a, uint16_t id) {
+    bool demanded=a->portable&&a->portable->source_demand;
+    const char *error=a->output?inputs_demand(a->portable,true):NULL;
+    if(error){reply(a,id,STATUS_CONFIG,0,error);return;}
     vm_output_cancel(a);
     a->playing=false; a->animation_error[0]=0;
-    const char * error=a->portable?animation_quiesce(a):NULL;
+    error=a->portable?animation_quiesce(a):NULL;
     if(!error)error=prepare_animation(a);
     if (error) {
+        if(!demanded)(void)inputs_demand(a->portable,false);
         snprintf(a->animation_error,sizeof(a->animation_error),"%s",error);
         reply(a,id,STATUS_EXECUTION,0,error);
         return;

@@ -106,6 +106,20 @@ static void preparation_contract(void){
     CHECK(preparation_result(&app,id,&code,&value,&error)&&code==STATUS_CONFIG);
     CHECK(d->transition->compositions[1]==scene&&vm_heap_used()==baseline);
     vm_heap_uncharge(reserve);
+    /* Superseded queued resets retain their scope only until replacement. */
+    InputSourceScope *scope=scope_fixture(&app.audio,"{\"music\":{\"type\":\"gateway\",\"name\":\"desk\"}}");
+    inputs_scope(scene->layers[0].vm.portable,scope);
+    unsigned references=scope->references;baseline=vm_heap_used();
+    request=(PreparationRequest){.kind=PREPARE_RESET,.slot=1,.revision=d->composition_revision,.reset_from=&scene->layers[0].vm};
+    strcpy(request.layer,"main");
+    CHECK(!preparation_submit(&app,d,&request,NULL,0,&id));
+    CHECK(scope->references==references+1);
+    for(unsigned n=0;n<3;n++){
+        CHECK(!preparation_submit(&app,d,&request,NULL,0,&id));
+        CHECK(scope->references==references+2);
+    }
+    preparation_abort_all(&app);CHECK(scope->references==references&&vm_heap_used()==baseline);
+    input_scope_release(scope);
     session_destroy(&session);app_destroy(&app);storage_available=false;CHECK(vm_heap_used()==0);
 
     /* Every byte boundary is a legal parser yield; decoded duplicate keys and

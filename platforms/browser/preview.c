@@ -23,6 +23,10 @@ void *platform_calloc(size_t count,size_t size){return calloc(count,size);}
 void *platform_realloc(void *pointer,size_t size){return realloc(pointer,size);}
 void platform_free(void *pointer){free(pointer);}
 void runtime_checkpoint(void){}
+EM_JS(bool, platform_random_bytes, (void *destination,size_t size), {
+    try { globalThis.crypto.getRandomValues(HEAPU8.subarray(destination,destination+size)); return true; }
+    catch { return false; }
+});
 
 static bool read_package(void *context,uint32_t offset,void *bytes,size_t size){
     (void)context;if(offset>package_size||size>package_size-offset)return false;

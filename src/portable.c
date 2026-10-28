@@ -279,7 +279,7 @@ static bool valid_expressions(Portable *p){
     }
     return true;
 }
-void pbc_destroy(Portable *p){if(p){pbc_map_destroy(p);demo_free(p->inputs);demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
+void pbc_destroy(Portable *p){if(p){inputs_scope(p,NULL);pbc_map_destroy(p);demo_free(p->inputs);demo_free(p->state);demo_free(p->metadata);demo_free(p);}}
 void pbc_open_cancel(PbcLoader *loader){demo_free(loader->manifest);loader->manifest=NULL;}
 int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,size_t size){
     Portable *p=*out;const char *error="invalid portable declarations";

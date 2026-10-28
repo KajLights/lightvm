@@ -20,6 +20,7 @@
 } } while (0)
 
 static uint64_t clock_now, clock_step;
+bool platform_random_bytes(void *p,size_t n){static uint64_t seed=42;unsigned char *b=p;while(n--)*b++=(unsigned char)++seed;return true;}
 static unsigned numeric_workers=1;
 unsigned render_platform_workers(void){return numeric_workers;}
 static unsigned shows, allocations;
@@ -271,7 +272,9 @@ static void network_transactions(void) {
 #include "portable_contract.inc"
 #include "numeric_contract.inc"
 #include "inputs_contract.inc"
-#include "audio_receiver_contract.inc"
+#include "audio_sources_contract.inc"
+#include "audio_gateway_contract.inc"
+
 #include "composition_contract.inc"
 #include "transition_contract.inc"
 #include "light_controls_contract.inc"
@@ -666,7 +669,9 @@ int main(int argc,char **argv) {
     portable_contract();
     numeric_contract();
     inputs_contract();
-    audio_receiver_contract();
+    audio_sources_contract();
+    audio_gateway_contract();
+
     composition_contract();
     transition_contract();
     light_controls_contract();

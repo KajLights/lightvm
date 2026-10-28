@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { InputBindingControl } from './InputBindingControl';
+import { scopedInputSources } from './scene-sources';
+const music = scopedInputSources([], { music: { type: 'gateway', name: 'desk' } });
 afterEach(cleanup);
 it('offers full RGB light colour and explicit numeric music palettes for the same input', () => {
   const publish = vi.fn();
-  render(<InputBindingControl declaration={{ name: 'eye', type: 'rgb8', default: 0xffffff, control: 'color' }} binding={{ control: 'color' }} value={0xffffff} publish={publish} />);
+  render(<InputBindingControl declaration={{ name: 'eye', type: 'rgb8', default: 0xffffff, control: 'color' }} binding={{ control: 'color' }} value={0xffffff} publish={publish} sources={music} />);
   expect(screen.getByLabelText('eye driver')).toHaveValue('control:color');
   fireEvent.change(screen.getByLabelText('eye driver'), { target: { value: 'music.bass' } });
   expect(publish).toHaveBeenLastCalledWith({ source: 'music.bass', palette: { input_min: 0, input_max: 1, from: 0x0044ff, to: 0xff4400 } });
@@ -13,7 +15,7 @@ it('offers full RGB light colour and explicit numeric music palettes for the sam
 });
 it('maps normalized music to declared local behavior bounds and preserves default restoration', () => {
   const publish = vi.fn();
-  render(<InputBindingControl declaration={{ name: 'width', type: 'float', default: 0.1, minimum: 0.02, maximum: 0.4 }} binding={{ value: 0.1 }} value={0.1} publish={publish} />);
+  render(<InputBindingControl declaration={{ name: 'width', type: 'float', default: 0.1, minimum: 0.02, maximum: 0.4 }} binding={{ value: 0.1 }} value={0.1} publish={publish} sources={music} />);
   expect(screen.queryByRole('option', { name: 'Light brightness (behaviour)' })).toBeNull();
   fireEvent.change(screen.getByLabelText('width driver'), { target: { value: 'music.bass' } });
   expect(publish).toHaveBeenLastCalledWith({ source: 'music.bass', map: { input_min: 0, input_max: 1, output_min: 0.02, output_max: 0.4 } });
@@ -34,11 +36,11 @@ it('changes physical source ranges while retaining output mapping and fallback',
   const voltage = { ...temperature, name: 'board.supply_voltage_v', suggested_min: 0, suggested_max: 6 };
   const declaration = { name: 'heat', type: 'float' as const, default: 0, minimum: 0, maximum: 1 };
   const binding = { source: 'music.level', timeout_ms: 3000, fallback: 'hold' as const, map: { input_min: 0.2, input_max: 0.8, output_min: 0.1, output_max: 0.9 } };
-  const view = render(<InputBindingControl declaration={declaration} binding={binding} value={0.5} publish={publish} sources={[temperature, voltage]} />);
+  const view = render(<InputBindingControl declaration={declaration} binding={binding} value={0.5} publish={publish} sources={[temperature, voltage, ...music]} />);
   fireEvent.change(screen.getByLabelText('heat driver'), { target: { value: temperature.name } });
   expect(publish).toHaveBeenLastCalledWith({ ...binding, source: temperature.name, map: { ...binding.map, input_min: 20, input_max: 80 } });
   const heat = { ...binding, source: temperature.name, map: { ...binding.map, input_min: 30, input_max: 70 } };
-  view.rerender(<InputBindingControl declaration={declaration} binding={heat} value={0.5} publish={publish} sources={[temperature, voltage]} />);
+  view.rerender(<InputBindingControl declaration={declaration} binding={heat} value={0.5} publish={publish} sources={[temperature, voltage, ...music]} />);
   fireEvent.change(screen.getByLabelText('heat driver'), { target: { value: voltage.name } });
   expect(publish).toHaveBeenLastCalledWith({ ...heat, source: voltage.name, map: { ...heat.map, input_min: 0, input_max: 6 } });
   fireEvent.change(screen.getByLabelText('heat driver'), { target: { value: 'music.bass' } });
@@ -51,4 +53,17 @@ it('changes palette source ranges without replacing chosen colours', () => {
     sources={[{ name: 'board.temperature_c', origin: 'board', type: 'float', valid: true, value: 50, age_ms: 0, suggested_min: 20, suggested_max: 80 }]} />);
   fireEvent.change(screen.getByLabelText('colour driver'), { target: { value: 'board.temperature_c' } });
   expect(publish).toHaveBeenLastCalledWith({ ...binding, source: 'board.temperature_c', palette: { ...binding.palette, input_min: 20, input_max: 80 } });
+});
+it('binds a scoped onset counter without retaining a previous level mapping', () => {
+  const publish = vi.fn();
+  render(<InputBindingControl declaration={{ name: 'events', type: 'int', default: 0 }} sources={music} value={0}
+    binding={{ source: 'music.level', timeout_ms: 200, fallback: 'hold', map: { input_min: 0, input_max: 1, output_min: 0, output_max: 1 } }} publish={publish} />);
+  fireEvent.change(screen.getByLabelText('events driver'), { target: { value: 'music.onsets' } });
+  expect(publish).toHaveBeenLastCalledWith({ source: 'music.onsets', timeout_ms: 200, fallback: 'hold' });
+});
+it('does not offer a fictional global music provider when the scene has no declaration', () => {
+  render(<InputBindingControl declaration={{ name: 'level', type: 'float', default: 0 }} binding={{ source: 'music.level' }} value={0} publish={vi.fn()} />);
+  expect(screen.queryByRole('option', { name: /Music/ })).toBeNull();
+  expect(screen.getByLabelText('level driver')).toHaveValue('source');
+  expect(screen.getByLabelText('level source')).toHaveValue('music.level');
 });

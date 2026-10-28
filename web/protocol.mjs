@@ -1,5 +1,5 @@
 // LightVM protocol v1. Compatible with tools/client.py and src/protocol.c.
-export const COMMAND = { STATUS: 1, BEGIN: 2, CHUNK: 3, FINISH: 4, PLAY: 7, STOP: 8, MANAGE: 11, OBJECT_BEGIN: 12, OBJECT_CHUNK: 13, OBJECT_FINISH: 14, OBJECT_CANCEL: 15 };
+export const COMMAND = { STATUS: 1, BEGIN: 2, CHUNK: 3, FINISH: 4, PLAY: 7, STOP: 8, MANAGE: 11, OBJECT_BEGIN: 12, OBJECT_CHUNK: 13, OBJECT_FINISH: 14, OBJECT_CANCEL: 15, AUDIO_FRAME: 16 };
 const RESULT = 129, PIXELS = 130, DATA = 131;
 const MAGIC = new Uint8Array([76, 86, 77, 49]);
 const encoder = new TextEncoder(), decoder = new TextDecoder();
@@ -214,6 +214,21 @@ export class LightVMClient {
 
   async json(op, fields = {}) { return parseJSON(decoder.decode((await this.manage(op, fields)).data)); }
 
+  /** A complete structured audio record; commands keep the 512-byte payload cap.
+   * Caller serializes frames and discards stale pending snapshots. */
+  async publishAudio(generation, frameId, record) {
+    if (!Number.isInteger(generation) || generation < 1 || generation > 0xffffffff ||
+        typeof frameId !== 'bigint' || frameId < 1n || frameId >= 1n << 64n ||
+        record.length < 92 || record.length > 700) throw new Error('Invalid structured audio envelope.');
+    for (let offset = 0; offset < record.length; offset += FRAME_LIMIT - 16) {
+      const part = record.subarray(offset, offset + FRAME_LIMIT - 16), packet = new Uint8Array(16 + part.length);
+      const view = new DataView(packet.buffer);
+      view.setUint32(0, generation, true); view.setBigUint64(4, frameId, true);
+      view.setUint16(12, record.length, true); view.setUint16(14, offset, true); packet.set(part, 16);
+      await this.command(COMMAND.AUDIO_FRAME, packet);
+    }
+  }
+
   async uploadObject(kind, data, name) {
     const limits = await this.describe(), limit = kind === "program" ? limits.module_limit : limits.config_limit;
     if (data.length < (kind === "program" ? 8 : 1) || data.length > limit) throw new Error(`Object exceeds the ${limit}-byte limit.`);
@@ -256,10 +271,11 @@ export class LightVMClient {
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
 
-  async configureComposition(layers, output, slot = 'A') {
+  /** @param {import('./src/types').SceneSources} [sources] */
+  async configureComposition(layers, output, slot = 'A', sources = undefined) {
     const state = await this.json('composition_get', { output, slot });
     try {
-      await this.uploadObject('composition', encoder.encode(JSON.stringify({ schema: 'lightvm.composition', layers })));
+      await this.uploadObject('composition', encoder.encode(JSON.stringify({ schema: 'lightvm.composition', layers, sources })));
       return await this.manage('composition_apply', { output, slot, expected_revision: state.revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }
@@ -281,10 +297,11 @@ export class LightVMClient {
     return this.json('transition_select', { output, effect, expected_revision: state.revision, ...options });
   }
 
-  async savePreset(name, layers, output, entry_transition, expectedRevision) {
+  /** @param {import('./src/types').SceneSources} [sources] */
+  async savePreset(name, layers, output, entry_transition, expectedRevision, sources = undefined) {
     const state = expectedRevision === undefined ? await this.describe() : { catalog_revision: expectedRevision };
     try {
-      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset', layers, entry_transition })), name);
+      await this.uploadObject('preset', encoder.encode(JSON.stringify({ schema: 'lightvm.preset', layers, entry_transition, sources })), name);
       return await this.manage('preset_save', { name, output, expected_revision: state.catalog_revision });
     } catch (error) { await this.command(COMMAND.OBJECT_CANCEL).catch(() => {}); throw error; }
   }

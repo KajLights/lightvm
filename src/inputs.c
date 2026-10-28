@@ -1,5 +1,6 @@
 /* Live scalar inputs: admitted storage, single-owner publications and render snapshots. */
 #include "inputs.h"
+#include "audio_sources.h"
 #include "portable.h"
 #include "platform.h"
 #include "assets.h"
@@ -112,6 +113,27 @@ void inputs_attach(Portable *p,InputRegistry *registry,const LightControls *ligh
     p->input_registry=registry;
     for(unsigned n=0;n<p->ninputs;n++)p->inputs[n].light=light;
 }
+static void event_baseline(Portable *p){
+    uint64_t now=platform_time_us();
+    for(unsigned i=0;i<p->ninputs;i++){
+        InputSignal value;uint64_t events=0;InputPort *port=&p->inputs[i];
+        input_scope_lookup(p->source_scope,port->driver.source,&value,&events,now);
+        port->event_baseline=events;
+    }
+}
+void inputs_scope(Portable *p,InputSourceScope *scope){
+    if(!p||p->source_scope==scope)return;
+    input_scope_retain(scope);
+    if(p->source_demand)input_scope_demand(p->source_scope,false);
+    input_scope_release(p->source_scope);p->source_scope=scope;p->source_demand=false;
+    for(unsigned i=0;i<p->ninputs;i++){p->inputs[i].scope=scope;p->inputs[i].event_visible=0;}
+    event_baseline(p);
+}
+const char *inputs_demand(Portable *p,bool active){
+    if(!p||!p->source_scope||p->source_demand==active)return NULL;
+    const char *error=input_scope_demand(p->source_scope,active);if(error)return error;
+    p->source_demand=active;event_baseline(p);return NULL;
+}
 bool inputs_call_valid(Portable *p,unsigned binding,unsigned reg){
     return binding>=55&&binding<=58&&pbc_type(p,reg)==T_INT&&pbc_role(p,reg)==R_CONST&&
         pbc_initial(p,reg)<p->ninputs&&p->inputs[pbc_initial(p,reg)].type==binding-54;
@@ -122,7 +144,24 @@ static InputSignal *signal(InputRegistry *registry,const char *name){
     return NULL;
 }
 static bool source_value(InputRegistry *registry,InputPort *port,uint64_t now,InputValue *out){
-    InputDriver *driver=&port->driver;InputSignal *source=signal(registry,driver->source);
+    InputDriver *driver=&port->driver;InputSignal local,*source;uint64_t events=0;
+    bool scoped=input_scope_lookup(port->scope,driver->source,&local,&events,now);
+    source=scoped?&local:signal(registry,driver->source);
+    if(scoped){
+        if(local.valid&&local.type==T_INT){
+            uint64_t delta=events>=port->event_baseline?events-port->event_baseline:0;
+            if(delta)port->event_visible=(uint32_t)(((uint64_t)port->event_visible+delta-1)%INT32_MAX+1);
+            local.value.i=(int32_t)port->event_visible;
+        }
+        port->event_baseline=events;
+        if(!local.valid){
+            /* Occurrences are a per-invocation count, not a freshness meter.
+             * Dropping to the default on a gap would replay the old count as
+             * a new onset when metrics become fresh again. */
+            if(local.type==T_INT&&!driver->mapped&&port->type==T_INT){out->i=(int32_t)port->event_visible;return true;}
+            if(driver->hold&&port->has_last){*out=port->last;return true;}return false;
+        }
+    }
     if(source&&source->valid){
         bool ok=!driver->mapped&&source->type==port->type;InputValue value=source->value;
         if(driver->mapped&&(source->type==T_FLOAT||source->type==T_INT)){
@@ -235,9 +274,10 @@ const char *input_port_bind(InputRegistry *registry,InputPort *port,const Json *
             if(!in_bounds(port,endpoint))return "mapping exceeds input bounds";
         }
     }
-    InputSignal *published=signal(registry,driver->source);
+    InputSignal local;uint64_t events=0;
+    InputSignal *published=input_scope_lookup(port->scope,driver->source,&local,&events,platform_time_us())?&local:signal(registry,driver->source);
     if(published&&!(driver->mapped?(published->type==T_INT||published->type==T_FLOAT):published->type==port->type))return "source and input types differ";
-    port->has_last=false;return NULL;
+    port->has_last=false;port->event_visible=0;port->event_baseline=events;return NULL;
 }
 const char *inputs_bind(Portable *p,const Json *j,int object,uint64_t time){
     if(object<0)return NULL;

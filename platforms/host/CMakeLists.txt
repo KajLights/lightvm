@@ -11,3 +11,7 @@ endif()
 if(LIGHTVM_HTTP)
     target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/http_server.c")
 endif()
+
+if(LIGHTVM_AUDIO_SUBSCRIPTIONS)
+    target_sources(lightvm PRIVATE "${CMAKE_CURRENT_LIST_DIR}/audio_port.c")
+endif()

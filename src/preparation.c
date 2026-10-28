@@ -168,15 +168,16 @@ const char *preparation_submit(App *a,AppOutput *d,const PreparationRequest *req
     if(request->entry.size){o->pin=store_pin(&a->store,&request->entry);if(o->pin<0){demo_free(o);return "package reference limit exceeded";}}
     if(request->reset_from&&request->reset_from->portable){
         Portable *p=request->reset_from->portable;
+        o->scene.sources=p->source_scope;input_scope_retain(o->scene.sources);
         o->reset_input_count=p->ninputs;
-        if(p->ninputs){o->reset_inputs=demo_alloc(p->ninputs*sizeof(*p->inputs));if(!o->reset_inputs){store_unpin(&a->store,o->pin);demo_free(o);return "reset inputs exceed memory budget";}memcpy(o->reset_inputs,p->inputs,p->ninputs*sizeof(*p->inputs));}
+        if(p->ninputs){o->reset_inputs=demo_alloc(p->ninputs*sizeof(*p->inputs));if(!o->reset_inputs){store_unpin(&a->store,o->pin);input_scope_release(o->scene.sources);demo_free(o);return "reset inputs exceed memory budget";}memcpy(o->reset_inputs,p->inputs,p->ninputs*sizeof(*p->inputs));}
         for(unsigned n=0;n<p->nsettings;n++){
             if(p->initialized){o->reset_settings[n]=pbc_value(p,pbc_setting(p,n).reg);o->reset_mask|=1u<<n;}
             else if(p->override_mask&(1u<<n)){o->reset_settings[n]=p->overrides[n];o->reset_mask|=1u<<n;}
         }
     }
     o->scene.request.reset_from=NULL;
-    if(size){o->document=demo_alloc(size);if(!o->document){store_unpin(&a->store,o->pin);demo_free(o->reset_inputs);demo_free(o);return "scene document exceeds memory budget";}memcpy(o->document,data,size);o->size=size;o->loaded=size;}
+    if(size){o->document=demo_alloc(size);if(!o->document){store_unpin(&a->store,o->pin);demo_free(o->reset_inputs);input_scope_release(o->scene.sources);demo_free(o);return "scene document exceeds memory budget";}memcpy(o->document,data,size);o->size=size;o->loaded=size;}
     /* Only the head can own a candidate. Replace queued requests immediately;
        an active candidate is cancelled at its next safe boundary. */
     for(PreparationOperation *previous=q->head;previous&&previous->next;){
@@ -185,7 +186,7 @@ const char *preparation_submit(App *a,AppOutput *d,const PreparationRequest *req
         previous->next=pending->next;if(q->tail==pending)q->tail=previous;q->count--;
         pending->record.stage="superseded";pending->record.code=STATUS_CONFIG;pending->record.terminal=true;pending->record.finished=platform_time_us();
         q->history[q->history_cursor++%PREPARATION_HISTORY]=pending->record;
-        store_unpin(&a->store,pending->pin);demo_free(pending->document);demo_free(pending->reset_inputs);demo_free(pending);
+        store_unpin(&a->store,pending->pin);demo_free(pending->document);demo_free(pending->reset_inputs);input_scope_release(pending->scene.sources);demo_free(pending);
     }
     if(q->head&&!strcmp(q->head->record.output,d->hardware.id)){q->head->cancelled=true;q->head->record.stage="superseded";}
     if(!request->boot)d->startup_pending=false;
@@ -204,6 +205,16 @@ static const char *bind_program(App *a,AppOutput *d,VmInstance *vm,const StoreEn
 static const char *decode_scene(App *a,AppOutput *d,PreparationOperation *o){
     PreparationQueue *q=a->preparation;PreparedScene *s=&o->scene;Json *j=q->json;
     PreparationKind kind=s->request.kind;
+    if(!s->sources){
+        const char *error=input_scope_parse(&a->audio,j,j?json_get(j,0,"sources"):-1,&s->sources);if(error)return error;
+        if(!s->sources&&kind==PREPARE_LAYER){
+            Composition *existing=d->transition?d->transition->compositions[s->request.slot]:d->composition;
+            if(existing){s->sources=existing->sources;input_scope_retain(s->sources);}
+        }
+    }
+    if(s->sources&&!s->source_demand&&kind!=PREPARE_PRESET_SAVE&&!q->configuration){
+        const char *error=input_scope_demand(s->sources,true);if(error)return error;s->source_demand=true;
+    }
     if(kind==PREPARE_TRANSITION){
         for(unsigned n=0;n<2;n++){
             int token=s->request.effect==TRANSITION_PROGRAM?(n?-1:0):json_get(j,0,n?"paint":"mask");
@@ -237,7 +248,7 @@ static const char *decode_scene(App *a,AppOutput *d,PreparationOperation *o){
         q->vms[0]=vm;q->tokens[0]=0;q->total=1;return NULL;
     }
     if(kind==PREPARE_RECALL&&!s->request.on&&!s->request.name[0])return NULL;
-    static const char *const fields[]={"schema","layers","entry_transition",NULL};
+    static const char *const fields[]={"schema","layers","entry_transition","sources",NULL};
     bool preset=kind==PREPARE_PRESET||kind==PREPARE_RECALL||kind==PREPARE_PRESET_SAVE;
     if(!j||!json_fields(j,0,fields)||!json_equal(j,json_get(j,0,"schema"),preset?"lightvm.preset":"lightvm.composition"))return "invalid scene document";
     int layers=json_get(j,0,"layers");
@@ -245,6 +256,7 @@ static const char *decode_scene(App *a,AppOutput *d,PreparationOperation *o){
     unsigned count=(unsigned)j->tokens[layers].children;
     if(kind==PREPARE_RECALL&&!s->request.on)count=0;
     if(count||kind!=PREPARE_RECALL){s->composition=composition_create(&d->pixels,count);if(!s->composition)return "composition exceeds memory budget";}
+    if(s->composition){s->composition->sources=s->sources;input_scope_retain(s->sources);}
     unsigned n=0;
     for(int token=layers+1;n<count;token=j->tokens[token].next,n++){
         static const char *const layer_fields[]={"id","program","crc32","settings","inputs","opacity","blend",NULL};
@@ -341,6 +353,9 @@ static const char *step(App *a,AppOutput *d,PreparationOperation *o,bool *done){
                 demo_free(o->reset_inputs);o->reset_inputs=NULL;
             }
             inputs_attach(vm->portable,&a->inputs,&s->request.light);
+            inputs_scope(vm->portable,s->sources);
+            if(s->source_demand){error=inputs_demand(vm->portable,true);if(error)return error;}
+            if(s->composition&&!s->composition->sources){s->composition->sources=s->sources;input_scope_retain(s->sources);}
             if(q->json){int token=q->tokens[q->index];error=control_settings(vm,q->json,json_get(q->json,token,"settings"));if(!error)error=inputs_bind(vm->portable,q->json,json_get(q->json,token,"inputs"),0);if(error)return error;}
             vm->ready=true;q->index++;memset(&q->loader,0,sizeof(q->loader));return NULL;
         }
@@ -378,6 +393,8 @@ static const char *step(App *a,AppOutput *d,PreparationOperation *o,bool *done){
         }
         if(q->configuration){
             composition_destroy(s->composition);transition_program_destroy(s->transition);s->composition=NULL;s->transition=NULL;
+            if(s->source_demand)input_scope_demand(s->sources,false);
+            input_scope_release(s->sources);s->sources=NULL;s->source_demand=false;
             store_unpin(&a->store,o->pin);o->pin=-1;
             demo_free(q->validation_output);q->validation_output=NULL;
             s->request=o->config_request;q->phase=100;memset(&q->animation,0,sizeof(q->animation));q->baseline_offset=0;return NULL;
@@ -429,6 +446,9 @@ static void finish(App *a,PreparationOperation *o,const char *error,bool cancell
     if(o->scene.direct){control_destroy(o->scene.direct);demo_free(o->scene.direct);o->scene.direct=NULL;}
     composition_destroy(o->scene.wrapper);transition_destroy(o->scene.presenter);
     composition_destroy(o->scene.composition);transition_program_destroy(o->scene.transition);transition_program_destroy(o->scene.paint);
+    audio_source_plan_release(&o->scene.retained_sources);
+    if(o->scene.source_demand)input_scope_demand(o->scene.sources,false);
+    input_scope_release(o->scene.sources);o->scene.sources=NULL;
     o->record.terminal=true;
     if(error){o->record.code=q->configuration||o->scene.request.kind>=PREPARE_CONFIG_VALIDATE?STATUS_CONFIG:STATUS_LOAD;if(error!=o->record.error)snprintf(o->record.error,sizeof(o->record.error),"%s",error);o->record.stage="failed";}
     else if(cancelled){o->record.code=STATUS_CONFIG;if(strcmp(o->record.stage,"superseded"))o->record.stage="cancelled";}
