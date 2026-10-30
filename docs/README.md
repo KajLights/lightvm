@@ -5,6 +5,8 @@ animation. The guides below describe the current implementation.
 
 ## Guides and reference
 
+- [Project and learning goals](project-goals.md): electronics, computing and
+  communications through microcontrollers; understanding, imagination and making.
 - [Learn with lights](teaching.md): twelve beginner lessons, local preview and clear syntax.
 - [Teaching implementation and acceptance](design/teaching-implementation.md)
 - [Beginner observation session](teaching-pilot.md)
@@ -71,7 +73,7 @@ current contract. Superseded implementations are available through Git history.
   hosted upgrades/downgrades, optional Pico W OTA, per-board recovery and shared
   installed-build/feature reporting.
 - [Kajlights website implementation plan](design/website-implementation-plan.md):
-  public lessons and workspace, persistent device nicknames, release discovery,
+  delivery of the learning goals, public lessons and workspace, device nicknames, release discovery,
   optional firmware profiles, local installation and staged OTA integration.
 - [Pico 2 W board support plan](design/feature-proposal-pico2-w.md)
 - [Web editor proposal](design/feature-proposal-web-editor.md)

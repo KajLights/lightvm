@@ -6,9 +6,16 @@ Date: 30 October 2026
 
 ## Purpose and implementation scope
 
-Build a public Kajlights website where people can learn through light, sound and
-connected objects, program without owning hardware, and install and maintain
-supported devices without a local development environment or GitHub account.
+Build a public KajLights website where people learn electronics, computing and
+networking by making things with microcontrollers. The aim is to help people
+understand how things work so they can imagine projects, describe what they want
+to build and assess the result, including when working with AI. The
+[project and learning goals](../project-goals.md) are the reference for this
+direction and for reviewing content.
+
+Support browser experiments, practical hardware projects, and installation and
+maintenance of supported devices without a local development environment or
+GitHub account where an approved firmware build is available.
 The website owns the public experience; firmware projects provide independently
 built implementations, reusable tools and verified release artifacts.
 
@@ -30,17 +37,28 @@ version change, release tag, release publication or production deployment.
 
 ## Product direction and public navigation
 
-The public invitation is to make computing tangible through light, sound and
-connected objects. Play, investigation and making are equally valid ways to
-participate. A visitor can enjoy a pattern, change a rule, investigate a message
-or build a connected object without following a compulsory course.
+The public invitation is to make something and find out how it works. Start with
+an achievable activity: connect a light, change its colour, make a pattern move
+or send a command to a board. Use the result to explain the circuit, the computer
+and the messages between parts. Play, investigation and making are equally valid
+ways to participate, without a compulsory course.
 
 Organise material around three related subjects:
 
-- Computing logic: values, choices, repetition, state, time, arrays and debugging.
-- Hardware and signals: pins, colour encoding, timing, inputs and hardware buses.
-- Connected systems: discovery, messages, subscriptions, identity, persistence,
-  freshness and recovery from failure.
+- Electronics: components, circuits, power and signals. Connect the wires and
+  explain why the colour can change without rewiring the circuit.
+- Computing: instructions, processors, memory, time and debugging. Follow a
+  moving dot's position and run the animation independently on the board.
+- Networking and communications: messages, addresses and protocols. Reach the
+  same board over USB and Wi-Fi, then consider what happens if messages stop.
+
+The first hardware build should work for a child of about ten with an adult
+helper. Keep board preparation and detailed electrical checks in helper notes;
+let the learner connect, change and investigate. Browser lessons are another
+entry point, not a diversion on the hardware build page. Use examples to connect
+understanding with new ideas and specific, testable requests to an AI assistant.
+The existing twelve programming lessons are a starting point; developing the
+electronics and communications material is part of the project goal.
 
 Use the audience and content separation established by Found in Space, with
 Kajlights language and examples. Share useful design practices rather than
