@@ -69,6 +69,7 @@ jobs:
       - run: python -B -m unittest discover -s tests -p test_release_distribution.py -v
 
   esp32:
+    name: ${{ matrix.id }}
     needs: prepare
     runs-on: ubuntu-24.04
     container: espressif/idf:v5.5.3
@@ -104,6 +105,7 @@ jobs:
         env:
           TARGET_ID: ${{ matrix.id }}
         run: |
+          . "$IDF_PATH/export.sh"
           python -m pip install jsonschema==4.26.0
           python shared/device-core/tools/release.py package --target "$TARGET_ID" --build build/release-firmware --output build/bundle
       - uses: actions/upload-artifact@v4
@@ -113,6 +115,7 @@ jobs:
           if-no-files-found: error
 
   pico:
+    name: ${{ matrix.id }}
     needs: prepare
     runs-on: ubuntu-24.04
     strategy:
@@ -123,6 +126,9 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.revision }}
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Install pinned Pico SDK and Arm compiler
         shell: bash
         run: |
