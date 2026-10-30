@@ -9,6 +9,7 @@ animation. The guides below describe the current implementation.
 - [Teaching implementation and acceptance](design/teaching-implementation.md)
 - [Beginner observation session](teaching-pilot.md)
 - [Controllers and development workflow](architecture.md)
+- [Shared device contracts and nicknames](../shared/device-core/contracts/README.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Live inputs, timed drivers and wiring](inputs.md)
 - [Board status and native sensor inputs](board-status.md)
@@ -65,6 +66,12 @@ current contract. Superseded implementations are available through Git history.
 - [Original multicast audio experiment](design/feature-proposal-audio-multicast.md) (historical; superseded by subscriptions)
 - [Controller support proposal](design/feature-proposal-output-support.md)
 - [Build profiles proposal](design/feature-proposal-build-profiles.md)
+- [OTA firmware updates and build discovery](design/feature-proposal-firmware-ota.md):
+  hosted upgrades/downgrades, optional Pico W OTA, per-board recovery and shared
+  installed-build/feature reporting.
+- [Kajlights website implementation plan](design/website-implementation-plan.md):
+  public lessons and workspace, persistent device nicknames, release discovery,
+  optional firmware profiles, local installation and staged OTA integration.
 - [Pico 2 W board support plan](design/feature-proposal-pico2-w.md)
 - [Web editor proposal](design/feature-proposal-web-editor.md)
 - [Animation composition proposal](design/feature-proposal-animation-composition.md)

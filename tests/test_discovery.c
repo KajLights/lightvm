@@ -1,4 +1,5 @@
 #include "device/discovery.h"
+#include "device/metadata.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,11 @@ static size_t question(uint8_t *b,const char *name,unsigned type,unsigned klass,
 int main(void) {
     static Discovery a,b,c; Wire wa={0},wb={0},wc={0}; char json[4096];
     start(&a,&wa,1,8080); start(&b,&wb,2,80); announce(&a); announce(&b);
+    DeviceMetadata metadata={0};strcpy(metadata.nickname,"Kitchen \"shelf\" café");a.metadata=&metadata;
+    CHECK(discovery_json(&a,json,sizeof(json),850000)>0);
+    CHECK(strstr(json,"\"nickname\":\"Kitchen \\\"shelf\\\" café\""));
+    strcpy(metadata.nickname,"Renamed");CHECK(discovery_json(&a,json,sizeof(json),850000)>0);
+    CHECK(strstr(json,"\"nickname\":\"Renamed\""));a.metadata=NULL;
     CHECK(wa.bytes[2]==0x84 && wa.bytes[7]==4);
     discovery_receive(&b,wa.bytes,wa.size,a.controllers[0].ip,5353,1000000);
     CHECK(discovery_json(&b,json,sizeof(json),1000000));

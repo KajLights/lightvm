@@ -1,5 +1,6 @@
 #include "assets.h"
 #include "device/store_backend.h"
+#include "device/metadata.h"
 #include "vm.h"
 #include "vm_allocator.h"
 #include <stdio.h>
@@ -66,6 +67,25 @@ static void versions_and_uploads(void){
     CHECK(!store_find(&s,STORE_TRANSITION,"bad"));CHECK(store_info(&s).free_bytes<free_before);
     store_destroy(&s);free(f.bytes);
 }
+static void metadata_failures(void){
+    Flash f=flash_new(64*1024);Store s;mount_flash(&s,&f);
+    const char *old="{\"schema\":\"kajlights.device_metadata\",\"nickname\":\"Old name\"}";
+    CHECK(store_put(&s,STORE_DEVICE_METADATA,STORE_DEVICE,old,(uint32_t)strlen(old)));store_destroy(&s);
+    uint8_t *baseline=malloc(f.size);CHECK(baseline);memcpy(baseline,f.bytes,f.size);unsigned failed=0;
+    for(int n=0;n<40;n++){
+        memcpy(f.bytes,baseline,f.size);mount_flash(&s,&f);DeviceMetadata m;device_metadata_init(&m,&s);
+        CHECK(!strcmp(m.nickname,"Old name"));char request[256],error[160];Json j;
+        snprintf(request,sizeof(request),"{\"op\":\"device_metadata_set\",\"nickname\":\"New name\",\"expected_revision\":%u,\"expected_boot_id\":\"boot\"}",(unsigned)device_metadata_revision(&m));
+        CHECK(json_parse(&j,request,strlen(request)));f.failure=n;
+        enum Status status=device_metadata_set(&m,&j,"boot",error,sizeof(error));
+        CHECK(!strcmp(m.nickname,status==STATUS_OK?"New name":"Old name"));if(status!=STATUS_OK)failed++;
+        f.failure=-1;store_destroy(&s);mount_flash(&s,&f);device_metadata_init(&m,&s);
+        CHECK(!m.error[0]&&(!strcmp(m.nickname,"Old name")||!strcmp(m.nickname,"New name")));
+        if(status==STATUS_OK)CHECK(!strcmp(m.nickname,"New name"));
+        store_destroy(&s);
+    }
+    CHECK(failed>8&&failed<40);free(baseline);free(f.bytes);
+}
 static void failures(StoreType type){
     Flash f=flash_new(64*1024);Store s;mount_flash(&s,&f);CHECK(store_put(&s,type,"wipe","old",3));store_destroy(&s);
     uint8_t *baseline=malloc(f.size);CHECK(baseline);memcpy(baseline,f.bytes,f.size);unsigned failures=0;
@@ -120,4 +140,4 @@ static void readonly_assets(void){
     CHECK(vm_heap_used()==0);store_destroy(&s);
     assets[1].type=STORE_ANIMATION;CHECK(!store_mount_with(&s,&store_assets_backend,&configuration));store_destroy(&s);
 }
-int main(void){cancellable_writes();catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);failures(STORE_KEY_FEEDBACK);readonly_assets();puts("storage backends passed");return 0;}
+int main(void){metadata_failures();cancellable_writes();catalogues();versions_and_uploads();failures(STORE_ANIMATION);failures(STORE_OUTPUT_STATE);failures(STORE_KEY_FEEDBACK);readonly_assets();puts("storage backends passed");return 0;}

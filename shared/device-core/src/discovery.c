@@ -1,5 +1,7 @@
 #include "device/discovery.h"
 #include "device/version.h"
+#include "device/metadata.h"
+#include "device/description.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -178,6 +180,7 @@ void discovery_start(Discovery *d,const char *hostname,const DeviceHost *identit
                      uint16_t port,DiscoverySend send,void *context,uint64_t now) {
     memset(d,0,sizeof(*d));
     if (!identity || !identity->controller_id || !identity->board || !identity->version || !identity->kind) return;
+    d->metadata=identity->metadata;
     const char *id=identity->controller_id,*board=identity->board;
     if (!device_version_valid(identity->version,false) || !label(identity->kind,32)) return;
     if (!label(hostname,sizeof(d->controllers[0].hostname)) || !label(id,sizeof(d->controllers[0].controller_id)) || !label(board,sizeof(d->controllers[0].board)) || !port) return;
@@ -341,6 +344,8 @@ static void json(char *out,size_t capacity,size_t *used,const char *format,...) 
     va_list args; va_start(args,format); int n=vsnprintf(out+*used,capacity-*used,format,args); va_end(args);
     if (n<0 || (size_t)n>=capacity-*used) *used=capacity; else *used+=(size_t)n;
 }
+typedef struct {char *out;size_t capacity,*used;} DiscoveryText;
+static void discovery_text(void *context,const char *text){DiscoveryText *w=context;json(w->out,w->capacity,w->used,"%s",text);}
 size_t discovery_json(Discovery *d,char *out,size_t capacity,uint64_t now) {
     size_t used=0; unsigned count=0;
     if (d && d->active) expire(d,now);
@@ -348,7 +353,9 @@ size_t discovery_json(Discovery *d,char *out,size_t capacity,uint64_t now) {
     if (d && d->active) {
         for (unsigned i=0;i<DISCOVERY_LIMIT;i++) {
             DiscoveryController *p=&d->controllers[i]; if (i && !complete(p,now)) continue;
-            json(out,capacity,&used,"%s{\"hostname\":\"%s.local\",\"controller_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"kind\":\"%s\",\"capabilities\":%u,\"ip\":\"%u.%u.%u.%u\",\"port\":%u,\"url\":\"http://%u.%u.%u.%u:%u\"}",count++?",":"",p->hostname,p->controller_id,p->board,p->version,p->kind,(unsigned)p->capabilities,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port);
+            json(out,capacity,&used,"%s{\"hostname\":\"%s.local\",\"controller_id\":\"%s\",\"board\":\"%s\",\"version\":\"%s\",\"kind\":\"%s\",\"capabilities\":%u,\"ip\":\"%u.%u.%u.%u\",\"port\":%u,\"url\":\"http://%u.%u.%u.%u:%u\",\"nickname\":",count++?",":"",p->hostname,p->controller_id,p->board,p->version,p->kind,(unsigned)p->capabilities,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port,p->ip[0],p->ip[1],p->ip[2],p->ip[3],p->port);
+            if(!i&&d->metadata&&d->metadata->nickname[0]){DiscoveryText w={out,capacity,&used};device_json_write_string(discovery_text,&w,d->metadata->nickname);}else json(out,capacity,&used,"null");
+            json(out,capacity,&used,"}");
         }
     }
     json(out,capacity,&used,"]}"); return used<capacity?used:0;

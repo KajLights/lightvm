@@ -19,6 +19,7 @@ typedef struct {
 typedef bool (*DiscoverySend)(void *,const uint8_t *,size_t,const uint8_t[4],uint16_t);
 typedef struct {
     DiscoveryController controllers[DISCOVERY_LIMIT];
+    struct DeviceMetadata *metadata;
     DiscoverySend send; void *context;
     uint8_t packet[DISCOVERY_PACKET_LIMIT];
     uint64_t next_query,next_announce,reply_at;

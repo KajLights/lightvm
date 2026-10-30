@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kajlights device metadata response",
+  "type": "object",
+  "required": [
+    "schema",
+    "nickname",
+    "revision"
+  ],
+  "properties": {
+    "schema": {
+      "const": "kajlights.device_metadata"
+    },
+    "nickname": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 63,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$",
+      "description": "At most 63 UTF-8 bytes; trim ASCII spaces; empty becomes null."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    }
+  },
+  "additionalProperties": false
+}

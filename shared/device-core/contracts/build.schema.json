@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kajlights generated build record",
+  "type": "object",
+  "required": [
+    "schema",
+    "product",
+    "version",
+    "board",
+    "firmware",
+    "features",
+    "hardware",
+    "updates",
+    "inputs"
+  ],
+  "properties": {
+    "schema": {
+      "const": "kajlights.build"
+    },
+    "product": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 95,
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "not": {
+        "pattern": "[\u0000- \u007f]"
+      }
+    },
+    "board": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "firmware": {
+      "type": "object",
+      "required": [
+        "build_id",
+        "source_revision",
+        "source_dirty",
+        "release_tag",
+        "profile",
+        "features_hash",
+        "layout_id",
+        "boot_contract",
+        "device_core_revision"
+      ],
+      "properties": {
+        "build_id": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "device_core_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "source_dirty": {
+          "type": "boolean"
+        },
+        "release_tag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 95
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "features_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "layout_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "boot_contract": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 95
+        }
+      },
+      "additionalProperties": true
+    },
+    "features": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "required": [
+        "target",
+        "chip",
+        "declared_flash_bytes",
+        "flash_bytes",
+        "flash_verified"
+      ],
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "chip": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "declared_flash_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "flash_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "flash_verified": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "updates": {
+      "type": "object",
+      "required": [
+        "supported",
+        "methods"
+      ],
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "methods": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "usb-serial",
+              "uf2",
+              "picoboot",
+              "http-push"
+            ]
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "inputs": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

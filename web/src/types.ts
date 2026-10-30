@@ -3,6 +3,13 @@ export type Path = 'usb' | 'http';
 export interface Description {
   controller_id: string; boot_id: string; board: string;
   version: string; animation_reset?: boolean; activation_settings?: boolean;
+  product?: string; kind?: string; capabilities?: number;
+  nickname?: string | null; metadata_revision?: number; metadata_error?: string;
+  firmware?: { build_id: string; source_revision: string; source_dirty: boolean; release_tag: string | null; profile: string; features_hash: string; layout_id: string; boot_contract: string | null; device_core_revision: string };
+  features?: string[];
+  updates?: { supported: boolean; methods: string[] };
+  hardware?: { target: string; chip: string; declared_flash_bytes: number | null; flash_bytes: number | null; flash_verified: boolean };
+  limits?: Record<string, number>;
   module_limit: number; config_limit: number;
   pixel_capacity: number; pins: string[]; slots: string[];
   storage_available: boolean; wifi_supported: boolean; wifi_ap_supported?: boolean; http_supported: boolean; websocket_supported?: boolean; mqtt_supported?: boolean;
@@ -67,7 +74,7 @@ export interface ProgramState {
   program_crc32?: number;
   fault_pc?: number; fault_op?: number; fault_code?: number; fault_message?: string;
 }
-export interface NearbyController { kind: string; capabilities: number; version: string; controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
+export interface NearbyController { nickname?: string | null; kind: string; capabilities: number; version: string; controller_id: string; board: string; hostname: string; ip: string; port: number; url: string }
 export interface Diagnostic { blockId?: string; message: string; line: number; column: number; end_line?: number; end_column?: number }
 export interface DebugMap {
   schema: 'lightvm.debug'; crc32: number; filename: string; stepping: boolean;

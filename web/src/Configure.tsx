@@ -1,3 +1,4 @@
+import { DeviceName } from './DeviceName';
 import { BoardStatus } from './BoardStatus';
 import { Presets } from './Presets';
 import { useEffect, useMemo, useState } from 'react';
@@ -233,7 +234,7 @@ export function Configure() {
     <nav className="subtabs" aria-label="Configuration sections"><button aria-current={section === 'presets' ? 'page' : undefined} onClick={() => setSection('presets')}>Presets</button><button aria-current={section === 'output' ? 'page' : undefined} onClick={() => setSection('output')}>Output &amp; startup</button>{networkSupported && <button aria-current={section === 'network' ? 'page' : undefined} onClick={() => setSection('network')}>{controller.description?.mqtt_supported ? 'Wi-Fi, HTTP & MQTT' : 'Wi-Fi & HTTP'}</button>}<button aria-current={section === 'status' ? 'page' : undefined} onClick={() => setSection('status')}>Board status</button></nav>
     <div hidden={section !== 'status'}><BoardStatus active={section === 'status'} /></div>
     <div hidden={section !== 'presets'}><Presets /></div>
-    <div hidden={section !== 'output'}><Hardware /></div>
+    <div hidden={section !== 'output'}><DeviceName /><Hardware /></div>
     {networkSupported && <div hidden={section !== 'network'}><Network /></div>}
   </>;
 }

@@ -78,8 +78,33 @@ test("a timeout closes the connection instead of accepting a late upload reply",
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const receiver = process.env.LIGHTVM_RECEIVER || pathJoin(root, "build/host/lightvm");
-const python = pathJoin(root, "build/venv/bin/python");
-test("browser protocol uploads and plays a real animation on bytecode", { skip: !existsSync(receiver) || !existsSync(python) }, async () => {
+const python = process.env.LIGHTVM_PYTHON || (existsSync(pathJoin(root, 'build/venv/bin/python')) ? pathJoin(root, 'build/venv/bin/python') : 'python3');
+test("browser client saves guarded UTF-8 nicknames on the actual device service", { skip: !existsSync(receiver) }, async () => {
+  const directory = mkdtempSync(pathJoin(tmpdir(), 'lightvm-metadata-'));
+  const process = spawn(receiver, ['--storage', pathJoin(directory, 'store.bin')], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const transport = {
+    write: bytes => new Promise((resolve, reject) => process.stdin.write(bytes, error => error ? reject(error) : resolve())),
+    close: async () => { process.stdin.end(); },
+  };
+  const client = new LightVMClient(transport);
+  process.stdout.on('data', bytes => transport.onData(bytes));
+  process.stdout.on('end', () => transport.onDisconnect());
+  try {
+    const before = await client.describe();
+    const saved = await client.setDeviceNickname('  Kitchen café 🟡  ', before);
+    assert.equal(saved.nickname, 'Kitchen café 🟡');
+    assert.equal((await client.deviceMetadata()).nickname, saved.nickname);
+    await assert.rejects(client.setDeviceNickname('Stale', before));
+    await assert.rejects(client.setDeviceNickname('é'.repeat(32)), /63 UTF-8/);
+    assert.equal((await client.describe()).controller_id, before.controller_id);
+    assert.equal((await client.setDeviceNickname(null)).nickname, null);
+  } finally {
+    await client.close();
+    await new Promise(resolve => process.exitCode === null ? process.once('exit', resolve) : resolve());
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+test("browser protocol uploads and plays a real animation on bytecode", { skip: !existsSync(receiver) }, async () => {
   const directory = mkdtempSync(pathJoin(tmpdir(), "lightvm-editor-"));
   const program = pathJoin(directory, "rainbow.lbc");
   execFileSync(python, ["-m", "lightvm.compiler", "examples/animations/rainbow.py", "-o", program], { cwd: root });

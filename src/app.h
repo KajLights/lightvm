@@ -5,6 +5,7 @@
 #include "assets.h"
 #include "device/network.h"
 #include "device/host.h"
+#include "device/metadata.h"
 #include "composition.h"
 #include "transition.h"
 #include "command.h"
@@ -55,6 +56,7 @@ typedef struct App {
     AudioSources audio;
     BoardStatus board_status;
     NetworkSettings network_settings;
+    DeviceMetadata metadata;
     DeviceHost device;
     uint64_t source,upload_owner,connection_sequence;
     char controller_id[65],boot_id[33];

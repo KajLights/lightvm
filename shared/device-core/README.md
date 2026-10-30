@@ -57,6 +57,11 @@ wiped/reprovisioned instead of introducing migrations.
 
 ## Identity and discovery
 
+The [shared contracts](contracts/README.md) define the common generated build,
+feature and hardware description and persistent device nicknames. Both products
+use the same descriptor writer and metadata storage service. Nicknames do not
+change controller IDs or hostnames. No OTA service is implemented or advertised.
+
 The common service remains `_lightvm._tcp.local`, with `lightvm.local` as a shared
 bootstrap address. Names are product-specific (`lightvm-xxxxxx`, `kaj-fi-xxxxxx`).
 TXT fields are `id`, `board`, `version` (SemVer), `kind`, and decimal `caps`.

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
 import { LightVMClient, crc32 } from '../web/protocol.mjs';
 
@@ -26,7 +27,7 @@ function announced(child, output) {
   return new Promise((resolve, reject) => {
     let text = '';
     const timer = setTimeout(() => finish(Error('Server startup timeout: ' + text)), 10000);
-    const read = bytes => { text += bytes; const match = text.match(/http:\/\/[^\s]+/); if (match) finish(null, match[0].replace(/\/$/, '')); };
+    const read = bytes => { text += bytes; const match = stripVTControlCharacters(text).match(/http:\/\/[^\s]+/); if (match) finish(null, match[0].replace(/\/$/, '')); };
     const failed = error => finish(error), exited = code => finish(Error(`Server exited ${code}: ${text}`));
     function finish(error, url) {
       clearTimeout(timer); output.off('data', read); child.off('error', failed); child.off('exit', exited);

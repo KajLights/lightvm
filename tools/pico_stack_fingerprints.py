@@ -15,6 +15,10 @@ PROJECT=(
     'src/board_status.c','platforms/pico/board_status.c',
     'src/runtime.c','src/app.c','src/preparation.c','src/preparation.h','src/transition.c','src/transition.h','src/render_executor.c','src/vm.c',
     'src/device_host.c','src/store_policy.c',
+    'src/app.h','shared/device-core/src/metadata.c','shared/device-core/src/description.c',
+    'shared/device-core/src/json_writer.c','shared/device-core/include/device/metadata.h',
+    'shared/device-core/include/device/description.h','shared/device-core/include/device/host.h',
+    'shared/device-core/include/device/store.h','shared/device-core/include/device/discovery.h',
     'src/mqtt.c','src/mqtt.h','src/home_assistant.c','src/home_assistant.h',
     'src/audio_sources.c','src/audio_sources.h','src/control.c','kaj-audio.rev','cmake/kaj_audio.cmake','src/inputs.c','src/inputs.h','src/outputs.c',
     'shared/device-core/src/http.c','shared/device-core/src/http_setup.c',
@@ -27,7 +31,7 @@ PROJECT=(
     'platforms/pico/lwipopts.h','platforms/pico/tusb_config.h',
 )
 
-AUDIO_CORE=('features.h','onset.h','protocol.c','protocol.h','subscriptions.c','subscriptions.h','subscriber.c','subscriber.h')
+AUDIO_CORE=('kaj_audio_features.h','onset.h','protocol.c','protocol.h','subscriptions.c','subscriptions.h','subscriber.c','subscriber.h')
 def audio_core(build):
     cache=(build/'CMakeCache.txt').read_text()
     return next((Path(line.split('=',1)[1]) for line in cache.splitlines() if line.startswith('KAJ_AUDIO_CORE:')),ROOT/'.deps/kaj-fi/core')

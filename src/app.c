@@ -4,6 +4,7 @@
 #include "runtime.h"
 #include "render_executor.h"
 #include "device/json.h"
+#include "device/description.h"
 #include "vm_allocator.h"
 #include "draw.h"
 #include "preparation.h"
@@ -368,6 +369,7 @@ void app_init(App *a, SendMessage send, void *transport) {
     empty_config(a);runtime_services(service,a);
     a->booting=true;
     if (!store_mount(&a->store)) snprintf(a->boot_error,sizeof(a->boot_error),"storage unsupported or corrupt; repair/reprovision required");
+    device_metadata_init(&a->metadata,&a->store);
     const StoreEntry *config=store_find(&a->store,STORE_CONFIGURATION,STORE_CONFIG);
     if (config) {
         HardwareConfig hardware;
@@ -564,9 +566,9 @@ static void transition_state(Writer *,AppOutput *);
 static void describe(App *a, uint16_t id) {
     Writer w={.app=a,.id=id};
     const PlatformInfo *info=platform_info();
-    literal(&w,"{\"version\":\"" LIGHTVM_VERSION "\",\"connections\":true,\"light_controls\":true,\"schema\":\"lightvm.config\",\"platform\":"); quoted(&w,info->platform);
-    literal(&w,",\"controller_id\":"); quoted(&w,a->controller_id);
-    literal(&w,",\"boot_id\":"); quoted(&w,a->boot_id);
+    char limits[192];snprintf(limits,sizeof(limits),"{\"config_bytes\":%u,\"module_bytes\":%u,\"vm_heap_bytes\":%u,\"pixel_capacity\":%u}",(unsigned)CONFIG_LIMIT,(unsigned)MODULE_LIMIT,(unsigned)vm_heap_limit(),(unsigned)PIXEL_CAPACITY);
+    literal(&w,"{");device_description(&a->device,limits,binding_text,&w);
+    literal(&w,",\"connections\":true,\"light_controls\":true,\"schema\":\"lightvm.config\",\"platform\":");quoted(&w,info->platform);
     literal(&w,",\"build_compiler\":");quoted(&w,__VERSION__);
     literal(&w,",\"cpu_clock_hz\":");unsigned cpu=platform_cpu_hz();if(cpu)number(&w,cpu);else literal(&w,"null");
     literal(&w,",\"reset_reason\":");const char *reset=platform_reset_reason();if(reset)quoted(&w,reset);else literal(&w,"null");
@@ -587,7 +589,6 @@ static void describe(App *a, uint16_t id) {
     literal(&w,",\"vm_heap_automatic\":");literal(&w,LIGHTVM_AUTOMATIC_HEAP?"true":"false");
     literal(&w,",\"preparation_memory_bytes\":");number(&w,(uint32_t)preparation_retained_bytes(a));
     literal(&w,",\"preparation_pending\":");literal(&w,preparation_pending(a)?"true":"false");
-    literal(&w,",\"board\":"); quoted(&w,info->board);
     literal(&w,",\"output_types\":[{\"type\":\"ws2812b\",\"required\":[\"pin\",\"count\"],\"order_default\":\"GRB\",\"brightness_default\":255}");
     if(platform_apa102_supported())literal(&w,",{\"type\":\"apa102\",\"required\":[\"data_pin\",\"clock_pin\",\"count\"],\"order_default\":\"BGR\",\"brightness_default\":255}");
     literal(&w,"],\"pins\":[");
@@ -1872,6 +1873,17 @@ static bool audio_manage(App *a,uint16_t id,const Json *j,const char *op){
 static void manage_dispatch(App *a,uint16_t id,const uint8_t *p,size_t size){
     Json *j=platform_calloc(1,sizeof(*j));char op[40],layer_id[OBJECT_NAME_LIMIT+1]="";
     if(!j||!json_parse(j,p,size)||!json_string(j,json_get(j,0,"op"),op,sizeof(op))){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","invalid management request");return;}
+    if(!strcmp(op,"device_metadata_get")||!strcmp(op,"device_metadata_set")){
+        char error[160]="",document[256];enum Status status=STATUS_OK;
+        if(!strcmp(op,"device_metadata_get")){
+            static const char *const fields[]={"op",NULL};if(!json_fields(j,0,fields))status=STATUS_PROTOCOL;
+        }else if(a->upload_owner||preparation_pending(a)) {status=STATUS_BUSY;snprintf(error,sizeof(error),"finish pending writes before renaming");}
+        else {status=device_metadata_validate(&a->metadata,j,a->boot_id,error,sizeof(error));if(status==STATUS_OK){status=device_metadata_set(&a->metadata,j,a->boot_id,error,sizeof(error));resume_clock(a);}}
+        platform_free(j);
+        if(status!=STATUS_OK)error_reply(a,id,status,"device_metadata",error[0]?error:"invalid metadata request");
+        else {Writer w={.app=a,.id=id};size_t n=device_metadata_json(&a->metadata,document,sizeof(document));bytes(&w,document,n);flush(&w);reply(a,id,STATUS_OK,0,"device metadata");}
+        return;
+    }
     if(!strcmp(op,"audio_status")){
         static const char *const fields[]={"op",NULL};
         if(!json_fields(j,0,fields)){platform_free(j);error_reply(a,id,STATUS_PROTOCOL,"invalid_request","unexpected audio status fields");return;}

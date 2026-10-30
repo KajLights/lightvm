@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 if(NOT TARGET device_core)
     add_library(device_core STATIC src/json.c src/protocol.c src/network.c
-        src/store.c src/store_extent.c src/store_assets.c src/settings.c src/version.c)
+        src/store.c src/store_extent.c src/store_assets.c src/settings.c src/version.c src/metadata.c src/description.c src/json_writer.c)
     target_include_directories(device_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_compile_features(device_core PUBLIC c_std_11)
     target_compile_options(device_core PRIVATE -Wall -Wextra -Werror)

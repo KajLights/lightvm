@@ -1,0 +1,119 @@
+{
+  "schema": "kajlights.features",
+  "features": [
+    {
+      "id": "usb_management",
+      "requires": []
+    },
+    {
+      "id": "device_metadata",
+      "requires": [
+        "usb_management"
+      ]
+    },
+    {
+      "id": "configuration",
+      "requires": []
+    },
+    {
+      "id": "wifi",
+      "requires": []
+    },
+    {
+      "id": "http_api",
+      "requires": []
+    },
+    {
+      "id": "websocket_management",
+      "requires": [
+        "http_api"
+      ]
+    },
+    {
+      "id": "mqtt",
+      "requires": []
+    },
+    {
+      "id": "home_assistant",
+      "requires": [
+        "mqtt"
+      ]
+    },
+    {
+      "id": "audio_subscriptions",
+      "requires": []
+    },
+    {
+      "id": "audio_gateway",
+      "requires": []
+    },
+    {
+      "id": "light_output",
+      "requires": []
+    },
+    {
+      "id": "audio_analysis",
+      "requires": []
+    },
+    {
+      "id": "audio_publisher",
+      "requires": [
+        "audio_analysis"
+      ]
+    },
+    {
+      "id": "program_storage",
+      "requires": []
+    },
+    {
+      "id": "live_inputs",
+      "requires": []
+    },
+    {
+      "id": "presets",
+      "requires": [
+        "program_storage"
+      ]
+    },
+    {
+      "id": "compositions",
+      "requires": [
+        "light_output"
+      ]
+    },
+    {
+      "id": "transitions",
+      "requires": [
+        "light_output"
+      ]
+    },
+    {
+      "id": "power_recovery",
+      "requires": []
+    },
+    {
+      "id": "pdm_microphone",
+      "requires": [
+        "audio_analysis"
+      ]
+    },
+    {
+      "id": "synthetic_audio",
+      "requires": [
+        "audio_analysis"
+      ]
+    },
+    {
+      "id": "network_probe",
+      "requires": []
+    },
+    {
+      "id": "ota",
+      "requires": []
+    },
+    {
+      "id": "boot_sequence",
+      "requires": []
+    }
+  ]
+}
