@@ -1,0 +1,132 @@
+{
+  "schema": "lightvm.validation.ota-capacity",
+  "date": "2026-10-30",
+  "measurement": "Fresh isolated Pico W firmware builds; OTA implementation and loader excluded.",
+  "source_commit": "115777c872c9fdcf06e7254fb3594cc92892197a",
+  "compiler": "arm-none-eabi-gcc (Arm GNU Toolchain 13.2.rel1 (Build arm-13.7)) 13.2.1 20231009",
+  "sdk_version": "2.3.1",
+  "common_build_options": {
+    "board": "pico_w",
+    "build_type": "Release",
+    "wifi": true,
+    "http": true,
+    "websocket": true,
+    "boot_sequence": true,
+    "storage_bytes": 524288,
+    "pixel_capacity": "AUTO (1024)"
+  },
+  "configure_definitions": {
+    "CMAKE_BUILD_TYPE": "Release",
+    "LIGHTVM_PLATFORM": "pico",
+    "PICO_BOARD": "pico_w",
+    "LIGHTVM_WIFI": "ON",
+    "LIGHTVM_HTTP": "ON",
+    "LIGHTVM_WEBSOCKET": "ON",
+    "LIGHTVM_BOOT_SEQUENCE": "ON",
+    "LIGHTVM_STORAGE_BYTES": "524288",
+    "LIGHTVM_PIXEL_CAPACITY": "AUTO",
+    "LIGHTVM_VM_HEAP_BYTES": "AUTO"
+  },
+  "profiles": [
+    {
+      "profile": "stock",
+      "binary_bytes": 712748,
+      "binary_kib": 696.04296875,
+      "sha256": "52911f3bf287cf41df6c6e2b05c4bc0d8a103e61d3fe836e1bb3b9b7cc8ec1c2",
+      "flash_symbols": {
+        "__flash_binary_start": 268435456,
+        "__flash_binary_end": 269148204,
+        "__lightvm_boot_storage_start": 270000128,
+        "__lightvm_storage_start": 270008320
+      },
+      "ram": {
+        "sram_bytes": 270336,
+        "vm_heap_automatic": true,
+        "vm_heap_capacity": 78496,
+        "static_bytes": 120412,
+        "vm_heap_ceiling": 78496,
+        "native_stack": 24576,
+        "pixel_driver_max": 30464,
+        "operating_headroom": 16384,
+        "remaining_bytes_after_reservations": 4,
+        "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+      },
+      "feature_definitions": {
+        "LIGHTVM_MQTT": "OFF",
+        "LIGHTVM_AUDIO_SUBSCRIPTIONS": "OFF"
+      }
+    },
+    {
+      "profile": "mqtt-audio",
+      "binary_bytes": 735244,
+      "binary_kib": 718.01171875,
+      "sha256": "b1f9cb58e36ea9b713ceeeaef62040abf1de283b8803b32d603866783376abe7",
+      "flash_symbols": {
+        "__flash_binary_start": 268435456,
+        "__flash_binary_end": 269170700,
+        "__lightvm_boot_storage_start": 270000128,
+        "__lightvm_storage_start": 270008320
+      },
+      "ram": {
+        "sram_bytes": 270336,
+        "vm_heap_automatic": true,
+        "vm_heap_capacity": 64304,
+        "static_bytes": 134608,
+        "vm_heap_ceiling": 64304,
+        "native_stack": 24576,
+        "pixel_driver_max": 30464,
+        "operating_headroom": 16384,
+        "remaining_bytes_after_reservations": 0,
+        "dynamic_costs": "lwIP pools are static; driver budget covers pio0/pio1 at the compiled pixel capacity; dynamic output/config/pin records and other native allocations use operating headroom"
+      },
+      "feature_definitions": {
+        "LIGHTVM_MQTT": "ON",
+        "LIGHTVM_AUDIO_SUBSCRIPTIONS": "ON"
+      }
+    }
+  ],
+  "measured_feature_delta": {
+    "flash_bytes": 22496,
+    "vm_heap_bytes": 14192
+  },
+  "candidate_layouts": [
+    {
+      "name": "retain_512_KiB_store",
+      "flash_bytes": 2097152,
+      "bootloader_and_ota_metadata_assumed_bytes": 65536,
+      "power_cycle_journal_bytes": 8192,
+      "firmware_slot_bytes": 749568,
+      "saved_content_region_bytes": 524288,
+      "headroom_per_image_bytes": {
+        "stock": 36820,
+        "mqtt-audio": 14324
+      }
+    },
+    {
+      "name": "768_KiB_firmware_slots",
+      "flash_bytes": 2097152,
+      "bootloader_and_ota_metadata_assumed_bytes": 65536,
+      "power_cycle_journal_bytes": 8192,
+      "firmware_slot_bytes": 786432,
+      "saved_content_region_bytes": 450560,
+      "headroom_per_image_bytes": {
+        "stock": 73684,
+        "mqtt-audio": 51188
+      }
+    }
+  ],
+  "checks": {
+    "firmware_builds": "passed",
+    "linked_flash_payload_equals_binary_length": "passed",
+    "existing_post_build_ram_and_stack_checks": "passed",
+    "hardware_ota": "not implemented or tested",
+    "ota_bootloader_size": "not measured"
+  },
+  "limitations": [
+    "Payload lengths describe current binaries before OTA updater, bootloader integration and adjusted linking.",
+    "64 KiB for loader and metadata is a planning assumption; account for actual headers, scratch and verification requirements.",
+    "Candidate layouts require a validated RP2040 installation and rollback strategy.",
+    "RAM reports include native reserves but do not establish OTA runtime RAM capacity.",
+    "UF2 transfer-file size is not flash payload size."
+  ]
+}

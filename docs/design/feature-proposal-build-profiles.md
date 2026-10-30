@@ -155,6 +155,11 @@ Custom profile files should be usable outside the repository.
 
 ## Capacity planning and OTA
 
+The [OTA firmware proposal](feature-proposal-firmware-ota.md) defines hosted
+installation, installed-build/feature reporting and per-board recovery requirements.
+Pico W OTA is optional and remains excluded from its standard firmware; its
+measured capacity budget is recorded in that proposal.
+
 Check the resulting firmware against the selected storage layout. Total flash
 capacity alone is insufficient: an OTA scheme may reserve bootloader space,
 update metadata, a second application slot or a staging region alongside program

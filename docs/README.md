@@ -65,6 +65,9 @@ current contract. Superseded implementations are available through Git history.
 - [Original multicast audio experiment](design/feature-proposal-audio-multicast.md) (historical; superseded by subscriptions)
 - [Controller support proposal](design/feature-proposal-output-support.md)
 - [Build profiles proposal](design/feature-proposal-build-profiles.md)
+- [OTA firmware updates and build discovery](design/feature-proposal-firmware-ota.md):
+  hosted upgrades/downgrades, optional Pico W OTA, per-board recovery and shared
+  installed-build/feature reporting.
 - [Pico 2 W board support plan](design/feature-proposal-pico2-w.md)
 - [Web editor proposal](design/feature-proposal-web-editor.md)
 - [Animation composition proposal](design/feature-proposal-animation-composition.md)
