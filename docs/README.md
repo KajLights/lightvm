@@ -38,6 +38,10 @@ animation. The guides below describe the current implementation.
 - [Browser workspace](web-editor.md)
 - [Generic live music source](audio-source.md)
 - [Audio subscriptions, source editing and Python visualizations](audio-subscriptions.md)
+- [Structured audio gateway](audio-gateway.md)
+- [Shared browser audio analysis](audio-analysis-browser.md)
+- [Audio acceptance evidence](audio-acceptance.md)
+- [Audio protocol review, OSC comparison and follow-up findings](audio-protocol-review-2026-10-28.md)
 
 Runnable [animation examples](../examples/animations/) and
 [configuration examples](../examples/config/) live together in `examples/`.
@@ -58,7 +62,7 @@ current contract. Superseded implementations are available through Git history.
 - [Numeric and kernel workload specification](design/numeric-workloads.md)
 - [Control API proposal](design/feature-proposal-control-api.md)
 - [External inputs for transitions and animations](design/feature-proposal-inputs.md)
-- [ESP32-S3 audio analyser and multicast inputs](design/feature-proposal-audio-multicast.md)
+- [Original multicast audio experiment](design/feature-proposal-audio-multicast.md) (historical; superseded by subscriptions)
 - [Controller support proposal](design/feature-proposal-output-support.md)
 - [Build profiles proposal](design/feature-proposal-build-profiles.md)
 - [Pico 2 W board support plan](design/feature-proposal-pico2-w.md)

@@ -3,12 +3,13 @@
 Status: historical experiment implemented on 26 October 2026, superseded by
 [preset-driven subscriptions](feature-proposal-audio-subscriptions.md).
 
-See the [current implementation guide](../audio-subscriptions.md). The first slice
-uses 23 fixed `audio.*` names: six scalar features, a deduplicated onset
-counter and sixteen spectrum values. Configurable prefixes, ESP32 reception, per-animation event queues and
-pause/resume trigger expiry below are future work. The counter is not a complete
-event-binding API. A temporary sender-side unicast experiment uses the same Pico
-UDP receiver and input bindings.
+See the [current implementation guide](../audio-subscriptions.md). The text below
+describes the original 23 fixed `audio.*` names, sixteen exposed spectrum bands,
+global counter and temporary fixed-unicast experiment. Its build/configuration,
+wire details and then-future work are historical, not current requirements.
+The implemented replacement has scoped sources, 64 bands, per-binding counters
+and pause/resume baselines. The [protocol review](../audio-protocol-review-2026-10-28.md)
+records the corrected findings and remaining timing questions.
 
 Date: 19 October 2026. Timing revised: 26 October 2026.
 

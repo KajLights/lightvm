@@ -86,6 +86,12 @@ old metrics. Capture/clock freshness is bounded to 350 ms; increasing a binding'
 timeout does not make an expired source live. Missing bands are unavailable.
 INPUT defaults/hold policy still determine the displayed value during loss.
 
+The five-hop cadence was selected during multicast troubleshooting and held
+constant in the subsequent unicast comparison. It is not a measured unicast
+limit; an onset can wait up to four hops (85.3 ms) after detection for publication.
+The [protocol/OSC review](audio-protocol-review-2026-10-28.md) records the timing
+history and proposed higher-rate experiment. The current cadence is unchanged.
+
 Profile 1 is Adaptive percussion v1; profile 2 is the explicit level-rise
 comparison. A profile or identity mismatch stays unavailable. Source identity is
 a trusted-LAN filter, not authentication. See the
@@ -143,7 +149,7 @@ and exercises two outputs sharing a lease plus distinct simulated sources during
 a mixed crossfade. A rejected fifth provider preserves scene identity and charged
 heap. The [acceptance record](audio-acceptance.md) links all conformance evidence.
 
-The current Pico W build passes its unchanged RAM/stack gates: 134,512 static
+The 27 October Pico W build passed its unchanged RAM/stack gates: 134,512 static
 bytes, a 64,400-byte automatic VM heap, 16/8 KiB main/worker stacks and 16 KiB
 native headroom. Main/worker bounds are 12,000/5,104 bytes. These are software
 bounds, not physical watermarks. PLAY/resume now reserves the required scopes
@@ -163,10 +169,14 @@ The 200-pixel scene used 29,776 live / 32,356 peak VM bytes. Observed stack peak
 were 5,308 main / 740 worker bytes; these short checks are not a stress certificate.
 Five full descriptions took 13.6–16.0 ms over USB and 89.4–117.7 ms over HTTP.
 
-Both firmware targets are installed. The Pico's 12 programs, six presets, Wi-Fi
-and MQTT settings were preserved, and a reboot confirmed restore-last startup
+The 27 October installation record confirms both firmware targets. The Pico's
+12 programs, six presets, Wi-Fi and MQTT settings were preserved, and a reboot confirmed restore-last startup
 with the no-flash spectrum selected, power **off**, brightness 40%, and no acquired
 sources. The four audio presets now contain their pinned Sense declaration.
-The [physical S3 comparison](validation/audio-s3-parity-2026-10-27.json) also passed;
-threshold-boundary and complete UDP/gateway delivery conformance remain separate
-acceptance work. Earlier multicast hardware reports do not establish these results.
+The [physical S3 comparison](validation/audio-s3-parity-2026-10-27.json) also passed.
+The completed [UDP/gateway checks](validation/audio-transports-2026-10-27.json)
+use simulated publishers, and the separate
+[threshold-boundary report](validation/audio-boundaries-2026-10-27.json) records
+one native/WASM decision disagreement with native/S3 agreement in all 14 cases.
+See the [acceptance matrix](audio-acceptance.md) for scope and limits. Earlier
+multicast hardware reports do not establish these results.

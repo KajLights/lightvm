@@ -11,6 +11,11 @@ dependency checks, five sample-rate adapter checks, silent browser conformance
 and the physical results. The final Pico image matches the installed/tested image
 byte for byte. These are local results; a remote GitHub Actions run is not claimed.
 
+The [28 October protocol/OSC review](audio-protocol-review-2026-10-28.md) records
+additional host checks, corrects findings from the superseded checkout and tracks
+remaining cadence, numerical-boundary and interoperability recommendations. Its
+post-merge documentation refresh does not claim a new physical acceptance run.
+
 | Requirement | Evidence |
 | --- | --- |
 | One portable implementation; default adaptive percussion and explicit level-rise baseline | Pinned kaj-fi `core/features.c`, `core/onset.c`, `core/profiles.json`; [browser/AudioWorklet report](validation/audio-browser-2026-10-27.json) |
