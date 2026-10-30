@@ -93,4 +93,7 @@ function(lightvm_add_core)
     target_compile_features(lightvm_core PUBLIC c_std_11)
     target_compile_options(lightvm_core PRIVATE -Wall -Wextra -Werror -ffp-contract=off)
     target_link_libraries(lightvm_core PUBLIC lightvm_config device_core m)
+    # The core calls application storage-policy/checkpoint hooks. Declare this
+    # static-library cycle so CMake rescans both archives on one-pass linkers.
+    target_link_libraries(device_core PRIVATE lightvm_core)
 endfunction()

@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
 import { AnalysisRunner, RECORD, PROFILES } from '../web/audio/pcm-adapter.mjs';
 
@@ -68,7 +69,7 @@ try {
   const url = await new Promise((resolve, reject) => {
     let output = ''; const timer = setTimeout(() => reject(Error(`Vite startup timeout: ${output}`)), 10000);
     server.on('error', reject); server.on('exit', code => reject(Error(`Vite exited ${code}: ${output}`)));
-    const read = bytes => { output += bytes; const match = output.match(/http:\/\/127\.0\.0\.1:\d+\//); if (match) { clearTimeout(timer); resolve(match[0]); } };
+    const read = bytes => { output += bytes; const match = stripVTControlCharacters(output).match(/http:\/\/127\.0\.0\.1:\d+\//); if (match) { clearTimeout(timer); resolve(match[0]); } };
     server.stdout.on('data', read); server.stderr.on('data', read);
   });
   browser = await chromium.launch({ headless: true, ...(process.env.CHROME_EXECUTABLE ? { executablePath: process.env.CHROME_EXECUTABLE } : {}), args: ['--autoplay-policy=no-user-gesture-required'] });
