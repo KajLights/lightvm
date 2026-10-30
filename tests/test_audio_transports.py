@@ -126,10 +126,19 @@ class Publisher:
 
 
 class TransportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.receiver = Path(os.environ.get('LIGHTVM_RECEIVER', ROOT/'build/host/lightvm'))
+        probe = Client(ProcessTransport(cls.receiver))
+        try:
+            if 'audio_subscriptions' not in probe.describe()['features']:
+                raise unittest.SkipTest('UDP audio subscriptions excluded from this build')
+        finally:
+            probe.close()
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.client = Client(ProcessTransport(Path(os.environ.get('LIGHTVM_RECEIVER', ROOT/'build/host/lightvm')),
-                                               Path(self.temp.name)/'store.bin'))
+        self.client = Client(ProcessTransport(self.receiver, Path(self.temp.name)/'store.bin'))
         self.addCleanup(self.temp.cleanup)
         self.addCleanup(self.client.close)
         self.client.configure(configuration(2, 5))
