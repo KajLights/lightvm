@@ -4,10 +4,11 @@
 #include "device/platform.h"
 #define STORE_CONFIG "$config"
 #define STORE_NETWORK "$network"
+#define STORE_DEVICE "$device"
 #define STORE_TYPE_LIMIT 16u
 #define STORE_PAGE_BYTES 256u
 typedef uint8_t StoreType;
-enum { STORE_ANY=0, STORE_CONFIGURATION=4, STORE_NETWORK_SETTINGS=5 };
+enum { STORE_ANY=0, STORE_CONFIGURATION=4, STORE_NETWORK_SETTINGS=5, STORE_DEVICE_METADATA=8 };
 /* id is an opaque backend version token. Applications must not interpret it. */
 typedef struct { char name[DEVICE_NAME_LIMIT+1]; StoreType type; uint32_t id,size,crc; } StoreEntry;
 typedef struct StoreBackend StoreBackend;

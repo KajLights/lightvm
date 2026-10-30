@@ -58,6 +58,8 @@ CALLBACKS = {
     'inputs_describe': ('src/control.c:input_text',),
     'input_scope_describe': ('src/app.c:binding_text','src/control.c:input_text'),
     'audio_sources_status': ('src/app.c:binding_text',),
+    'device_description': ('src/app.c:binding_text',),
+    'device_json_write_string': ('src/app.c:binding_text','shared/device-core/src/discovery.c:discovery_text'),
     'audio_sources_tick': ('platforms/pico/network_port.c:audio_open','platforms/pico/network_port.c:audio_close','platforms/pico/network_port.c:audio_send'),
     'audio_sources_disconnect': ('platforms/pico/network_port.c:audio_close',),
     'src/audio_sources.c:remove_provider': ('platforms/pico/network_port.c:audio_send','platforms/pico/network_port.c:audio_close'),

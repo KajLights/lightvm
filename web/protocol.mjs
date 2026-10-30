@@ -176,6 +176,17 @@ export class LightVMClient {
   }
 
   async describe() { const description = JSON.parse(decoder.decode((await this.manage("describe")).data)); this.connectionsSupported = description.connections; return description; }
+  async deviceMetadata() { return this.json('device_metadata_get'); }
+  async setDeviceNickname(nickname, expected) {
+    if (nickname !== null) {
+      if (typeof nickname !== 'string' || !nickname.isWellFormed() || /[\u0000-\u001f\u007f]/u.test(nickname)) throw new Error('Use a name without control characters.');
+      nickname = nickname.replace(/^ +| +$/g, '') || null;
+      if (nickname !== null && encoder.encode(nickname).length > 63) throw new Error('Device names can contain up to 63 UTF-8 bytes.');
+    }
+    const state = expected ?? await this.describe();
+    const result = await this.manage('device_metadata_set', { nickname, expected_revision: state.metadata_revision, expected_boot_id: state.boot_id });
+    return JSON.parse(decoder.decode(result.data));
+  }
 
   /** @param {Uint8Array} bytecode @param {number} limit @param {(progress: number) => void} [onProgress] @param {string} [output] @param {Record<string, number | boolean>} [settings] */
   async upload(bytecode, limit, onProgress = () => {}, output = '', settings = {}, inputs = {}) {

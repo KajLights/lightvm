@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Kajlights common device description",
+  "type": "object",
+  "required": [
+    "product",
+    "kind",
+    "board",
+    "controller_id",
+    "boot_id",
+    "version",
+    "capabilities",
+    "nickname",
+    "metadata_revision",
+    "metadata_error",
+    "firmware",
+    "features",
+    "hardware",
+    "updates",
+    "limits"
+  ],
+  "properties": {
+    "product": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "kind": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "board": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "controller_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "boot_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 95,
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "not": {
+        "pattern": "[\u0000- \u007f]"
+      }
+    },
+    "capabilities": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "nickname": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 63,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$",
+      "description": "At most 63 UTF-8 bytes; trim ASCII spaces; empty becomes null."
+    },
+    "metadata_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "metadata_error": {
+      "type": "string",
+      "maxLength": 95
+    },
+    "firmware": {
+      "type": "object",
+      "required": [
+        "build_id",
+        "source_revision",
+        "source_dirty",
+        "release_tag",
+        "profile",
+        "features_hash",
+        "layout_id",
+        "boot_contract",
+        "device_core_revision"
+      ],
+      "properties": {
+        "build_id": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "source_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "device_core_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "source_dirty": {
+          "type": "boolean"
+        },
+        "release_tag": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 95
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "features_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "layout_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "boot_contract": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 95
+        }
+      },
+      "additionalProperties": true
+    },
+    "features": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "required": [
+        "target",
+        "chip",
+        "declared_flash_bytes",
+        "flash_bytes",
+        "flash_verified"
+      ],
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "chip": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "declared_flash_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "flash_bytes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "flash_verified": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "updates": {
+      "type": "object",
+      "required": [
+        "supported",
+        "methods"
+      ],
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        },
+        "methods": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "usb-serial",
+              "uf2",
+              "picoboot",
+              "http-push"
+            ]
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "limits": {
+      "type": "object",
+      "required": [
+        "config_bytes"
+      ],
+      "properties": {
+        "config_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "module_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "vm_heap_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "pixel_capacity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "spectrum_bands": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -6,6 +6,7 @@ typedef struct DeviceHost {
     void *context;
     const char *controller_id,*boot_id,*product,*board,*version,*kind,*hostname_prefix;
     uint32_t capabilities;
+    struct DeviceMetadata *metadata;
     uint64_t *connection_sequence;
     Network *network;
     NetworkSettings *settings;

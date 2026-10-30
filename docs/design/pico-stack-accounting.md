@@ -1,5 +1,24 @@
 # Pico stack-path accounting
 
+## Shared device metadata audit 30 October
+
+The common descriptor streams through the existing application writer; discovery
+uses its bounded response writer. The callback contracts explicitly name those
+targets for `device_description` and `device_json_write_string`. Neither writer
+executes a command or adds an IRQ/worker registration. Nickname changes run on
+the management owner through the existing atomic store and checkpoint guards.
+Decoding is bounded by the 512-byte management frame and the canonical name by
+63 UTF-8 bytes. The JSON parser is heap allocated during metadata loading; no
+unbounded document or firmware buffer is put on the stack.
+
+Review covered the changed application dispatch/description, device host, store
+policy and discovery code, together with the new metadata/description/writer
+sources and their headers. No SDK callback, assembly allowance or recursion
+guard changed. The stock Pico W build with HTTP, WebSocket and boot recovery
+uses the existing 16/8 KiB stacks; its linked foreground/worker bounds including
+interrupt allowances are 12,240/5,120 bytes, leaving 4,144/3,072 bytes. Physical
+stress and watermark validation remain separate from these software checks.
+
 ## Combined teaching and audio source review — 28 October
 
 The consolidation retains both reviewed callback sets below. The merged

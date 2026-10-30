@@ -241,6 +241,12 @@ class DeviceClient:
         self.manage(operation)
         return json.loads(self.data_reply)
 
+    def set_device_nickname(self, nickname, expected=None):
+        state = expected if expected is not None else self.document("describe")
+        self.manage("device_metadata_set", nickname=nickname,
+                    expected_revision=state["metadata_revision"], expected_boot_id=state["boot_id"])
+        return json.loads(self.data_reply)
+
     def upload_object(self, kind, data):
         if kind not in ("config", "network") or not 1 <= len(data) <= 4096:
             raise ValueError("invalid settings object")

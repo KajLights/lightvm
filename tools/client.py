@@ -179,6 +179,12 @@ class Client:
         self.connections = description.get("connections", 0)
         return description
 
+    def set_device_nickname(self, nickname, expected=None):
+        state = expected if expected is not None else self.describe()
+        self.manage("device_metadata_set", nickname=nickname,
+                    expected_revision=state["metadata_revision"], expected_boot_id=state["boot_id"])
+        return json.loads(self.data_reply)
+
     def get_config(self, saved=False):
         self.manage("config_saved" if saved else "config_get")
         return json.loads(self.data_reply)
