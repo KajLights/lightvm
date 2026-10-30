@@ -41,7 +41,7 @@ class EasingTests(unittest.TestCase):
             source += ''.join(f' ctx.v{i}={name}({t!r})\n' for i,t in enumerate(samples))
             source += '@render\ndef draw(ctx,runtime,pixels): pass\n'
             _, package, manifest = self.compile(source)
-            self.assertEqual(manifest['requires'], '1.3.0')
+            self.assertEqual(manifest['requires'], '0.1.0')
             result = self.run_package(package)
             self.assertEqual(result['status'], 1)
             values = [struct.unpack('<f', struct.pack('<I', w))[0] for w in result['state']]

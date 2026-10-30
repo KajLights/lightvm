@@ -1,15 +1,16 @@
 """The application release and its same-major minimum-release contract.
 
 Build metadata identifies development builds without changing compatibility.
-BASELINE is the release that introduced the currently supported features; it does
-not advance when VERSION advances. New features must record their release floor.
+BASELINE is the first supported milestone; all current features belong to 0.1.0.
+Individual development changes do not advance either value.
 """
 import json
 from pathlib import Path
 import re
 
-VERSION = json.loads(Path(__file__).with_name('release.json').read_text())['version']
-BASELINE = '1.0.0'
+_APPLICATION = json.loads(Path(__file__).with_name('release.json').read_text())
+VERSION = _APPLICATION['version']
+BASELINE = _APPLICATION['baseline']
 _CORE = r'(0|[1-9][0-9]*)'
 _RELEASE = re.compile(rf'{_CORE}(?:\.{_CORE}(?:\.{_CORE})?)?(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?\Z')
 
@@ -17,7 +18,7 @@ _RELEASE = re.compile(rf'{_CORE}(?:\.{_CORE}(?:\.{_CORE})?)?(?:-([0-9A-Za-z-]+(?
 def parse_release(value, *, shorthand=True):
     match = _RELEASE.fullmatch(value) if isinstance(value, str) and len(value) <= 95 else None
     if not match:
-        raise ValueError('invalid LightVM release: expected 1, 1.2 or a semantic version')
+        raise ValueError('invalid LightVM release: expected a major, major.minor or semantic version')
     major, minor, patch, pre, build = match.groups()
     if (not shorthand or pre or build) and patch is None:
         raise ValueError('prerelease/build versions require major.minor.patch')
@@ -52,3 +53,5 @@ def release_error(version, required):
 
 
 parse_release(VERSION, shorthand=False)
+parse_release(BASELINE, shorthand=False)
+assert release_error(VERSION, BASELINE) is None, 'application version precedes its baseline'

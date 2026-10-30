@@ -1,5 +1,9 @@
 # Numeric foundation follow-up validation
 
+Historical build labels and feature floors in this record predate the
+[0.1.0 milestone baseline](../versioning.md). They describe the recorded
+experiments and do not define current compatibility requirements.
+
 The later [Pico W campaign](numeric-pico-validation-2026-10-23.md) supplies the
 current physical results and records the remaining control-service failure.
 The no-board statements below describe this earlier software-validation run.

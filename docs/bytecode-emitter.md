@@ -1,9 +1,8 @@
 # Independent bytecode emission
 
-23 October 2026. Baseline: validated Pico repair `a9c8611`. This document records
-the current container and the S1–S5 contract for the
+This document records the current container and the S1–S5 contract for the
 [numeric foundation](numeric-types.md). The shared core adds numeric operations
-under application feature floors 1.2.0 and 1.3.0. The container layout remains unchanged.
+within the shared 0.1.0 application baseline. The container layout remains unchanged.
 
 ## Current container
 
@@ -105,9 +104,9 @@ or source-language compatibility mode is introduced.
 
 The [operation catalogue](design/numeric-operations.json) assigns encodings
 and their application floors. A package using a fixed type,
-fixed array or instruction 40..61 must declare `requires` at least 1.2.0,
+fixed array or instruction 40..61 must declare `requires` at least 0.1.0,
 including generic typed callbacks. The loader rejects a falsely lowered floor
-even on newer firmware. Existing programs retain their earlier feature floors.
+even on current firmware. All supported operations share the 0.1.0 baseline.
 
 ## Core instruction encoding
 
@@ -133,7 +132,7 @@ row says otherwise. The loader checks types and effects before activation.
 | 20 | RGB | `a` colour; `b,c,d` i32 red/green/blue registers |
 | 21 | HSV | `a` colour; `b,c,d` f32 hue turns, saturation and value registers |
 | 23,24 | IMIN, IMAX | `a,b,c` i32 |
-| 25,26 | FMIN, FMAX | `a,b,c` finite f32; signed-zero contract and floor 1.3.0 |
+| 25,26 | FMIN, FMAX | `a,b,c` finite f32; signed-zero contract and floor 0.1.0 |
 | 27 | HASH | `a` f32; `b,c` i32 index/seed; deterministic normalized polynomial hash |
 | 33 | LOAD_ELEM | `a` element result, `b` constant resource reference, `c` i32 index |
 | 34 | STORE_ELEM | `a` constant destination reference, `b` i32 index, `c` element value |
@@ -161,9 +160,9 @@ Element operations fault on invalid indices, sealed writes and invalid stored
 values. FILL requires `0 <= start <= stop <= count`. COPY requires equal counts;
 self-copy is a no-op. They are resumed in bounded chunks and preserve earlier
 persistent writes on a later fault. Reads of output require output permission,
-including through COPY and drawing bindings. These core IDs have floor 1.0.0
-except finite-f32 min/max. Fixed operands require 1.2.0; gathers/branches/fixed
-operations within maps require 1.3.0.
+including through COPY and drawing bindings. All core IDs, fixed operands and
+gathered/branched map operations belong to the 0.1.0 baseline, including
+finite-f32 min/max.
 
 ### Resource records and initialization
 
@@ -182,7 +181,7 @@ checks available memory and profile-specific output rules. Element kinds are:
 | 14,15,16,17 | RGB, RGBA, RGBW, RGBWA image / colour | Strides 3,4,4,5; flags 0 for owned or 2 for sealed artwork |
 | 18 | Sprite batch / no scalar element | Positive capacity; i32 fill; seed is field count 8..24; stream is a literal field mask with no higher bits |
 | 19 | Drawing style / no scalar element | Length 1; i32 fill; flags 0; initialize style with its native setters |
-| 20 | Four-byte signed Q16.16 / fixed | Every raw word valid; fixed fill, flags 0; floor 1.2.0 |
+| 20 | Four-byte signed Q16.16 / fixed | Every raw word valid; fixed fill, flags 0; floor 0.1.0 |
 
 Other kinds are rejected. Seed and stream expressions have i32 type. For numeric
 arrays they carry no RNG effect. For images, seed is a palette-word offset and
@@ -203,7 +202,7 @@ result when either input is f32 or opcode 8 is used; integer floor-divide requir
 two i32 operands. Mixed i32/f32 operands convert to f32 before arithmetic.
 Unlike executable wrapping integer arithmetic, declaration i32 overflow faults;
 every declaration f32 result must be finite. F32 declaration min/max requires
-1.3.0 and shares scalar signed-zero behaviour. Numeric opcodes 40..71 use their
+0.1.0 and shares scalar signed-zero behaviour. Numeric opcodes 40..71 use their
 exact signatures, without implicit mixed types. Settings remain i32/f32/colour/
 bool; a missing minimum/maximum expression is the setting-table sentinel
 `0xffffffff`. Evaluation happens during preparation, before activation.
@@ -220,7 +219,7 @@ requires result register 255. Bindings 0..2 and 18..26 are rejected.
 | 3 | `() -> F` | Stateful uniform random in [0,1); RNG permission |
 | 4 | `(I start,I stop,I step) -> I` | Stateful range choice, exclusive stop; nonzero step and nonempty range; RNG permission |
 | 5,6 | `(I seed) -> void`, `() -> void` | Deterministic reseed / instance-default reseed; RNG permission |
-| 7 | `(F radians) -> F` | Shared finite sine; floor 1.3.0 |
+| 7 | `(F radians) -> F` | Shared finite sine; floor 0.1.0 |
 | 8,9,10 | `(C) -> I` | Red, green, blue byte extraction |
 | 11 | `(F position) -> C` | Nonnegative finite position, period 256, three linear colour sectors |
 | 12 | `(I degrees) -> C` | Integer degrees 0..360, cyclic three-sector sine/cosine wheel |
@@ -275,10 +274,10 @@ these expressions with the same shared numeric implementation as scalar code.
 
 Instructions 62..70 are unary `FABS, FFLOOR, FCEIL, FTRUNC, FSIN, FCOS, FSQRT,
 FLOG, FEXP` in that order. Instruction 71 is binary FPOW. Their operands/results
-are f32, with the same unary/binary field layout above and feature floor 1.3.0.
+are f32, with the same unary/binary field layout above and feature floor 0.1.0.
 Declaration expressions accept the same IDs, signatures and earlier-expression
 references. Existing FMIN=25, FMAX=26, f32 declaration min/max and native sine
-binding 7 also require 1.3.0 and call the shared finite-f32 evaluator. Reserved
+binding 7 also require 0.1.0 and call the shared finite-f32 evaluator. Reserved
 operands must be zero. The compiler and loader enforce this semantic floor,
 including generic typed callbacks. Recompile earlier experimental packages.
 
@@ -303,8 +302,8 @@ kinds 1, 2, 7, 8, 11 and 20 with zero flags. References must be verified constan
 resource identities; source/destination identity may not alias. Image reads,
 source mutation, persistent scalar writes, stateful RNG and scatter stay scalar.
 Bodies above 32 instructions, conditional/nontrivial forward branches, gathers,
-fixed values and numeric instructions 40..71 require floor 1.3.0. Earlier simple
-map bodies retain their old floor. A falsely lowered floor is rejected.
+fixed values and numeric instructions 40..71 all belong to the 0.1.0 baseline,
+as do simple map bodies. Requirements below that baseline are rejected.
 
 Preparation admits immutable decoded plans, charges their exact allocation to
 the VM heap (`map_plan_bytes` telemetry), and frees them with the VM. It scans
@@ -374,8 +373,8 @@ Resource generations and the executor lifetime fence remain enforced.
    tables above. Scalar/bulk versions share expected raw state, fixed arrays and
    pixels. Invalid variants cover types, identities, flags, permissions, CFG,
    source mutation, reserved operands and declared feature floors. It passes
-   host and attached-Pico admission/rendering; the older 1.1.0 application
-   rejects both valid new packages before replacing a live scene. See the
+   host admission/rendering. Historical attached-Pico and old-firmware rejection
+   measurements retain their original experimental build identities in the
    [S5 validation record](design/numeric-s5-validation-2026-10-22.md).
 6. Run Python, JavaScript and Blocks emission through native execution. Recompute
    complete stack paths, admitted heap peaks and board timing after linking the
@@ -401,7 +400,7 @@ the full host parameter matrix. Physical service/performance gates remain open.
 
 ## Native gradient noise
 
-Release 1.4.0 adds pure native bindings 59..62 for seeded 2D/3D Perlin and
+The 0.1.0 baseline includes pure native bindings 59..62 for seeded 2D/3D Perlin and
 simplex noise. Use the existing NATIVE call record with the exact signatures in
 [the noise contract](noise.md#native-and-bytecode-contract). All are valid in
 verified prepared pixel kernels; their 128/192 work costs apply in scalar and

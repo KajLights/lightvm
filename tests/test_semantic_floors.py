@@ -40,10 +40,10 @@ class SemanticFloors(unittest.TestCase):
                     with self.subTest(expression=expression, declaration=declaration, optimize=optimize):
                         result = compile_source(source, optimize=optimize)
                         self.assertTrue(result.success, result.diagnostics)
-                        self.assertEqual(result.manifest['requires'], '1.3.0')
-                        self.assertFalse(compile_source(source, target={'version':'1.2.0'}, optimize=optimize).success)
-                        self.assertFalse(compile_source(source.replace('profile("animation")', 'profile("animation")\nrequires("1.2")'), optimize=optimize).success)
-                        forged = result.bytecode.replace(b'"requires":"1.3.0"', b'"requires":"1.2.0"')
+                        self.assertEqual(result.manifest['requires'], '0.1.0')
+                        self.assertFalse(compile_source(source, target={'version':'0.0.9'}, optimize=optimize).success)
+                        self.assertFalse(compile_source(source.replace('profile("animation")', 'profile("animation")\nrequires("0.0.9")'), optimize=optimize).success)
+                        forged = result.bytecode.replace(b'"requires":"0.1.0"', b'"requires":"0.0.9"')
                         self.assertNotEqual(forged, result.bytecode)
                         self.assertFalse(self.run_package(forged)['load'])
                         run = self.run_package(result.bytecode)
@@ -60,7 +60,7 @@ class SemanticFloors(unittest.TestCase):
     def test_independent_typed_callback_floors(self):
         # Explicit wire records: no compiler or generated fixture creates these.
         for op in (25, 26, 38):
-            for release in ('1.0.0', '1.2.0', '1.3.0'):
+            for release in ('0.0.0', '0.0.9', '0.1.0'):
                 native = op == 38
                 manifest = json.dumps({'requires':release}, separators=(',', ':')).encode()
                 header = [4,3,2,0,1,0,1,int(native),0,0,0,0,0,0,0,0,0,0,len(manifest),0,0,0,0]
@@ -72,7 +72,7 @@ class SemanticFloors(unittest.TestCase):
                 if native: package += struct.pack('<II8B',7,1,*([0]*8))
                 package += manifest
                 with self.subTest(op=op, release=release):
-                    self.assertEqual(self.run_package(package)['load'], release == '1.3.0')
+                    self.assertEqual(self.run_package(package)['load'], release == '0.1.0')
 
 
 if __name__ == '__main__': unittest.main()

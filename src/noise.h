@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define LVM_NOISE_RELEASE "1.4.0"
 enum { LVM_PERLIN2=59, LVM_PERLIN3, LVM_SIMPLEX2, LVM_SIMPLEX3 };
 typedef struct { uint8_t argc,args[7],work; } LvmNoiseSignature;
 LvmNoiseSignature lvm_noise_signature(unsigned binding);

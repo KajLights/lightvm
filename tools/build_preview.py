@@ -18,8 +18,10 @@ def build(emcc, if_needed=False):
     destination.mkdir(parents=True, exist_ok=True)
     generated = ROOT / 'build/browser-generated'
     generated.mkdir(parents=True, exist_ok=True)
-    version = json.loads((ROOT / 'lightvm/release.json').read_text())['version']
-    (generated / 'lightvm_release.h').write_text('#define LIGHTVM_VERSION ' + json.dumps(version) + '\n')
+    release = json.loads((ROOT / 'lightvm/release.json').read_text())
+    (generated / 'lightvm_release.h').write_text(
+        '#define LIGHTVM_VERSION ' + json.dumps(release['version']) + '\n' +
+        '#define LIGHTVM_BASELINE ' + json.dumps(release['baseline']) + '\n')
     sources = ['platforms/browser/preview.c'] + ['src/' + name + '.c' for name in (
         'portable', 'portable_map', 'portable_draw', 'portable_manifest', 'animation',
         'bytecode_core', 'numeric', 'native_math', 'noise', 'draw', 'render_executor',

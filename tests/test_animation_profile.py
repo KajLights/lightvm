@@ -22,7 +22,7 @@ def source(name):
 
 class PortableCompilerTests(unittest.TestCase):
     def test_target_negotiation_and_deterministic_compilation(self):
-        target={'module_limit':32768,'version':'1.4.0','live_inputs':True,'light_controls':True}
+        target={'module_limit':32768,'version':'0.1.0','live_inputs':True,'light_controls':True}
         for name in NAMES:
             result=compile_source(source(name))
             self.assertTrue(result.success,result.diagnostics)
@@ -30,7 +30,7 @@ class PortableCompilerTests(unittest.TestCase):
             self.assertEqual(result.bytecode,compile_source(source(name),target=target).bytecode)
             self.assertLess(len(result.bytecode),8192)
             self.assertLessEqual(struct.unpack_from('<I',result.bytecode,8)[0],128)
-        for version in ('0.9.0','2.0.0','1.0.0-alpha','invalid',None):
+        for version in ('0.0.9','1.0.0','1.4.0','0.1.0-alpha','invalid',None):
             self.assertFalse(compile_source(source('color'),target={**target,'version':version}).success)
         self.assertFalse(compile_source(source('color'),target={**target,'module_limit':100}).success)
         self.assertFalse(compile_source(source('color'),target={'control_abi':4,'bytecode_format':'LBC1/4','program_schemas':['lightvm.program']}).success)

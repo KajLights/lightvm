@@ -13,6 +13,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from lightvm import numeric
+from lightvm.release import BASELINE
 from lightvm.compiler import compile_source
 from lightvm.compiler_core import CompileError
 from lightvm.portable import PortableCompiler, P_OP
@@ -58,7 +59,7 @@ class NumericCompilerTests(unittest.TestCase):
     def compile(self, source, optimize=True):
         compiler = PortableCompiler(PREFIX + source, optimize=optimize)
         package, manifest = compiler.compile()
-        self.assertEqual(manifest['requires'], '1.2.0')
+        self.assertEqual(manifest['requires'], '0.1.0')
         return compiler, package
 
     def expression(self, expression):
@@ -144,7 +145,7 @@ class NumericCompilerTests(unittest.TestCase):
             if operation['implementation'] != 'runtime' or operation['name'] == 'q16.eq' or operation['name'].startswith('f32.'): continue
             name = by_id[operation['wire_id']['id']]
             self.assertEqual(numeric.SIGNATURES[name], tuple(types[t] for t in [operation['result'], *operation['arguments']]))
-            self.assertEqual(operation['feature_floor']['release'], numeric.RELEASE)
+            self.assertEqual(operation['feature_floor']['release'], BASELINE)
             names[operation['name']] = name
         self.assertEqual(set(names.values()), set(numeric.SIGNATURES)-set(numeric.MATH_SIGNATURES))
         for _ in range(1024):
@@ -206,12 +207,12 @@ def draw(ctx,runtime,pixels):
         for declaration in ('setting(fixed(1))', 'FixedArray(2,fill=1)', 'FixedArray(fixed(2))'):
             with self.assertRaises(CompileError, msg=declaration): self.compile(self.expression(declaration))
         source = PREFIX + self.expression('fixed(1)')
-        result = compile_source(source, target={'version':'1.1.0','module_limit':32768})
+        result = compile_source(source, target={'version':'0.0.9','module_limit':32768})
         self.assertFalse(result.success)
-        self.assertTrue(compile_source(source, target={'version':'1.2.0','module_limit':32768}).success)
+        self.assertTrue(compile_source(source, target={'version':'0.1.0','module_limit':32768}).success)
         self.assertFalse(compile_source(PREFIX + 'level=Input("level",default=fixed(1))\n@render\ndef draw(ctx,runtime,pixels): pass').success)
         with self.assertRaises(CompileError):
-            PortableCompiler(source.replace('profile("animation")', 'requires("1.1")\nprofile("animation")').replace('profile,', 'requires,profile,')).compile()
+            PortableCompiler(source.replace('profile("animation")', 'requires("0.0.9")\nprofile("animation")').replace('profile,', 'requires,profile,')).compile()
 
     def test_forged_types_encodings_permissions_and_floor(self):
         compiler, package = self.compile(self.expression('fixed(1) + fixed(2)'), False)
@@ -229,15 +230,15 @@ def draw(ctx,runtime,pixels):
         for offset, value in mutations:
             forged = bytearray(package); forged[offset:offset+len(value)] = value
             self.assertFalse(self.run_package(forged)['load'], (offset, value))
-        self.assertFalse(self.run_package(package.replace(b'"requires":"1.2.0"', b'"requires":"1.1.0"'))['load'])
+        self.assertFalse(self.run_package(package.replace(b'"requires":"0.1.0"', b'"requires":"0.0.9"'))['load'])
         # The shorthand floor remains valid for independent emitters.
         manifest_size = struct.unpack_from('<I', package, 76)[0]
-        metadata = package[-manifest_size:].replace(b'"requires":"1.2.0"', b'"requires":"1.2"')
+        metadata = package[-manifest_size:].replace(b'"requires":"0.1.0"', b'"requires":"0.1"')
         shorthand = bytearray(package[:-manifest_size] + metadata)
         struct.pack_into('<I', shorthand, 76, len(metadata))
         self.assertEqual(self.run_package(shorthand)['status'], 1)
         _, bitwise = self.compile(self.expression('runtime.pixel_count & 255'), False)
-        self.assertFalse(self.run_package(bitwise.replace(b'"requires":"1.2.0"', b'"requires":"1.1.0"'))['load'])
+        self.assertFalse(self.run_package(bitwise.replace(b'"requires":"0.1.0"', b'"requires":"0.0.9"'))['load'])
 
     def test_forged_fixed_resources_and_declaration_expressions(self):
         source = '''@init
@@ -287,7 +288,7 @@ def draw(ctx,runtime,pixels):
                     client.require_ok(client.command(FRAME,struct.pack('<I',milliseconds)))
                     self.assertEqual(bytes(client.pixel_snapshot), bytes([expected,0,0])*5)
                 generation = client.program_state()['generation']
-                for required in ('1.1.0','1.5.0'):
+                for required in ('0.0.9','0.2.0'):
                     with self.assertRaises(ProtocolError):
                         client.save_program('invalid', manifest_variant(package,requires=required))
                     self.assertEqual(client.program_state()['generation'], generation)

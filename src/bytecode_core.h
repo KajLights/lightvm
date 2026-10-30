@@ -19,15 +19,13 @@ enum { END=0, RETURN, MOV, IADD, ISUB, IMUL, IDIV, IMOD, FADD, FSUB, FMUL, FDIV,
        FABS, FFLOOR, FCEIL, FTRUNC, FSIN, FCOS, FSQRT, FLOG, FEXP, FPOW };
 enum { T_INT=1,T_FLOAT,T_COLOR,T_BOOL,T_FIXED=7 };
 enum { LBC_FIXED_ARRAY=20, LBC_MAP_WORK_BUDGET=1024 };
-#define LBC_NUMERIC_RELEASE "1.2.0"
-#define LBC_KERNEL_RELEASE "1.3.0"
 typedef struct { uint8_t result,left,right; } LbcNumericSignature;
 /* New scalar instructions share types and exact evaluation with declaration
  * expressions. A zero right type denotes a unary operation. Unknown IDs have
  * a zero result and cannot be emitted or admitted. */
 typedef struct {
     LbcNumericSignature signature;
-    uint8_t release_minor,kernel_minor,work,effects,kernel;
+    uint8_t work,effects,kernel;
 } LbcNumericMetadata;
 /* EQ metadata describes its fixed specialization; the base EQ is polymorphic. */
 LbcNumericMetadata lbc_numeric_metadata(unsigned op);

@@ -1,4 +1,4 @@
-import { releaseError } from './release';
+import { programReleaseError } from './release';
 import type { AppStore } from './store';
 import { activityActions, editorActions } from './store';
 import type { Language } from './languages/source';
@@ -10,7 +10,7 @@ export function programCompatibility(target: Description, manifest: Manifest): s
   if (manifest.profile === 'transition' && !target.transition_programs) return 'Install firmware with transition program support.';
   if (manifest.inputs?.length && !target.live_inputs) return 'Install firmware with live input support.';
   if (manifest.inputs?.some(input => input.control) && !target.light_controls) return 'Install firmware with light control support.';
-  return releaseError(target.version, manifest.requires);
+  return programReleaseError(target.version, manifest.requires);
 }
 export function supportsProgram(target: Description, manifest: Manifest) {
   return programCompatibility(target, manifest) === null;

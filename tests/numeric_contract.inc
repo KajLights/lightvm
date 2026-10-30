@@ -18,7 +18,7 @@ static const NumericCase numeric_cases[]={
     {"f32.pow",71,2,2,2},{"f32.min",25,2,2,2},{"f32.max",26,2,2,2}
 };
 static size_t numeric_package(uint8_t bytes[256],const NumericCase *test){
-    static const char manifest[]="{\"requires\":\"1.3.0\"}";
+    static const char manifest[]="{\"requires\":\"0.1.0\"}";
     memset(bytes,0,256);memcpy(bytes,"LBC1",4);
     write_u32(bytes+4,4);write_u32(bytes+8,3);write_u32(bytes+12,2);
     write_u32(bytes+20,1);write_u32(bytes+28,1);write_u32(bytes+76,sizeof(manifest)-1);
@@ -58,12 +58,12 @@ static int numeric_metadata_driver(void){
             CHECK(pbc_open(&p,portable_read,&source,source.size));CHECK(!p&&vm_heap_used()==0);
         }
         numeric_package(bytes,test);
-        char *minor=strstr((char*)bytes+176,"1.3.0")+2;
-        *minor=(char)('0'+m.release_minor-1);p=NULL;
+        char *floor=strstr((char*)bytes+176,"0.1.0");CHECK(floor);
+        memcpy(floor,"0.0.9",5);p=NULL;
         CHECK(pbc_open(&p,portable_read,&source,source.size));CHECK(!p&&vm_heap_used()==0);
         printf("%s{\"name\":\"%s\",\"id\":%u,\"signature\":[%u,%u%s",n?",":"",test->name,test->op,m.signature.result,m.signature.left,m.signature.right?",":"");
         if(m.signature.right)printf("%u",m.signature.right);
-        printf("],\"release\":\"1.%u.0\",\"kernel_release\":\"1.%u.0\",\"work\":%u,\"effects\":%u,\"kernel\":%s}\n",m.release_minor,m.kernel_minor,m.work,m.effects,m.kernel?"true":"false");
+        printf("],\"release\":\"%s\",\"kernel_release\":\"%s\",\"work\":%u,\"effects\":%u,\"kernel\":%s}\n",LIGHTVM_BASELINE,LIGHTVM_BASELINE,m.work,m.effects,m.kernel?"true":"false");
     }
     LbcNumericMetadata sine=lbc_native_numeric_metadata(7),instruction=lbc_numeric_metadata(FSIN);
     CHECK(!memcmp(&sine,&instruction,sizeof(sine)));

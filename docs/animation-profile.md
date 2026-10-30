@@ -43,9 +43,9 @@ are unsupported; readonly PixelArray artwork, Sprite definitions and static Inpu
 declarations and immutable scalar/colour constants may be declared at module scope.
 
 Explicit [Q16.16 values and FixedArray resources](numeric-types.md) are available
-with application feature floor 1.2.0. Convert with `fixed(...)`, `int(...)` or
+with application feature floor 0.1.0. Convert with `fixed(...)`, `int(...)` or
 `float(...)`; mixed fixed/integer/float arithmetic is rejected. Fixed expressions
-can execute in eligible bulk kernels with feature floor 1.3.0. Settings/live
+can execute in eligible bulk kernels with feature floor 0.1.0. Settings/live
 inputs retain their existing wire types.
 
 `runtime.time` is the pausable elapsed program time in seconds. `runtime.delta`

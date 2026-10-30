@@ -64,7 +64,7 @@ def emit(bulk=True, invalid=None, oversized=False, rgb=None):
     if oversized:
         expressions.append((0, 1, 0, 0, 65535))
         resources[1] = (20, 5, 4, 2, 2, 0)
-    requires = '1.3.0'
+    requires = '0.1.0'
     if invalid == 'operand-type': code[body] = (33, 14, 4, 10, 0)
     elif invalid == 'resource-identity': regs[4] = (6, 2, 2)
     elif invalid == 'resource-flags': resources[1] = (20, 0, 4, 2, 2, 1)
@@ -77,11 +77,11 @@ def emit(bulk=True, invalid=None, oversized=False, rgb=None):
     elif invalid == 'map-source-mutation': code[body+8] = (34, 4, 10, 12, 0)
     elif invalid == 'reserved-operand': code[body+9] = (68, 16, 15, 1, 0)
     elif invalid == 'map-work-budget': pass
-    elif invalid == 'fixed-floor': requires = '1.1.0'
-    elif invalid == 'kernel-floor': requires = '1.2.0'
+    elif invalid == 'fixed-floor': requires = '0.0.0'
+    elif invalid == 'kernel-floor': requires = '0.0.9'
     elif invalid == 'future-floor': requires = '99.0.0'
     elif invalid is not None: raise ValueError(invalid)
-    manifest = json.dumps({'schema': 'lightvm.program', 'compiler_version': '1.3.0',
+    manifest = json.dumps({'schema': 'lightvm.program', 'compiler_version': '0.1.0',
                            'requires': requires, 'profile': 'animation',
                            'pixels': {'format': 'rgba8-premul'}, 'settings': []},
                           separators=(',', ':')).encode()

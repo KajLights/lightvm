@@ -33,8 +33,8 @@ class InputCompilerTests(unittest.TestCase):
         self.assertTrue(compiled.success,compiled.diagnostics)
         self.assertEqual([item['name'] for item in compiled.manifest['inputs']],['level','phase'])
         self.assertEqual(compiled.bytecode,compile_source(SOURCE).bytecode)
-        self.assertFalse(compile_source(SOURCE,target={'version':'1.0.0'}).success)
-        self.assertTrue(compile_source(SOURCE,target={'version':'1.0.0','live_inputs':True}).success)
+        self.assertFalse(compile_source(SOURCE,target={'version':'0.1.0'}).success)
+        self.assertTrue(compile_source(SOURCE,target={'version':'0.1.0','live_inputs':True}).success)
         self.assertTrue(compile_source(SOURCE.replace('default=0.25,minimum=0.0,maximum=1.0','default=0.1,minimum=0.0,maximum=0.1')).success)
 
     def test_invalid_defaults_domains_and_dynamic_reads(self):

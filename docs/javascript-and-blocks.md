@@ -92,7 +92,7 @@ wrapping byte-array stores. Arrays cannot resize. Allocate them in `init`.
 The VM uses f32 precision rather than JavaScript's binary64. Native math preserves
 the [specified zero signs and finite domains](numeric-types.md#native-f32-math);
 NaN/Infinity and arbitrary objects are unsupported. New native functions need
-firmware 1.3.0. Floor/ceil/trunc preserve an f32 result, including values outside
+firmware 0.1.0. Floor/ceil/trunc preserve an f32 result, including values outside
 the i32 range. `Math.round(x)` retains the frontend's existing `floor(x + 0.5)`
 lowering; it is not a new native operation. Blocks exposes the same operations
 through its native-math dropdown and power block.
@@ -205,8 +205,8 @@ literals, conversion and bitwise blocks, all six numeric array kinds, array
 length, typed array fill/copy, native math and power. Pixel/repeat loop counters are
 i32 in both direct Blocks compilation and the optional JavaScript learning view.
 This keeps eligible numeric gathers and conditional pixel work on the same bulk
-path. Fixed/scalar bitwise features need 1.2.0; extended maps and new native math
-need 1.3.0. Target checks run before deployment.
+path. Fixed/scalar bitwise features, extended maps and native math all belong to the
+0.1.0 baseline. Target checks run before deployment.
 
 ## Blocks: explore by connecting
 

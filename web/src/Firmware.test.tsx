@@ -8,7 +8,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 function showFirmware() {
   vi.stubGlobal('fetch', vi.fn(async (url: string | URL) => ({
     ok: String(url).endsWith('pico.json'),
-    json: async () => ({ version: '1.0.0', builds: [
+    json: async () => ({ version: '0.1.0', builds: [
       { board: 'pico_w', chip: 'RP2040', name: 'Pico W', path: 'pico_w/lightvm.uf2', firmware_end: 0x1017e000, sha256: 'unused' },
       { board: 'pico2_w', chip: 'RP2350', name: 'Pico 2 W', path: 'pico2_w/lightvm.uf2', firmware_end: 0x1037e000, sha256: 'unused' },
     ] }),

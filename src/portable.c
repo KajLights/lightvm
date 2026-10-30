@@ -200,23 +200,21 @@ static bool valid_instruction(Portable *p,unsigned pc,const PbcFunction *fn){
         NativeSignature signature=native_signature(site->binding);const NativeSignature *sig=&signature;
         if(site->argc!=sig->argc||(sig->rights&~fn->rights))return false;
         for(unsigned n=0;n<8;n++)if(n<site->argc?pbc_type(p,site->args[n])!=sig->args[n]:site->args[n]!=0)return false;
-        if(site->binding>=LVM_PERLIN2){if(!p->noise_allowed)return false;}
-        else if(site->binding>=55){if(!inputs_call_valid(p,site->binding,site->args[0]))return false;}
-        else if(site->binding>=27){if(!pbc_drawing_valid(p,site,fn->rights))return false;}
+        if(site->binding>=55&&site->binding<LVM_PERLIN2){if(!inputs_call_valid(p,site->binding,site->args[0]))return false;}
+        else if(site->binding>=27&&site->binding<55){if(!pbc_drawing_valid(p,site,fn->rights))return false;}
 
         return sig->result ? can_write(p,a,fn->rights)&&at==sig->result : a==255;
     }
     if(!can_write(p,a,fn->rights))return false;
     if(op>=QADD&&op<=FPOW){
         LbcNumericSignature sig=lbc_numeric_signature(op);
-        return (op<=ISHR?p->numeric_allowed:p->kernels_allowed)&&at==sig.result&&bt==sig.left&&
+        return at==sig.result&&bt==sig.left&&
             (sig.right?ct==sig.right:!c)&&!d;
     }
     switch(op){
     case MOV:return at==bt&&!c&&!d;
     case IADD:case ISUB:case IMUL:case IDIV:case IMOD:case IMIN:case IMAX:return at==T_INT&&bt==T_INT&&ct==T_INT&&!d;
-    case FMIN:case FMAX:if(lbc_numeric_metadata(op).release_minor==3&&!p->kernels_allowed)return false; /* Semantic floor, including scalar callbacks. */
-        /* fall through */
+    case FMIN:case FMAX:
     case FADD:case FSUB:case FMUL:case FDIV:case FMOD:return at==T_FLOAT&&bt==T_FLOAT&&ct==T_FLOAT&&!d;
     case ITOF:return at==T_FLOAT&&bt==T_INT&&!c&&!d;
     case FTOI:return at==T_INT&&bt==T_FLOAT&&!c&&!d;
@@ -243,7 +241,7 @@ static bool valid_expressions(Portable *p){
     for(unsigned r=0;r<p->nregs;r++)if(pbc_role(p,r)==P_SETTING&&setting_for_reg[r]<0)return false;
     for(unsigned n=0;n<p->nexpressions;n++){
         PbcExpression e_value=pbc_expression(p,n);const PbcExpression *e=&e_value;
-        if(e->reserved||!scalar_type(e->type)||(e->type==T_FIXED&&!p->numeric_allowed))return false;
+        if(e->reserved||!scalar_type(e->type))return false;
         if(e->op==0){if(e->a||e->b||!finite_value(e->type,e->value))return false;}
         else if(e->op==1){if(e->type!=T_INT||e->a||e->b||e->value)return false;}
         else if(e->op==2){
@@ -251,7 +249,7 @@ static bool valid_expressions(Portable *p){
             dependencies[n]=1u<<setting_for_reg[e->a];
         }else if(e->op>=QADD&&e->op<=FPOW){
             LbcNumericSignature sig=lbc_numeric_signature(e->op);
-            if(!(e->op<=ISHR?p->numeric_allowed:p->kernels_allowed)||e->type!=sig.result||e->a>=n||e->value||
+            if(e->type!=sig.result||e->a>=n||e->value||
                 pbc_expression(p,e->a).type!=sig.left)return false;
             dependencies[n]=dependencies[e->a];
             if(sig.right){
@@ -264,7 +262,6 @@ static bool valid_expressions(Portable *p){
             if((a!=T_INT&&a!=T_FLOAT)||(b!=T_INT&&b!=T_FLOAT))return false;
             unsigned expected=a==T_FLOAT||b==T_FLOAT||e->op==8?T_FLOAT:T_INT;
             if(e->type!=expected||(e->op==6&&expected!=T_INT))return false;
-            if((e->op==9||e->op==10)&&expected==T_FLOAT&&!p->kernels_allowed)return false;
             dependencies[n]=dependencies[e->a]|dependencies[e->b];
         }
     }
@@ -362,8 +359,6 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         if(loader->index<p->ncalls){unsigned n=loader->index++;
         PbcCall item=pbc_call(p,n);const PbcCall *call=&item;
         if(!native_binding_valid(call->binding)){error="invalid native binding";goto fail;}
-        if(lbc_native_numeric_metadata(call->binding).release_minor==3&&!p->kernels_allowed){error="native math requires release " LBC_KERNEL_RELEASE;goto fail;}
-        if(lvm_noise_signature(call->binding).argc&&!p->noise_allowed){error="noise requires release " LVM_NOISE_RELEASE;goto fail;}
         NativeSignature signature=native_signature(call->binding);const NativeSignature *sig=&signature;
         if(call->argc!=sig->argc)goto fail;
         for(unsigned k=0;k<8;k++)if(k<call->argc?pbc_type(p,call->args[k])!=sig->args[k]:call->args[k]!=0)goto fail;
@@ -379,7 +374,7 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         if(loader->index<p->nresources){unsigned n=loader->index++;
         PbcResourceSpec s_value=pbc_spec(p,n);const PbcResourceSpec *s=&s_value;
         if(!s->kind||s->kind==3||s->kind==4||s->kind==5||s->kind==6||s->kind==9||s->kind==10||s->kind==13||s->kind>LBC_FIXED_ARRAY||s->flags>2||(s->flags==2&&!(s->kind>=DRAW_IMAGE_RGB&&s->kind<=DRAW_IMAGE_RGBWA))||s->length>=p->nexpressions||s->fill>=p->nexpressions||s->seed>=p->nexpressions||s->stream>=p->nexpressions)goto fail;
-        if(s->kind==LBC_FIXED_ARRAY&&(!p->numeric_allowed||s->flags))goto fail;
+        if(s->kind==LBC_FIXED_ARRAY&&s->flags)goto fail;
         if(pbc_expression((Portable*)p,s->length).type!=T_INT||pbc_expression((Portable*)p,s->seed).type!=T_INT||pbc_expression((Portable*)p,s->stream).type!=T_INT)goto fail;
         unsigned fill_type=pbc_expression((Portable*)p,s->fill).type;
         if(fill_type!=(s->kind==DRAW_BATCH||s->kind==DRAW_STYLE?T_INT:element_type(s->kind)))goto fail;
@@ -392,7 +387,7 @@ int pbc_open_step(PbcLoader *loader,Portable **out,LbcRead read,void *context,si
         PbcFunction fn_value=pbc_function(p,n);const PbcFunction *fn=&fn_value;
         if(fn->first!=loader->previous||fn->end<=fn->first||fn->end>p->ncode||(fn->rights&~13u)||
             (fn->result&&!scalar_type(fn->result)&&fn->result!=P_REF)||
-            (fn->result==T_FIXED&&!p->numeric_allowed)||fn->arg_count>8||fn->arg_start>p->nregs||fn->arg_count>p->nregs-fn->arg_start)goto fail;
+            fn->arg_count>8||fn->arg_start>p->nregs||fn->arg_count>p->nregs-fn->arg_start)goto fail;
         for(unsigned k=0;k<fn->arg_count;k++)if(pbc_role(p,fn->arg_start+k)!=R_INPUT)goto fail;
 
             loader->previous=fn->end;loader->current=*fn;loader->pc=fn->first;

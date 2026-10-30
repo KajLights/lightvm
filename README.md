@@ -115,13 +115,18 @@ candidate and retains the old instance on failure. Startup resolves the current
 definition of its configured or remembered preset; saving a replacement changes
 what runs on the next boot. Root-level `targets` and `startup` are unsupported.
 
-The application version comes from `lightvm/release.json`, currently `1.1.0`.
-A program's `requires` field is its minimum release within that major: `1` means
-1.0.0 and `1.2` means 1.2.0. Later compatible firmware accepts it without exact
-compiler/schema matching. Unsupported requirements fail before replacing the
-running animation. The editor preserves editable libraries across releases.
-See [versioning and development](docs/versioning.md) for declarations, prereleases,
-feature floors, internal format markers and the pre-baseline cutover.
+The application version and supported baseline are `0.1.0`, declared in
+`lightvm/release.json`. There are no users, only test devices. Every current
+feature belongs to this baseline; individual development changes do not bump
+versions. Versions advance only at explicitly agreed milestones or Kaj's direct
+request. Use commit/build metadata to identify development builds.
+
+Programs default to `requires: 0.1.0`; `requires("0.1")` is equivalent. Compiler,
+editor and firmware check both this baseline and the controller's version before
+execution. The earlier experimental `1.x` labels are retired: rebuild firmware
+and editor assets, recompile saved source and reupload it. See
+[versioning and development](docs/versioning.md) for admission rules and clean
+reprovisioning steps when persisted experimental state is incompatible.
 
 The management frame and storage layouts remain fixed internal encodings.
 Unsupported committed storage stays untouched and unavailable for writes, with a

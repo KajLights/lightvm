@@ -1,7 +1,7 @@
 # Numeric foundation contract
 
-23 October 2026. **Fixed scalar operations use floor 1.2.0; extended kernels and
-new f32 math use floor 1.3.0.** The compiler, loader and shared firmware core support
+**All current numeric operations belong to the 0.1.0 application baseline.**
+The compiler, loader and shared firmware core support
 explicit fixed values, stable array gathers, lazy conditional maps and native math.
 These supply the S1–S5 foundation in the
 [core SDK plan](design/core-numeric-kernels-plan.md). Its
@@ -22,12 +22,11 @@ references. The numeric implementation and fixtures are independently written.
 The [operation catalogue](design/numeric-operations.json) records signatures,
 units, fault conditions, accuracy and intended kernel eligibility. Its names are
 semantic identifiers, not opcode numbers or source-language execution modes.
-The encodings are assigned. The compiler and loader enforce floor 1.3.0 for
-finite-f32 min/max (including declaration expressions), native sine binding 7,
-and the new math instructions. This versions the finite-input and signed-zero
-contract even where an encoding is reused. Recompile earlier experimental
-packages that use these operations. Fixed and bitwise scalar instructions retain
-1.2.0, while their use inside maps needs 1.3.0.
+The encodings are assigned. Fixed and bitwise operations, extended maps,
+native math, finite-f32 min/max (including declaration expressions) and both
+sine encodings all use the shared `0.1.0` baseline. The compiler and loader enforce
+that application baseline and the selected finite-input/signed-zero contracts.
+Recompile earlier experimental packages; there are no per-feature version modes.
 
 ## Values and conversions
 
@@ -201,7 +200,7 @@ equations. Sine, circular and exponential easing are also ordinary guest helpers
 with their contract [specified below](#normalized-easing-helpers). Fixed
 transcendental approximations and indexed sampling remain separate scope.
 [Seeded Perlin/simplex noise](noise.md) is now a separate implemented core
-contract, requiring release 1.4.0.
+contract, requiring release 0.1.0.
 Fixed programs explicitly convert to f32 for transcendental work. Do not
 accumulate a long-lived elapsed clock in Q16.16.
 
@@ -265,4 +264,4 @@ the checked endpoint/adjacent/interior grid; scalar and kernel results match exa
 
 JavaScript uses `sineIn`, `circularInOut`, `exponentialOut` and the corresponding
 camel-case names. Blocks exposes the same curves in its motion dropdown and
-learning view. All use floor 1.3.0, without curve-specific runtime bindings.
+learning view. All use floor 0.1.0, without curve-specific runtime bindings.

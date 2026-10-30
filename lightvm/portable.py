@@ -171,7 +171,6 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         return super().typ(register)
 
     def emit(self, op, a=0, b=0, c=0, imm=0):
-        if op in ('FMIN', 'FMAX'): self.kernels_used = True
         self.code.append([P_OP[op], a, b, c, imm])
         node = self.library_location or self.source_node
         self.code_locations.append({'line': getattr(node, 'lineno', 1), 'column': getattr(node, 'col_offset', 0) + 1})
@@ -234,7 +233,6 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             ta, tb = self.expressions[a][1], self.expressions[b][1]
             if Q in (ta, tb): return self.declarative_numeric('Q' + node.func.id.upper(), [a, b], node)
             if ta not in (I, F) or tb not in (I, F): self.fail(node, 'numeric declaration required')
-            if F in (ta, tb): self.kernels_used = True
             value = (9 if node.func.id == 'min' else 10, F if F in (ta, tb) else I, a, b, 0)
         else:
             self.fail(node, 'declaration needs literals, runtime.pixel_count or earlier settings')
@@ -244,7 +242,6 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         signature = numeric.SIGNATURES[name]
         if tuple(self.expressions[a][1] for a in args) != signature[1:]:
             self.fail(node, 'numeric declaration requires explicit matching types')
-        self.numeric_used = True
         value = (P_OP[name], signature[0], args[0], args[1] if len(args) == 2 else 0, 0)
         if self.optimize and all(self.expressions[a][0] == 0 for a in args):
             try: bits = numeric.evaluate(name, *(self.expressions[a][4] for a in args))
@@ -268,9 +265,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
 
     def native(self, name, args, node):
         binding, result, types, rights = NATIVES[name]
-        if binding == 7: self.kernels_used = True
         if name in numeric.NOISE_OPERATIONS:
-            self.noise_used = True
             dimensions = int(name[-1])
             defaults = [0] + ([256]*dimensions if name.startswith('perlin') else [])
             if dimensions <= len(args) <= len(types):
@@ -615,7 +610,6 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 self.fail(node, 'FixedArray needs an i32 count and explicit fixed fill')
             if name.startswith('ctx.') and name[4:] in self.fields or not name.startswith('ctx.') and name in self.env:
                 self.fail(node, 'array binding already exists')
-            self.numeric_used = True
             reg = self.add_resource(name, 20, length, fill)
             if name.startswith('ctx.'): self.fields[name[4:]] = reg
             else: self.env[name] = reg
@@ -943,7 +937,6 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         binary.update(P_OP[n] for n,s in numeric.SIGNATURES.items() if len(s)==3)
         written, stores, read_sets = set(), [], []
         first, end = head+2, head+2+len(body)
-        extended = len(body)>32
         for offset, (op,a,b,c,d) in enumerate(body):
             writes = op not in (P_OP['STORE_ELEM'],P_OP['JMP'],P_OP['JZ'])
             if op in unary:reads=[] if op==P_OP['LENGTH'] else [b]
@@ -955,22 +948,19 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif op in (P_OP['JMP'],P_OP['JZ']):
                 if not first+offset<d<end:return 'the branch shape has a backward edge or can skip the final store'
                 reads=[a] if op==P_OP['JZ'] else []
-                extended |= op==P_OP['JZ'] or d!=first+offset+1
             elif op==P_OP['LOAD_ELEM']:
                 if self.regs[b][0:2]!=(REF,CONST):return 'a gather needs a stable constant resource identity'
                 if self.resources[self.regs[b][2]][0] not in (1,2,7,8,11,20):return 'the source resource is not a resident numeric array; feedback and aliasing stay ordered'
-                reads=[c];extended=True
+                reads=[c]
             elif op==P_OP['STORE_ELEM']:
                 if b!=index:return 'a scatter store does not use the current pixel index'
                 if self.resources[self.regs[a][2]][0] not in (3,12,14,15,16,17):return 'numeric source mutation must remain ordered'
                 stores.append(a);reads=[c]
             else:return 'an instruction is unsupported in a pure pixel kernel'
-            if op in numeric.OPCODES.values() or any(self.typ(r)==Q for r in reads):extended=True
             if writes:
                 if self.regs[a][1]!=LOCAL:return 'persistent state writes must remain ordered'
                 if a==index or a==bound:return 'the body changes loop control values'
                 written.add(a)
-                extended |= self.typ(a)==Q
             read_sets.append(reads)
         if len(stores)!=1 or body[-1][0]!=P_OP['STORE_ELEM']:return 'every path needs one common final pixel store'
         # Acyclic definite assignment. Reads of written locals must be defined
@@ -1002,7 +992,6 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             skip = self.emit('JZ', nonempty)
             self.emit('ISUB', source_target, bound, self.literal(1))
             self.code[skip][4] = len(self.code)
-        if extended:self.kernels_used=True
 
     def compile(self):
         marked = False
@@ -1023,7 +1012,7 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'requires':
                 call = n.value
                 if self.imports.get('requires') != 'requires' or minimum_release is not None or call.keywords or len(call.args) != 1 or not isinstance(call.args[0], ast.Constant):
-                    self.fail(n, 'expected one requires("1.2") declaration')
+                    self.fail(n, 'expected one requires("0.1.0") declaration')
                 try: minimum_release = normalize_release(call.args[0].value)
                 except ValueError as error: self.fail(n, str(error))
             elif isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) and getattr(n.value.func, 'id', '') == 'profile':
@@ -1063,9 +1052,8 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
         for fn in (*self.helpers.values(), *self.funcs.values()):
             if any(arg.arg in self.input_symbols for arg in fn.args.args): self.fail(fn, 'function argument shadows an Input declaration')
             if fn.name in self.module_values: self.fail(fn, 'Choose a function name that is different from a shared constant.')
-        feature_floor = '1.1.0' if any('control' in port for port in self.input_manifest) else BASELINE
-        if minimum_release and release_error(minimum_release, feature_floor):
-            raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
+        if minimum_release and release_error(minimum_release, BASELINE):
+            raise CompileError('source requires a release below the supported application baseline ' + BASELINE)
         functions = []
         for self.stage, role, self.rights in ((0, 'init', 9), (1, 'render', 13)):
             self.descriptions = {k:v for k,v in self.descriptions.items() if k.startswith('ctx.')}
@@ -1087,14 +1075,9 @@ class PortableCompiler(InputCompiler, SpriteCompiler, Compiler):
                 if pending: self.emit('END')
             functions.append((start, len(self.code), self.rights, 0, 0, len(self.inputs)))
         if len(self.code) > 2048: raise CompileError('code limit exceeded')
-        if self.numeric_used: feature_floor = numeric.RELEASE
-        if getattr(self, 'kernels_used', False): feature_floor = '1.3.0'
-        if getattr(self, 'noise_used', False): feature_floor = '1.4.0'
-        if minimum_release and release_error(minimum_release, feature_floor):
-            raise CompileError('source requires a release below the supported feature floor ' + feature_floor)
         self.allocate(functions)
         if len(self.code) > 2048 or len(self.table) > 1024 or len(self.calls) > 256: raise CompileError('portable package limits exceeded')
-        manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or feature_floor,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
+        manifest = {'schema':'lightvm.program','compiler_version':VERSION,'requires':minimum_release or BASELINE,'profile':self.profile_name,'pixels':{'format':'rgba8-premul'},
                     'settings':[{'name':n,'type':{I:'int',F:'float',C:'rgb8',B:'bool'}[self.typ(r)],'register':r} for n,r,*_ in self.settings]}
         if self.input_manifest: manifest['inputs'] = self.input_manifest
         def json_tokens(value):

@@ -40,7 +40,7 @@ describe('explicit numeric frontend contracts', () => {
     }
     const results = valid(sources);
     results.forEach((r, i) => {
-      expect(r.manifest.requires).toBe('1.3.0');
+      expect(r.manifest.requires).toBe('0.1.0');
       if (runtime) {
         expect(r.runtime.status).toBe(1);
         expect(r.runtime.state).toEqual(results[i - i % 4].runtime.state);
@@ -88,7 +88,7 @@ describe('explicit numeric frontend contracts', () => {
   });
   it('rejects an insufficient target for scalar fixed and new native math', () => {
     for (const source of [jsResult('fixed(1)'), blocksResult(fixed('1')), jsResult('Math.sqrt(4)')]) {
-      expect(run([source], { target: { version: '1.1.0' } })[0].diagnostics.length).toBeGreaterThan(0);
+      expect(run([source], { target: { version: '0.0.9' } })[0].diagnostics.length).toBeGreaterThan(0);
     }
   });
   it('lowers bounded number and integer loops without changing their numeric meaning', () => {
@@ -96,7 +96,7 @@ describe('explicit numeric frontend contracts', () => {
     const range = lowerJavaScript(`export function render(s,r,p){for(let i=int(0);i<p.count;i++){${body}}}`);
     expect(range.python).toContain(' in range(');
     const [result] = valid([range]);
-    expect(result.manifest.requires).toBe('1.3.0');
+    expect(result.manifest.requires).toBe('0.1.0');
     expect(result.advisories.some((a: any) => a.message.includes('uses a native map'))).toBe(true);
     expect(result.advisories.some((a: any) => a.message.includes('Kernel plan estimate'))).toBe(true);
     for (const loop of ['for(let i=0;i<p.count;i++)', 'for(let i=int(0);i<p.count;i++)']) {

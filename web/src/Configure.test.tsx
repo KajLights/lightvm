@@ -7,7 +7,7 @@ import { createAppStore, controllerActions } from './store';
 import type { Description, HardwareConfig, NetworkConfig } from './types';
 
 const description: Description = {
-  controller_id: 'test-controller', boot_id: 'boot-1', board: 'Test board', version: '1.0.0', module_limit: 32768, config_limit: 8192,
+  controller_id: 'test-controller', boot_id: 'boot-1', board: 'Test board', version: '0.1.0', module_limit: 32768, config_limit: 8192,
   pixel_capacity: 100, pins: ['GPIO2'], slots: ['A'], storage_available: true,
   wifi_supported: true, wifi_ap_supported: true, http_supported: true, active_revision: 1, saved_revision: 1,
   catalog_revision: 0, network_revision: 1, active_program: '',

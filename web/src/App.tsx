@@ -1,4 +1,3 @@
-import { VERSION } from './release';
 import { useEffect, useState } from 'react';
 import { Link, matchPath, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { activityActions, outputFor, useAppDispatch, useAppSelector } from './store';
@@ -35,7 +34,7 @@ export function App() {
   const knownRoute = location.pathname === '/controllers' || offline || firmware || audio || configure || fader || (workspace && ['editor', 'mixer', 'configuration'].includes(route!.params.view || ''));
   return <>
     <header className="site-header">
-      <Link className="brand" to="/controllers"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span><span className="version">{VERSION}</span></Link>
+      <Link className="brand" to="/controllers"><span className="brand-symbol" aria-hidden="true">✳</span><span>LightVM</span></Link>
       <nav className="global-nav" aria-label="Application"><Link to="/controllers" aria-current={location.pathname === '/controllers' ? 'page' : undefined}>Controllers</Link><Link to="/firmware" aria-current={location.pathname === '/firmware' ? 'page' : undefined}>Firmware</Link></nav>
       <span className={'badge ' + (controller.selectedPath ? 'ready' : '')}><span className="status-dot" /><span>{controller.selectedPath && description ? description.board : 'No controller connected'}</span></span>
     </header>

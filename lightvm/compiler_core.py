@@ -24,7 +24,6 @@ class CompileError(ValueError):
 class Compiler:
     def __init__(self, source):
         self.source = source
-        self.numeric_used = False
         self.tree = ast.parse(source)
         self.regs, self.code, self.constants, self.names = [], [], {}, {}
         self.funcs, self.table = {}, []
@@ -67,9 +66,7 @@ class Compiler:
         signature = numeric.SIGNATURES[name]
         if tuple(self.typ(r) for r in args) != signature[1:]:
             raise CompileError('numeric operands require explicit matching types')
-        self.numeric_used = True
         if name in numeric.MATH_SIGNATURES:
-            self.kernels_used = True
             out = self.reg(signature[0]); self.emit(name, out, *args); return out
         if getattr(self, 'optimize', True) and all(self.regs[r][1] == CONST for r in args):
             try:
@@ -96,7 +93,6 @@ class Compiler:
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub): token = '-' + token
         try: bits = numeric.literal(token)
         except (ValueError, ArithmeticError) as error: self.fail(node, str(error))
-        self.numeric_used = True
         return self.raw_constant(Q, bits)
 
     def convert(self, r, typ, explicit=False):

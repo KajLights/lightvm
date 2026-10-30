@@ -30,7 +30,7 @@ function setup(initialDriver: TransitionState['driver'] = { kind: 'timed', assig
   const packages = [deployedTransition('crossfade'), deployedTransition('wipe', WIPE_SETTINGS), deployedTransition('wipe_with_colour')];
   const store = createAppStore(), controllers = new ControllerService(store), compiler = new Compiler(store);
   const description = { controller_id: 'controller', boot_id: 'boot', board: 'simulator', ab_transitions: true,
-    transition_sources: true, transition_programs: true, compositions: true, composition_layer_limit: 8, module_limit: 32768, version: '1.0.0' } as Description;
+    transition_sources: true, transition_programs: true, compositions: true, composition_layer_limit: 8, module_limit: 32768, version: '0.1.0' } as Description;
   let state = { revision: 1, active: true, progress: 35, effect: 'program', program: 'crossfade', seed: 0,
     driver: initialDriver, A: { active: true, layers: [{ id: 'base', program: 'rainbow' }] },
     B: { active: true, layers: [{ id: 'base', program: 'stars' }] }, error: '' } as TransitionState;

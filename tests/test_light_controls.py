@@ -108,11 +108,11 @@ class LightControlTests(unittest.TestCase):
         time.sleep(.03)
         self.assertFalse(self.client.light_state()['power'])
     def test_defaults_are_verified_and_have_a_feature_floor(self):
-        compiled=compile_source(SOURCE);self.assertTrue(compiled.success,compiled.diagnostics);self.assertEqual(compiled.manifest['requires'],'1.1.0')
+        compiled=compile_source(SOURCE);self.assertTrue(compiled.success,compiled.diagnostics);self.assertEqual(compiled.manifest['requires'],'0.1.0')
         for source in (SOURCE.replace('control="color"','control="brightness"'),SOURCE.replace('control="color"','control="unknown"')):
             self.assertFalse(compile_source(source).success)
-        self.assertFalse(compile_source(SOURCE,target={'version':'1.0.0','live_inputs':True}).success)
-        self.assertTrue(compile_source(SOURCE,target={'version':'1.1.0','live_inputs':True,'light_controls':True}).success)
+        self.assertFalse(compile_source(SOURCE,target={'version':'0.1.0','live_inputs':True}).success)
+        self.assertTrue(compile_source(SOURCE,target={'version':'0.1.0','live_inputs':True,'light_controls':True}).success)
 
     def test_color_example_has_local_brightness_independent_of_master(self):
         self.client.upload(sample('color'),inputs={'brightness':{'value':0.25}})

@@ -501,8 +501,8 @@ int main(int argc,char **argv) {
     {
         uint8_t old_math[sizeof(semantic_math_lbc)+1]={0};memcpy(old_math,semantic_math_lbc,sizeof(semantic_math_lbc));
         char *manifest=(char*)old_math+sizeof(semantic_math_lbc)-lbc_u32(old_math+76);
-        char *floor=strstr(manifest,"\"requires\":\"1.3.0\"");CHECK(floor);
-        floor[strlen("\"requires\":\"1.")]='2';
+        char *floor=strstr(manifest,"\"requires\":\"0.1.0\"");CHECK(floor);
+        memcpy(floor+strlen("\"requires\":\""),"0.0.9",5);
         size_t heap=vm_heap_used();upload(&session,&reply,old_math,sizeof(semantic_math_lbc));
         CHECK(reply.code==STATUS_LOAD&&app_output(&app,NULL)->vm.ready);
         CHECK(app_output(&app,NULL)->vm.generation==generation&&app_output(&app,NULL)->vm.playing);

@@ -1,5 +1,9 @@
 # S5 frontend and independent-emitter integration
 
+Historical build labels and feature floors in this record predate the
+[0.1.0 milestone baseline](../versioning.md). They describe the recorded
+experiments and do not define current compatibility requirements.
+
 22 October 2026. S5 follows `69de323` on `codex/core-numeric-foundation`.
 This completes the frontend/emitter integration gate in the
 [core numeric plan](core-numeric-kernels-plan.md). The shared numeric design and
@@ -147,7 +151,8 @@ python3 tools/check_s5_hardware.py --port /dev/cu.usbmodem11401 \
 
 Set `LIGHTVM_PYTHON` when the compiler environment is not `python3` and
 `CHROME_EXECUTABLE` when using installed Chrome instead of Playwright Chromium.
-The optional old-firmware check is `tools/check_s5_floor_hardware.py` with the
+The historical old-firmware check used `tools/check_s5_floor_hardware.py` (now
+retired with the experimental per-feature floors) with the
 same package directory and the 1.1.0 firmware identity. It expects an existing
 `lights` output and saved `rainbow` program. Flashing/restoring firmware is a
 separate explicit step; restore the user's transient light state after reboot.

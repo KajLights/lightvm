@@ -1,5 +1,9 @@
 # S1 fixed-point runtime integration
 
+Historical build labels and feature floors in this record predate the
+[0.1.0 milestone baseline](../versioning.md). They describe the recorded
+experiments and do not define current compatibility requirements.
+
 22 October 2026. **S1 complete: scalar/runtime correctness and available build
 gates pass. Physical performance validation remains S6 work.**
 

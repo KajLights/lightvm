@@ -84,9 +84,9 @@ python -m lightvm.compiler examples/animations/rainbow.py --no-optimize -o build
 Python callers can pass `compile_source(source, optimize=False)`. Target-aware
 compilation checks the minimum application release and rejects insufficient targets.
 
-Simple maps are part of the LightVM 1.0.0 baseline. Gathers, fixed/bitwise map
-expressions, conditional branches, bodies above 32 instructions and new math
-require 1.3.0. They use the same minimum-release checks as other instructions;
+All current maps belong to the LightVM 0.1.0 baseline, including gathers,
+fixed/bitwise expressions, conditional branches, bodies above 32 instructions
+and native math. They use the same minimum-release checks as other instructions;
 the loader independently rejects falsely lowered requirements. Opcode 39 contains a destination reference, index
 register, exclusive stop register and the PC after its embedded body. Header words
 80–92 remain reserved zero; there is no separate drawing API version. `native_draw_us` includes map execution in addition to native

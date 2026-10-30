@@ -46,45 +46,45 @@ _Static_assert(LVM_EXP==FEXP-FABS, "native math enum: FEXP");
 _Static_assert(FPOW==71, "numeric wire ID: FPOW");
 _Static_assert(LVM_POW==FPOW-FABS, "native math enum: FPOW");
 static const LbcNumericMetadata numeric_metadata[]={
-    {{7,7,7},2,3,1,0,1}, /* QADD */
-    {{7,7,7},2,3,1,0,1}, /* QSUB */
-    {{7,7,7},2,3,4,0,1}, /* QMUL */
-    {{7,7,7},2,3,8,0,1}, /* QDIV */
-    {{7,7,7},2,3,8,0,1}, /* QMOD */
-    {{7,7,0},2,3,1,0,1}, /* QNEG */
-    {{7,7,7},2,3,1,0,1}, /* QMIN */
-    {{7,7,7},2,3,1,0,1}, /* QMAX */
-    {{4,7,7},2,3,1,0,1}, /* QLT */
-    {{7,1,0},2,3,1,0,1}, /* ITOQ */
-    {{1,7,0},2,3,1,0,1}, /* QTOI */
-    {{7,2,0},2,3,1,0,1}, /* FTOQ */
-    {{2,7,0},2,3,1,0,1}, /* QTOF */
-    {{7,1,0},2,3,1,0,1}, /* QFROMBITS */
-    {{1,7,0},2,3,1,0,1}, /* QBITS */
-    {{7,7,0},2,3,32,0,1}, /* QSQRT */
-    {{1,1,1},2,3,1,0,1}, /* IAND */
-    {{1,1,1},2,3,1,0,1}, /* IOR */
-    {{1,1,1},2,3,1,0,1}, /* IXOR */
-    {{1,1,0},2,3,1,0,1}, /* INOT */
-    {{1,1,1},2,3,1,0,1}, /* ISHL */
-    {{1,1,1},2,3,1,0,1}, /* ISHR */
-    {{2,2,0},3,3,1,0,1}, /* FABS */
-    {{2,2,0},3,3,1,0,1}, /* FFLOOR */
-    {{2,2,0},3,3,1,0,1}, /* FCEIL */
-    {{2,2,0},3,3,1,0,1}, /* FTRUNC */
-    {{2,2,0},3,3,64,0,1}, /* FSIN */
-    {{2,2,0},3,3,64,0,1}, /* FCOS */
-    {{2,2,0},3,3,32,0,1}, /* FSQRT */
-    {{2,2,0},3,3,128,0,1}, /* FLOG */
-    {{2,2,0},3,3,128,0,1}, /* FEXP */
-    {{2,2,2},3,3,128,0,1}, /* FPOW */
+    {{7,7,7},1,0,1}, /* QADD */
+    {{7,7,7},1,0,1}, /* QSUB */
+    {{7,7,7},4,0,1}, /* QMUL */
+    {{7,7,7},8,0,1}, /* QDIV */
+    {{7,7,7},8,0,1}, /* QMOD */
+    {{7,7,0},1,0,1}, /* QNEG */
+    {{7,7,7},1,0,1}, /* QMIN */
+    {{7,7,7},1,0,1}, /* QMAX */
+    {{4,7,7},1,0,1}, /* QLT */
+    {{7,1,0},1,0,1}, /* ITOQ */
+    {{1,7,0},1,0,1}, /* QTOI */
+    {{7,2,0},1,0,1}, /* FTOQ */
+    {{2,7,0},1,0,1}, /* QTOF */
+    {{7,1,0},1,0,1}, /* QFROMBITS */
+    {{1,7,0},1,0,1}, /* QBITS */
+    {{7,7,0},32,0,1}, /* QSQRT */
+    {{1,1,1},1,0,1}, /* IAND */
+    {{1,1,1},1,0,1}, /* IOR */
+    {{1,1,1},1,0,1}, /* IXOR */
+    {{1,1,0},1,0,1}, /* INOT */
+    {{1,1,1},1,0,1}, /* ISHL */
+    {{1,1,1},1,0,1}, /* ISHR */
+    {{2,2,0},1,0,1}, /* FABS */
+    {{2,2,0},1,0,1}, /* FFLOOR */
+    {{2,2,0},1,0,1}, /* FCEIL */
+    {{2,2,0},1,0,1}, /* FTRUNC */
+    {{2,2,0},64,0,1}, /* FSIN */
+    {{2,2,0},64,0,1}, /* FCOS */
+    {{2,2,0},32,0,1}, /* FSQRT */
+    {{2,2,0},128,0,1}, /* FLOG */
+    {{2,2,0},128,0,1}, /* FEXP */
+    {{2,2,2},128,0,1}, /* FPOW */
 };
 LbcNumericMetadata lbc_numeric_metadata(unsigned op){
     if(op>=QADD&&op<=FPOW)return numeric_metadata[op-QADD];
     switch(op){
-    case EQ:return (LbcNumericMetadata){{4,7,7},2,3,1,0,1};
-    case FMIN:return (LbcNumericMetadata){{2,2,2},3,3,1,0,1};
-    case FMAX:return (LbcNumericMetadata){{2,2,2},3,3,1,0,1};
+    case EQ:return (LbcNumericMetadata){{4,7,7},1,0,1};
+    case FMIN:return (LbcNumericMetadata){{2,2,2},1,0,1};
+    case FMAX:return (LbcNumericMetadata){{2,2,2},1,0,1};
     default:return (LbcNumericMetadata){0};
     }
 }

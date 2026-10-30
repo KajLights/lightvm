@@ -28,7 +28,7 @@ static bool decode(Portable *p,unsigned pc,Instruction *ins) {
         PbcCall call=pbc_call(p,ins->d);
         LvmNoiseSignature noise=lvm_noise_signature(call.binding);
         if(noise.argc){
-            if(!p->noise_allowed||call.argc!=noise.argc)return false;
+            if(call.argc!=noise.argc)return false;
             ins->op=(uint8_t)(MAP_NOISE+call.binding-LVM_PERLIN2);
             ins->b=call.args[0];ins->c=call.args[1];ins->d=0;ins->extra=call.args[6];
             for(unsigned k=0;k<4;k++)ins->d|=(uint32_t)call.args[k+2]<<(8*k);
@@ -85,14 +85,13 @@ static unsigned cost(unsigned op){
 static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigned index,unsigned bound,MapInfo *info){
     if(end<=first||end-first>128||index>=p->nregs||bound>=p->nregs||index==bound)return false;
     *info=(MapInfo){0};unsigned length=end-first,stores=0,first_weight=0;
-    bool extended=length>32;
     for(unsigned n=0;n<length;n++){
         Instruction i;if(!decode(p,first+n,&i))return false;
         unsigned operands[7];int count=reads(i,operands);if(count<0)return false;
         for(int k=0;k<count;k++)if(operands[k]>=p->nregs||!scalar(pbc_type(p,operands[k])))return false;
         if(i.op==JMP||i.op==JZ){
             if(i.d<=first+n||i.d>=end)return false; /* No path may skip the final store. */
-            if(i.op==JZ||i.d!=first+n+1){extended=true;info->branches=true;}
+            if(i.op==JZ||i.d!=first+n+1)info->branches=true;
         }else if(i.op==MAP_STORE){
             if(i.a!=dst||i.b!=index||n+1!=length)return false;
             stores++;
@@ -103,17 +102,13 @@ static bool analyze(Portable *p,unsigned first,unsigned end,unsigned dst,unsigne
                 int id=resource(p,i.b);if(id<0)return false;
                 if(i.op==MAP_LOAD){
                     if(id==resource(p,dst)||!numeric_array(pbc_spec(p,(unsigned)id).kind)||pbc_spec(p,(unsigned)id).flags)return false;
-                    extended=true;
                 }
             }
         }
         LbcNumericMetadata metadata=lbc_numeric_metadata(i.op);
         if(metadata.signature.result&&(!metadata.kernel||metadata.effects))return false;
-        if(lbc_numeric_signature(i.op).result||noise_binding(i.op))extended=true;
-        for(int k=0;k<count;k++)if(pbc_type(p,operands[k])==T_FIXED)extended=true;
-        if(i.op!=JMP&&i.op!=JZ&&i.op!=MAP_STORE&&pbc_type(p,i.a)==T_FIXED)extended=true;
     }
-    if(stores!=1||(extended&&!p->kernels_allowed))return false;
+    if(stores!=1)return false;
     /* Forward-only CFG: intersect incoming definitions, take maximum path cost.
      * A local written anywhere in the loop cannot be captured on another path.
      * Conditional writes are retained for final-local merging between lanes. */

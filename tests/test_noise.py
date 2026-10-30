@@ -127,7 +127,7 @@ def draw(ctx,runtime,pixels):
   pixels[i]=rgb(int(127.0+v*127.0),0,0)
  ctx.last=v
 '''
-                _,package=self.compare(source,counts=(1,33,129),floor='1.4.0')
+                _,package=self.compare(source,counts=(1,33,129),floor='0.1.0')
                 x=value(bits(value(bits(32/13.0))-2.0))
                 coords=[x,0.375]+([0.625] if name.endswith('3') else [])
                 expected=noise_oracle.sample(name,coords,-2147483648 if suffix else 0,
@@ -142,7 +142,7 @@ def draw(ctx,runtime,pixels):
  for i in range(pixels.count):
   n=perlin3(i/17.0,0.25,7.75,i,3,17,{period})
   pixels[i]=rgb(int(127.0+n*127.0),0,0)
-''',counts=(33,129),floor='1.4.0',fault=fault)
+''',counts=(33,129),floor='0.1.0',fault=fault)
 
     def test_expensive_noise_maps_respect_first_pixel_budget(self):
         for calls,admitted in ((5,True),(6,False)):
@@ -165,7 +165,7 @@ def draw(ctx,runtime,pixels):
   v={name}({coords})
   pixels[i]=rgb(int(127.0+v*127.0),0,0)
 '''
-                self.compare(source,counts=(33,),floor='1.4.0',fault=stop==31)
+                self.compare(source,counts=(33,),floor='0.1.0',fault=stop==31)
             source=IMPORT+'@init\ndef setup(ctx,runtime):ctx.v=0.0\n@render\ndef draw(ctx,runtime,pixels):ctx.v='+name+'('+','.join(['0.25']*int(name[-1]))+')\n'
             _,package,_=self.compile(source,False)
             work=NOISE_OPERATIONS[name]['work']
@@ -187,17 +187,17 @@ def draw(ctx,runtime,pixels):
         for name in NAMES:
             args=','.join(['0.25']*int(name[-1]))
             source=bulk.PREFIX+IMPORT+'@render\ndef draw(ctx,runtime,pixels):pixels.fill(rgb(int('+name+'('+args+')+1.0),0,0))\n'
-            self.assertFalse(compile_source(source,target={'version':'1.3.0'}).success)
-            self.assertFalse(compile_source(source.replace('profile("animation")','profile("animation")\nrequires("1.3")')).success)
+            self.assertFalse(compile_source(source,target={'version':'0.0.9'}).success)
+            self.assertFalse(compile_source(source.replace('profile("animation")','profile("animation")\nrequires("0.0.9")')).success)
             self.assertFalse(compile_source(source.replace(args+')',args+',0.5)')).success)
             result=compile_source(source);self.assertTrue(result.success,result.diagnostics)
-            forged=result.bytecode.replace(b'"requires":"1.4.0"',b'"requires":"1.3.0"')
+            forged=result.bytecode.replace(b'"requires":"0.1.0"',b'"requires":"0.0.9"')
             self.assertFalse(self.run_package(forged)['load'])
 
     def test_independent_native_wire_signatures(self):
         # Numeric IDs/types here are deliberately independent of the catalogue.
         for binding,dims,argc in ((59,2,5),(60,3,7),(61,2,3),(62,3,4)):
-            manifest=b'{"requires":"1.4.0"}'
+            manifest=b'{"requires":"0.1.0"}'
             header=[4,argc+1,2,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,len(manifest),0,0,0,0]
             package=bytearray(b'LBC1'+struct.pack('<23I',*header))
             for k in range(argc):

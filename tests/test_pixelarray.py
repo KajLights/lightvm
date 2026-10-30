@@ -377,7 +377,7 @@ def draw(ctx,runtime,pixels):
         target=self.client.describe()
         self.assertIn('version',target)
         self.assertEqual(result.manifest['schema'],'lightvm.program')
-        old={**target,'version':'0.9.0'}
+        old={**target,'version':'0.0.9'}
         self.assertFalse(compile_source(PREFIX+'@init\ndef setup(ctx,runtime):\n ctx.image=PixelArray(1)\n@render\ndef draw(ctx,runtime,pixels): pass\n',target=old).success)
         # Forge the destination of image_draw to the readonly source. Admission
         # must reject the package before executing it.

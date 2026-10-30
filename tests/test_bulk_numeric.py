@@ -36,7 +36,7 @@ class BulkNumericTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stderr);self.assertFalse(result.stderr)
         return json.loads(result.stdout)
 
-    def compare(self,source,counts=(1,31,32,33,63,64,65,127,128,129),fault=False,floor='1.3.0'):
+    def compare(self,source,counts=(1,31,32,33,63,64,65,127,128,129),fault=False,floor='0.1.0'):
         _,scalar,_=self.compile(source,False);compiler,bulk,manifest=self.compile(source)
         self.assertIn(P_OP['PIXEL_MAP'],[i[0] for i in compiler.code])
         self.assertEqual(manifest['requires'],floor)
@@ -216,7 +216,7 @@ def draw(ctx,runtime,pixels):
   value='''+expression+'''
   pixels[i]=rgb(int(min(255.0,max(0.0,100.0+value*10.0))),0,0)
  ctx.last=value
-''',counts=(1,33,129),floor='1.3.0')
+''',counts=(1,33,129),floor='0.1.0')
 
     def test_forged_control_flow_effects_references_and_floor(self):
         compiler,package,_=self.compile('''@init
@@ -241,7 +241,7 @@ def draw(ctx,runtime,pixels):
         for offset,value in mutations:
             forged=bytearray(package);forged[offset:offset+len(value)]=value
             self.assertFalse(self.run_package(forged)['load'],(offset,value))
-        self.assertFalse(self.run_package(package.replace(b'"requires":"1.3.0"',b'"requires":"1.2.0"'))['load'])
+        self.assertFalse(self.run_package(package.replace(b'"requires":"0.1.0"',b'"requires":"0.0.9"'))['load'])
 
 
 if __name__=='__main__':unittest.main()

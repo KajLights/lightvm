@@ -1,6 +1,7 @@
 import release from '../../lightvm/release.json';
 
 export const VERSION = release.version;
+export const BASELINE = release.baseline;
 const number = '(0|[1-9][0-9]*)';
 const pattern = new RegExp(`^${number}(?:\\.${number}(?:\\.${number})?)?(?:-([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$`);
 export function parseRelease(value: unknown, shorthand = true) {
@@ -34,4 +35,12 @@ export function releaseError(version: unknown, required: unknown): string | null
     if (order) return order < 0 ? message : null;
   }
   return a.length < b.length ? message : null;
+}
+
+export function programReleaseError(version: unknown, required: unknown): string | null {
+  const error = releaseError(version, required);
+  if (error) return error;
+  const minimum = parseRelease(required)!;
+  const normalized = minimum.core.join('.') + (minimum.prerelease.length ? '-' + minimum.prerelease.join('.') : '');
+  return releaseError(normalized, BASELINE) ? `Recompile this animation for the supported LightVM baseline ${BASELINE}.` : null;
 }

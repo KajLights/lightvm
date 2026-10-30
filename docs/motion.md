@@ -202,7 +202,7 @@ That composition uses 24-pixel eyes and therefore requires at least 24 output pi
 ## Compatibility
 
 Motion helpers, images, sprites, wrapped drawing and pixel maps are part of the
-LightVM 1.0.0 baseline. They use the same application release contract as ordinary
+LightVM 0.1.0 baseline. They use the same application release contract as ordinary
 animation instructions. There are no drawing API revisions or alternate runtime
 paths. Target-aware compilation checks `version` against the program's `requires`.
 See [versioning](versioning.md).

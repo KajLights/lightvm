@@ -1,5 +1,9 @@
 # Core numeric types, bulk kernels and native math
 
+Historical build labels and feature floors in this record predate the
+[0.1.0 milestone baseline](../versioning.md). They describe the recorded
+experiments and do not define current compatibility requirements.
+
 23 October 2026. **Status: implementation corrections committed; RP2040
 numeric execution measured and tuned; control-service acceptance open.**
 Fixed arithmetic, prepared kernels, native math and
@@ -35,7 +39,7 @@ scheduler, preparation and physical-validation work.
 ## Noise follow-up — 24 October 2026
 
 The separately scoped smooth-noise work below is now implemented as the
-[1.4.0 core noise contract](../noise.md): seeded 2D/3D Perlin and simplex,
+[current core noise contract](../noise.md): seeded 2D/3D Perlin and simplex,
 explicit repeat periods for Perlin, pure C evaluation, verified native calls and
 prepared kernels. Live INPUT snapshots and latched field-selection counts compose
 with it through normal arguments. This does not implement the proposed general

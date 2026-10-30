@@ -60,15 +60,15 @@ class CurrentContractTests(unittest.TestCase):
 
     def test_minimum_release_is_enforced_without_replacing_running_program(self):
         (major, minor, patch), _, _ = parse_release(VERSION)
-        for required in (f'{major}.{minor}.{patch+1}', f'{major}.{minor+1}', str(major+1), '', '1.02', '1.0.0-01', None):
+        for required in (f'{major}.{minor}.{patch+1}', f'{major}.{minor+1}', str(major+1), '1.4.0', '0', '0.0.9', '0.1.0-alpha', '', '0.01', '0.1.0-01', None):
             with self.subTest(required=required):
                 self.assert_rejected(manifest_variant(color(), requires=required))
 
     def test_compatible_programs_ignore_compiler_release_and_additive_metadata(self):
-        for required in ('1', '1.0', '1.0.0', '1.0.0+build.123', '1.0.0-alpha.2'):
+        for required in ('0.1', '0.1.0', '0.1.0+build.123'):
             with self.subTest(required=required):
                 raw = manifest_variant(color(37), requires=required,
-                                       compiler_version='1.25.7+development', notes={'future': True})
+                                       compiler_version='0.25.7+development', notes={'future': True})
                 self.client.save_program('compatible', raw)
                 self.client.activate('compatible')
                 self.client.require_ok(self.client.command(FRAME, bytes(4)))

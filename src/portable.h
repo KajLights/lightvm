@@ -52,9 +52,6 @@ typedef struct Portable {
     const uint8_t *composition_frames[2];
     float progress;
     bool initialized;
-    bool numeric_allowed; /* Verified application feature floor, never a guest flag. */
-    bool kernels_allowed;
-    bool noise_allowed;
     bool render_reusable; /* Derived from verified operations, never a manifest claim. */
     _Alignas(4) uint8_t cache[LIGHTVM_BYTECODE_CACHE_BYTES]; uint32_t cache_offset,cache_size;
 } Portable;

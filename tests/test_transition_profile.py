@@ -255,8 +255,8 @@ def draw(ctx,runtime,pixels):
 
     def test_progress_and_composition_access_are_profile_checked(self):
         source = (ROOT / 'examples/transitions/crossfade.py').read_text()
-        self.assertFalse(compile_source(source, target={'version':'1.0.0'}).success)
-        self.assertTrue(compile_source(source, target={'version':'1.0.0', 'transition_programs':True}).success)
+        self.assertFalse(compile_source(source, target={'version':'0.1.0'}).success)
+        self.assertTrue(compile_source(source, target={'version':'0.1.0', 'transition_programs':True}).success)
         for source in (
             'profile("animation")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.mix(0.5)\n',
             'profile("animation")\n@render\ndef draw(ctx,runtime,pixels):\n pixels.fill(rgb(int(runtime.progress),0,0))\n',

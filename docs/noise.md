@@ -1,6 +1,6 @@
 # Seeded gradient noise
 
-LightVM 1.4.0 provides pure native Perlin and simplex sampling in two and three
+LightVM 0.1.0 provides pure native Perlin and simplex sampling in two and three
 dimensions. These are core mathematical operations available to every frontend;
 they contain no animation, timer, input-driver or event-delivery policy. The
 shared C implementation is built on host, WebAssembly and embedded targets.
@@ -75,7 +75,7 @@ the following exact signatures (all arguments are required on the wire):
 | 62 | simplex3 | f32 x, f32 y, f32 z, i32 seed | f32 | 192 |
 
 Use opcode 38 (`NATIVE`) with its call-record index, normal register types and
-zero effect rights. Loader validation requires a manifest floor of 1.4.0 even
+zero effect rights. Loader validation requires a manifest floor of 0.1.0 even
 for a typed callback or unused call record. The container layout is unchanged.
 The operation catalogue generates signatures and work costs for C and Python.
 No declaration-expression encoding is added: noise runs in callbacks.
@@ -108,9 +108,9 @@ scales by one half. Simplex hashes unwrapped integer vertices, uses the standard
 and scales 70/32. Final results clamp to [-1,1]. Independent Python equations
 and explicit wire fixtures exercise the contract without importing runtime code.
 
-Recompile noise programs and install a 1.4.0 core before deploying them. There is
-no storage-format change or migration. Existing programs retain their own feature
-floors; upgrading the compiler does not require noise support for other programs.
+Recompile noise programs and install a 0.1.0 core before deploying them. There is
+no storage-format change or migration. Noise and all other current operations
+share that application baseline; individual features do not create versions.
 
 ## Validation — 24 October 2026
 

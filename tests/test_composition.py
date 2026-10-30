@@ -214,7 +214,7 @@ class CompositionTests(unittest.TestCase):
         self.assertEqual(self.layer('fg'),bytes([255,0,0,255])+bytes((self.count-1)*4))
         source=PREFIX+'@render\ndef draw(ctx,runtime,pixels): pass\n'
         self.assertTrue(compile_source(source,target=target).success)
-        old={**target,'version':'0.9.0'}
+        old={**target,'version':'0.0.9'}
         self.assertFalse(compile_source(source,target=old).success)
         self.assertFalse(compile_source(source.replace('animation','layer/1')).success)
 

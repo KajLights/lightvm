@@ -1,128 +1,129 @@
-# Application releases and program requirements
+# Application versions and program requirements
 
-LightVM has one public application version, stored in `lightvm/release.json`.
-The compiler, firmware build, editor and installer manifests read that same file.
-The initial compatibility baseline is `1.0.0`; this does not create a Git tag or
-publish a release.
+LightVM is an experimental proof of concept with no users, only test devices.
+The current application version and compatibility baseline are both `0.1.0`,
+stored in `lightvm/release.json`. The compiler, firmware build, editor, browser
+preview and installer manifests use that shared version. Every currently
+implemented feature belongs to the `0.1.0` baseline.
+
+## Milestone-only versioning
+
+Keep `0.1.0` throughout current development. Features, fixes, refactors,
+experiments and commits do not create versions or new feature-version floors.
+Advance the application version only for an explicitly agreed project milestone
+or when Kaj directly requests a version change. Reaching `1.0.0`, creating release
+tags and publishing releases each require an explicit decision.
+
+Identify builds using Git commit/build metadata, such as
+`0.1.0+commit.abc123`, or the installer's separate `--build-id`. Build metadata
+records provenance and does not change compatibility. Builds within this
+experimental milestone can change semantics; a matching version is not a claim
+that every intermediate test build supports every later experiment. Rebuild the
+compiler/editor and firmware from the same source when testing new functionality.
+
+At an agreed future milestone, update the shared version, compatibility checks,
+tests and documentation together. Introduce feature floors only when they
+represent actual supported milestone boundaries. Do not assign versions to
+unreleased intermediate features. Breaking experimental changes are acceptable;
+recompile or reprovision test devices instead of adding compatibility shims or
+migrations. See [AGENTS.md](../AGENTS.md).
+
+## Program manifests
 
 A program manifest uses an unversioned document kind:
 
 ```json
 {
   "schema": "lightvm.program",
-  "compiler_version": "1.4.0+commit.abc123",
-  "requires": "1.0.0",
+  "compiler_version": "0.1.0+commit.abc123",
+  "requires": "0.1.0",
   "profile": "animation",
   "pixels": {"format": "rgba8-premul"},
   "settings": []
 }
 ```
 
-`compiler_version` records provenance. It never sets the minimum firmware release.
-`requires` declares the minimum application release within that major:
+`compiler_version` records provenance. It never sets the minimum firmware version.
+`requires` declares a minimum application version within the same major. The
+ordering rule supports future milestones; it does not promise compatibility
+between arbitrary experimental builds or future breaking milestones.
 
-| Requirement | Accepted releases | Rejected examples |
+Full firmware/compiler versions use three numeric components. Requirements also
+accept major or major.minor shorthand, normalized by filling missing components
+with zero. For current programs, `requires("0.1")` means `0.1.0`. `requires("0")`
+means `0.0.0` and is rejected because it is below the supported baseline.
+
+| Program requirement | Controller version | Result |
 | --- | --- | --- |
-| `1` | 1.0.0 and later 1.x.x | 0.9.0, 2.0.0 |
-| `1.2` | 1.2.0 and later 1.x.x | 1.1.9, 2.0.0 |
-| `1.2.3` | 1.2.3 and later 1.x.x | 1.2.2, 2.0.0 |
+| `0.1` or `0.1.0` | `0.1.0` | Accepted |
+| `0.1.0` | `0.1.0+commit.abc123` | Accepted |
+| `0.1.1` or `0.2` | `0.1.0` | Rejected: requires a newer version |
+| `0.1.0` | `0.0.9` or `0.1.0-rc.1` | Rejected: controller is older |
+| `1` or an old experimental `1.x` requirement | `0.1.0` | Rejected: different major |
+| `0`, `0.0.9` or `0.1.0-rc.1` | `0.1.0` | Rejected: below the supported baseline |
 
-Missing or malformed requirements and missing controller versions fail compatibility
-checks. Full firmware/compiler versions use three numeric components; program
-requirements also accept the shorthand forms above. Numeric components are
-bounded to unsigned 32-bit values; version strings are at most 95 ASCII characters.
-Build metadata (`+commit.abc123`) does not affect ordering. Prereleases sort before
-the corresponding stable release, with numeric prerelease identifiers compared
-numerically. Thus `1.2.0-rc.2` does not satisfy `1.2`, but a stable `1.2.0` satisfies
-a minimum of `1.2.0-rc.2`.
+Missing or malformed requirements and missing controller versions fail checks.
+Numeric components are bounded to unsigned 32-bit values; version strings are
+at most 95 ASCII characters. Prereleases follow SemVer ordering, with numeric
+identifiers compared numerically. Build metadata does not affect ordering.
 
-## Authoring and feature floors
+## Authoring and admission
 
 ```python
 from lightvm import profile, requires, rgb, render
 profile("animation")
-requires("1")
+requires("0.1.0")  # Optional: all current source defaults to this baseline.
 
 @render
 def draw(ctx, runtime, pixels):
     pixels.fill(rgb(255, 64, 0))
 ```
 
-The compiler normalizes `requires("1.2")` to `1.2.0`. One optional top-level
-`requires(...)` declaration is accepted. Omitting it selects the source's feature
-floor: `1.4.0` for native Perlin/simplex noise, `1.3.0` for extended pixel kernels,
-native f32 math, f32 min/max or sine,
-`1.2.0` for scalar fixed values/arrays or i32 bitwise/shift operations, `1.1.0`
-for an `Input(..., control=...)` declaration, otherwise `1.0.0`. The highest
-applicable floor wins, including numeric source operations folded to constants.
-Requirements below that floor or in another major are rejected. A declaration may request a future
-minor release; it prevents execution on older firmware even when the source uses
-only baseline operations.
+One optional top-level `requires(...)` declaration is accepted. Omitting it
+selects `0.1.0` for every current feature: drawing, controls, fixed values/arrays,
+bitwise operations, prepared kernels, native math and Perlin/simplex noise.
+Explicit requirements below the baseline or in another major are rejected.
+A declaration can request a future version; execution then requires firmware
+that meets it. Advancing compiler provenance alone never raises program requirements.
 
-When a future release adds a feature, its compiler path must raise the program's
-minimum only when that feature is emitted. An explicit requirement below the
-feature's introduction release must produce a diagnostic. Updating the compiler's
-own version must never by itself raise existing programs' requirements. A
-semantic contract change is different: its minimum must cover the firmware that
-actually supplies the new behaviour, even if an opcode number is reused. The
-compiler and loader enforce 1.3.0 for finite-f32 min/max and sine, including
-reused encodings and f32 declaration min/max. Recompile affected experimental
-packages rather than add per-release execution modes. Do
-not add another schema, profile, drawing API or interpreter revision for such
-additions.
-
-The loader also checks a package's claimed floor against its numeric encodings.
-A fixed register/resource, fixed declaration expression or new numeric instruction
-cannot claim a floor below 1.2.0, even on firmware that implements it. This check
-also applies to generic typed callbacks. Extended kernels and instructions 62..71
-require 1.3.0. Native noise bindings 59..62 require 1.4.0 in every callback
-and call record. Existing sine binding 7, FMIN/FMAX and f32 declaration min/max
-also require 1.3.0 for their current semantic contract. Application
-release 1.3.0 keeps the current container layout; it introduces no storage migration.
+Firmware admission checks the required version against both the controller and
+the supported baseline for every package, including generic typed callbacks.
+There are no separate version modes for earlier experiments. Type signatures,
+effect permissions, resource identities, native bindings and reserved encodings
+remain independently validated. Invalid programs cannot bypass those checks by
+claiming a compatible version.
 
 Firmware `describe` and `STATUS` report `version`. Target-aware Python compilation
-checks that version and the module limit. The editor compiles independently of
-the connected controller, so source editing, download and external file saves remain
-available. Preview/upload checks the controller release; firmware independently checks
-admission before activation. A rejected package leaves the running animation and
-its generation intact. Optional services use capability booleans such as `compositions`,
-`presets`, and `connections`, with resource limits reported separately.
-
-Editor imports `.py` and `lightvm.source` files without requiring a controller.
-Source remains editable and exportable when the connected firmware cannot execute
-it. Preview and deployment check current compilation and release compatibility.
-The abandoned browser library and its compiled versions are no longer loaded or
-migrated; recover Python from external backups and recompile.
-
-## Development and releases
-
-Keep the upcoming application version throughout development. Use build metadata
-or the installer's separate `--build-id` commit identifier to identify builds;
-individual experiments do not need version bumps. Minor releases add compatible
-features. Patch releases preserve the source and execution contract. Breaking
-changes to released features require a major release, with the affected behaviour
-and minimum release documented here or in release notes. No legacy interpreter,
-automatic runtime adapter or per-release execution switch is implied.
+checks it and the module limit. The editor compiles independently of the connected
+controller so source editing and external saves remain available. Preview/upload
+checks compatibility; firmware checks admission before activation. Rejection
+preserves the running animation and its generation. Optional services use
+capability booleans such as `live_inputs`, `light_controls`, `transition_programs`,
+`compositions`, `presets` and `connections`; resource limits are reported separately.
 
 Document kinds (`lightvm.program`, `lightvm.config`, `lightvm.network`,
-`lightvm.composition`, `lightvm.preset`, `lightvm.source`, `lightvm.discovery`) identify
-the kind of data, without independent version counters. The `animation` source
-profile is a fixed authoring name.
+`lightvm.composition`, `lightvm.preset`, `lightvm.source`, `lightvm.discovery`)
+identify data without independent version counters. Bytecode layout markers,
+binding IDs, management frames, HTTP routes and storage directory markers
+identify physical encodings; they are not separately negotiated product versions.
 
-The bytecode magic/layout marker, binding IDs, management frame marker, HTTP route
-and storage directory marker identify physical encodings. They stay fixed across
-compatible application releases and are checked to avoid interpreting invalid
-bytes. They are implementation details, not separately negotiated product
-versions. Unknown instructions, invalid permissions and retired native bindings
-remain rejected even if a package claims a compatible release.
+## Resetting earlier experiments
 
-## Pre-baseline cutover
+The earlier `1.0.0` through `1.4.0` labels were unreleased experimental build
+labels, not supported application releases. They are superseded by this `0.1.0`
+baseline. Dated validation reports retain their original labels, source commits
+and hashes as historical evidence; their feature floors are no longer policy.
 
-Earlier schema-numbered artifacts and retired experiments are outside the initial
-1.0.0 contract. Recompile supported source with `profile("animation")` to produce a
-release-based package. Retired runtimes and operations remain removed. Saved
-configuration/network/composition documents use the unversioned document kinds above;
-there is no automatic conversion of old firmware storage. Back up data before
-explicitly reprovisioning a controller with an unsupported storage layout. Later
-compatible releases must preserve supported 1.x behaviour and readable data,
-rather than repeat this cutover.
+Rebuild the editor/browser preview and firmware from current source. Recompile
+saved Python, JavaScript or Blocks source to regenerate `.lbc` programs with
+`requires: 0.1.0`, then upload them again. Old `1.x` packages are rejected; do not
+rewrite only their manifest labels. Replace stale hosted editor/installer assets
+with current build output when deploying.
+
+For a clean test-device installation, preserve any source or configuration you
+still want outside the device, wipe/reprovision its experimental storage using the
+board's provisioning procedure, flash current firmware, then reapply configuration
+and recompile/reupload programs and presets. No migration or old-version runtime
+is provided. A storage wipe is needed only when the persisted state is incompatible
+or a clean installation is desired; changing the application label does not itself
+change the bytecode or storage layout.

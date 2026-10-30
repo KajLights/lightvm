@@ -1,2 +1,3 @@
 /* Generated from lightvm/release.json. */
 #define LIGHTVM_VERSION "@LIGHTVM_VERSION@"
+#define LIGHTVM_BASELINE "@LIGHTVM_BASELINE@"

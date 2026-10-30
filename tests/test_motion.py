@@ -186,7 +186,7 @@ def draw(ctx,runtime,pixels):
         self.assertEqual(struct.unpack_from('<I', result.bytecode, 80)[0], 0)
         target = self.client.describe()
         self.assertTrue(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target=target).success)
-        self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target={**target,'version':'0.9.0'}).success)
+        self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target={**target,'version':'0.0.9'}).success)
         older = {**target,'version':'2.0.0'}
         self.assertFalse(compile_source(PREFIX+'ART=PixelArray([255,0,0,255],readonly=True)\n@render\ndef draw(ctx,runtime,pixels):\n pixels.draw(ART,overflow="wrap")\n', target=older).success)
         forged = bytearray(result.bytecode)

@@ -1,5 +1,9 @@
 # S2–S4 numeric kernels and native math validation
 
+Historical build labels and feature floors in this record predate the
+[0.1.0 milestone baseline](../versioning.md). They describe the recorded
+experiments and do not define current compatibility requirements.
+
 22 October 2026. The implementation follows S1 commit `b5c8537` on
 `codex/core-numeric-foundation`, based on validated Pico repair `a9c8611`.
 It implements the [numeric contract](../numeric-types.md) and

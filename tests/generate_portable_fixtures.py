@@ -107,7 +107,7 @@ def draw(ctx, runtime, pixels):
 '''),
 }
 # The underlying typed container still supports non-animation host callbacks.
-manifest=b'{}'
+manifest=b'{"requires":"0.1.0"}'
 header=struct.pack('<4s23I',b'LBC1',4,2,2,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,len(manifest),0,0,0,0)
 fixtures['callback_lbc']=header+struct.pack('<BBHIBBHI',1,1,0,0,1,0,0,0)+struct.pack('<BBBBIBBBBI',3,1,0,0,0,1,1,0,0,0)+struct.pack('<6I',0,2,0,1,0,1)+struct.pack('<BBHIII',0,1,0,0,0,0)+manifest
 header=struct.pack('<4s23I',b'LBC1',4,3,2,0,1,1,3,0,0,0,0,0,0,0,0,0,0,0,len(manifest),0,0,0,0)

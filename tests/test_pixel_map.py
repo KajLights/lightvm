@@ -139,7 +139,7 @@ def draw(ctx,runtime,pixels):
     def test_target_requirements_and_forged_capability_or_body_are_rejected(self):
         source=PREFIX+'@render\ndef draw(ctx,runtime,pixels):\n for i in range(pixels.count):\n  pixels[i]=hsv(i/pixels.count,1.0,1.0)\n'
         target=self.client.describe()
-        old={**target,'version':'0.9.0'}
+        old={**target,'version':'0.0.9'}
         result=compile_source(source,target=old)
         self.assertFalse(result.success)
         result=self.load(source)

@@ -43,7 +43,7 @@ describe('JavaScript to the shared LightVM backend', () => {
   }
   it('compiles core noise with explicit seeds and repeat periods', () => {
     for (const call of ['perlin2(0.25, 0.5)', 'perlin2(0.25, 0.5, -7, 17, 31)', 'perlin3(0.25, 0.5, 0.75, 7, 3, 5, 9)', 'simplex2(0.25, 0.5, 9)', 'simplex3(0.25, 0.5, 0.75)']) {
-      expect(compile(lowerJavaScript(render(`pixels.fill(hsv(0.5, 1, (${call} + 1) / 2));`))).manifest.requires).toBe('1.4.0');
+      expect(compile(lowerJavaScript(render(`pixels.fill(hsv(0.5, 1, (${call} + 1) / 2));`))).manifest.requires).toBe('0.1.0');
     }
   });
   it('supports lexical locals, helpers, for/while, nested choices and updates', () => {
@@ -122,8 +122,8 @@ describe('independent blocks frontend', () => {
       if (name.endsWith('2')) delete (noise.block.inputs as Record<string, unknown>).Z;
       const doc = { blocks: { blocks: [{ type: 'lm_program', fields: { PROFILE: 'animation' }, inputs: { RENDER: { block: { type: 'lm_set', fields: { SCOPE: 'local', NAME: 'n' }, inputs: { VALUE: noise } } } } }] } };
       const lowered = lowerBlocks(JSON.stringify(doc));
-      expect(compile(lowered).manifest.requires).toBe('1.4.0');
-      expect(compile(lowerJavaScript(lowered.javascript)).manifest.requires).toBe('1.4.0');
+      expect(compile(lowered).manifest.requires).toBe('0.1.0');
+      expect(compile(lowerJavaScript(lowered.javascript)).manifest.requires).toBe('0.1.0');
     }
   });
   it('reports the block responsible for missing sockets', () => {
@@ -183,7 +183,7 @@ describe.skipIf(!process.env.LIGHTVM_RECEIVER)('native bytecode execution', () =
   });
   it('executes native transcendental functions and rounding beyond the i32 range', () => {
     const source = lowerJavaScript(render('pixels.fill(rgb(Math.sqrt(81), Math.exp(Math.log(1)), Math.pow(3, 2) + Math.cos(0)));'));
-    expect(compile(source).manifest.requires).toBe('1.3.0');
+    expect(compile(source).manifest.requires).toBe('0.1.0');
     expect(replay(source)).toEqual([solid(9, 1, 10)]);
     expect(replay(lowerJavaScript(render('pixels.fill(rgb(Math.floor(1e30) === 1e30 ? 7 : 8, Math.trunc(-0.75) + 1, Math.abs(-3)));')))).toEqual([solid(7, 1, 3)]);
   });

@@ -15,7 +15,7 @@ function setup() {
   const store = createAppStore(), controllers = new ControllerService(store), compiler = new Compiler(store);
   const description = { controller_id: 'controller', boot_id: 'boot', live_inputs: true } as Description;
   let state: ProgramState = { output: 'lights', slot: 'A', generation: 7, paused: false, faulted: false, inputs_revision: 0,
-    manifest: { schema: 'lightvm.program', profile: 'animation', compiler_version: '1.0.0', requires: '1.0.0', pixels: { format: 'rgba8-premul' }, settings: [], inputs: [
+    manifest: { schema: 'lightvm.program', profile: 'animation', compiler_version: '0.1.0', requires: '0.1.0', pixels: { format: 'rgba8-premul' }, settings: [], inputs: [
       { name: 'position', type: 'float', default: 0, minimum: 0, maximum: 1, driver: { kind: 'ramp', duration: 2, mode: 'pingpong' } },
       { name: 'hue', type: 'float', default: 0, minimum: 0, maximum: 1, unit: 'turns' },
       { name: 'brightness', type: 'float', default: 1, minimum: 0, maximum: 1 },

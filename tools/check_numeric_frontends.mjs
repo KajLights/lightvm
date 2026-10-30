@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Production worker acceptance: real browser + Pyodide + native VM execution.
-// Run npm run build first; requires Playwright Chromium and pinned CDN access.
+// Run npm run build first; requires Playwright Chromium or CHROME_EXECUTABLE.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -20,7 +20,7 @@ const server = createServer((request, response) => {
   const file = resolve(assets, '.' + new URL(request.url, 'http://localhost').pathname);
   if (!file.startsWith(assets + '/')) { response.writeHead(403).end(); return; }
   try {
-    response.setHeader('Content-Type', ({ '.js': 'text/javascript', '.html': 'text/html', '.wasm': 'application/wasm' })[extname(file)] || 'text/plain');
+    response.setHeader('Content-Type', ({ '.js': 'text/javascript', '.mjs': 'text/javascript', '.html': 'text/html', '.wasm': 'application/wasm' })[extname(file)] || 'text/plain');
     response.end(readFileSync(file));
   } catch { response.writeHead(404).end(); }
 });
@@ -52,7 +52,7 @@ try {
       const results = [];
       for (const [i, fixture] of fixtures.entries()) {
         results.push(await request({ type: 'compile', id: i, ...fixture }));
-        results.push(await request({ type: 'compile', id: i+10, ...fixture, target: { version: '1.1.0' } }));
+        results.push(await request({ type: 'compile', id: i+10, ...fixture, target: { version: '0.0.9' } }));
       }
       return results;
     } finally { compiler.terminate(); }
@@ -61,7 +61,7 @@ try {
   for (let i = 0; i < fixtures.length; i++) {
     const [result, rejected] = replies.slice(i*2, i*2+2);
     assert.deepEqual(result.diagnostics, []);
-    assert.equal(result.manifest.requires, '1.3.0');
+    assert.equal(result.manifest.requires, '0.1.0');
     assert(rejected.diagnostics.length > 0 && rejected.bytecode.length === 0);
     const path = join(directory, 'fixture.lbc'); writeFileSync(path, Buffer.from(result.bytecode));
     const native = JSON.parse(execFileSync(process.env.LIGHTVM_NUMERIC_RUNTIME, ['--numeric-package', path, '200', '1000', '2'], { encoding: 'utf8' }));

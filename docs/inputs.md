@@ -72,7 +72,7 @@ input whose bounds contain 0–1. Both use output-relative, read-only values, wi
 an external publisher slot or timeout. External publishers cannot claim `light.*`.
 A declaration chooses at most one default control or timer. Explicit preset wiring
 wins, then the declared control/timer, then the scalar default. No names are inferred.
-Declarations with control defaults require LightVM 1.1.0 and `light_controls: true`.
+Declarations with control defaults require LightVM 0.1.0 and `light_controls: true`.
 
 Master brightness scales the completed RGB frame once, after layers and A/B.
 The physical `brightness_limit` remains separate. It works on paused retained

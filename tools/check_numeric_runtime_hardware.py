@@ -88,7 +88,7 @@ def run(args):
                     heaps.append(int(client.status_fields(output='numeric')['heap']))
                 if optimize:
                     row['floor_rejection'] = reject(lambda: client.save_program('nf_invalid',
-                        data.replace(b'"requires":"1.3.0"', b'"requires":"1.2.0"')))
+                        data.replace(b'"requires":"0.1.0"', b'"requires":"0.0.9"')))
                 client.set_inputs({'bad': {'value': True}}, output='numeric', layer='fg')
                 row['fault'] = reject(lambda: client.require_ok(client.command(FRAME, struct.pack('<I', 17), output='numeric')))
                 assert bytes(client.snapshot(output='numeric', layer='fg')[1]) == before

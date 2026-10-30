@@ -21,11 +21,11 @@ function workspace(profile = 'animation', connected = true) {
   const client = { closed: false, transport: { label: 'USB' }, saveProgram: vi.fn(async () => {}), deleteProgram: vi.fn(async () => {}),
     selectTransition: vi.fn(async () => {}), runTransition: vi.fn(async () => {}), transition: vi.fn(async () => ({ A: { active: true }, B: { active: true }, progress: 0 })) };
   if (connected) {
-    const description = { controller_id: 'pico', boot_id: 'boot', version: '1.0.0', transition_programs: true, module_limit: 32768 } as Description;
+    const description = { controller_id: 'pico', boot_id: 'boot', version: '0.1.0', transition_programs: true, module_limit: 32768 } as Description;
     controllers.paths.attach('usb', client as unknown as LightVMClient, description); controllers.syncPaths(description);
     store.dispatch(controllerActions.configuration({ config: { schema: 'lightvm.config', outputs: [{ id: 'lights', type: 'ws2812b', config: { pin: 'GP16', count: 200 } }] }, revision: 1, savedRevision: 1 }));
   }
-  const manifest = { compiler_version: '1.0.0', requires: '1.0.0', schema: 'lightvm.program', profile, pixels: { format: 'rgba8-premul' }, settings: [] };
+  const manifest = { compiler_version: '0.1.0', requires: '0.1.0', schema: 'lightvm.program', profile, pixels: { format: 'rgba8-premul' }, settings: [] };
   compiler.artifact = { id: 0, source: rainbow, bytecode: new Uint8Array([1, 2]), manifest, diagnostics: [] };
   store.dispatch(editorActions.compiled({ revision: 0, bytes: 2, manifest, diagnostics: [] }));
   const view = render(<Provider store={store}><MemoryRouter><RuntimeContext.Provider value={{ compiler, controllers }}><Develop active /></RuntimeContext.Provider></MemoryRouter></Provider>);
