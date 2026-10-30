@@ -60,7 +60,13 @@ same action under Configuration, Output and startup. A name survives reboot and
 compatible firmware replacement. A storage wipe removes it; no migration from
 incompatible experimental state is provided.
 
-Release manifests, catalogue policy, tool distribution and OTA transaction
-schemas will be implemented with their respective producer/website stages.
-They must consume these generated identities rather than maintaining duplicate
-versions or inferring feature support from a release label.
+`firmware.schema.json` describes a complete target/profile bundle and
+`release.schema.json` describes a deliberate product release containing the
+entire approved matrix. Both use `manifest_version: 1` for the document format;
+this does not advance application versions. They embed the existing build
+contract and retain its exact identity, rather than inferring capabilities from
+a release label. See [release production and discovery](../../../docs/releases.md).
+The shared `tools/release.py` packages linked outputs; `discover_releases.py`
+verifies public published releases in website CI. Website recommendation,
+withdrawal and mirroring policy, tool bundles and OTA transactions remain their
+respective implementation stages.

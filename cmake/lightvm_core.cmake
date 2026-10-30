@@ -96,4 +96,13 @@ function(lightvm_add_core)
     # The core calls application storage-policy/checkpoint hooks. Declare this
     # static-library cycle so CMake rescans both archives on one-pass linkers.
     target_link_libraries(device_core PRIVATE lightvm_core)
+    if(IDF_TARGET OR LIGHTVM_PLATFORM STREQUAL "pico")
+        add_library(lightvm_release_limits OBJECT "${LIGHTVM_ROOT}/cmake/release_limits.c")
+        target_link_libraries(lightvm_release_limits PRIVATE lightvm_config)
+        add_custom_target(lightvm_release_report ALL
+            COMMAND "${Python3_EXECUTABLE}" "${LIGHTVM_ROOT}/tools/write_release_limits.py"
+                "${CMAKE_OBJCOPY}" "$<TARGET_OBJECTS:lightvm_release_limits>"
+                "${CMAKE_BINARY_DIR}/release-limits.json"
+            DEPENDS lightvm_release_limits VERBATIM)
+    endif()
 endfunction()
