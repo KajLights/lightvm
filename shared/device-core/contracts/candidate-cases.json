@@ -1,0 +1,522 @@
+{
+  "note": "Software contract fixtures, not published release candidates. Artifact metadata comes from CI development evidence.",
+  "device": {
+    "board": "xiao_esp32s3",
+    "features": [
+      "audio_gateway",
+      "boot_sequence",
+      "compositions",
+      "configuration",
+      "device_metadata",
+      "http_api",
+      "light_output",
+      "live_inputs",
+      "power_recovery",
+      "presets",
+      "program_storage",
+      "transitions",
+      "usb_management",
+      "websocket_management",
+      "wifi"
+    ],
+    "firmware": {
+      "boot_contract": null,
+      "build_id": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "device_core_revision": "94a6771e8a685f71e251fea337a89ebb1a6ab539",
+      "features_hash": "sha256:ad8f5fce2e8d48f0fd10633ae59e71e68afd9af75b25dfcdc829912a08444cdc",
+      "layout_id": "local-511db7ae08b62ce5316ab26a",
+      "profile": "standard",
+      "release_tag": null,
+      "source_dirty": false,
+      "source_revision": "94a6771e8a685f71e251fea337a89ebb1a6ab539"
+    },
+    "hardware": {
+      "chip": "ESP32-S3",
+      "declared_flash_bytes": 8388608,
+      "flash_bytes": 8388608,
+      "flash_verified": true,
+      "target": "xiao_esp32s3",
+      "variant": null,
+      "chip_revision": 2
+    },
+    "product": "lightvm",
+    "updates": {
+      "methods": [
+        "usb-serial"
+      ],
+      "supported": false
+    },
+    "version": "0.1.0",
+    "kind": "lighting",
+    "controller_id": "esp32-aabbccddeeff",
+    "boot_id": "boot-one",
+    "nickname": "Desk",
+    "metadata_revision": 1,
+    "metadata_error": "",
+    "capabilities": 1,
+    "limits": {
+      "config_bytes": 8192,
+      "module_bytes": 32768,
+      "native_headroom_bytes": 65536,
+      "pixel_capacity": 1024,
+      "storage_bytes": 524288,
+      "vm_heap_automatic": 1,
+      "vm_heap_bytes": null,
+      "vm_heap_ceiling_bytes": null
+    }
+  },
+  "artifact": {
+    "assets": [
+      {
+        "bytes": 13776,
+        "name": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-bootloader.bin",
+        "sha256": "91e8f5889ba350ec0ae8a565782dcad680fe944ab6ae30af88478dd557ce2c99"
+      },
+      {
+        "bytes": 3072,
+        "name": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-partition-table.bin",
+        "sha256": "fb83052bf96b7a672a629338e8bc3324428ac20a9737dea97a977bcceedf860f"
+      },
+      {
+        "bytes": 1048000,
+        "name": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-lightvm.bin",
+        "sha256": "929d255bf761cb95a09daa464cc3b49342e65bc1b4277e0d4c344c4f36489b49"
+      },
+      {
+        "bytes": 678695,
+        "name": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-NOTICES.txt",
+        "sha256": "60f7471030388e8be15ddf77079669365045b3b81b3a0b749dd3d3751847f969"
+      },
+      {
+        "bytes": 5002,
+        "name": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-build.json",
+        "sha256": "b48f2de0c36ad473f4ac197b7d542bff1379a08c6505837031bef21e161aadd4"
+      }
+    ],
+    "build": {
+      "board": "xiao_esp32s3",
+      "features": [
+        "audio_gateway",
+        "boot_sequence",
+        "compositions",
+        "configuration",
+        "device_metadata",
+        "http_api",
+        "light_output",
+        "live_inputs",
+        "power_recovery",
+        "presets",
+        "program_storage",
+        "transitions",
+        "usb_management",
+        "websocket_management",
+        "wifi"
+      ],
+      "firmware": {
+        "boot_contract": null,
+        "build_id": "sha256:3c7ca978285b4597f69a2c7cc376c07c16cfcfbb3ef194cc59b219488fc8863b",
+        "device_core_revision": "94a6771e8a685f71e251fea337a89ebb1a6ab539",
+        "features_hash": "sha256:ad8f5fce2e8d48f0fd10633ae59e71e68afd9af75b25dfcdc829912a08444cdc",
+        "layout_id": "local-511db7ae08b62ce5316ab26a",
+        "profile": "standard",
+        "release_tag": null,
+        "source_dirty": false,
+        "source_revision": "94a6771e8a685f71e251fea337a89ebb1a6ab539"
+      },
+      "hardware": {
+        "chip": "ESP32-S3",
+        "declared_flash_bytes": 8388608,
+        "flash_bytes": null,
+        "flash_verified": false,
+        "target": "xiao_esp32s3",
+        "variant": null
+      },
+      "inputs": {
+        "board": "xiao_esp32s3",
+        "build_type": "",
+        "compiler": "GNU-14.2.0",
+        "device_core": {
+          "content_hash": "261d567e7fcff82be3a0d528b8e5c2260aed72af826c396b91b59314564d66d3",
+          "dirty": false,
+          "revision": "94a6771e8a685f71e251fea337a89ebb1a6ab539"
+        },
+        "features": [
+          "audio_gateway",
+          "boot_sequence",
+          "compositions",
+          "configuration",
+          "device_metadata",
+          "http_api",
+          "light_output",
+          "live_inputs",
+          "power_recovery",
+          "presets",
+          "program_storage",
+          "transitions",
+          "usb_management",
+          "websocket_management",
+          "wifi"
+        ],
+        "flash_bytes": 8388608,
+        "layout": "28cf4c48e7b383832dc44baee70c957fe65df84f844e006e12d3e5f0f7a243d5",
+        "platform": "esp32",
+        "product": "lightvm",
+        "release_tag": null,
+        "sdk": {
+          "changes_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "revision": "2c211b236707889e8400c4dc5644dd5c4ee071e0"
+        },
+        "sdkconfig": "7f4720b18eeb965c72f1387a66f9113d72926eac7244e7e543249964b44cfe20",
+        "settings": {
+          "CMAKE_CXX_FLAGS": "-mlongcalls  -fno-builtin-memcpy -fno-builtin-memset -fno-builtin-bzero -fno-builtin-stpcpy -fno-builtin-strncpy",
+          "CMAKE_CXX_FLAGS-ADVANCED": "1",
+          "CMAKE_CXX_FLAGS_DEBUG": "-g",
+          "CMAKE_CXX_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_CXX_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+          "CMAKE_CXX_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG",
+          "CMAKE_CXX_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+          "CMAKE_CXX_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "CMAKE_C_FLAGS": "-mlongcalls  -fno-builtin-memcpy -fno-builtin-memset -fno-builtin-bzero -fno-builtin-stpcpy -fno-builtin-strncpy",
+          "CMAKE_C_FLAGS-ADVANCED": "1",
+          "CMAKE_C_FLAGS_DEBUG": "-g",
+          "CMAKE_C_FLAGS_DEBUG-ADVANCED": "1",
+          "CMAKE_C_FLAGS_MINSIZEREL": "-Os -DNDEBUG",
+          "CMAKE_C_FLAGS_MINSIZEREL-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELEASE": "-O3 -DNDEBUG",
+          "CMAKE_C_FLAGS_RELEASE-ADVANCED": "1",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g -DNDEBUG",
+          "CMAKE_C_FLAGS_RELWITHDEBINFO-ADVANCED": "1",
+          "LIGHTVM_BOARD": "xiao_esp32s3",
+          "LIGHTVM_BOARD-STRINGS": [
+            "xiao_esp32c3",
+            "xiao_esp32s3",
+            "xiao_esp32c6"
+          ],
+          "LIGHTVM_BOARD_CONFIG": {
+            "content_hash": "41368c0539f1edcf47d6f10e2470743b0ed5fec2b844909cfcfe63eb1bd241ef"
+          },
+          "LIGHTVM_BOOT_SEQUENCE": "ON",
+          "LIGHTVM_BYTECODE_CACHE_BYTES": "AUTO",
+          "LIGHTVM_CONFIGURED_BOARD": "xiao_esp32s3",
+          "LIGHTVM_ESP32_PROFILE": "AUTO",
+          "LIGHTVM_ESP32_PROFILE-STRINGS": [
+            "AUTO",
+            "standard",
+            "c3",
+            "c6",
+            "s3"
+          ],
+          "LIGHTVM_HTTP": "ON",
+          "LIGHTVM_HTTP_CLIENTS": "AUTO",
+          "LIGHTVM_INVOCATION_LIMIT": "AUTO",
+          "LIGHTVM_MAX_REFRESH_HZ": "AUTO",
+          "LIGHTVM_MODULE_BYTES": "AUTO",
+          "LIGHTVM_MQTT": "OFF",
+          "LIGHTVM_NATIVE_HEADROOM_BYTES": "AUTO",
+          "LIGHTVM_PARTITION_TABLE": "",
+          "LIGHTVM_PIXEL_CAPACITY": "AUTO",
+          "LIGHTVM_RENDER_EPOCH_US": "AUTO",
+          "LIGHTVM_RENDER_SLICE_US": "AUTO",
+          "LIGHTVM_RENDER_WORKERS": "AUTO",
+          "LIGHTVM_STORAGE_BACKEND": "store_extent_backend",
+          "LIGHTVM_STORAGE_BACKEND_SOURCES": "",
+          "LIGHTVM_STORAGE_BYTES": "524288",
+          "LIGHTVM_STORAGE_CONFIGURATION": "",
+          "LIGHTVM_VM_HEAP_BYTES": "AUTO",
+          "LIGHTVM_WEBSOCKET": "ON",
+          "LIGHTVM_WIFI": "ON"
+        },
+        "source": {
+          "content_hash": "cab0aa3a0c48017aee94753da923c621c4cc5acfe3020ce9344eb714acd2fc89",
+          "dirty": false,
+          "revision": "94a6771e8a685f71e251fea337a89ebb1a6ab539"
+        },
+        "version": "0.1.0"
+      },
+      "product": "lightvm",
+      "schema": "kajlights.build",
+      "updates": {
+        "methods": [
+          "usb-serial"
+        ],
+        "supported": false
+      },
+      "version": "0.1.0"
+    },
+    "capacity": {
+      "firmware_bytes": 1048000,
+      "firmware_region_bytes": 2097152,
+      "ram": null,
+      "storage_bytes": 524288
+    },
+    "content": {
+      "compatibility_baseline": "0.1.0",
+      "configuration": "lightvm.config",
+      "program": "lightvm.program",
+      "storage": "device.extent.LVS2-1"
+    },
+    "id": "lightvm-xiao_esp32s3-standard",
+    "installation": {
+      "chip_revision": {
+        "maximum": 99,
+        "minimum": 0
+      },
+      "flash_settings": {
+        "flash_freq": "40m",
+        "flash_mode": "dio",
+        "flash_size": "8MB"
+      },
+      "methods": [
+        "usb-serial"
+      ],
+      "partitions": [
+        {
+          "bytes": 24576,
+          "name": "nvs",
+          "offset": 36864,
+          "subtype": 2,
+          "type": 1
+        },
+        {
+          "bytes": 4096,
+          "name": "phy_init",
+          "offset": 61440,
+          "subtype": 1,
+          "type": 1
+        },
+        {
+          "bytes": 2097152,
+          "name": "factory",
+          "offset": 65536,
+          "subtype": 0,
+          "type": 0
+        },
+        {
+          "bytes": 524288,
+          "name": "lightvm",
+          "offset": 2162688,
+          "subtype": 64,
+          "type": 1
+        },
+        {
+          "bytes": 8192,
+          "name": "lightvm_boot",
+          "offset": 2686976,
+          "subtype": 65,
+          "type": 1
+        }
+      ],
+      "parts": [
+        {
+          "asset": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-bootloader.bin",
+          "max_bytes": 32768,
+          "offset": 0
+        },
+        {
+          "asset": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-partition-table.bin",
+          "max_bytes": 4096,
+          "offset": 32768
+        },
+        {
+          "asset": "lightvm-xiao_esp32s3-standard-3c7ca978285b4597-lightvm.bin",
+          "max_bytes": 2097152,
+          "offset": 65536
+        }
+      ],
+      "uf2_family": null
+    },
+    "limits": {
+      "config_bytes": 8192,
+      "module_bytes": 32768,
+      "native_headroom_bytes": 65536,
+      "pixel_capacity": 1024,
+      "storage_bytes": 524288,
+      "vm_heap_automatic": 1,
+      "vm_heap_bytes": null,
+      "vm_heap_ceiling_bytes": null
+    },
+    "manifest_version": 1,
+    "recovery": {
+      "guide": "https://github.com/KajLights/lightvm/blob/main/docs/web-editor.md",
+      "preservation": "export-and-clean-install"
+    },
+    "schema": "kajlights.firmware",
+    "tools": {
+      "bundle": null,
+      "contract": "lightvm-0.1.0"
+    },
+    "validation": {
+      "ota": false,
+      "physical_install": false
+    }
+  },
+  "required_features": [],
+  "method": "usb-serial",
+  "supported_tools": [
+    "lightvm-0.1.0"
+  ],
+  "cases": [
+    {
+      "name": "same-version different build",
+      "expected": {
+        "state": "clean_local_install",
+        "reasons": [
+          "export_and_clean_install_required"
+        ]
+      }
+    },
+    {
+      "name": "installed build",
+      "device": {
+        "firmware": {
+          "build_id": "sha256:3c7ca978285b4597f69a2c7cc376c07c16cfcfbb3ef194cc59b219488fc8863b"
+        }
+      },
+      "expected": {
+        "state": "installed",
+        "reasons": []
+      }
+    },
+    {
+      "name": "wrong product",
+      "device": {
+        "product": "kaj-fi"
+      },
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "wrong_product"
+        ]
+      }
+    },
+    {
+      "name": "wrong board",
+      "device": {
+        "board": "xiao_esp32c3"
+      },
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "wrong_board"
+        ]
+      }
+    },
+    {
+      "name": "wrong variant",
+      "device": {
+        "hardware": {
+          "variant": "sense_pdm"
+        }
+      },
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "wrong_variant"
+        ]
+      }
+    },
+    {
+      "name": "missing requested feature",
+      "required_features": [
+        "mqtt"
+      ],
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "missing_features"
+        ]
+      }
+    },
+    {
+      "name": "OTA unavailable",
+      "method": "http-push",
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "unsupported_method"
+        ]
+      }
+    },
+    {
+      "name": "missing identity",
+      "device": {
+        "boot_id": ""
+      },
+      "expected": {
+        "state": "cannot_assess",
+        "reasons": [
+          "device_identity_required"
+        ]
+      }
+    },
+    {
+      "name": "nominal flash is not measurement",
+      "device": {
+        "hardware": {
+          "flash_verified": false,
+          "flash_bytes": null
+        }
+      },
+      "expected": {
+        "state": "cannot_assess",
+        "reasons": [
+          "physical_flash_probe_required"
+        ]
+      }
+    },
+    {
+      "name": "wrong physical geometry",
+      "device": {
+        "hardware": {
+          "flash_bytes": 4194304
+        }
+      },
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "wrong_flash_geometry"
+        ]
+      }
+    },
+    {
+      "name": "historical tools absent",
+      "supported_tools": [],
+      "expected": {
+        "state": "matching_tools_required",
+        "reasons": [
+          "tool_contract_unavailable"
+        ]
+      }
+    },
+    {
+      "name": "chip revision outside compiled image range",
+      "device": {
+        "hardware": {
+          "chip_revision": 100
+        }
+      },
+      "expected": {
+        "state": "incompatible",
+        "reasons": [
+          "wrong_chip_revision"
+        ]
+      }
+    },
+    {
+      "name": "missing chip revision measurement",
+      "device": {
+        "hardware": {
+          "chip_revision": null
+        }
+      },
+      "expected": {
+        "state": "cannot_assess",
+        "reasons": [
+          "chip_revision_probe_required"
+        ]
+      }
+    }
+  ]
+}
