@@ -198,6 +198,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build firmware and record size
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           . "$IDF_PATH/export.sh"
           python tools/fetch_audio_core.py
           idf.py -C platforms/esp32 -B "$PWD/build/${{ matrix.board }}-${{ matrix.transport }}" -D LIGHTVM_BOARD=${{ matrix.board }} -D LIGHTVM_WIFI=${{ matrix.transport != 'usb' && 'ON' || 'OFF' }} -D LIGHTVM_HTTP=${{ (matrix.transport == 'http' || matrix.transport == 'websocket') && 'ON' || 'OFF' }} -D LIGHTVM_WEBSOCKET=${{ matrix.transport == 'websocket' && 'ON' || 'OFF' }} -D LIGHTVM_MQTT=${{ (matrix.transport == 'websocket' || matrix.transport == 'mqtt') && 'ON' || 'OFF' }} -D LIGHTVM_BOOT_SEQUENCE=${{ matrix.boot_sequence }} build

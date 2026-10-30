@@ -16,6 +16,24 @@ spec.loader.exec_module(module)
 
 
 class BuildMetadataTests(unittest.TestCase):
+    def test_cmake_path_lists_hash_files_and_omit_sdk_directory_locations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            # Pico's computed component list exceeds Linux's single-path limit.
+            directories = [work / ('component_' + str(i)) for i in range(200)]
+            for path in directories:
+                path.mkdir()
+            paths = ';'.join(map(str, directories))
+            self.assertIsNone(module.cache_value(paths))
+            source = work / 'board;variant.h'
+            source.write_text('#define BOARD_FLASH_SIZE 2097152\n')
+            escaped = str(source).replace(';', r'\;')
+            first = module.cache_value(paths + ';' + escaped + ';ON')
+            self.assertEqual(first, [module.cache_value(escaped), 'ON'])
+            source.write_text('#define BOARD_FLASH_SIZE 4194304\n')
+            self.assertNotEqual(module.cache_value(escaped), first[0])
+            self.assertEqual(module.cache_value(''), '')
+
     def test_schema_and_identity_include_features_build_type_and_layout(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)

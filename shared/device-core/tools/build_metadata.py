@@ -29,6 +29,21 @@ def source(root):
     return {'revision': revision, 'content_hash': digest(hashes), 'dirty': dirty}
 
 
+def cache_value(value):
+    """Hash file inputs without encoding checkout locations or SDK directory lists."""
+    parts = re.split(r'(?<!\\);', value)
+    entries = []
+    for part in parts:
+        part = part.replace(r'\;', ';')
+        path = Path(part)
+        if path.is_absolute():
+            if path.is_file():
+                entries.append({'content_hash': hashlib.sha256(path.read_bytes()).hexdigest()})
+        else:
+            entries.append(part)
+    return (entries[0] if len(parts) == 1 else entries) if entries else None
+
+
 def generate(args):
     root, core = args.root.resolve(), args.core.resolve()
     features = sorted(set(filter(None, args.features.split(','))))
@@ -45,12 +60,9 @@ def generate(args):
             match = re.match(r'((?:LIGHTVM_|PICO_|KAJ_|CMAKE_(?:C|CXX)_FLAGS)[^:]*):[^=]+=(.*)', line)
             if match:
                 key, value = match.groups()
-                if value.startswith('/'):
-                    path = Path(value)
-                    if path.is_file():
-                        settings[key] = {'content_hash': hashlib.sha256(path.read_bytes()).hexdigest()}
-                else:
-                    settings[key] = value
+                normalized = cache_value(value)
+                if normalized is not None:
+                    settings[key] = normalized
     extra = {}
     for name in ('sdkconfig', 'layout'):
         path = getattr(args, name)

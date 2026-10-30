@@ -2,6 +2,11 @@
 
 ## Shared device metadata audit 30 October
 
+CI follow-up: the pinned audio header was renamed from `features.h` to
+`kaj_audio_features.h` to avoid shadowing glibc's system header. Reviewed the
+include-only changes and refreshed the audio pin and fingerprints; runtime
+code, call targets, recursion guards and stack reservations are unchanged.
+
 The common descriptor streams through the existing application writer; discovery
 uses its bounded response writer. The callback contracts explicitly name those
 targets for `device_description` and `device_json_write_string`. Neither writer

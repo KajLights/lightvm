@@ -31,7 +31,7 @@ PROJECT=(
     'platforms/pico/lwipopts.h','platforms/pico/tusb_config.h',
 )
 
-AUDIO_CORE=('features.h','onset.h','protocol.c','protocol.h','subscriptions.c','subscriptions.h','subscriber.c','subscriber.h')
+AUDIO_CORE=('kaj_audio_features.h','onset.h','protocol.c','protocol.h','subscriptions.c','subscriptions.h','subscriber.c','subscriber.h')
 def audio_core(build):
     cache=(build/'CMakeCache.txt').read_text()
     return next((Path(line.split('=',1)[1]) for line in cache.splitlines() if line.startswith('KAJ_AUDIO_CORE:')),ROOT/'.deps/kaj-fi/core')

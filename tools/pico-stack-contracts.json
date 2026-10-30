@@ -574,7 +574,7 @@
     "src/audio_sources.c": "7fe3f40764e76cbc94e1a23d1f328217150630586fad555573d6bf43a7c0f284",
     "src/audio_sources.h": "948cec714e9d7fb11f4e3bc7d1663a4d5748242677a606ddfcf47440da56c1dc",
     "src/control.c": "c0b5c378bebc5880ea354d314a7554ca4bcfeb867199375daa94039cbae18104",
-    "kaj-audio.rev": "a089bd1c9859eb16f85dafaf45bc39e8fecbc2c699e74c9ce286b53099e67910",
+    "kaj-audio.rev": "35502fe81df2db3d62fe7f40317a0232d1c87f431bcdd0d439a74d1ee022e301",
     "cmake/kaj_audio.cmake": "10b56d1b674f834ab8a2c3376b5bc3fb031888152d9228a5f698b9ffcbffbd60",
     "src/inputs.c": "a1cbdc4e2b637a595b04eebd165ba1540445533b4b9a37424f2af41e49871db6",
     "src/inputs.h": "64f427048b8cc7be17223d0745e6a330d693126ed10d45399e11ff0bffd63e6e",
@@ -595,10 +595,10 @@
     "platforms/pico/lwipopts.h": "9711269052ed0d7f20e9783c53edd1164825b83afc66f167d4daec7fe732d7ca"
   },
   "audio_core": {
-    "features.h": "89a10dbbdf3f6819a30d53e8197a30be739ec147e8a0fc8c9e97a02121271145",
+    "kaj_audio_features.h": "89a10dbbdf3f6819a30d53e8197a30be739ec147e8a0fc8c9e97a02121271145",
     "onset.h": "88b9f85842946c0efce5f7ed4e823569d7c980a947a42eb6f87d2088c80d5a01",
     "protocol.c": "b996c06199133fe8939fe6303c0bb127abb9c32e5351bfe6b354701b70ae851b",
-    "protocol.h": "1dd4a70eef0b7470e973d23d9d60f1134b51045cb872c6879fa1f51601607c53",
+    "protocol.h": "a4d6f3812b75c2d9bbf57b374c4050972deae3fa1645ba99877f4fd9fb30c8d1",
     "subscriptions.c": "e886d48c25697dc6642d4c5e0b10017447164687a15abede9764938b6c09997d",
     "subscriptions.h": "b663a8fcb13444196b6dcd87d09223fb473d9ef7b94886984fd397c41fadbd93",
     "subscriber.c": "5b90635f53d3663412e2e79ef0de4930aae9e7cbd98418631a9a57383cdf6bdd",
