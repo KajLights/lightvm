@@ -52,10 +52,21 @@ def validate_published(manifest, release, repository, revision):
     return manifest
 
 
-def discover(repository, include_prereleases=False):
+def discover(repository, include_prereleases=False, on_verified=None, release_ids=None):
+    """Optionally hand verified files to a website-owned transactional mirror.
+
+    The callback runs only after provenance and every asset have passed, while
+    the temporary directory still exists. It must not mutate the signed record.
+    A callback failure aborts acquisition just like a verification failure.
+    """
     if api('repos/' + repository)['private']:
         raise ValueError('Private sources require a separately approved public distribution route')
     releases = published_releases(lambda page, count: api(f'repos/{repository}/releases?per_page={count}&page={page}'), include_prereleases)
+    if release_ids is not None:
+        wanted = set(release_ids)
+        releases = [release for release in releases if release['id'] in wanted]
+        if {release['id'] for release in releases} != wanted:
+            raise ValueError('A locked release is missing or no longer published')
     verified = []
     for release in releases:
         tag = release['tag_name']
@@ -86,8 +97,11 @@ def discover(repository, include_prereleases=False):
                     names.add(asset['name'])
                     download(asset['name'], asset)
                 verify_assets(artifact, work)
-            verified.append({'release_id': release['id'], 'published_at': release['published_at'],
-                             'url': release['html_url'], 'manifest': manifest})
+            record = {'release_id': release['id'], 'published_at': release['published_at'],
+                      'url': release['html_url'], 'manifest': manifest}
+            if on_verified is not None:
+                on_verified(record, work)
+            verified.append(record)
     return {'schema': 'kajlights.verified_releases', 'repository': repository, 'releases': verified}
 
 

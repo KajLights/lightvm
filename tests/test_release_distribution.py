@@ -33,6 +33,17 @@ def image(payload, chip=9):
 
 
 class ReleaseDistributionTests(unittest.TestCase):
+    def test_shared_browser_candidate_fixtures_match_python(self):
+        fixture = contract.read_json(ROOT/'shared/device-core/contracts/candidate-cases.json')
+        def merge(base, patch):
+            for key, value in patch.items():
+                base[key] = merge(base.get(key, {}), value) if isinstance(value, dict) else value
+            return base
+        for case in fixture['cases']:
+            with self.subTest(name=case['name']):
+                device = merge(copy.deepcopy(fixture['device']), case.get('device', {}))
+                self.assertEqual(contract.assess(device, fixture['artifact'], case.get('required_features', fixture['required_features']),
+                    case.get('method', fixture['method']), case.get('supported_tools', fixture['supported_tools'])), case['expected'])
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -230,6 +241,40 @@ class ReleaseDistributionTests(unittest.TestCase):
         self.assertEqual(len(result['esp32']['include']), 6)
         with self.assertRaises(ValueError):
             prepare(ROOT, self.config, 'v1.0.0')
+
+    def test_verified_mirror_callback_runs_after_all_hashes_and_provenance_pass(self):
+        self.package()
+        release_dir = self.work/'release'
+        manifest = contract.assemble(self.config, [self.work/'bundle'], release_dir, 'v0.1.0', public=True)
+        (release_dir/'release.sigstore.json').write_text('{}')
+        row = {'id': 9, 'draft': False, 'published_at': '2026-10-30T00:00:00Z', 'prerelease': False,
+               'tag_name': 'v0.1.0', 'html_url': 'https://github.com/KajLights/lightvm/releases/tag/v0.1.0',
+               'assets': [{'name': p.name, 'state': 'uploaded', 'size': p.stat().st_size} for p in release_dir.iterdir()]}
+        commands, observed = [], []
+        def api(endpoint):
+            return {'private': False} if endpoint == 'repos/KajLights/lightvm' else [row]
+        def run(command, **kwargs):
+            commands.append(command)
+            if command[1:3] == ['release', 'download']:
+                name = command[command.index('--pattern')+1]
+                shutil.copyfile(release_dir/name, Path(command[command.index('--dir')+1])/name)
+        def verified(record, directory):
+            self.assertEqual(record['manifest'], manifest)
+            for artifact in manifest['artifacts']:
+                contract.verify_assets(artifact, directory)
+            observed.append(record['release_id'])
+        with patch('discover_releases.api', side_effect=api), patch('discover_releases.resolve_tag', return_value='1'*40), patch('discover_releases.subprocess.run', side_effect=run):
+            discover('KajLights/lightvm', on_verified=verified)
+            self.assertEqual(observed, [9])
+            verification = next(c for c in commands if c[1:3] == ['attestation', 'verify'])
+            self.assertIn('--source-digest', verification)
+            self.assertIn('--signer-workflow', verification)
+            observed.clear()
+            asset = manifest['artifacts'][0]['assets'][0]['name']
+            (release_dir/asset).write_bytes(bytes((release_dir/asset).stat().st_size))
+            with self.assertRaises(ValueError):
+                discover('KajLights/lightvm', on_verified=verified)
+            self.assertEqual(observed, [])
 
 
 if __name__ == '__main__':

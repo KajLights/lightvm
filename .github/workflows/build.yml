@@ -49,7 +49,7 @@ jobs:
           python -B tests/generate_portable_fixtures.py --check
           ctest --test-dir build/${{ matrix.profile }}-${{ matrix.transport }} --output-on-failure
           python -m unittest discover -s tests -v
-          node --test tests/test_editor.mjs
+          node --test tests/test_editor.mjs tests/test_firmware_contract.mjs
           npm test
       - name: Teaching course source and frame checks
         if: matrix.profile == 'host' && matrix.transport == 'usb' && matrix.boot_sequence == 'OFF'
