@@ -5,6 +5,14 @@ on microcontrollers and native hosts. The browser or a computer compiles support
 Python, JavaScript and visual blocks into portable `.lbc` programs. Controller firmware executes the
 program and sends data to the LEDs.
 
+KajLights uses these projects to help people learn electronics, computing and
+networking through microcontrollers. Connect a circuit, work out how a moving
+pattern uses memory and time, then follow a message from another device.
+Understanding those parts gives people more ideas for what to make, clearer
+requests when working with AI, and a way to check the result. See the
+[project and learning goals](docs/project-goals.md) and the
+[public learning activities](https://kajlights.com/learn/).
+
 Start with [controllers and the development workflow](docs/architecture.md) for
 outputs, animation versions, layers, presets, storage and startup. The browser
 supports Edit → Preview → Save animation → optional Compose → Save preset.

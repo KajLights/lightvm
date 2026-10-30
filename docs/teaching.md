@@ -1,5 +1,12 @@
 # Learn with lights
 
+These programming lessons are part of KajLights' broader aim: learning
+electronics, computing and networking through microcontrollers. The
+[project goals](project-goals.md) explain that direction. The
+[website activities](https://kajlights.com/learn/) connect the lessons to wiring
+a circuit, running a program on a board and following messages between devices.
+The twelve lessons below focus on programming; they are not the whole curriculum.
+
 Open **Editor → Learn with lights**, choose a language and a lesson, and press
 **Start preview**. Start with 25 lights. Switch on **Show a ring** to put the
 same positions around a circle; position 0 is at the top. No controller is needed.
