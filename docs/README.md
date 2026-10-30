@@ -10,6 +10,7 @@ animation. The guides below describe the current implementation.
 - [Beginner observation session](teaching-pilot.md)
 - [Controllers and development workflow](architecture.md)
 - [Shared device contracts and nicknames](../shared/device-core/contracts/README.md)
+- [Firmware release manifests, workflows and discovery](releases.md)
 - [Animation profile and Python API](animation-profile.md)
 - [Live inputs, timed drivers and wiring](inputs.md)
 - [Board status and native sensor inputs](board-status.md)

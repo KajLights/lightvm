@@ -137,15 +137,17 @@ when cross-project pinning warrants it; it is not a launch prerequisite.
 | Device discovery | Shared DNS-SD and board-provided HTTP peer lists; the editor filters for light-output devices. | Generalise inventory for both products and route controls by their descriptions. |
 | Firmware description | Shared generated build/features/hardware members and machine-readable contracts are implemented in both products. | Complete release-producer/tool contracts and physical installation validation in their stages. |
 | Nicknames | Shared metadata storage and guarded read/write operations are implemented, with browser/Python clients. | Carry these controls into the new website workspace and perform physical-device acceptance. |
-| Installer | Images are bundled by the LightVM Pages workflow from `main`. | Consume selected published release artifacts through the catalogue. |
+| Installer | Release producers and verified discovery tooling are implemented; Pages no longer bundles development firmware from `main`. | Connect the website catalogue and reviewed local-install adapters to published releases. |
 | Published releases | Both accessible release lists are empty at this planning baseline. | Prepare producer workflows and fixtures; publish only by explicit release decision. |
 | Pattern compiler | Its manifest emits the superseded `1.3.0` runtime requirement. | Establish compatibility with the current runtime and test real admission. |
 | OTA | Detailed proposal; no updater implemented. | Integrate only after platform boot, verification and recovery gates pass. |
 
-The current Pages workflow couples firmware building and website publication.
-Split these responsibilities: product CI builds/tests/packages implementations;
-website CI assembles the public experience from explicit inputs. Ordinary
-firmware commits must not silently replace the public installer catalogue.
+The Pages workflow now builds the workspace independently of firmware. Product
+release workflows build and validate registered target/profile matrices, then
+prepare unpublished drafts for explicit version tags. See
+[release production and discovery](../releases.md). Website catalogue policy,
+asset mirroring and install UI integration remain the next stages. Ordinary
+firmware commits do not replace a public installer catalogue.
 
 ## Shared contracts and device sessions
 

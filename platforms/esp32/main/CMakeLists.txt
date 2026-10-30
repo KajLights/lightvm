@@ -32,3 +32,4 @@ target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
 # long calls and section placement). No SDK dependency enters the shared source.
 target_link_libraries(lightvm_core PRIVATE idf::esp_common)
 target_link_libraries(device_core PRIVATE idf::esp_common)
+target_link_libraries(lightvm_release_limits PRIVATE idf::esp_common)

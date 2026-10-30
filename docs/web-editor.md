@@ -161,13 +161,16 @@ back to the affected line. The canonical examples and compiler
 sources are packaged with the static build. Source is parsed and never run by the
 compiler. Only the compiled bytecode is sent to a controller.
 
-The Firmware page uses ESP Web Tools 10.4.0 from its CDN and a local manifest and
-firmware bundle. The published editor builds matching Wi-Fi, HTTP, WebSocket and boot
-sequence firmware for all three XIAO boards and includes the bootloader,
+The developer Firmware page uses ESP Web Tools 10.4.0 from its CDN and an explicitly
+packaged local firmware bundle. Pages no longer bundles development firmware;
+the public release catalogue and installer integration follow the
+[release producer and discovery contract](releases.md). For local testing, build
+matching Wi-Fi, HTTP, WebSocket and boot-sequence firmware and include the bootloader,
 partition table and application binaries. Confirm that the physical board is a
 supported XIAO model; the installer detects the ESP chip family only. Choose the
 serial port when prompted. Existing boards should keep their data
-when offered an erase choice. The published bundle also contains a USB Pico
+when offered an erase choice only for a separately verified compatible layout.
+A local test bundle can also contain a USB Pico
 image and Wi-Fi/HTTP/WebSocket Pico W and Pico 2 W images, all with boot-sequence support.
 Pico 2 W uses the UF2 download: hold BOOTSEL while connecting, then copy its UF2
 to the **RP2350** drive. Direct WebUSB installation is limited to Pico/Pico W. For Pico/Pico W, hold
@@ -195,7 +198,7 @@ copying images into `build/editor-assets/firmware`. Add a `--board` argument
 for each additional built XIAO profile. Each `--pico` UF2 is checked against its board/chip, contiguous application
 blocks and the linked reserved flash boundary. Pico 2 W accepts only RP2350 Arm
 Secure images, with strict validation of picotool's ignored RP2350-E10 workaround
-block. The Pages workflow builds all six profiles and packages them into the deployed editor automatically.
+block. This developer command is explicit; Pages does not package these images.
 
 For initial setup or standalone use, Wi-Fi firmware can host an access point
 at **http://192.168.4.1**. Join it and open that address to provision station Wi-Fi
@@ -246,8 +249,8 @@ socket negotiation and fader commands over the selected transport. It requires t
 
 ### Firmware acceptance
 
-The Pages workflow builds the supported board profiles and packages images from
-one source tree. The ESP32 packager requires the correct chip, flash layout and
+The release workflow builds the registered board/profile matrix from one source
+commit. The separate developer ESP32 packager requires the correct chip, flash layout and
 Wi-Fi/HTTP/WebSocket/boot-sequence feature flags. Pico packaging validates every UF2 block
 and its reserved-storage boundary. The browser uses the vendored pico⚡flash
 PICOBOOT implementation for RP2040 boards.

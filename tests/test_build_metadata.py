@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 
 from jsonschema import Draft202012Validator
 
@@ -16,6 +18,28 @@ spec.loader.exec_module(module)
 
 
 class BuildMetadataTests(unittest.TestCase):
+    def test_exact_version_tag_is_an_identity_input_without_creating_tags(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            args = argparse.Namespace(root=ROOT, core=CORE, output=work/'out', cache=work/'absent',
+                features='usb_management,device_metadata,configuration', product='lightvm',
+                version='0.1.0', board='pico_w', platform='pico', flash_bytes=2097152,
+                sdkconfig='', layout='', compiler='test', build_type='Release', sdk_root='')
+            present = False
+            def git(root, *command):
+                self.assertEqual(command, ('rev-parse', '--verify', 'refs/tags/v0.1.0^{commit}'))
+                if not present:
+                    raise subprocess.CalledProcessError(128, command)
+                return ('1'*40).encode()
+            with patch.object(module, 'source', return_value={'revision': '1'*40, 'dirty': False}), patch.object(module, 'git', side_effect=git):
+                development = module.generate(args)
+                present = True
+                released = module.generate(args)
+            self.assertIsNone(development['firmware']['release_tag'])
+            self.assertEqual(released['firmware']['release_tag'], 'v0.1.0')
+            self.assertEqual(released['inputs']['release_tag'], 'v0.1.0')
+            self.assertNotEqual(development['firmware']['build_id'], released['firmware']['build_id'])
+
     def test_cmake_path_lists_hash_files_and_omit_sdk_directory_locations(self):
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)

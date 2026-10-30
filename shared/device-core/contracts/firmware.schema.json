@@ -1,0 +1,239 @@
+{
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "kajlights.firmware"
+    },
+    "manifest_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,180}$"
+    },
+    "build": {
+      "$ref": "urn:kajlights:build"
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,180}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 536870912
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "name",
+          "bytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "installation": {
+      "type": "object",
+      "properties": {
+        "methods": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "usb-serial",
+              "uf2",
+              "picoboot"
+            ]
+          }
+        },
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,180}$"
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "max_bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 536870912
+              }
+            },
+            "required": [
+              "asset",
+              "offset",
+              "max_bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "flash_settings": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "partitions": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object"
+          }
+        },
+        "uf2_family": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "chip_revision": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "minimum": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            },
+            "maximum": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "minimum",
+            "maximum"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "methods",
+        "parts",
+        "flash_settings",
+        "partitions",
+        "uf2_family",
+        "chip_revision"
+      ],
+      "additionalProperties": false
+    },
+    "capacity": {
+      "type": "object",
+      "properties": {
+        "firmware_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "firmware_region_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "storage_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "ram": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "firmware_bytes",
+        "firmware_region_bytes",
+        "storage_bytes",
+        "ram"
+      ],
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object"
+    },
+    "content": {
+      "type": "object"
+    },
+    "tools": {
+      "type": "object"
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "physical_install": {
+          "const": false
+        },
+        "ota": {
+          "const": false
+        }
+      },
+      "required": [
+        "physical_install",
+        "ota"
+      ],
+      "additionalProperties": false
+    },
+    "recovery": {
+      "type": "object",
+      "properties": {
+        "preservation": {
+          "const": "export-and-clean-install"
+        },
+        "guide": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      },
+      "required": [
+        "preservation",
+        "guide"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "manifest_version",
+    "id",
+    "build",
+    "assets",
+    "installation",
+    "capacity",
+    "limits",
+    "content",
+    "tools",
+    "validation",
+    "recovery"
+  ],
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kajlights:firmware"
+}

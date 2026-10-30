@@ -1,0 +1,233 @@
+name: Firmware release bundles
+
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'release/**'
+      - 'shared/device-core/**'
+      - 'cmake/**'
+      - 'platforms/esp32/**'
+      - 'tools/write_release_limits.py'
+      - 'tests/test_release_distribution.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      revision: ${{ steps.prepare.outputs.revision }}
+      tag: ${{ steps.prepare.outputs.tag }}
+      version: ${{ steps.prepare.outputs.version }}
+      pico: ${{ steps.prepare.outputs.pico }}
+      esp32: ${{ steps.prepare.outputs.esp32 }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install jsonschema==4.26.0
+      - name: Validate source, version tag and approved matrix
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$REF_TYPE" == tag ]]; then args=(--tag "$REF_NAME"); fi
+          python shared/device-core/tools/release.py prepare "${args[@]}" --github-output "$GITHUB_OUTPUT"
+
+  contracts:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - run: python -B -m unittest discover -s tests -p test_release_distribution.py -v
+
+  esp32:
+    name: ${{ matrix.id }}
+    needs: prepare
+    runs-on: ubuntu-24.04
+    container: espressif/idf:v5.5.3
+    env:
+      IDF_COMPONENT_MANAGER: '0'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.esp32) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+          fetch-depth: 0
+
+      - name: Build the registered profile from the pinned SDK
+        env:
+          TARGET_BOARD: ${{ matrix.board }}
+          TARGET_PROFILE: ${{ matrix.profile }}
+          TARGET_INPUT: ${{ matrix.input }}
+          TARGET_BANDS: ${{ matrix.bands }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          . "$IDF_PATH/export.sh"
+          python tools/fetch_audio_core.py
+          mqtt=OFF
+          if [[ "$TARGET_PROFILE" == mqtt ]]; then mqtt=ON; fi
+          idf.py -C platforms/esp32 -B "$PWD/build/release-firmware" -D LIGHTVM_BOARD="$TARGET_BOARD" -D LIGHTVM_WIFI=ON -D LIGHTVM_HTTP=ON -D LIGHTVM_WEBSOCKET=ON -D LIGHTVM_MQTT="$mqtt" -D LIGHTVM_BOOT_SEQUENCE=ON build
+      - name: Validate and package complete local-install payloads
+        env:
+          TARGET_ID: ${{ matrix.id }}
+        run: |
+          . "$IDF_PATH/export.sh"
+          python -m pip install jsonschema==4.26.0
+          python shared/device-core/tools/release.py package --target "$TARGET_ID" --build build/release-firmware --output build/bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.id }}
+          path: build/bundle/
+          if-no-files-found: error
+
+  pico:
+    name: ${{ matrix.id }}
+    needs: prepare
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.pico) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned Pico SDK and Arm compiler
+        shell: bash
+        run: |
+          mkdir -p build/deps
+          git clone --branch 2.3.1 --depth 1 https://github.com/raspberrypi/pico-sdk.git build/deps/pico-sdk
+          git -C build/deps/pico-sdk submodule update --init lib/tinyusb lib/cyw43-driver lib/lwip
+          curl --fail --location --retry 3 https://developer.arm.com/-/media/Files/downloads/gnu/13.2.Rel1/binrel/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi.tar.xz -o build/deps/arm.tar.xz
+          tar -xJf build/deps/arm.tar.xz -C build/deps
+          echo "$PWD/build/deps/arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi/bin" >> "$GITHUB_PATH"
+      - name: Build and package the registered Pico profile
+        env:
+          TARGET_ID: ${{ matrix.id }}
+          TARGET_BOARD: ${{ matrix.board }}
+          TARGET_PROFILE: ${{ matrix.profile }}
+        shell: bash
+        run: |
+          python3 -m pip install jsonschema==4.26.0
+          python3 tools/fetch_audio_core.py
+          wifi=ON
+          if [[ "$TARGET_BOARD" == pico ]]; then wifi=OFF; fi
+          mqtt=OFF
+          if [[ "$TARGET_PROFILE" == mqtt ]]; then mqtt=ON; fi
+          cmake -S . -B build/release-firmware -DLIGHTVM_PLATFORM=pico -DPICO_BOARD="$TARGET_BOARD" -DLIGHTVM_WIFI="$wifi" -DLIGHTVM_HTTP="$wifi" -DLIGHTVM_WEBSOCKET="$wifi" -DLIGHTVM_MQTT="$mqtt" -DLIGHTVM_BOOT_SEQUENCE=ON -DPICO_SDK_PATH="$PWD/build/deps/pico-sdk" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/release-firmware --parallel 2
+          python3 shared/device-core/tools/release.py package --target "$TARGET_ID" --build build/release-firmware --output build/bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.id }}
+          path: build/bundle/
+          if-no-files-found: error
+
+  assemble:
+    needs: [prepare, contracts, esp32, pico]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install jsonschema==4.26.0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          path: build/bundles
+      - name: Assemble the complete, verified release matrix
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        shell: bash
+        run: |
+          args=()
+          if [[ -n "$RELEASE_TAG" ]]; then args+=(--tag "$RELEASE_TAG"); fi
+          if [[ "$REPOSITORY_PRIVATE" == false ]]; then args+=(--public); fi
+          python shared/device-core/tools/release.py assemble --bundles build/bundles --output build/distribution "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-distribution
+          path: build/distribution/
+          if-no-files-found: error
+
+  draft:
+    if: needs.prepare.outputs.tag != ''
+    needs: [prepare, assemble]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-distribution
+          path: distribution
+      - name: Attest the public manifest that binds every payload digest
+        if: '!github.event.repository.private'
+        id: attest
+        uses: actions/attest@v4
+        with:
+          subject-path: distribution/release.json
+          create-storage-record: false
+      - name: Retain the verification bundle with the release
+        if: '!github.event.repository.private'
+        env:
+          BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+        run: cp "$BUNDLE_PATH" distribution/release.sigstore.json
+      - name: Prepare an unpublished draft; never replace existing release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        shell: bash
+        run: |
+          # gh release create fails if a release already exists. No --clobber,
+          # automatic tag creation, publication or repository-wide latest flag.
+          printf 'Verified firmware bundles for %s. Review physical installation evidence, content export and distribution policy before publication. OTA is unavailable.\n' "$RELEASE_TAG" > release-notes.txt
+          args=()
+          version=${RELEASE_TAG#v}
+          if [[ "${version%%+*}" == *-* ]]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" distribution/* --repo "$GH_REPO" --verify-tag --draft --latest=false --title "$RELEASE_TAG" --notes-file release-notes.txt "${args[@]}"

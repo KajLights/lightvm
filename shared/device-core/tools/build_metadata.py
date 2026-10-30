@@ -87,11 +87,14 @@ def generate(args):
     tag = None
     if not inputs['source']['dirty'] and not inputs['device_core']['dirty']:
         try:
-            exact = git(root, 'describe', '--exact-match', '--tags', 'HEAD').decode().strip()
-            if exact == 'v' + args.version:
-                tag = exact
+            expected = 'v' + args.version
+            exact = git(root, 'rev-parse', '--verify', 'refs/tags/' + expected + '^{commit}').decode().strip()
+            if exact == inputs['source']['revision']:
+                tag = expected
         except subprocess.CalledProcessError:
             pass
+    # The embedded release label changes bytes, so it is a resolved build input.
+    inputs['release_tag'] = tag
     firmware = {'build_id': 'sha256:' + digest(inputs), 'source_revision': inputs['source']['revision'],
                 'source_dirty': inputs['source']['dirty'] or inputs['device_core']['dirty'],
                 'release_tag': tag, 'profile': profile, 'features_hash': feature_hash,

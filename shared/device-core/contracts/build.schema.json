@@ -180,5 +180,6 @@
       "type": "object"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$id": "urn:kajlights:build"
 }
